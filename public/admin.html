@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Bootcamp Manager</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="css/dashboard.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+
+        /* ── Sidebar ── */
+        .admin-sidebar {
+            position: fixed;
+            top: 80px;
+            bottom: 0;
+            left: 0;
+            z-index: 100;
+            padding: 20px 0;
+            background-image: url("./img/Fondo-factoria-f5-color.png");
+            background-size: 150px 150px;
+            background-repeat: repeat;
+            border-right: 2px solid #ff4700;
+            overflow-y: auto;
+        }
+
+        .admin-sidebar-sticky {
+            padding: 0 20px;
+        }
+
+        .admin-sidebar .nav-link {
+            background-color: #ffffffbe;
+            color: #333333;
+            padding: 10px 15px;
+            border-radius: 5px;
+            margin: 0.2rem;
+            transition: all 0.3s ease;
+        }
+
+        .admin-sidebar .nav-link:hover {
+            background-color: #ffffff;
+            color: #ff4700;
+            border-left: 3px solid #ff4700;
+        }
+
+        .admin-sidebar .nav-link.active {
+            background-color: #ffffff;
+            color: #ff4700;
+        }
+
+        /* Back-to-dashboard button – orange pill */
+        .nav-link-back {
+            background-color: #ff4700 !important;
+            color: white !important;
+            box-shadow: rgba(62, 25, 1, 0.29) 2px 2px 6px;
+        }
+
+        .nav-link-back:hover {
+            background-color: #e63a00 !important;
+            color: white !important;
+            border-left: none !important;
+        }
+
+        /* ── Main content ── */
+        main {
+            margin-top: 80px;
+            padding: 20px;
+            background-color: #ffffff;
+        }
+
+        .teacher-card {
+            transition: transform 0.2s, box-shadow 0.2s;
+            border: 2px solid #ff4700;
+            border-radius: 12px;
+            background-color: #ffffff;
+        }
+
+        .teacher-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(255, 71, 0, 0.15);
+            border-color: #d63900;
+        }
+
+        .status-badge {
+            font-weight: 500;
+            padding: 0.4rem 0.8rem;
+            border-radius: 20px;
+            background-color: #ff4700;
+            color: white;
+        }
+
+        .btn-primary {
+            background-color: #ff4700 !important;
+            border-color: #ff4700 !important;
+        }
+
+        .btn-primary:hover {
+            background-color: #d63900 !important;
+            border-color: #d63900 !important;
+        }
+
+        h1, h2, h3, h4, h5, h6 {
+            color: #333333;
+        }
+
+        @media (max-width: 768px) {
+            .admin-sidebar {
+                position: static;
+                width: 100%;
+                height: auto;
+                border-right: none;
+                border-bottom: 2px solid #ff4700;
+                padding: 10px 0;
+            }
+            main {
+                margin-top: 0;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Top Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-light shadow-sm">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="dashboard.html">
+                <img class="page-title" src="./img/crok_manager_logotype_bold.png" height="60"/>
+            </a>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto align-items-center">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="userMenu" role="button"
+                            data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-person-circle me-2"></i><span id="admin-name">Admin</span>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="#" onclick="logout()">
+                                <i class="bi bi-box-arrow-right me-2"></i>Logout</a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Sidebar -->
+            <nav class="col-md-3 col-lg-2 d-md-block admin-sidebar px-0">
+                <div class="admin-sidebar-sticky">
+                    <img src="./img/logo-factoria-b.svg" alt="FactoriaF5" height="40" class="mt-4 mb-2 ms-2"/>
+                    <ul class="nav flex-column">
+                        <li class="nav-item">
+                            <a class="nav-link nav-link-back" href="dashboard.html">
+                                <i class="bi bi-arrow-left me-2"></i>Dashboard
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link active" id="nav-users" href="#" onclick="showSection('users')">
+                                <i class="bi bi-people me-2"></i>Gestión de Usuarios
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" id="nav-templates" href="#" onclick="showSection('templates')">
+                                <i class="bi bi-layout-text-window me-2"></i>Plantillas de Bootcamp
+                            </a>
+                        </li>
+                        <li class="nav-item mt-3">
+                            <a class="nav-link text-danger fw-semibold" href="#" onclick="logout()">
+                                <i class="bi bi-box-arrow-right me-2"></i>Cerrar sesión
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </nav>
+
+            <!-- Main Content -->
+            <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+
+                <!-- ── Users Section ── -->
+                <div id="section-users">
+                <div
+                    class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                    <h1 class="h2">Cuentas de Usuario</h1>
+                    <div class="btn-toolbar mb-2 mb-md-0">
+                        <button type="button" class="btn btn-primary" onclick="openCreateTeacherModal()">
+                            <i class="bi bi-person-plus me-2"></i>Crear Usuario
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Teacher List -->
+                <div class="row" id="teachers-list">
+                    <!-- Dynamic Content -->
+                    <div class="col-12 text-center py-5">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Cargando...</span>
+                        </div>
+                    </div>
+                </div>
+                </div>
+
+                <!-- ── Templates Section ── -->
+                <div id="section-templates" style="display:none;">
+                <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                    <h1 class="h2"><i class="bi bi-layout-text-window me-2"></i>Plantillas de bootcamp</h1>
+                </div>
+
+                <!-- Create template from promotion -->
+                <div class="card shadow-sm mb-4 border-0" style="border-left: 4px solid #ff4700 !important;">
+                    <div class="card-body p-4">
+                        <h5 class="fw-bold mb-1"><i class="bi bi-magic me-2 text-primary"></i>Crea una plantilla de una promoción </h5>
+                        <p class="text-muted small mb-3">Elige una promoción existente y guarda todo su contenido (roadmap, píldoras, acta de inicio, evaluación, competencias) para que sea reusable como plantilla.</p>
+                        <form id="form-template-from-promo" class="row g-3 align-items-end">
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">Promoción</label>
+                                <select class="form-select" id="tpl-promotion-select" required>
+                                    <option value="">— Selecciona promoción —</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label class="form-label fw-semibold">Nombre de la plantilla</label>
+                                <input type="text" class="form-control" id="tpl-name" required placeholder="e.g. IA Bootcamp P6">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label fw-semibold">Descripción<span class="text-muted">(Opcional)</span></label>
+                                <input type="text" class="form-control" id="tpl-description" placeholder="Short description">
+                            </div>
+                            <div class="col-md-1 d-flex">
+                                <button type="submit" class="btn btn-primary w-100">
+                                    <i class="bi bi-plus-lg"></i>
+                                </button>
+                            </div>
+                        </form>
+                        <div id="tpl-create-feedback" class="mt-2"></div>
+                    </div>
+                </div>
+
+                <!-- Existing templates list -->
+                <h5 class="fw-bold mb-3">Plantillas existentes</h5>
+                <div id="templates-list" class="row g-3">
+                    <div class="col-12 text-center py-4">
+                        <div class="spinner-border text-primary" role="status"></div>
+                    </div>
+                </div>
+                </div>
+
+            </main>
+        </div>
+    </div>
+
+    <!-- Create User Modal -->
+    <div class="modal fade" id="createTeacherModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header border-0 bg-primary text-white">
+                    <h5 class="modal-title"><i class="bi bi-person-plus me-2"></i>Crear nuevo usuario</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <form id="create-teacher-form">
+                    <div class="modal-body p-4">
+                        <div class="alert alert-light border small mb-3 py-2">
+                            <i class="bi bi-info-circle me-1 text-primary"></i>
+                            Se generará una contraseña provisional y se registrará automáticamente en <strong>users.coderf5.es</strong>.
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Nombre completo</label>
+                            <input type="text" class="form-control" id="teacher-name" required placeholder="Ej: Ana García">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Correo electrónico</label>
+                            <input type="email" class="form-control" id="teacher-email" required
+                                placeholder="ana@factoriaf5.org">
+                            <div class="form-text">Se enviará la contraseña provisional a este correo.</div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Rol</label>
+                            <select class="form-select" id="teacher-userrole" required>
+                                <option value="Formador/a">Formador/a</option>
+                                <option value="CoFormador/a">CoFormador/a</option>
+                                <option value="Coordinador/a">Coordinador/a</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer border-0">
+                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary px-4">
+                            <i class="bi bi-person-plus me-1"></i>Crear cuenta
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit User Modal -->
+    <div class="modal fade" id="editTeacherModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header border-0 bg-warning text-dark">
+                    <h5 class="modal-title"><i class="bi bi-pencil me-2"></i>Editar usuario</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form id="edit-teacher-form">
+                    <input type="hidden" id="edit-teacher-id">
+                    <div class="modal-body p-4">
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Nombre completo</label>
+                            <input type="text" class="form-control" id="edit-teacher-name" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Correo electrónico</label>
+                            <input type="email" class="form-control" id="edit-teacher-email" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Rol</label>
+                            <select class="form-select" id="edit-teacher-userrole">
+                                <option value="Formador/a">Formador/a</option>
+                                <option value="CoFormador/a">CoFormador/a</option>
+                                <option value="Coordinador/a">Coordinador/a</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="modal-footer border-0">
+                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-warning px-4">Guardar cambios</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Success Modal (Provisional Password) -->
+    <div class="modal fade" id="successModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header border-0 bg-success text-white">
+                    <h5 class="modal-title"><i class="bi bi-check-circle me-2"></i>Cuenta creada</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-4">
+                    <div class="text-center mb-3"><i class="bi bi-person-check text-success" style="font-size: 3rem;"></i></div>
+                    <p class="text-center">La cuenta para <strong id="success-email"></strong> ha sido creada.</p>
+
+                    <div class="alert alert-info py-3 shadow-sm border-0 mb-3">
+                        <p class="mb-1 fw-semibold small text-muted">Contraseña provisional:</p>
+                        <div class="d-flex align-items-center gap-2">
+                            <h3 class="mb-0 user-select-all font-monospace flex-grow-1" id="provisional-password"></h3>
+                            <button class="btn btn-sm btn-outline-secondary" onclick="navigator.clipboard.writeText(document.getElementById('provisional-password').textContent)" title="Copiar">
+                                <i class="bi bi-clipboard"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div id="success-external-status" class="mb-2 small"></div>
+                    <div id="success-email-warning" class="small text-warning mb-2"></div>
+
+                    <div class="alert alert-light border py-2 small mb-0">
+                        <i class="bi bi-info-circle me-1 text-primary"></i>
+                        El usuario debe iniciar sesión en <strong>esta aplicación</strong> con estas credenciales.<br>
+                        La contraseña ha sido registrada en el sistema de autenticación externo (<code>users.coderf5.es</code>).
+                    </div>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-success w-100" data-bs-dismiss="modal">
+                        <i class="bi bi-check-lg me-1"></i>Entendido
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Template Modal -->
+    <div class="modal fade" id="editTemplateModal" tabindex="-1" aria-labelledby="editTemplateModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header border-0" style="background:#ff4700;">
+                    <h5 class="modal-title text-white" id="editTemplateModalLabel">
+                        <i class="bi bi-pencil-square me-2"></i>Editar plantilla
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <form id="edit-template-form">
+                    <input type="hidden" id="edit-tpl-id">
+                    <div class="modal-body p-4">
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Nombre <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="edit-tpl-name" required placeholder="Nombre de la plantilla">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Descripción</label>
+                            <input type="text" class="form-control" id="edit-tpl-description" placeholder="Descripción breve">
+                        </div>
+                        <div class="row g-3">
+                            <div class="col-6">
+                                <label class="form-label fw-semibold">Semanas</label>
+                                <input type="number" class="form-control" id="edit-tpl-weeks" min="1" placeholder="Ej: 24">
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label fw-semibold">Horas totales</label>
+                                <input type="number" class="form-control" id="edit-tpl-hours" min="1" placeholder="Ej: 840">
+                            </div>
+                        </div>
+                        <div id="edit-tpl-alert" class="alert alert-danger mt-3 d-none" role="alert"></div>
+                    </div>
+                    <div class="modal-footer border-0">
+                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary px-4">
+                            <span class="btn-label"><i class="bi bi-save me-1"></i>Guardar cambios</span>
+                            <span class="spinner-border spinner-border-sm d-none ms-2" role="status" aria-hidden="true"></span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/config.js"></script>
+    <script src="js/shared.js"></script>
+    <script src="js/admin.js"></script>
+</body>
+
+</html>

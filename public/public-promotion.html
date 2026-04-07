@@ -1,0 +1,473 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Bootcamp Roadmap</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Pacifico" rel="stylesheet">
+    <link rel="icon" type="image/png" href="./img/favicon_bootcamp_manager.png">
+    <link href="css/style.css" rel="stylesheet" />
+    <style>
+        /* ── Banner ─────────────────────────────────────────── */
+        .pp-banner {
+            background: linear-gradient(135deg, var(--principal-1) 0%, #ff8c42 100%);
+            color: #fff;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 18px rgba(255,71,0,.18);
+        }
+        .pp-banner-img {
+            width: 100%;
+            height: 140px;
+            object-fit: cover;
+            opacity: .72;
+            display: block;
+        }
+        .pp-banner-body { padding: 1rem 1.5rem 1.25rem; }
+        .pp-banner-title {
+            font-size: 1.45rem;
+            font-weight: 700;
+            margin: 0;
+            letter-spacing: -.01em;
+        }
+        .pp-banner-sub { font-size: .85rem; opacity: .85; margin: .15rem 0 0; }
+
+        /* ── Tabs ────────────────────────────────────────────── */
+        .pp-tabs { border-bottom: 2px solid var(--principal-1); gap: .25rem; }
+        .pp-tabs .nav-link {
+            color: var(--principal-1);
+            border-radius: 8px 8px 0 0;
+            border: 1px solid transparent;
+            font-weight: 600;
+            font-size: .9rem;
+            padding: .55rem 1.3rem;
+            background: transparent;
+            cursor: pointer;
+        }
+        .pp-tabs .nav-link:hover { background: #fff3ee; }
+        .pp-tabs .nav-link.active {
+            background: #fff;
+            border-color: var(--principal-1) var(--principal-1) #fff;
+            color: var(--principal-1);
+        }
+
+        /* ── CTA button ──────────────────────────────────────── */
+        .pp-cta-btn {
+            background: linear-gradient(135deg, var(--principal-1) 0%, #ff8c42 100%);
+            color: #fff;
+            border: none;
+            border-radius: 10px;
+            font-weight: 700;
+            font-size: 1rem;
+            padding: .75rem 2rem;
+            box-shadow: 0 4px 14px rgba(255,71,0,.25);
+            transition: opacity .2s, transform .2s;
+            display: inline-flex;
+            align-items: center;
+            gap: .6rem;
+            text-decoration: none;
+        }
+        .pp-cta-btn:hover { opacity: .9; transform: translateY(-2px); color: #fff; }
+
+        /* ── Progress card ───────────────────────────────────── */
+        .pp-progress-card {
+            background: #fff;
+            border-radius: 12px;
+            padding: 1.25rem 1.5rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,.06);
+        }
+        .pp-progress-label {
+            font-size: .78rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: .04em;
+            color: #666;
+            margin-bottom: .5rem;
+        }
+        .pp-stat-box {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: .6rem 1rem;
+            text-align: center;
+            flex: 1;
+            min-width: 90px;
+        }
+        .pp-stat-val {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--principal-1);
+            line-height: 1.1;
+        }
+        .pp-stat-lbl { font-size: .72rem; color: #888; margin-top: .15rem; }
+
+        /* ── Próxima Píldora notice ───────────────────────────── */
+        .pp-notice-card {
+            background: linear-gradient(135deg, #fff8f5 0%, #fff3ee 100%);
+            border-left: 4px solid var(--principal-1);
+            border-radius: 8px;
+            padding: 1rem 1.2rem;
+            height: 100%;
+        }
+
+        /* ── Section cards ───────────────────────────────────── */
+        .pp-section-card {
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 2px 10px rgba(0,0,0,.06);
+            overflow: hidden;
+        }
+        .pp-section-header {
+            background: linear-gradient(135deg, #fff8f5, #fff3ee);
+            border-bottom: 2px solid var(--principal-1);
+            padding: .85rem 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: .6rem;
+        }
+        .pp-section-header-icon { color: var(--principal-1); font-size: 1.1rem; }
+        .pp-section-header h5 { margin: 0; font-size: 1rem; font-weight: 700; color: #222; }
+        .pp-section-body { padding: 1.25rem; }
+
+        @media (max-width: 767px) {
+            .pp-banner-title { font-size: 1.1rem; }
+            .pp-cta-btn { width: 100%; justify-content: center; }
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Password Access Modal -->
+    <div class="modal fade" id="passwordModal" tabindex="-1" data-bs-backdrop="static" data-bs-keyboard="false">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header border-0">
+                    <h5 class="modal-title">Acceso a la formación</h5>
+                </div>
+                <div class="modal-body">
+                    <p class="text-muted mb-4">Esta formación requiere contraseña. Introduce la contraseña que te han facilitado.</p>
+                    <div id="password-alert" class="alert alert-danger hidden" role="alert"></div>
+                    <div class="mb-3">
+                        <label for="access-password" class="form-label">Contraseña</label>
+                        <div class="input-group">
+                            <input type="password" class="form-control" id="access-password" placeholder="Introduce la contraseña">
+                            <button type="button" class="btn btn-outline-secondary" onclick="togglePasswordVisibility()">
+                                <i class="bi bi-eye" id="togglePasswordIcon"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0">
+                    <button type="button" class="btn btn-primary" style="background:var(--principal-1);border-color:var(--principal-1);" onclick="verifyPromotionPassword()">
+                        <span class="btn-text">Verificar</span>
+                        <span class="spinner-border spinner-border-sm ms-2 hidden" role="status" aria-hidden="true"></span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Sidebar -->
+            <nav class="col-md-3 col-lg-2 d-md-block sidebar collapse">
+                <div class="sidebar-content d-flex flex-column h-100">
+                    <h1 id="nav-title" class="nav-title h3 mb-4 px-3">Bootcamp</h1>
+                    <ul class="nav" id="sidebar-nav">
+                        <!-- Navigation items will be populated here -->
+                    </ul>
+                    <figure class="logo-container text-center p-3 mt-auto">
+                        <a href="https://factoriaf5.org/" target="_blank">
+                            <img src="./img/logo-factoria-b.svg" alt="Logotipo FactoriaF5" class="img-fluid"
+                                style="max-width: 100px;">
+                        </a>
+                    </figure>
+                </div>
+            </nav>
+
+            <!-- Main Content -->
+            <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 py-4">
+
+                <!-- ══ BANNER ══════════════════════════════════════════ -->
+                <div class="pp-banner mb-4">
+                    <img id="pp-banner-img" src="./img/f5_banner_roadmpa_manager.PNG"
+                         alt="Banner formación" class="pp-banner-img"
+                         onerror="this.style.display='none'">
+                    <div class="pp-banner-body">
+                        <h2 class="pp-banner-title" id="promotion-title">Cargando…</h2>
+                        <p class="pp-banner-sub" id="pp-banner-sub"></p>
+                    </div>
+                </div>
+
+                <!-- ══ TABS NAV ═════════════════════════════════════════ -->
+                <ul class="nav pp-tabs mb-4" id="pp-main-tabs">
+                    <li class="nav-item">
+                        <button class="nav-link active" id="tab-progreso-btn" onclick="switchPublicTab('progreso')">
+                            <i class="bi bi-play-circle me-2"></i>En progreso
+                        </button>
+                    </li>
+                    <li class="nav-item">
+                        <button class="nav-link" id="tab-info-btn" onclick="switchPublicTab('info')">
+                            <i class="bi bi-info-circle me-2"></i>Información General
+                        </button>
+                    </li>
+                </ul>
+
+                <!-- ══ TAB: EN PROGRESO ════════════════════════════════ -->
+                <div id="tab-progreso">
+
+                    <!-- 1. CTA — Aula Virtual -->
+                    <div class="mb-4 text-center text-md-start">
+                        <a href="#" id="pp-cta-link" class="pp-cta-btn"
+                           onclick="openAulaVirtualPage(event); return false;">
+                            <i class="bi bi-laptop"></i>Ir al Aula Virtual
+                        </a>
+                    </div>
+
+                    <!-- 2. Progreso -->
+                    <div class="pp-progress-card mb-4">
+                        <div class="pp-progress-label">
+                            <i class="bi bi-bar-chart-fill me-2" style="color:var(--principal-1);"></i>Progreso del bootcamp
+                        </div>
+                        <div class="progress mb-3" style="height:14px;border-radius:8px;">
+                            <div id="pp-progress-bar" class="progress-bar" role="progressbar"
+                                 style="width:0%;background:linear-gradient(90deg,var(--principal-1),#ff8c42);border-radius:8px;"
+                                 aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
+                        </div>
+                        <div class="d-flex gap-3 flex-wrap">
+                            <div class="pp-stat-box">
+                                <div class="pp-stat-val" id="pp-stat-total">—</div>
+                                <div class="pp-stat-lbl">Estudiantes activos</div>
+                            </div>
+                            <div class="pp-stat-box">
+                                <div class="pp-stat-val" id="pp-stat-weeks-done" style="color:#198754;">—</div>
+                                <div class="pp-stat-lbl">Semanas transcurridas</div>
+                            </div>
+                            <div class="pp-stat-box">
+                                <div class="pp-stat-val" id="pp-stat-weeks-left">—</div>
+                                <div class="pp-stat-lbl">Semanas restantes</div>
+                            </div>
+                            <div class="pp-stat-box">
+                                <div class="pp-stat-val" id="pp-stat-weeks-total">—</div>
+                                <div class="pp-stat-lbl">Semanas totales</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 3. Acciones Rápidas -->
+                    <div class="pp-section-card mb-4" id="quick-links">
+                        <div class="pp-section-header">
+                            <i class="bi bi-lightning-charge pp-section-header-icon"></i>
+                            <h5>Acciones Rápidas</h5>
+                        </div>
+                        <div class="pp-section-body">
+                            <div id="quick-links-list"></div>
+                        </div>
+                    </div>
+
+                    <!-- 4. Roadmap -->
+                    <div class="pp-section-card mb-4" id="roadmap">
+                        <div class="pp-section-header">
+                            <i class="bi bi-map pp-section-header-icon"></i>
+                            <h5>Roadmap</h5>
+                        </div>
+                        <div class="pp-section-body p-0">
+                            <div class="table-responsive p-3">
+                                <table id="gantt-table" class="table table-sm"></table>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 5. Calendario + Próxima Píldora (2 columnas) -->
+                    <div class="row g-3 mb-4">
+                        <!-- Próxima píldora -->
+                        <div class="col-12 col-lg-5 d-flex">
+                            <div class="pp-notice-card flex-fill" id="pp-next-pildora-notice">
+                                <div class="d-flex align-items-center gap-2 mb-2">
+                                    <i class="bi bi-lightbulb-fill text-warning fs-4"></i>
+                                    <span class="fw-bold" style="color:var(--principal-1);">Próxima Píldora</span>
+                                </div>
+                                <div id="pp-next-pildora-body" class="text-muted small">
+                                    <em>Sin píldoras próximas.</em>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Calendario mini -->
+                        <div class="col-12 col-lg-7" id="calendar">
+                            <div class="pp-section-card mb-0 hidden" id="calendar-card">
+                                <div class="pp-section-header">
+                                    <i class="bi bi-calendar pp-section-header-icon"></i>
+                                    <h5>Calendario</h5>
+                                </div>
+                                <div class="pp-section-body p-0">
+                                    <iframe id="calendar-iframe" style="width:100%;height:320px;border:none;" allowfullscreen></iframe>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 6. Píldoras (inyectado por JS) -->
+                    <div id="pildoras-wrapper"></div>
+
+                    <!-- 7. Recursos (inyectado por JS) -->
+                    <div id="recursos-wrapper"></div>
+
+                    <!-- Secciones personalizadas -->
+                    <div id="sections-container"></div>
+
+                </div><!-- /tab-progreso -->
+
+                <!-- ══ TAB: INFORMACIÓN GENERAL ════════════════════════ -->
+                <div id="tab-info" class="d-none">
+
+                    <!-- 1. Banner informativo -->
+                    <div class="pp-banner mb-4" style="background:linear-gradient(135deg,#2b2b2b 0%,#444 100%);">
+                        <div class="pp-banner-body">
+                            <h2 class="pp-banner-title" id="pp-info-title">—</h2>
+                            <p class="pp-banner-sub" id="pp-info-sub"></p>
+                        </div>
+                    </div>
+
+                    <!-- 2. Progreso (mismo componente) -->
+                    <div class="pp-progress-card mb-4">
+                        <div class="pp-progress-label">
+                            <i class="bi bi-bar-chart-fill me-2" style="color:var(--principal-1);"></i>Progreso del bootcamp
+                        </div>
+                        <div class="progress mb-3" style="height:14px;border-radius:8px;">
+                            <div id="pp-progress-bar-info" class="progress-bar" role="progressbar"
+                                 style="width:0%;background:linear-gradient(90deg,var(--principal-1),#ff8c42);border-radius:8px;"
+                                 aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
+                        </div>
+                        <div class="d-flex gap-3 flex-wrap">
+                            <div class="pp-stat-box">
+                                <div class="pp-stat-val" id="pp-info-stat-total">—</div>
+                                <div class="pp-stat-lbl">Estudiantes activos</div>
+                            </div>
+                            <div class="pp-stat-box">
+                                <div class="pp-stat-val" id="pp-info-stat-weeks-done" style="color:#198754;">—</div>
+                                <div class="pp-stat-lbl">Semanas transcurridas</div>
+                            </div>
+                            <div class="pp-stat-box">
+                                <div class="pp-stat-val" id="pp-info-stat-weeks-left">—</div>
+                                <div class="pp-stat-lbl">Semanas restantes</div>
+                            </div>
+                            <div class="pp-stat-box">
+                                <div class="pp-stat-val" id="pp-info-stat-weeks-total">—</div>
+                                <div class="pp-stat-lbl">Semanas totales</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 3. Horario (inyectado por JS) -->
+                    <div id="horario-wrapper"></div>
+
+                    <!-- 4. Evaluación (inyectado por JS) -->
+                    <div id="evaluacion-wrapper"></div>
+
+                    <!-- 5. Competencias -->
+                    <div class="pp-section-card mb-4 d-none" id="competences-section">
+                        <div class="pp-section-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+                            <div class="d-flex align-items-center gap-2">
+                                <i class="bi bi-award pp-section-header-icon"></i>
+                                <h5 class="mb-0">Competencias</h5>
+                            </div>
+                            <div class="d-flex align-items-center gap-2">
+                                <label class="form-label mb-0 small fw-semibold text-muted">Área:</label>
+                                <select class="form-select form-select-sm w-auto"
+                                        id="public-competences-area-filter"
+                                        onchange="filterPublicCompetences()">
+                                    <option value="">Todas</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="pp-section-body">
+                            <div id="public-competences-list"></div>
+                        </div>
+                    </div>
+
+                    <!-- 6. Equipo formativo (inyectado por JS) -->
+                    <div id="equipo-wrapper"></div>
+
+                </div><!-- /tab-info -->
+
+                <!-- ══ AULA VIRTUAL (kept outside tabs for compatibility) ═ -->
+                <div class="d-none" id="aula-virtual-page">
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                                <div>
+                                    <h5 class="card-title section-title mb-1">
+                                        <i class="bi bi-laptop me-2"></i>Aula Virtual
+                                    </h5>
+                                    <p class="text-muted small mb-0" id="aula-virtual-subtitle">
+                                        Entrega aquí el repositorio de tu proyecto activo.
+                                    </p>
+                                </div>
+                            </div>
+                            <div id="aula-virtual-empty" class="alert alert-light border text-muted mb-0">
+                                <i class="bi bi-info-circle me-1"></i>No hay ningún proyecto activo en este momento.
+                            </div>
+                            <div id="aula-virtual-content" class="d-none">
+                                <div class="mb-4">
+                                    <h6 class="small text-uppercase text-muted mb-1">
+                                        <i class="bi bi-file-earmark-text me-1"></i>Briefing del proyecto
+                                    </h6>
+                                    <p class="mb-0" id="aula-virtual-briefing"></p>
+                                </div>
+                                <div class="mb-4">
+                                    <h6 class="small text-uppercase text-muted mb-1">
+                                        <i class="bi bi-award me-1"></i>Competencias a evaluar
+                                    </h6>
+                                    <div id="aula-virtual-competences"></div>
+                                </div>
+                                <div class="border-top pt-3">
+                                    <h6 class="small text-uppercase text-muted mb-2">
+                                        <i class="bi bi-cloud-arrow-up me-1"></i>Entrega de repositorio
+                                    </h6>
+                                    <div class="row g-3 align-items-end">
+                                        <div class="col-md-5">
+                                            <label for="aula-virtual-target-select" class="form-label small fw-semibold text-muted" id="aula-virtual-target-label">
+                                                Identificación
+                                            </label>
+                                            <select id="aula-virtual-target-select" class="form-select form-select-sm">
+                                                <option value="">Selecciona tu nombre…</option>
+                                            </select>
+                                        </div>
+                                        <div class="col-md-7">
+                                            <label class="form-label small fw-semibold text-muted">URL del repositorio</label>
+                                            <div class="input-group input-group-sm">
+                                                <span class="input-group-text bg-light text-muted" id="aula-virtual-repo-prefix"
+                                                      style="max-width:60%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                                                    https://github.com/proyectof5/
+                                                </span>
+                                                <input type="text" class="form-control" id="aula-virtual-repo-suffix"
+                                                       placeholder="nombre-repo-estudiante">
+                                            </div>
+                                            <div class="form-text small">Solo escribe el nombre de tu repositorio. El prefijo es fijo.</div>
+                                        </div>
+                                    </div>
+                                    <div class="d-flex align-items-center gap-2 mt-3">
+                                        <button type="button" class="btn btn-sm btn-primary" onclick="submitVirtualClassroomDelivery()">
+                                            <span class="btn-label"><i class="bi bi-send me-1"></i>Enviar entrega</span>
+                                            <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                                        </button>
+                                        <span id="aula-virtual-feedback" class="small text-muted"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </main>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/config.js"></script>
+    <script src="js/public-promotion.js"></script>
+</body>
+
+</html>

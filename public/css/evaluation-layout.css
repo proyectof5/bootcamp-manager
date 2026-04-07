@@ -1,0 +1,347 @@
+/* ==================== EVALUATION COMPETENCES BY LEVEL - THREE COLUMN LAYOUT ==================== */
+
+/* New color palette for levels: Orange gradient */
+:root {
+    /* Level 1 (Inicial) - Light Orange */
+    --level-1-bg: #FFE5CC;
+    --level-1-border: #FFB84D;
+    --level-1-text: #8B4513;
+    
+    /* Level 2 (Medio) - Medium Orange */
+    --level-2-bg: #FFCC99;
+    --level-2-border: #FF9E33;
+    --level-2-text: #A0522D;
+    
+    /* Level 3 (Avanzado) - Dark Orange */
+    --level-3-bg: #FF9966;
+    --level-3-border: #FF7733;
+    --level-3-text: #8B4513;
+}
+
+/* Main competences layout container - Three columns for desktop */
+.eval-competences-by-level-container {
+    display: flex;
+    gap: 1.5rem;
+    margin-bottom: 1rem;
+    justify-content: stretch;
+}
+
+/* Each level column wrapper */
+.eval-level-column {
+    flex: 1 1 calc(33.333% - 1rem);
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+/* Level column header */
+.eval-level-header {
+    padding: 0.75rem 1rem;
+    border-radius: 0.375rem;
+    text-align: center;
+    font-weight: 600;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    font-size: 1rem;
+    border: 2px solid;
+    margin-bottom: 0.5rem;
+}
+
+/* Level 1 (Inicial) styling */
+.eval-level-column.level-1 .eval-level-header {
+    background-color: var(--level-1-bg);
+    border-color: var(--level-1-border);
+    color: var(--level-1-text);
+}
+
+.eval-level-column.level-1 .eval-comp-card {
+    border-color: var(--level-1-border);
+    border-left: 5px solid var(--level-1-border);
+}
+
+.eval-level-column.level-1 .eval-comp-card .card-header {
+    background-color: rgba(255, 229, 204, 0.5) !important;
+    border-bottom-color: var(--level-1-border) !important;
+}
+
+/* Level 2 (Medio) styling */
+.eval-level-column.level-2 .eval-level-header {
+    background-color: var(--level-2-bg);
+    border-color: var(--level-2-border);
+    color: var(--level-2-text);
+}
+
+.eval-level-column.level-2 .eval-comp-card {
+    border-color: var(--level-2-border);
+    border-left: 5px solid var(--level-2-border);
+}
+
+.eval-level-column.level-2 .eval-comp-card .card-header {
+    background-color: rgba(255, 204, 153, 0.5) !important;
+    border-bottom-color: var(--level-2-border) !important;
+}
+
+/* Level 3 (Avanzado) styling */
+.eval-level-column.level-3 .eval-level-header {
+    background-color: var(--level-3-bg);
+    border-color: var(--level-3-border);
+    color: white;
+}
+
+.eval-level-column.level-3 .eval-comp-card {
+    border-color: var(--level-3-border);
+    border-left: 5px solid var(--level-3-border);
+}
+
+.eval-level-column.level-3 .eval-comp-card .card-header {
+    background-color: rgba(255, 153, 102, 0.5) !important;
+    border-bottom-color: var(--level-3-border) !important;
+}
+
+/* Competence cards inside each column */
+.eval-comp-card {
+    margin-bottom: 0;
+    border-radius: 0.375rem;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    transition: all 0.2s ease;
+}
+
+.eval-comp-card:hover {
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
+}
+
+.eval-comp-card .card-header {
+    border-radius: 0.375rem 0.375rem 0 0;
+    padding: 0.75rem !important;
+}
+
+.eval-comp-card .card-body {
+    padding: 0.75rem !important;
+}
+
+/* Level header icons */
+.eval-level-header i {
+    font-size: 1.25rem;
+}
+
+/* Responsive: tablet (down to 2 columns) */
+@media (max-width: 1200px) {
+    .eval-competences-by-level-container {
+        gap: 1rem;
+    }
+    
+    .eval-level-column {
+        flex: 1 1 calc(50% - 0.5rem);
+    }
+}
+
+/* Responsive: mobile (single column) */
+@media (max-width: 768px) {
+    .eval-competences-by-level-container {
+        flex-direction: column;
+        gap: 1rem;
+    }
+    
+    .eval-level-column {
+        flex: 1 1 100%;
+    }
+    
+    .eval-level-header {
+        font-size: 0.95rem;
+        padding: 0.65rem 0.8rem;
+    }
+    
+    .eval-comp-card .card-header {
+        font-size: 0.9rem;
+    }
+    
+    .eval-comp-card .card-body {
+        font-size: 0.9rem;
+    }
+}
+
+/* Compact card styling for mobile */
+@media (max-width: 576px) {
+    .eval-level-column {
+        flex: 1 1 100%;
+    }
+    
+    .eval-competences-by-level-container {
+        gap: 0.75rem;
+    }
+    
+    .eval-comp-card {
+        border-left-width: 4px !important;
+    }
+    
+    .eval-level-header {
+        font-size: 0.85rem;
+        padding: 0.5rem 0.6rem;
+    }
+}
+
+/* ==================== COMPETENCE INDICATORS STYLING ==================== */
+
+/* Competence indicator sections */
+.eval-ind-progress {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+/* Indicator badge styling */
+.eval-ind-progress .badge {
+    font-size: 0.75rem !important;
+    padding: 0.35rem 0.6rem !important;
+    border-radius: 0.25rem !important;
+    white-space: nowrap;
+}
+
+/* Auto-level badge */
+[data-auto-level-badge] {
+    font-weight: 600 !important;
+    border: 1px solid currentColor !important;
+}
+
+/* ==================== ACCORDION STYLING FOR TOOLS ==================== */
+
+.accordion-flush .accordion-item {
+    border: none !important;
+    border-bottom: 1px solid #e9ecef !important;
+}
+
+.accordion-flush .accordion-item:last-child {
+    border-bottom: none !important;
+}
+
+.accordion-button {
+    padding: 0.6rem 0.75rem !important;
+    font-size: 0.9rem;
+    border-radius: 0.25rem;
+    transition: all 0.2s ease;
+}
+
+.accordion-button:not(.collapsed) {
+    background-color: rgba(0, 0, 0, 0.03);
+    box-shadow: none;
+}
+
+.accordion-button:focus {
+    box-shadow: none;
+    border-color: var(--level-1-border);
+}
+
+.accordion-body {
+    padding: 0.6rem 0.75rem !important;
+}
+
+/* ==================== FORM CHECK STYLING ==================== */
+
+.form-check-sm {
+    padding-left: 1.25rem;
+}
+
+.form-check-sm .form-check-input {
+    width: 1rem;
+    height: 1rem;
+    margin-top: 0.125rem;
+}
+
+.form-check-sm .form-check-label {
+    font-size: 0.85rem;
+}
+
+/* ==================== BORDER & BACKGROUND FOR LEVEL INDICATORS ==================== */
+
+.eval-indicator-level-box {
+    border-radius: 0.25rem;
+    padding: 0.6rem;
+    margin-bottom: 0.5rem;
+    border-left: 4px solid;
+}
+
+.eval-indicator-level-box.level-1 {
+    background-color: var(--level-1-bg);
+    border-left-color: var(--level-1-border);
+}
+
+.eval-indicator-level-box.level-2 {
+    background-color: var(--level-2-bg);
+    border-left-color: var(--level-2-border);
+}
+
+.eval-indicator-level-box.level-3 {
+    background-color: var(--level-3-bg);
+    border-left-color: var(--level-3-border);
+}
+
+/* ==================== BUTTON STYLING ==================== */
+
+.level-btn {
+    padding: 0.35rem 0.6rem !important;
+    font-size: 0.8rem;
+    border-radius: 0.25rem !important;
+    transition: all 0.2s ease;
+}
+
+.level-btn:hover {
+    transform: scale(1.05);
+}
+
+.level-btn.btn-outline-secondary {
+    border-color: #6c757d !important;
+}
+
+/* ==================== UTILITIES ==================== */
+
+.text-success {
+    color: #28a745 !important;
+}
+
+.text-info {
+    color: #17a2b8 !important;
+}
+
+.small {
+    font-size: 0.85rem;
+}
+
+.fw-semibold {
+    font-weight: 600 !important;
+}
+
+.fst-italic {
+    font-style: italic;
+}
+
+/* Fade transition for card removal */
+@keyframes fadeOut {
+    from { opacity: 1; }
+    to { opacity: 0; }
+}
+
+.eval-comp-card.removing {
+    animation: fadeOut 0.2s ease forwards;
+}
+
+/* ==================== PRINT STYLES ==================== */
+
+@media print {
+    .eval-competences-by-level-container {
+        gap: 1rem;
+    }
+    
+    .eval-comp-card {
+        page-break-inside: avoid;
+        box-shadow: none;
+    }
+    
+    .eval-level-header {
+        border: 1px solid #000;
+    }
+}

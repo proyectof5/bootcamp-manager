@@ -1,0 +1,11 @@
+.vscode
+./node_modules
+node_modules
+.env
+./data
+./backend/keys/public.pem
+./backend/utils/email.js
+backend/utils/email.js
+backend/keys/public.pem
+# keep .env.example tracked
+!.env.example

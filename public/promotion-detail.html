@@ -1,0 +1,2948 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Promotion Details - Bootcamp Manager</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Pacifico" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet" />
+    <link href="css/promotion-detail.css" rel="stylesheet" />
+    <link rel="icon" type="image/png" href="./img/favicon_bootcamp_manager.png">
+    <!-- <link rel="stylesheet" href="./css/style.css"> -->
+
+
+</head>
+
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-light bg-light shadow-sm">
+        <div class="container-fluid">
+            <!-- Sidebar Toggle (Hamburger) -->
+            <button class="btn btn-link text-dark me-2" id="sidebar-desktop-toggle" title="Mostrar/Ocultar Menú">
+                <i class="bi bi-list fs-3"></i>
+            </button>
+            <a class="navbar-brand" href="#">
+                <img class="page-title" src="./img/bootcamp_manager_logotype_bold.png" height="60"/> 
+            </a>
+            <!-- Promotion Name Center -->
+            <div class="navbar-promotion-title d-none d-lg-flex">
+                <h5 id="navbar-promotion-name" class="mb-0  fw-semibold" >
+                    <!-- Promotion name will be inserted here -->
+                </h5>
+            </div>
+
+            <button class="navbar-toggler" type="button" id="sidebar-toggle" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav ms-auto">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" href="#" id="userMenu" role="button"
+                            data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-person-circle me-2"></i><span id="teacher-name">Teacher</span>
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="#" onclick="openProfileModal()"><i
+                                        class="bi bi-person me-2"></i>Perfil</a></li>
+                            <li id="admin-panel-divider" class="d-none"><hr class="dropdown-divider"></li>
+                            <li id="admin-panel-item" class="d-none"><a class="dropdown-item" href="admin.html"><i
+                                        class="bi bi-shield-lock me-2"></i>Panel de Admin</a></li>
+                            <li><hr class="dropdown-divider">
+                            </li>
+                            <li><a class="dropdown-item" href="#" onclick="logout()"><i
+                                        class="bi bi-box-arrow-right me-2"></i><span data-i18n="logout">Cerrar
+                                        Sesión</span></a></li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+    <!-- Sidebar Overlay for Mobile -->
+    <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+    <!-- Sidebar -->
+    <nav class="bg-light sidebar" id="sidebar-desktop">
+        <div class="sidebar-sticky">
+            <ul class="nav flex-column sidebar-nav">
+                <li class="nav-item">
+                    <a class="nav-link nav-link-promotions mt-4" href="dashboard.html">
+                        <i class="bi bi-arrow-left me-2"></i>Promociones
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link nav" href="#overview" onclick="switchTab('overview')">
+                        <i class="bi bi-eye me-2"></i>Dashboard
+                    </a>
+                </li>
+                <li class="nav-item teacher-only">
+                    <a class="nav-link" href="#teacher-area" onclick="switchTab('teacher-area')">
+                        <i class="bi bi-book me-2"></i>Área del docente
+                    </a>
+                </li>
+                <li class="nav-item teacher-only">
+                    <a class="nav-link" href="#info" onclick="switchTab('info')">
+                        <i class="bi bi-info-circle me-2"></i>Contenido del Programa
+                    </a>
+                </li>
+                <li class="nav-item teacher-only">
+                    <a class="nav-link" href="#collaborators" onclick="switchTab('collaborators')">
+                        <i class="bi bi-person-plus me-2"></i>Collaboradores
+                    </a>
+                </li>
+            </ul>
+            <!-- Sidebar Footer: Delete Button and Logo -->
+            <div class="sidebar-footer">
+                <div class="nav-item teacher-only w-100 mb-1">
+                    <a type="button" class="nav-link sidebar-edit-btn"
+                        onclick="openEditPromotionModal()">
+                        <i class="bi bi-pencil-square me-2"></i>Modificar promoción
+                    </a>
+                </div>
+                <div class="nav-item teacher-only w-100">
+                    <a type="button" class="nav-link sidebar-delete-btn"
+                        onclick="openDeletePromotionModal()">
+                        <i class="bi bi-trash me-2"></i>Eliminar promoción
+                    </a>
+                </div>
+                <div class="sidebar-logo-container">
+                    <img src="./img/logo-factoria-b.svg" alt="FactoriaF5" class="sidebar-f5-logo"/>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main id="main-content" class="px-md-4">
+                <!-- Overview Tab -->
+                <div id="overview-tab" class="section-content">
+
+                    <div class="my-4">
+                        <p id="promo-subtitle" class="promo-subtitle mb-2"></p>
+                        <h1 id="promotion-title" class="promotion-title-styled">Loading...</h1>
+                        <p id="promotion-desc" class="text-muted"></p>
+                    </div>
+                    
+                    <!-- Quick Actions Widget -->
+                    <div class="mb-4">
+                        <h6 class="mb-3 text-dark">
+                            <i class="bi bi-lightning-charge text-warning me-2"></i>Acciones Rápidas
+                        </h6>
+                        <div id="quick-actions-container">
+                            <!-- Las tarjetas de acción rápida se cargarán aquí -->
+                        </div>
+                    </div>
+                    <!-- Dynamic Greeting -->
+                    <!-- <div id="greeting-container" class="greeting-section mb-3"> -->
+                        <!-- Greeting will be loaded dynamically here -->
+                    <!-- </div> -->
+
+
+                    <!-- Course Progress Bar -->
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <div class="d-flex align-items-center gap-3">
+                                <h6 class="mb-0 text-dark">
+                                    <i class="bi bi-graph-up me-2 text-warning"></i>Progreso del Curso
+                                </h6>
+                                <div class="d-flex align-items-center gap-2 px-3 py-1 bg-light rounded">
+                                    <i class="bi bi-people-fill text-warning"></i>
+                                    <small class="fw-bold text-dark" id="active-students-count">-</small>
+                                </div>
+                                <!-- Withdrawn Students Block -->
+                                <div id="withdrawn-students-container"
+                                    class="d-flex align-items-center gap-2 px-3 py-1 bg-withdrawn rounded">
+                                    <i class="bi bi-person-x text-withdrawn"></i>
+                                    <small class="fw-bold text-withdrawn" id="withdrawn-students-count">-</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="progress"
+                            style="height: 28px; border-radius: 8px; background-color: #f0f0f0; position: relative;">
+                            <div id="progress-bar" class="progress-bar progress-bar-striped" role="progressbar"
+                                aria-valuenow="0" aria-valuemin="0" aria-valuemax="100"
+                                style="display: flex; align-items: center; justify-content: flex-end; padding-right: 12px;">
+                            </div>
+                            <div id="progress-label"
+                                style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); font-size: 0.85rem; font-weight: 600; color: #666; white-space: nowrap; pointer-events: none;">
+                            </div>
+                        </div>
+                        <div class="d-flex justify-content-between mt-2" style="font-size: 0.85rem;">
+                            <small class="text-muted" id="progress-start-info">-</small>
+                            <small class="text-muted" id="progress-end-info">-</small>
+                        </div>
+                    </div>
+                    <!-- End Quick Actions Widget -->
+
+                    <!-- Overview Dashboard Section -->
+                    <div class="row g-3">
+                        <!-- Left Column: Agenda -->
+                        <div class="col-lg-7">
+                            <div class="card border-0 shadow-sm h-100">
+                                <div class="card-header border-0 bg-light d-flex align-items-center gap-2">
+                                    <i class="bi bi-calendar3 text-primary"></i>
+                                    <h6 class="mb-0">Agenda del Día</h6>
+                                </div>
+                                <div class="card-body p-0 d-flex flex-column">
+                                    <div class="agenda-container flex-grow-1">
+                                        <div class="ratio ratio-16x9">
+                                            <iframe id="calendar-preview-iframe" src="" style="border:0;"
+                                                loading="lazy"></iframe>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Right Column: Alerts -->
+                        <div class="col-lg-5">
+                            <div class="card border-0 shadow-sm h-100">
+                                <div class="card-header border-0 bg-light d-flex align-items-center gap-2">
+                                    <i class="bi bi-lightning text-warning"></i>
+                                    <h6 class="mb-0">Avisos</h6>
+                                </div>
+                                <div class="card-body p-0 d-flex flex-column">
+                                    <!-- Próxima Píldora -->
+                                    <div class="aviso-item border-bottom">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <div class="aviso-icon">
+                                                <i class="bi bi-lightbulb"></i>
+                                            </div>
+                                            <div class="aviso-content">
+                                                <h6 class="mb-1 text-warning">Próxima Píldora</h6>
+                                                <div id="next-pildora-content" class="aviso-text">
+                                                    <p class="text-muted small mb-0">
+                                                        <i class="bi bi-hourglass-split me-1"></i>Cargando...
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Recuento de Asistencias -->
+                                    <div class="aviso-item">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <div class="aviso-icon">
+                                                <i class="bi bi-check-circle"></i>
+                                            </div>
+                                            <div class="aviso-content">
+                                                <h6 class="mb-1 text-info">Asistencia</h6>
+                                                <div id="attendance-alert-content" class="aviso-text">
+                                                    <p class="text-muted small mb-0">
+                                                        <i class="bi bi-hourglass-split me-1"></i>Cargando...
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Bloc de Notas Docente -->
+                                    <div class="aviso-item border-top pt-3 mt-3">
+                                        <div class="d-flex align-items-center gap-2 mb-3">
+                                            <div class="aviso-icon">
+                                                <i class="bi bi-sticky"></i>
+                                            </div>
+                                            <div class="aviso-content">
+                                                <h6 class="mb-0">Anotaciones</h6>
+                                            </div>
+                                        </div>
+                                        <div id="notes-container" class="notes-section">
+                                            <!-- Bloc de notas se renderiza aquí -->
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Área del Docente Tab -->
+                <div id="teacher-area-tab" class="section-content hidden">
+                    <div class="my-4">
+                        <h1 id="teacher-area-title">Área del Docente</h1>
+                        <p id="teacher-area-desc" class="text-muted">Gestión integral del grupo y herramientas de
+                            seguimiento</p>
+                    </div>
+
+                    <!-- Teacher Area Sub-sections Navigation -->
+                    <div class="mt-4">
+                        <nav class="nav nav-tabs mb-4" id="teacher-area-subtabs" role="tablist">
+                            <button class="nav-link active" id="teacher-area-overview-tab" type="button" role="tab"
+                                aria-selected="true" onclick="switchTeacherAreaSubTab('overview')">
+                                <i class="bi bi-grid me-2"></i>Accesos Rápidos
+                            </button>
+                            <button class="nav-link" id="teacher-area-students-tab" type="button" role="tab"
+                                aria-selected="false" onclick="switchTeacherAreaSubTab('students')">
+                                <i class="bi bi-people me-2"></i>Lista de estudiantes
+                            </button>
+                            <button class="nav-link" id="teacher-area-attendance-tab" type="button" role="tab"
+                                aria-selected="false" onclick="switchTeacherAreaSubTab('attendance')">
+                                <i class="bi bi-calendar-check me-2"></i>Asistencia
+                            </button>
+                            <button class="nav-link" id="teacher-area-evaluation-tab" type="button" role="tab"
+                                aria-selected="false" onclick="switchTeacherAreaSubTab('evaluation')">
+                                <i class="bi bi-clipboard-check me-2"></i>Evaluación
+                            </button>
+                            <button class="nav-link" id="teacher-area-accesos-tab" type="button" role="tab"
+                                aria-selected="false" onclick="switchTeacherAreaSubTab('accesos')">
+                                <i class="bi bi-lock me-2"></i>Accesos
+                            </button>
+                        </nav>
+
+                        <!-- Sub-sections Content -->
+                        <div class="tab-content" id="teacher-area-subtabs-content">
+                            <!-- Overview Tab -->
+                            <div class="tab-pane fade show active" id="teacher-area-overview" role="tabpanel"
+                                aria-labelledby="teacher-area-overview-tab">
+                                <div class="mb-4">
+                                    <h6 class="mb-3 text-dark fw-bold">
+                                        <i class="bi bi-lightning-charge text-warning me-2"></i>Accesos Rápidos
+                                    </h6>
+                                    <div id="teacher-area-quick-actions" class="p-3 bg-light rounded-3 border">
+                                        <!-- Teacher quick actions will be loaded here -->
+                                        <div class="text-center py-4">
+                                            <div class="spinner-border text-primary spinner-border-sm" role="status">
+                                            </div>
+                                            <span class="ms-2">Cargando acciones...</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Students Tab -->
+                            <div class="tab-pane fade" id="teacher-area-students" role="tabpanel"
+                                aria-labelledby="teacher-area-students-tab">
+                                <div id="students-tab">
+                                    <div class="d-flex justify-content-between align-items-center my-4">
+                                        <h2 class="subtitle-page">Estudiantes</h2>
+                                        <div class="d-flex flex-wrap gap-2">
+                                            <button class="btn btn-primary" id="create-student-btn" onclick="openStudentModal()">
+                                                <i class="bi bi-person-plus me-2"></i>Crear Estudiante
+                                            </button>
+                                            <button class="btn btn-outline-secondary" onclick="exportAllStudentsExcel()"
+                                                id="export-all-students-btn">
+                                                <i class="bi bi-file-earmark-excel me-2"></i>Descarga Excel
+                                            </button>
+                                            <button class="btn btn-outline-success"
+                                                onclick="exportSelectedStudentsExcel()" id="export-selected-btn"
+                                                style="display:none;">
+                                                <i class="bi bi-file-earmark-excel me-2"></i>Descarga Seleccionados
+                                                Excel
+                                            </button>
+                                            <button class="btn btn-outline-danger" onclick="deleteSelectedStudents()"
+                                                id="delete-selected-btn" style="display:none;">
+                                                <i class="bi bi-trash me-2"></i>Borrar Estudiante(s)
+                                            </button>
+
+                                            <!-- ── Import from Excel ── -->
+                                            <button class="btn btn-outline-primary"
+                                                onclick="document.getElementById('students-excel-input').click()"
+                                                id="import-students-excel-btn"
+                                                title="Importar estudiantes desde un archivo Excel o CSV">
+                                                <i class="bi bi-upload me-2"></i>Importar Excel
+                                            </button>
+                                            <input type="file" id="students-excel-input" accept=".xlsx,.xls,.csv"
+                                                style="display:none;" onchange="importStudentsFromExcel(this)">
+
+                                            <!-- ── Download blank template ── -->
+                                            <button class="btn btn-outline-secondary"
+                                                onclick="downloadStudentsExcelTemplate()"
+                                                id="download-students-template-btn"
+                                                title="Descarga la plantilla Excel con las columnas necesarias">
+                                                <i class="bi bi-file-earmark-arrow-down me-2"></i>Plantilla Excel
+                                            </button>
+
+                                            <!-- ── Bulk PDF Reports ── -->
+                                            <div class="dropdown" id="bulk-reports-dropdown" style="display:none;">
+                                                <button class="btn btn-outline-warning dropdown-toggle" type="button"
+                                                    data-bs-toggle="dropdown" aria-expanded="false">
+                                                    <i class="bi bi-file-earmark-pdf me-1"></i>PDF Informes
+                                                </button>
+                                                <ul class="dropdown-menu dropdown-menu-end shadow">
+                                                </ul>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="mb-4">
+                                        <div class="input-group">
+                                            <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
+                                            <input type="text" id="student-search-input" class="form-control"
+                                                placeholder="Buscar por nombre, email, nacionalidad o profesión..."
+                                                onkeyup="filterStudents(this.value)">
+                                        </div>
+                                    </div>
+
+                                    <div class="table-responsive">
+                                        <table class="table table-hover align-middle">
+                                            <thead class="table-light">
+                                                <tr>
+                                                    <th style="width: 40px;">
+                                                        <input type="checkbox" class="form-check-input"
+                                                            id="select-all-students" onclick="toggleAllStudents(this)">
+                                                    </th>
+                                                    <th>Nombre</th>
+                                                    <th>Email</th>
+                                                    <th class="text-end">Acciones</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="students-list">
+                                                <!-- Students will be loaded here -->
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Attendance Tab -->
+                            <div class="tab-pane fade" id="teacher-area-attendance" role="tabpanel"
+                                aria-labelledby="teacher-area-attendance-tab">
+                                <div id="attendance-tab">
+                                    <div class="d-flex justify-content-between align-items-center my-4 flex-wrap gap-3">
+                                        <h2 class="mb-0 subtitle-page"> Control de Asistencia</h2>
+                                        <div
+                                            class="d-flex align-items-center gap-3 flex-wrap w-100 justify-content-end">
+                                            <button class="btn" onclick="exportAttendanceToExcel()"
+                                                style="background-color: var(--green-f5); color: var(--principal-2); border: none; font-weight: 500;">
+                                                <i class="bi bi-file-earmark-spreadsheet me-2"></i>Exportar en Excel
+                                            </button>
+                                            <button class="btn" onclick="window.Reports.printWeeklyAttendance(promotionId, currentAttendanceMonth)"
+                                                style="background-color: var(--principal-1); color: #fff; border: none; font-weight: 500;">
+                                                <i class="bi bi-file-earmark-pdf me-2"></i>Descargar PDF (Semanal)
+                                            </button>
+                                            <div class="d-flex align-items-center gap-2" id="month-selector">
+                                                <button class="btn" onclick="prevAttendanceMonth()"
+                                                    style="color: var(--principal-1); border: 1px solid var(--principal-1);">
+                                                    <i class="bi bi-chevron-left"></i>
+                                                </button>
+                                                <h4 class="mb-0" id="current-attendance-month-display"
+                                                    style="color: var(--principal-1); font-weight: 600; min-width: 140px; text-align: center;">
+                                                    Month Year</h4>
+                                                <button class="btn" onclick="nextAttendanceMonth()"
+                                                    style="color: var(--principal-1); border: 1px solid var(--principal-1);">
+                                                    <i class="bi bi-chevron-right"></i>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Attendance Stats Row -->
+                                    <div class="row mb-4 g-2" id="attendance-stats-container">
+                                        <div class="col-auto d-flex">
+                                            <div class="card"
+                                                style="background-color: var(--green-f5); color: var(--principal-2); border: none;">
+                                                <div class="card-body text-center py-2">
+                                                    <h6 class="mb-0">Presente</h6>
+                                                    <h3 class="mb-0" id="stat-present-total">0</h3>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-auto d-flex">
+                                            <div class="card"
+                                                style="background-color: var(--principal-1); color: var(--principal-3); border: none;">
+                                                <div class="card-body text-center py-2">
+                                                    <h6 class="mb-0">Ausente</h6>
+                                                    <h3 class="mb-0" id="stat-absent-total">0</h3>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-auto d-flex">
+                                            <div class="card"
+                                                style="background-color: var(--complementario-2); color: var(--principal-2); border: none;">
+                                                <div class="card-body text-center py-2">
+                                                    <h6 class="mb-0">Retraso</h6>
+                                                    <h3 class="mb-0" id="stat-late-total">0</h3>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-auto d-flex">
+                                            <div class="card"
+                                                style="background-color: var(--blue-light-f5); color: var(--principal-2); border: none;">
+                                                <div class="card-body text-center py-2">
+                                                    <h6 class="mb-0">Justificado</h6>
+                                                    <h3 class="mb-0" id="stat-justified-total">0</h3>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-auto d-flex">
+                                            <div class="card"
+                                                style="background-color: #e9d8fd; color: #5b21b6; border: none;">
+                                                <div class="card-body text-center py-2">
+                                                    <h6 class="mb-0">Sale antes</h6>
+                                                    <h3 class="mb-0" id="stat-early-leave-total">0</h3>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-auto d-flex">
+                                            <div class="card"
+                                                style="background-color: var(--complementario-1-extra-light); color: var(--principal-2); border: 1px solid var(--grey-light-f5);">
+                                                <div class="card-body text-center py-2">
+                                                    <h6 class="mb-0">Media Asistencia</h6>
+                                                    <h3 class="mb-0" id="stat-attendance-avg">0%</h3>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="card mb-4">
+                                        <div class="card-body p-0">
+                                            <div class="table-responsive attendance-table-wrapper">
+                                                <table class="table table-bordered mb-0" id="attendance-table">
+                                                    <thead
+                                                        style="background-color: var(--complementario-1-extra-light);">
+                                                        <tr id="attendance-weekday-row">
+                                                            <th class="sticky-column"
+                                                                style="min-width: 250px; z-index: 10; background-color: var(--complementario-1-extra-light);">
+                                                            </th>
+                                                        </tr>
+                                                        <tr id="attendance-header-row">
+                                                            <th class="sticky-column"
+                                                                style="min-width: 250px; z-index: 10; background-color: var(--complementario-1-extra-light); color: var(--principal-1); font-weight: 600;">
+                                                                Estudiante</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody id="attendance-body">
+                                                        <!-- Attendance data will be loaded here -->
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                        <div class="card-footer"
+                                            style="background-color: var(--complementario-1-extra-light);">
+                                            <div class="d-flex flex-wrap gap-4 small"
+                                                style="color: var(--principal-2);">
+                                                <div class="d-flex align-items-center"><span class="attendance-dot me-2"
+                                                        style="background-color: var(--green-f5);"></span> Presente
+                                                </div>
+                                                <div class="d-flex align-items-center"><span class="attendance-dot me-2"
+                                                        style="background-color: var(--principal-1);"></span> Ausente
+                                                </div>
+                                                <div class="d-flex align-items-center"><span class="attendance-dot me-2"
+                                                        style="background-color: var(--complementario-2);"></span> Con
+                                                    retraso</div>
+                                                <div class="d-flex align-items-center"><span class="attendance-dot me-2"
+                                                        style="background-color: var(--blue-light-f5);"></span>
+                                                    Justificado</div>
+                                                <div class="d-flex align-items-center"><span class="attendance-dot me-2"
+                                                        style="background-color: #e9d8fd;"></span> Sale antes</div>
+                                                <div class="ms-auto"><i class="bi bi-info-circle me-1"></i>
+                                                    <strong>Click</strong> para marcar | <strong>Clic derecho</strong>
+                                                    para comentario
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Evaluation Tab -->
+                            <div class="tab-pane fade" id="teacher-area-evaluation" role="tabpanel"
+                                aria-labelledby="teacher-area-evaluation-tab">
+                                <div id="evaluation-tab">
+                                    <div id="evaluation-tab-view">
+                                        <div class="d-flex justify-content-between align-items-center my-4">
+                                            <div>
+                                                <h2 class="subtitle-page"><i class="bi bi-clipboard-check me-2 text-primary"></i>Evaluación de
+                                                    Proyectos</h2>
+                                            </div>
+                                        </div>
+                                        <div id="evaluation-content">
+                                            <!-- populated by JS -->
+                                        </div>
+                                    </div>
+
+                                    <div id="team-history-panel" class="hidden">
+                                        <div class="d-flex align-items-center gap-3 my-4">
+                                            <button type="button" class="btn btn-outline-secondary btn-sm"
+                                                onclick="closeTeamHistoryView()"><i
+                                                    class="bi bi-arrow-left me-1"></i>Volver</button>
+                                            <h4 class="mb-0 fw-bold">Histórico de equipos</h4>
+                                        </div>
+                                        <div id="team-history-panel-body" class="pb-4"></div>
+                                    </div>
+
+                                    <div id="eval-project-view" class="hidden">
+                                        <!-- Split view content (header, sidebar, right panel) -->
+                                        <div class="eval-view-topbar d-flex align-items-center gap-3 py-3 mb-0">
+                                            <button type="button" class="btn btn-outline-secondary btn-sm"
+                                                onclick="closeEvaluationView()"><i
+                                                    class="bi bi-arrow-left me-1"></i>Volver</button>
+                                            <div class="flex-grow-1 min-w-0">
+                                                <h5 class="mb-0 fw-bold text-truncate" id="eval-view-title">Evaluación
+                                                </h5>
+                                                <p class="mb-0 text-muted small" id="eval-view-subtitle"></p>
+                                            </div>
+                                            <button type="button" class="btn btn-sm btn-primary"
+                                                onclick="saveIndividualStudentEval()"><i
+                                                    class="bi bi-save me-1"></i>Guardar</button>
+                                        </div>
+                                        <div class="eval-split-layout">
+                                            <aside class="eval-targets-sidebar">
+                                                <ul class="eval-targets-list list-unstyled mb-0" id="eval-targets-list">
+                                                </ul>
+                                            </aside>
+                                            <main class="eval-right-panel" id="eval-right-panel">
+                                                <div id="eval-right-empty" class="text-center py-5">Selecciona un alumno
+                                                </div>
+                                                <div id="eval-right-content" class="d-none">
+                                                    <div id="eval-right-header" class="p-3 border-bottom"></div>
+                                                    <div id="eval-right-body" class="p-3"></div>
+                                                </div>
+                                            </main>
+                                        </div>
+                                    </div>
+
+                                    <div id="student-eval-panel" class="hidden">
+                                        <div class="d-flex align-items-center gap-3 my-4">
+                                            <button type="button" class="btn btn-outline-secondary btn-sm"
+                                                onclick="cancelStudentEvalPanel()"><i
+                                                    class="bi bi-arrow-left me-1"></i>Volver</button>
+                                            <h4 class="mb-0 fw-bold">Evaluación Individual</h4>
+                                        </div>
+                                        <div id="student-eval-panel-body"></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Accesos Tab (Área del Docente) -->
+                            <div class="tab-pane fade" id="teacher-area-accesos" role="tabpanel"
+                                aria-labelledby="teacher-area-accesos-tab">
+                                <div id="teacher-area-accesos-content">
+                                    <div class="d-flex justify-content-between align-items-center my-4">
+                                        <h2 class="subtitle-page">Configuración de los Accesos</h2>
+                                    </div>
+
+                                    <div class="row g-4">
+                                        <!-- Student Access Password Card -->
+                                        <div class="col-lg-6">
+                                            <div class="card h-100 border-0 shadow-sm">
+                                                <div class="card-header bg-gradient"
+                                                    style="background: linear-gradient(135deg, var(--principal-1) 0%, var(--complementario-2) 100%);">
+                                                    <h6 class="mb-0 text-dark"><i class="bi bi-key me-2"></i>Acceso del estudiante</h6>
+                                                </div>
+                                                <div class="card-body">
+                                                    <div class="mb-3">
+                                                        <label for="teacher-area-access-password-input"
+                                                            class="form-label small fw-bold">Contraseña</label>
+                                                        <div class="password-input-group">
+                                                            <input type="password" class="form-control form-control-sm"
+                                                                id="teacher-area-access-password-input" placeholder="Enter password">
+                                                            <button type="button" class="password-toggle"
+                                                                onclick="togglePasswordVisibility('teacher-area-access-password-input')">
+                                                                <i class="bi bi-eye"></i>
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                    <button class="btn btn-sm w-100"
+                                                        style="background-color: var(--green-f5); color: var(--principal-2); border: none; font-weight: 600;"
+                                                        onclick="updateAccessPassword('teacher-area')">
+                                                        <i class="bi bi-save me-1"></i>Actualizar
+                                                    </button>
+
+                                                    <div id="teacher-area-password-alert" class="alert alert-sm mt-2 mb-0 hidden p-2" role="alert"
+                                                        style="font-size: 0.85rem;">
+                                                    </div>
+                                                </div>
+                                                <div class="card-footer bg-light border-top p-2">
+                                                    <small class="text-muted d-block mb-2">Link generado:</small>
+                                                    <div class="input-group input-group-sm">
+                                                        <input type="text" class="form-control form-control-sm" id="teacher-area-student-access-link"
+                                                            readonly>
+                                                        <button class="btn btn-outline-secondary btn-sm" type="button"
+                                                            onclick="copyAccessLink('teacher-area')">
+                                                            <i class="bi bi-clipboard"></i>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Teaching Content Card -->
+                                        <div class="col-lg-6">
+                                            <div class="card h-100 border-0 shadow-sm">
+                                                <div class="card-header bg-gradient"
+                                                    style="background: linear-gradient(135deg, var(--blue-light-f5) 0%, var(--green-f5) 100%);">
+                                                    <h6 class="mb-0 text-dark"><i class="bi bi-book me-2"></i>Planificador / Refactor</h6>
+                                                </div>
+                                                <div class="card-body">
+                                                    <div class="mb-3">
+                                                        <label for="teacher-area-teaching-content-url" class="form-label small fw-bold">URL del contenido</label>
+                                                        <input type="url" class="form-control form-control-sm" id="teacher-area-teaching-content-url"
+                                                            placeholder="https://example.com" />
+                                                    </div>
+                                                    <button class="btn btn-sm w-100"
+                                                        style="background-color: var(--green-f5); color: var(--principal-2); border: none; font-weight: 600;"
+                                                        onclick="updateTeachingContent('teacher-area')">
+                                                        <i class="bi bi-save me-1"></i>Guardar
+                                                    </button>
+
+                                                    <div id="teacher-area-teaching-content-alert" class="alert alert-sm mt-2 mb-0 hidden p-2"
+                                                        role="alert" style="font-size: 0.85rem;">
+                                                    </div>
+                                                </div>
+                                                <div class="card-footer bg-light border-top p-2">
+                                                    <small class="text-muted d-block mb-2">Preview:</small>
+                                                    <div class="d-flex gap-1">
+                                                        <a id="teacher-area-teaching-content-preview-btn" href="#"
+                                                            class="btn btn-sm btn-outline-primary hidden" target="_blank">
+                                                            <i class="bi bi-book me-1"></i>Vista
+                                                        </a>
+                                                        <button class="btn btn-sm btn-outline-danger" onclick="removeTeachingContent('teacher-area')"
+                                                            id="teacher-area-remove-teaching-btn" style="display:none;">
+                                                            <i class="bi bi-trash"></i>
+                                                        </button>
+                                                        <small class="text-muted align-self-center ms-1" id="teacher-area-no-content-message">No hay contenido</small>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Asana Workspace Card -->
+                                        <div class="col-lg-6">
+                                            <div class="card h-100 border-0 shadow-sm">
+                                                <div class="card-header bg-gradient"
+                                                    style="background: linear-gradient(135deg, #FF6B6B 0%, #F06595 100%);">
+                                                    <h6 class="mb-0 text-dark"><i class="bi bi-kanban me-2"></i>Asana</h6>
+                                                </div>
+                                                <div class="card-body">
+                                                    <div class="mb-3">
+                                                        <label for="teacher-area-asana-workspace-url" class="form-label small fw-bold">URL del espacio de trabajo</label>
+                                                        <input type="url" class="form-control form-control-sm" id="teacher-area-asana-workspace-url"
+                                                            placeholder="https://app.asana.com/0/..." />
+                                                    </div>
+                                                    <button class="btn btn-sm w-100"
+                                                        style="background-color: #FF6B6B; color: white; border: none; font-weight: 600;"
+                                                        onclick="updateAsanaWorkspace('teacher-area')">
+                                                        <i class="bi bi-save me-1"></i>Guardar
+                                                    </button>
+
+                                                    <div id="teacher-area-asana-workspace-alert" class="alert alert-sm mt-2 mb-0 hidden p-2"
+                                                        role="alert" style="font-size: 0.85rem;">
+                                                    </div>
+                                                </div>
+                                                <div class="card-footer bg-light border-top p-2">
+                                                    <small class="text-muted d-block mb-2">Estado:</small>
+                                                    <div class="d-flex gap-1">
+                                                        <a id="teacher-area-asana-workspace-preview-btn" href="#"
+                                                            class="btn btn-sm btn-outline-danger hidden" target="_blank">
+                                                            <i class="bi bi-kanban me-1"></i>Abrir
+                                                        </a>
+                                                        <button class="btn btn-sm btn-outline-danger" onclick="removeAsanaWorkspace('teacher-area')"
+                                                            id="teacher-area-remove-asana-btn" style="display:none;">
+                                                            <i class="bi bi-trash"></i>
+                                                        </button>
+                                                        <small class="text-muted align-self-center ms-1" id="teacher-area-no-asana-message">No configurado</small>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div> <!-- End #teacher-area-subtabs-content -->
+                    </div> <!-- End .mt-4 container for subtabs -->
+                </div> <!-- End #teacher-area-tab -->
+
+
+
+
+
+                <!-- Access Settings Tab -->
+                <div id="access-settings-tab" class="section-content hidden">
+                    <div class="d-flex justify-content-between align-items-center my-4">
+                        <h2 class="subtitle-page">Configuración de los Accesos</h2>
+                    </div>
+
+                    <div class="row g-4">
+                        <!-- Student Access Password Card -->
+                        <div class="col-lg-6">
+                            <div class="card h-100 border-0 shadow-sm">
+                                <div class="card-header bg-gradient"
+                                    style="background: linear-gradient(135deg, var(--principal-1) 0%, var(--complementario-2) 100%);">
+                                    <h6 class="mb-0 text-dark"><i class="bi bi-key me-2"></i>Acceso del estudiante</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <label for="access-password-input"
+                                            class="form-label small fw-bold">Contraseña</label>
+                                        <div class="password-input-group">
+                                            <input type="password" class="form-control form-control-sm"
+                                                id="access-password-input" placeholder="Enter password">
+                                            <button type="button" class="password-toggle"
+                                                onclick="togglePasswordVisibility('access-password-input')">
+                                                <i class="bi bi-eye"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                    <button class="btn btn-sm w-100"
+                                        style="background-color: var(--green-f5); color: var(--principal-2); border: none; font-weight: 600;"
+                                        onclick="updateAccessPassword()">
+                                        <i class="bi bi-save me-1"></i>Actualizar
+                                    </button>
+
+                                    <div id="password-alert" class="alert alert-sm mt-2 mb-0 hidden p-2" role="alert"
+                                        style="font-size: 0.85rem;">
+                                    </div>
+                                </div>
+                                <div class="card-footer bg-light border-top p-2">
+                                    <small class="text-muted d-block mb-2">Link generado:</small>
+                                    <div class="input-group input-group-sm">
+                                        <input type="text" class="form-control form-control-sm" id="student-access-link"
+                                            readonly>
+                                        <button class="btn btn-outline-secondary btn-sm" type="button"
+                                            onclick="copyAccessLink()">
+                                            <i class="bi bi-clipboard"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Teaching Content Card -->
+                        <div class="col-lg-6">
+                            <div class="card h-100 border-0 shadow-sm">
+                                <div class="card-header bg-gradient"
+                                    style="background: linear-gradient(135deg, var(--blue-light-f5) 0%, var(--green-f5) 100%);">
+                                    <h6 class="mb-0 text-dark"><i class="bi bi-book me-2"></i>Planificador / Refactor
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <label for="teaching-content-url" class="form-label small fw-bold">URL del
+                                            contenido</label>
+                                        <input type="url" class="form-control form-control-sm" id="teaching-content-url"
+                                            placeholder="https://example.com" />
+                                    </div>
+                                    <button class="btn btn-sm w-100"
+                                        style="background-color: var(--green-f5); color: var(--principal-2); border: none; font-weight: 600;"
+                                        onclick="updateTeachingContent()">
+                                        <i class="bi bi-save me-1"></i>Guardar
+                                    </button>
+
+                                    <div id="teaching-content-alert" class="alert alert-sm mt-2 mb-0 hidden p-2"
+                                        role="alert" style="font-size: 0.85rem;">
+                                    </div>
+                                </div>
+                                <div class="card-footer bg-light border-top p-2">
+                                    <small class="text-muted d-block mb-2">Preview:</small>
+                                    <div class="d-flex gap-1">
+                                        <a id="teaching-content-preview-btn" href="#"
+                                            class="btn btn-sm btn-outline-primary hidden" target="_blank">
+                                            <i class="bi bi-book me-1"></i>Vista
+                                        </a>
+                                        <button class="btn btn-sm btn-outline-danger" onclick="removeTeachingContent()"
+                                            id="remove-teaching-btn" style="display:none;">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                        <small class="text-muted align-self-center ms-1" id="no-content-message">No hay
+                                            contenido</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Asana Workspace Card -->
+                        <div class="col-lg-6">
+                            <div class="card h-100 border-0 shadow-sm">
+                                <div class="card-header bg-gradient"
+                                    style="background: linear-gradient(135deg, #FF6B6B 0%, #F06595 100%);">
+                                    <h6 class="mb-0 text-dark"><i class="bi bi-kanban me-2"></i>Asana</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <label for="asana-workspace-url" class="form-label small fw-bold">URL del
+                                            espacio de trabajo</label>
+                                        <input type="url" class="form-control form-control-sm" id="asana-workspace-url"
+                                            placeholder="https://app.asana.com/0/..." />
+                                    </div>
+                                    <button class="btn btn-sm w-100"
+                                        style="background-color: #FF6B6B; color: white; border: none; font-weight: 600;"
+                                        onclick="updateAsanaWorkspace()">
+                                        <i class="bi bi-save me-1"></i>Guardar
+                                    </button>
+
+                                    <div id="asana-workspace-alert" class="alert alert-sm mt-2 mb-0 hidden p-2"
+                                        role="alert" style="font-size: 0.85rem;">
+                                    </div>
+                                </div>
+                                <div class="card-footer bg-light border-top p-2">
+                                    <small class="text-muted d-block mb-2">Estado:</small>
+                                    <div class="d-flex gap-1">
+                                        <a id="asana-workspace-preview-btn" href="#"
+                                            class="btn btn-sm btn-outline-danger hidden" target="_blank">
+                                            <i class="bi bi-kanban me-1"></i>Abrir
+                                        </a>
+                                        <button class="btn btn-sm btn-outline-danger" onclick="removeAsanaWorkspace()"
+                                            id="remove-asana-btn" style="display:none;">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                        <small class="text-muted align-self-center ms-1" id="no-asana-message">No
+                                            configurado</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Collaborators Tab -->
+                <div id="collaborators-tab" class="section-content hidden">
+                    <div class="d-flex justify-content-between align-items-center my-4">
+                        <h2>Program Collaborators</h2>
+                        <button class="btn btn-primary" onclick="openCollaboratorModal()">
+                            <i class="bi bi-person-plus me-2"></i>Agregar colaborador
+                        </button>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-body">
+                            <p class="text-muted mb-3">Personas del equipo con acceso para modificar este programa:</p>
+                            <div id="collaborators-list" class="list-group">
+                                <!-- Collaborators will be loaded here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Program Info Tab (New) -->
+                <div id="info-tab" class="section-content hidden">
+                    <div class="d-flex justify-content-between align-items-center my-4 pb-3 border-bottom">
+                        <h2 class="mb-0">Detalles del Programa</h2>
+                        <div class="d-flex gap-2">
+                            <button id="preview-roadmap-btn" class="btn btn-outline-primary"
+                                onclick="previewPromotion()" title="Vista previa del roadmap">
+                                <i class="bi bi-eye me-2"></i>Preview Roadmap
+                            </button>
+                            <button id="save-program-details-btn" class="btn btn-primary" onclick="saveExtendedInfo()"
+                                title="Save all changes to Program Details">
+                                <i class="bi bi-save me-2"></i>Guardar Todos los Cambios
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Program Details Navigation Tabs -->
+                    <nav class="nav nav-tabs mb-4" id="program-details-tabs" role="tablist">
+                        <button class="nav-link active" id="program-details-roadmap-tab" type="button" role="tab"
+                            aria-selected="true" onclick="switchProgramDetailsTab('roadmap')">
+                            <i class="bi bi-map me-2"></i>Roadmap
+                        </button>
+                        <button class="nav-link" id="program-details-calendar-tab" type="button" role="tab"
+                            aria-selected="false" onclick="switchProgramDetailsTab('calendar')">
+                            <i class="bi bi-calendar me-2"></i>Calendario
+                        </button>
+                        <button class="nav-link" id="program-details-schedule-tab" type="button" role="tab"
+                            aria-selected="false" onclick="switchProgramDetailsTab('schedule')">
+                            <i class="bi bi-clock me-2"></i>Horario
+                        </button>
+                        <button class="nav-link" id="program-details-team-tab" type="button" role="tab"
+                            aria-selected="false" onclick="switchProgramDetailsTab('team')">
+                            <i class="bi bi-people me-2"></i>Equipo
+                        </button>
+                        <button class="nav-link" id="program-details-resources-tab" type="button" role="tab"
+                            aria-selected="false" onclick="switchProgramDetailsTab('resources')">
+                            <i class="bi bi-tools me-2"></i>Recursos
+                        </button>
+                        <button class="nav-link" id="program-details-pildoras-tab" type="button" role="tab"
+                            aria-selected="false" onclick="switchProgramDetailsTab('pildoras')">
+                            <i class="bi bi-lightbulb me-2"></i>Píldoras
+                        </button>
+                        <button class="nav-link" id="program-details-evaluation-tab" type="button" role="tab"
+                            aria-selected="false" onclick="switchProgramDetailsTab('evaluation')">
+                            <i class="bi bi-clipboard-check me-2"></i>Evaluación
+                        </button>
+                        <button class="nav-link" id="program-details-virtual-classroom-tab" type="button" role="tab"
+                            aria-selected="false" onclick="switchProgramDetailsTab('virtual-classroom')">
+                            <i class="bi bi-laptop me-2"></i>Aula Virtual
+                        </button>
+                        <button class="nav-link" id="program-details-quicklinks-tab" type="button" role="tab"
+                            aria-selected="false" onclick="switchProgramDetailsTab('quicklinks')">
+                            <i class="bi bi-lightning me-2"></i>Quick Links
+                        </button>
+                        <button class="nav-link" id="program-details-competences-tab" type="button" role="tab"
+                            aria-selected="false" onclick="switchProgramDetailsTab('competences')">
+                            <i class="bi bi-award me-2"></i>Competencias
+                        </button>
+                        <button class="nav-link" id="program-details-sections-tab" type="button" role="tab"
+                            aria-selected="false" onclick="switchProgramDetailsTab('sections')">
+                            <i class="bi bi-file-text me-2"></i>Secciones
+                        </button>
+                    </nav>
+
+                    <!-- Tab Content -->
+                    <div class="tab-content" id="program-details-content">
+                        <!-- Roadmap Tab -->
+                        <div class="tab-pane fade show active" id="program-details-roadmap" role="tabpanel"
+                            aria-labelledby="program-details-roadmap-tab">
+                            <div class="justify-content-between align-items-center mb-4 detail-card">
+                                <h5 class="mb-0">Roadmap & Módulos</h5>
+                                <div class="d-flex gap-2">
+                                    <button class="btn btn-outline-warning btn-sm" onclick="openEmployabilityModal()">
+                                        <i class="bi bi-briefcase me-2"></i>Sesiones Empleabilidad
+                                    </button>
+                                    <button class="btn btn-primary btn-sm" onclick="openModuleModal()">
+                                        <i class="bi bi-plus-circle me-2"></i>Agregar Módulo
+                                    </button>
+                                </div>
+                            </div>
+                            <div id="modules-list" class="row">
+                                <!-- Modules will be loaded here -->
+                            </div>
+                            <div class="mt-4">
+                                <h6 class="mb-3">Diagrama Gantt</h6>
+                                <div class="table-responsive">
+                                    <table id="gantt-table" class="table">
+                                        <!-- Gantt will be generated here -->
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Calendario Tab -->
+                        <div class="tab-pane fade" id="program-details-calendar" role="tabpanel"
+                            aria-labelledby="program-details-calendar-tab">
+                            <div class="card">
+                                <div class="card-body">
+                                    <h5 class="card-title">Configuración del Calendario</h5>
+                                    <form id="calendar-form">
+                                        <div class="mb-3">
+                                            <label for="google-calendar-id" class="form-label">Google Calendar
+                                                ID</label>
+                                            <input type="text" class="form-control" id="google-calendar-id"
+                                                placeholder="your-calendar@group.calendar.google.com" />
+                                            <small class="text-muted">Encuentra el Googke calendar ID en las
+                                                configuraciones de Google Calendar</small>
+                                        </div>
+                                        <button type="submit" class="btn btn-primary">Guardar calendario</button>
+                                    </form>
+                                </div>
+                            </div>
+                            <div id="calendar-preview" class="mt-4 hidden">
+                                <h5>Previsualización del calendario</h5>
+                                <div class="ratio ratio-16x9">
+                                    <iframe id="calendar-iframe"></iframe>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Schedule Tab -->
+                        <div class="tab-pane fade" id="program-details-schedule" role="tabpanel"
+                            aria-labelledby="program-details-schedule-tab">
+                            <div class="card">
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-6 border-end pb-md-0 pb-4">
+                                            <h6 class="text-primary fw-bold mb-3"><i
+                                                    class="bi bi-laptop me-2"></i>Online</h6>
+                                            <div class="mb-3">
+                                                <label class="form-label form-label-sm">Hora de entrada</label>
+                                                <input type="time" class="form-control form-control-sm"
+                                                    id="sched-online-entry">
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label form-label-sm">Inicio Píldoras</label>
+                                                <input type="time" class="form-control form-control-sm"
+                                                    id="sched-online-start">
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label form-label-sm">Break</label>
+                                                <input type="time" class="form-control form-control-sm"
+                                                    id="sched-online-break">
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label form-label-sm">Comida (si se toma)</label>
+                                                <input type="text" class="form-control form-control-sm"
+                                                    id="sched-online-lunch" placeholder="Use text if needed">
+                                            </div>
+                                            <div class="mb-0">
+                                                <label class="form-label form-label-sm">Hora de salida</label>
+                                                <input type="time" class="form-control form-control-sm"
+                                                    id="sched-online-finish">
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6 ps-md-4">
+                                            <h6 class=" fw-bold mb-3"><i class="bi bi-people me-2"></i>Presencial</h6>
+                                            <div class="mb-3">
+                                                <label class="form-label form-label-sm">Hora de entrada</label>
+                                                <input type="time" class="form-control form-control-sm"
+                                                    id="sched-presential-entry">
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label form-label-sm">Hora de Entrada</label>
+                                                <input type="time" class="form-control form-control-sm"
+                                                    id="sched-presential-start">
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label form-label-sm">Break</label>
+                                                <input type="time" class="form-control form-control-sm"
+                                                    id="sched-presential-break">
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label form-label-sm">Comida</label>
+                                                <input type="time" class="form-control form-control-sm"
+                                                    id="sched-presential-lunch">
+                                            </div>
+                                            <div class="mb-0">
+                                                <label class="form-label form-label-sm">Hora de salida</label>
+                                                <input type="time" class="form-control form-control-sm"
+                                                    id="sched-presential-finish">
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="mt-4 pt-3 border-top">
+                                        <label class="form-label form-label-sm">Notas adicionales sobre el
+                                            horario</label>
+                                        <textarea class="form-control form-control-sm" id="sched-notes"
+                                            rows="2"></textarea>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Team Tab -->
+                        <div class="tab-pane fade" id="program-details-team" role="tabpanel"
+                            aria-labelledby="program-details-team-tab">
+                            <div class="card">
+                                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                                    <h6 class="mb-0"><i class="bi bi-people me-2"></i>Miembros del equipo</h6>
+                                    <button class="btn btn-sm btn-outline-primary" onclick="openTeamModal()">
+                                        <i class="bi bi-plus"></i> Agregar miembro
+                                    </button>
+                                </div>
+                                <div class="card-body p-0">
+                                    <div class="table-responsive">
+                                        <table class="table table-hover mb-0">
+                                            <thead>
+                                                <tr>
+                                                    <th>Nombre</th>
+                                                    <th>Role</th>
+                                                    <th>Email</th>
+                                                    <th>Módulo</th>
+                                                    <th>LinkedIn</th>
+                                                    <th>Acción</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="team-list-body">
+                                                <!-- Dynamic Content -->
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Resources Tab -->
+                        <div class="tab-pane fade" id="program-details-resources" role="tabpanel"
+                            aria-labelledby="program-details-resources-tab">
+                            <!-- Recursos del programa (plantilla/template) -->
+                            <div class="card mb-3">
+                                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                                    <h6 class="mb-0"><i class="bi bi-tools me-2"></i>Recursos del Programa</h6>
+                                    <button class="btn btn-sm btn-outline-primary" onclick="openResourceModal()">
+                                        <i class="bi bi-plus"></i> Agrega Recurso
+                                    </button>
+                                </div>
+                                <div class="card-body p-0">
+                                    <div class="table-responsive">
+                                        <table class="table table-hover mb-0">
+                                            <thead>
+                                                <tr>
+                                                    <th>Título</th>
+                                                    <th>Categoría (tipo)</th>
+                                                    <th>URL</th>
+                                                    <th>Acción</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="resources-list-body">
+                                                <!-- Dynamic Content -->
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Recursos de la Promoción (publicables) -->
+                            <div class="card border-0 shadow-sm">
+                                <div class="card-header bg-light d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <i class="bi bi-collection-play text-primary"></i>
+                                        <h6 class="mb-0">Recursos de la Promoción</h6>
+                                        <span class="badge bg-secondary" id="promo-resources-count">0</span>
+                                    </div>
+                                    <button class="btn btn-sm btn-primary" onclick="openPromoResourceModal()">
+                                        <i class="bi bi-plus-circle me-1"></i>Nuevo Recurso
+                                    </button>
+                                </div>
+                                <div class="card-body p-3">
+                                    <p class="text-muted small mb-3">
+                                        <i class="bi bi-info-circle me-1"></i>
+                                        Los recursos en <strong>borrador</strong> solo los ves tú. Los <strong>publicados</strong> (o programados y con fecha cumplida) aparecen en la página pública bajo "En Progreso".
+                                    </p>
+                                    <div id="promo-resources-list">
+                                        <div class="text-center text-muted py-4">
+                                            <i class="bi bi-collection-play fs-2 d-block mb-2 opacity-25"></i>
+                                            <span class="small">Sin recursos aún. Crea el primero.</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Píldoras Tab -->
+                        <div class="tab-pane fade" id="program-details-pildoras" role="tabpanel"
+                            aria-labelledby="program-details-pildoras-tab">
+                            <div class="card">
+                                <div class="card-header bg-light">
+                                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <h6 class="mb-0"><i class="bi bi-lightbulb me-2"></i>Píldoras</h6>
+                                            <!-- Module Navigation -->
+                                            <div class="d-flex align-items-center gap-2" id="pildoras-module-nav">
+                                                <button class="btn btn-sm btn-outline-secondary" id="prev-module-btn"
+                                                    onclick="navigateToPreviousModule()" disabled>
+                                                    <i class="bi bi-chevron-left"></i>
+                                                </button>
+                                                <span class="fw-semibold text-primary" id="current-module-name">Módulo
+                                                    I</span>
+                                                <button class="btn btn-sm btn-outline-secondary" id="next-module-btn"
+                                                    onclick="navigateToNextModule()">
+                                                    <i class="bi bi-chevron-right"></i>
+                                                </button>
+                                            </div>
+                                            <div class="badge text-dark" id="current-module-stats">
+                                                <span id="module-pildoras-count">0</span> píldoras
+                                            </div>
+                                        </div>
+                                        <div class="form-check form-switch">
+                                            <input class="form-check-input" type="checkbox"
+                                                id="pildoras-assignment-toggle"
+                                                onchange="togglePildorasAssignment(this.checked)">
+                                            <label class="form-check-label fw-semibold"
+                                                for="pildoras-assignment-toggle">
+                                                Self-Assignment
+                                            </label>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card-header bg-white border-bottom pt-3 pb-2">
+                                    <div class="d-flex flex-wrap gap-2">
+                                        <button class="btn btn-sm btn-outline-primary" type="button"
+                                            onclick="addPildoraRow()">
+                                            <i class="bi bi-plus"></i> Agregar Píldora
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-secondary" type="button"
+                                            id="pildoras-excel-template-btn" onclick="downloadPildorasExcelTemplate()">
+                                            <i class="bi bi-download"></i> Plantilla Excel
+                                        </button>
+                                        <input type="file" id="pildoras-excel-input" accept=".xlsx,.xls" class="d-none"
+                                            onchange="importPildorasFromExcel(this)">
+                                        <button class="btn btn-sm btn-outline-success" type="button"
+                                            id="pildoras-import-excel-btn"
+                                            onclick="document.getElementById('pildoras-excel-input').click()">
+                                            <i class="bi bi-file-earmark-spreadsheet"></i> Importar Excel
+                                        </button>
+                                    </div>
+                                </div>
+                                <div class="card-body p-0">
+                                    <div class="table-responsive">
+                                        <table class="table table-hover align-middle mb-0">
+                                            <thead>
+                                                <tr>
+                                                    <th>Presentación</th>
+                                                    <th>Fecha</th>
+                                                    <th>Píldora</th>
+                                                    <th>Estudiante</th>
+                                                    <th>Estado</th>
+                                                    <th>Acciones</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="pildoras-list-body">
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Evaluation Tab -->
+                        <div class="tab-pane fade" id="program-details-evaluation" role="tabpanel"
+                            aria-labelledby="program-details-evaluation-tab">
+                            <div class="card">
+                                <div class="card-header bg-light">
+                                    <h6 class="mb-0"><i class="bi bi-clipboard-check me-2"></i>Criterio de Evaluación
+                                    </h6>
+                                </div>
+                                <div class="card-body">
+                                    <textarea class="form-control" id="evaluation-text" rows="6"
+                                        placeholder="Describe the evaluation criteria..."></textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Quick Links Tab -->
+                        <div class="tab-pane fade" id="program-details-virtual-classroom" role="tabpanel"
+                            aria-labelledby="program-details-virtual-classroom-tab">
+                            <!-- Aula Virtual panel (moved from Evaluation tab) -->
+                            <div class="card mb-3" id="virtual-classroom-panel">
+                                <div class="card-body">
+                                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                                        <div>
+                                            <h5 class="mb-1">
+                                                <i class="bi bi-laptop me-2 text-primary"></i>Aula Virtual
+                                            </h5>
+                                            <p class="text-muted small mb-0">
+                                                Activa un proyecto para que el estudiantado entregue su repositorio
+                                                desde la vista pública.
+                                            </p>
+                                        </div>
+                                        <div class="text-end">
+                                            <span class="badge bg-secondary" id="vc-status-badge">Sin proyecto
+                                                activo</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="row g-3 align-items-end">
+                                        <div class="col-md-5">
+                                            <label for="vc-project-select"
+                                                class="form-label small fw-semibold text-muted">
+                                                Proyecto vinculado
+                                            </label>
+                                            <select id="vc-project-select" class="form-select form-select-sm"
+                                                onchange="onVirtualClassroomProjectChange()">
+                                                <option value="">Selecciona módulo y proyecto…</option>
+                                            </select>
+                                            <div class="form-text small" id="vc-project-help">
+                                                Los proyectos se configuran en la sección Evaluación.
+                                            </div>
+                                        </div>
+                                        <div class="col-md-3">
+                                            <label for="vc-repo-base" class="form-label small fw-semibold text-muted">
+                                                URL base del repositorio
+                                                <span id="vc-repo-base-source" class="badge bg-success text-white ms-1 small d-none">
+                                                    <i class="bi bi-github me-1"></i>desde GitHub
+                                                </span>
+                                            </label>
+                                            <input type="text" id="vc-repo-base" class="form-control form-control-sm"
+                                                placeholder="https://github.com/proyectof5/">
+                                            <div id="vc-repo-base-hint" class="form-text small text-muted d-none">
+                                                URL tomada del quick link de GitHub. Puedes editarla manualmente.
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label for="vc-briefing-url"
+                                                class="form-label small fw-semibold text-muted">
+                                                Link al briefing del proyecto
+                                                <span id="vc-briefing-source" class="badge bg-info text-dark ms-1 small d-none">
+                                                    <i class="bi bi-link-45deg me-1"></i>desde roadmap
+                                                </span>
+                                            </label>
+                                            <input type="text" id="vc-briefing-url" class="form-control form-control-sm"
+                                                placeholder="https://github.com/organizacion/briefing-proyecto">
+                                            <div id="vc-briefing-hint" class="form-text small text-muted d-none">
+                                                URL definida en el roadmap. Puedes editarla manualmente si lo necesitas.
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="row g-3 mt-3">
+                                        <div class="col-md-8">
+                                            <div class="border rounded p-2 bg-light">
+                                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                                    <span class="small fw-semibold text-muted">
+                                                        Competencias a evaluar (definidas en Evaluación)
+                                                    </span>
+                                                    <span class="badge bg-light text-dark border small"
+                                                        id="vc-competences-count">
+                                                        0 competencias
+                                                    </span>
+                                                </div>
+                                                <div id="vc-competences-list" class="small text-muted">
+                                                    <span class="fst-italic">Selecciona un proyecto para ver sus
+                                                        competencias.</span>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div
+                                            class="col-md-4 d-flex justify-content-md-end align-items-start gap-2 mt-2 mt-md-0">
+                                            <button type="button" class="btn btn-sm btn-outline-secondary"
+                                                id="vc-deactivate-btn" onclick="deactivateVirtualClassroom()" disabled>
+                                                <i class="bi bi-x-circle me-1"></i>Desactivar
+                                            </button>
+                                            <button type="button" class="btn btn-sm btn-primary" id="vc-activate-btn"
+                                                onclick="saveVirtualClassroom(true)">
+                                                <i class="bi bi-play-circle me-1"></i>Activar Aula Virtual
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="tab-pane fade" id="program-details-quicklinks" role="tabpanel"
+                            aria-labelledby="program-details-quicklinks-tab">
+                            <div class="card">
+                                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                                    <h6 class="mb-0"><i class="bi bi-lightning me-2"></i>Quick Links</h6>
+                                    <button class="btn btn-sm btn-primary" onclick="openQuickLinkModal()">
+                                        <i class="bi bi-plus-circle me-2"></i>Agregar Link
+                                    </button>
+                                </div>
+                                <div class="card-body">
+                                    <div id="quick-links-list" class="row">
+                                        <!-- Quick links will be loaded here -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Sections Tab -->
+                        <div class="tab-pane fade" id="program-details-sections" role="tabpanel"
+                            aria-labelledby="program-details-sections-tab">
+                            <div class="card">
+                                <div class="card-header bg-light d-flex justify-content-between align-items-center">
+                                    <h6 class="mb-0"><i class="bi bi-file-text me-2"></i>Secciones</h6>
+                                    <button class="btn btn-sm btn-primary" onclick="openSectionModal()">
+                                        <i class="bi bi-plus-circle me-2"></i>Agregar sección
+                                    </button>
+                                </div>
+                                <div class="card-body">
+                                    <div id="sections-list">
+                                        <!-- Sections will be loaded here -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Competencias Tab -->
+                        <div class="tab-pane fade" id="program-details-competences" role="tabpanel"
+                            aria-labelledby="program-details-competences-tab">
+                            <div class="card">
+                                <div class="card-header bg-light">
+                                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <h6 class="mb-0"><i class="bi bi-award me-2"></i>Competencias del Programa
+                                            </h6>
+                                        </div>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <select class="form-select form-select-sm w-auto"
+                                                id="competences-area-filter"
+                                                onchange="window.ProgramCompetences?.filterByArea()">
+                                                <option value="">Todas las áreas</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <div class="alert alert-info d-flex align-items-start gap-2 py-2 mb-3">
+                                        <i class="bi bi-info-circle-fill flex-shrink-0 mt-1"></i>
+                                        <div class="small">
+                                            Las competencias se definen por proyecto en la sección
+                                            <strong>Evaluación</strong>.
+                                            Haz clic en el badge de competencias de cada tarjeta de proyecto para
+                                            seleccionar qué competencias y herramientas se evaluarán.
+                                            Esta vista se actualiza automáticamente y se muestra en la <strong>página
+                                                pública</strong> del bootcamp.
+                                        </div>
+                                    </div>
+                                    <div id="competences-list-container">
+                                        <!-- Rendered by program-competences.js in view-only mode -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Collaborators Tab -->
+                <div id="collaborators-tab" class="section-content hidden">
+                    <div class="d-flex justify-content-between align-items-center my-4">
+                        <h2>Colaboradores del Programa</h2>
+                        <button class="btn btn-primary" onclick="openCollaboratorModal()" id="add-collaborator-btn">
+                            <i class="bi bi-person-plus me-2"></i>Agregar Colaborador
+                        </button>
+                    </div>
+
+                    <div class="card shadow-sm">
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Nombre</th>
+                                            <th>Rol</th>
+                                            <th>Email</th>
+                                            <th>Módulos</th>
+                                            <th>Acciones</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="collaborators-list-body">
+                                        <!-- Dynamic Content -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- Evaluación Tab -->
+
+
+            </main>
+
+    <!-- Evaluation Modal -->
+    <div class="modal fade" id="evaluationModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header" style="background:linear-gradient(135deg,#E85D26,#f97316);color:#fff;">
+                    <h5 class="modal-title fw-bold" id="eval-modal-title">
+                        <i class="bi bi-clipboard-check me-2"></i>Evaluación
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="eval-modal-body">
+                    <!-- Populated dynamically by openEvaluationModal() -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                    <button type="button" class="btn btn-primary d-none" id="eval-modal-save-btn"
+                        onclick="saveProjectEvaluation()" style="background:#E85D26;border-color:#E85D26;">
+                        <i class="bi bi-save me-1"></i>Guardar evaluación
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Promotion Modal -->
+    <div class="modal fade" id="editPromotionModal" tabindex="-1" aria-labelledby="editPromotionModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editPromotionModalLabel">
+                        <i class="bi bi-pencil-square me-2"></i>Modificar promoción
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <form id="edit-promotion-form" onsubmit="saveEditPromotion(event)">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="edit-promotion-name" class="form-label fw-semibold">Nombre de la promoción <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="edit-promotion-name" required />
+                        </div>
+                        <div class="mb-3">
+                            <label for="edit-promotion-desc" class="form-label fw-semibold">Descripción</label>
+                            <textarea class="form-control" id="edit-promotion-desc" rows="3"></textarea>
+                        </div>
+                        <div class="row g-3">
+                            <div class="col-md-4">
+                                <label for="edit-promotion-weeks" class="form-label fw-semibold">Número de semanas <span class="text-danger">*</span></label>
+                                <input type="number" class="form-control" id="edit-promotion-weeks" min="1" required />
+                            </div>
+                            <div class="col-md-4">
+                                <label for="edit-promotion-start" class="form-label fw-semibold">Fecha de inicio</label>
+                                <input type="date" class="form-control" id="edit-promotion-start" />
+                            </div>
+                            <div class="col-md-4">
+                                <label for="edit-promotion-end" class="form-label fw-semibold">Fecha de fin</label>
+                                <input type="date" class="form-control" id="edit-promotion-end" />
+                            </div>
+                        </div>
+                        <div id="edit-promotion-alert" class="alert alert-danger mt-3 d-none" role="alert"></div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary" id="edit-promotion-save-btn"
+                                style="background:var(--principal-1, #FF4700);border-color:var(--principal-1, #FF4700);">
+                            <span class="btn-label"><i class="bi bi-save me-1"></i>Guardar cambios</span>
+                            <span class="spinner-border spinner-border-sm d-none ms-2" role="status" aria-hidden="true"></span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Delete Promotion Confirmation Modal -->
+    <div class="modal fade" id="deletePromotionModal" tabindex="-1" aria-labelledby="deletePromotionModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header border-danger">
+                    <h5 class="modal-title text-danger" id="deletePromotionModalLabel">
+                        <i class="bi bi-exclamation-triangle me-2"></i>Eliminar promoción
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <p class="mb-3">
+                        Esta acción <strong>no se puede deshacer</strong>. Se eliminarán los datos asociados a esta
+                        promoción
+                        (roadmap, módulos, estudiantes, etc.).
+                    </p>
+                    <p class="mb-2">Escribe <strong>ELIMINAR</strong> para confirmar:</p>
+                    <input type="text" id="delete-promotion-confirm-input" class="form-control" placeholder="ELIMINAR">
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-danger" onclick="confirmDeletePromotion()">
+                        Sí, eliminar la promoción
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Module Modal -->
+    <div class="modal fade" id="moduleModal" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="moduleModalTitle">Agregar Módulo</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form id="module-form">
+                    <div class="modal-body">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="module-name" class="form-label">Agregar Módulo</label>
+                                    <input type="text" class="form-control" id="module-name" required />
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="module-duration" class="form-label">Duración (semanas)</label>
+                                    <input type="number" class="form-control" id="module-duration" min="1" required />
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Courses Section -->
+                        <div class="mb-4">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h6 class="mb-0"><i class="bi bi-book me-2"></i>Cursos</h6>
+                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="addCoursField()">
+                                    <i class="bi bi-plus"></i> Agregar curso
+                                </button>
+                            </div>
+                            <div id="courses-container" class="border rounded p-3 bg-light">
+                                <!-- Courses will be added dynamically here -->
+                            </div>
+                        </div>
+
+                        <!-- Projects Section -->
+                        <div class="mb-4">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h6 class="mb-0"><i class="bi bi-laptop me-2"></i>Proyectos</h6>
+                                <button type="button" class="btn btn-sm btn-outline-primary"
+                                    onclick="addProjectField()">
+                                    <i class="bi bi-plus"></i> Agregar proyecto
+                                </button>
+                            </div>
+                            <div id="projects-container" class="border rounded p-3 bg-light">
+                                <!-- Projects will be added dynamically here -->
+                            </div>
+                        </div>
+
+                        <!-- Píldoras Section -->
+                        <div class="mb-4">
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <h6 class="mb-0"><i class="bi bi-lightbulb me-2"></i>Píldoras</h6>
+                                <button type="button" class="btn btn-sm btn-outline-primary"
+                                    onclick="addPildoraField()">
+                                    <i class="bi bi-plus"></i> Añadir Píldora
+                                </button>
+                            </div>
+                            <div id="pildoras-container" class="border rounded p-3 bg-light">
+                                <!-- Píldoras will be added dynamically here -->
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Guardar Módulo</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Link Modal -->
+    <div class="modal fade" id="quickLinkModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Agregar Quick Link</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form id="quick-link-form">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="link-platform" class="form-label">Plataforma</label>
+                            <select class="form-control" id="link-platform" onchange="updateLinkName()">
+                                <option value="">Selecciona una plataforma o customizala</option>
+                                <option value="zoom">Zoom</option>
+                                <option value="discord">Discord</option>
+                                <option value="classroom">Google Classroom</option>
+                                <option value="github">GitHub</option>
+                                <option value="custom">Link customizado</option>
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label for="link-name" class="form-label">Nombre del Link</label>
+                            <input type="text" class="form-control" id="link-name" placeholder="e.g., Zoom Class" />
+                        </div>
+                        <div class="mb-3">
+                            <label for="link-url" class="form-label">URL</label>
+                            <input type="url" class="form-control" id="link-url" required />
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Agregar Link</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Section Modal -->
+    <div class="modal fade" id="sectionModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Agregar Sección</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form id="section-form">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label for="section-title" class="form-label">Título</label>
+                            <input type="text" class="form-control" id="section-title" required />
+                        </div>
+                        <div class="mb-3">
+                            <label for="section-content" class="form-label">Contenido</label>
+                            <textarea class="form-control" id="section-content" rows="8" required></textarea>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Agregar Sección</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Promo Resource Modal -->
+    <div class="modal fade" id="promoResourceModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="promo-resource-modal-title">
+                        <i class="bi bi-collection-play me-2 text-primary"></i>Nuevo Recurso
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form id="promo-resource-form">
+                    <input type="hidden" id="promo-resource-id" value="" />
+                    <div class="modal-body">
+                        <div class="row g-3">
+                            <!-- Título -->
+                            <div class="col-12">
+                                <label for="promo-resource-title" class="form-label fw-semibold">Título <span class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="promo-resource-title" placeholder="Ej: Intro al proyecto final" required />
+                            </div>
+                            <!-- Descripción -->
+                            <div class="col-12">
+                                <label for="promo-resource-description" class="form-label fw-semibold">Descripción</label>
+                                <textarea class="form-control" id="promo-resource-description" rows="3" placeholder="Breve descripción del recurso…"></textarea>
+                            </div>
+                            <!-- Tipo + Módulo -->
+                            <div class="col-md-6">
+                                <label for="promo-resource-type" class="form-label fw-semibold">Tipo de recurso</label>
+                                <select class="form-select" id="promo-resource-type">
+                                    <option value="video">📹 Vídeo</option>
+                                    <option value="repository">💻 Repositorio</option>
+                                    <option value="canva">🎨 Presentación Canva</option>
+                                    <option value="powerpoint">📊 PowerPoint</option>
+                                    <option value="other">📎 Otro</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="promo-resource-module" class="form-label fw-semibold">Módulo</label>
+                                <select class="form-select" id="promo-resource-module">
+                                    <option value="">— Sin módulo —</option>
+                                </select>
+                            </div>
+                            <!-- URL -->
+                            <div class="col-12">
+                                <label for="promo-resource-url" class="form-label fw-semibold">Link al recurso <span class="text-danger">*</span></label>
+                                <div class="input-group">
+                                    <span class="input-group-text"><i class="bi bi-link-45deg"></i></span>
+                                    <input type="url" class="form-control" id="promo-resource-url" placeholder="https://…" required />
+                                </div>
+                            </div>
+                            <!-- Estado -->
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">Estado de publicación</label>
+                                <div class="d-flex gap-3">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="promo-resource-status" id="promo-resource-draft" value="draft" checked onchange="togglePublishAtField(this.value)">
+                                        <label class="form-check-label" for="promo-resource-draft">
+                                            <span class="badge bg-secondary">Borrador</span>
+                                        </label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="radio" name="promo-resource-status" id="promo-resource-published" value="published" onchange="togglePublishAtField(this.value)">
+                                        <label class="form-check-label" for="promo-resource-published">
+                                            <span class="badge bg-success">Publicar ahora</span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                            <!-- Fecha programada -->
+                            <div class="col-md-6" id="promo-resource-publishAt-row" style="display:none;">
+                                <label for="promo-resource-publishAt" class="form-label fw-semibold">
+                                    <i class="bi bi-calendar-event me-1"></i>Publicar en esta fecha
+                                    <small class="text-muted fw-normal">(deja vacío para no programar)</small>
+                                </label>
+                                <input type="datetime-local" class="form-control" id="promo-resource-publishAt" />
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary" id="promo-resource-submit-btn">
+                            <i class="bi bi-save me-1"></i>Guardar recurso
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Student Modal -->
+    <div class="modal fade" id="studentModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Añadir Estudiante</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form id="student-form">
+                    <div class="modal-body">
+                        <!-- Datos obligatorios -->
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="student-name" class="form-label fw-semibold">Nombre(s) <span
+                                        class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="student-name" required />
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="student-lastname" class="form-label fw-semibold">Apellido(s) <span
+                                        class="text-danger">*</span></label>
+                                <input type="text" class="form-control" id="student-lastname" required />
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="col-12 mb-3">
+                                <label for="student-email" class="form-label fw-semibold">Email <span
+                                        class="text-danger">*</span></label>
+                                <input type="email" class="form-control" id="student-email" required />
+                            </div>
+                        </div>
+
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Guardar Estudiante</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Student Progress Tracking Modal -->
+    <div class="modal fade" id="studentProgressModal" tabindex="-1">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="progressModalTitle">Progreso del estudiantes</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <!-- Student Basic Info -->
+                        <div class="col-md-4">
+                            <div class="card mb-3">
+                                <div class="card-header">
+                                    <h6 class="card-title mb-0">Información del estudiante</h6>
+                                </div>
+                                <div class="card-body">
+                                    <p><strong>Nombre:</strong> <span id="progress-student-name">-</span></p>
+                                    <p><strong>Apellido:</strong> <span id="progress-student-lastname">-</span></p>
+                                    <p><strong>Email:</strong> <span id="progress-student-email">-</span></p>
+                                    <p><strong>último acceso:</strong> <span id="progress-last-accessed">-</span></p>
+                                </div>
+                            </div>
+
+                            <!-- Quick Progress Update -->
+                            <div class="card">
+                                <div class="card-header">
+                                    <h6 class="card-title mb-0">Actualizar progreso</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="mb-3">
+                                        <label for="update-modules-completed" class="form-label">Módulos
+                                            completados</label>
+                                        <input type="number" class="form-control" id="update-modules-completed" min="0"
+                                            max="20" />
+                                    </div>
+                                    <button type="button" class="btn btn-success btn-sm"
+                                        onclick="updateStudentProgress()">
+                                        <i class="bi bi-check-circle"></i> Actualizar progreso
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Progress Details -->
+                        <div class="col-md-8">
+                            <div class="row">
+                                <!-- Progress Summary -->
+                                <div class="col-md-12 mb-3">
+                                    <div class="card">
+                                        <div class="card-header">
+                                            <h6 class="card-title mb-0">Resumen del progreso</h6>
+                                        </div>
+                                        <div class="card-body">
+                                            <div class="row text-center">
+                                                <div class="col-md-4">
+                                                    <h3 class="text-primary" id="progress-modules-completed">0</h3>
+                                                    <p class="mb-0">Módulos completados</p>
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <h3 class="text-info" id="progress-modules-viewed-count">0</h3>
+                                                    <p class="mb-0">Módulos vistos</p>
+                                                </div>
+                                                <div class="col-md-4">
+                                                    <h3 class="text-success" id="progress-sections-completed-count">0
+                                                    </h3>
+                                                    <p class="mb-0">Secciones completadas</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Modules Viewed -->
+                                <div class="col-md-6 mb-3">
+                                    <div class="card h-100">
+                                        <div class="card-header">
+                                            <h6 class="card-title mb-0">Módulos vistos</h6>
+                                        </div>
+                                        <div class="card-body">
+                                            <div id="progress-modules-viewed">
+                                                <p class="text-muted mb-0">Cargando...</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Sections Completed -->
+                                <div class="col-md-6 mb-3">
+                                    <div class="card h-100">
+                                        <div class="card-header">
+                                            <h6 class="card-title mb-0">Secciones completadas</h6>
+                                        </div>
+                                        <div class="card-body">
+                                            <div id="progress-sections-completed">
+                                                <p class="text-muted mb-0">Cargando...</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Student Notes -->
+                                <div class="col-md-12">
+                                    <div class="card">
+                                        <div class="card-header d-flex justify-content-between align-items-center">
+                                            <h6 class="card-title mb-0">Notas del Formador</h6>
+                                            <button type="button" class="btn btn-primary btn-sm"
+                                                onclick="saveStudentNotes()">
+                                                <i class="bi bi-save"></i> Guardar notas
+                                            </button>
+                                        </div>
+                                        <div class="card-body">
+                                            <textarea class="form-control" id="progress-student-notes" rows="4"
+                                                placeholder="Add notes about student progress, behavior, or any important observations..."></textarea>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Student Projects -->
+                                <div class="col-md-12 mt-3">
+                                    <div class="card">
+                                        <div class="card-header d-flex justify-content-between align-items-center">
+                                            <h6 class="card-title mb-0">Proyectos</h6>
+                                            <button type="button" class="btn btn-outline-primary btn-sm"
+                                                onclick="openAssignProjectModal()">
+                                                <i class="bi bi-plus"></i> Asignar Proyecto
+                                            </button>
+                                        </div>
+                                        <div class="card-body">
+                                            <div id="progress-student-projects">
+                                                <p class="text-muted mb-0">No hay proyectos asignados aún</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Assign Project Modal -->
+    <div class="modal fade" id="assignProjectModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Asignar Proyecto</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form id="assign-project-form">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <label class="form-label">Módulo</label>
+                            <select class="form-select" id="assign-module-select" required></select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Proyecto</label>
+                            <select class="form-select" id="assign-project-select" required></select>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Nombre del Equipo (opcional)</label>
+                            <input type="text" class="form-control" id="assign-group-name"
+                                placeholder="e.g., Team Alpha" />
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Compañeros (opcional)</label>
+                            <div id="assign-teammates-list" class="border rounded p-2"
+                                style="max-height: 200px; overflow-y: auto;">
+                                <!-- Populated dynamically with checkboxes -->
+                            </div>
+                            <small class="text-muted d-block">El estudiante actual se agrega automáticamente</small>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="assign-mark-done">
+                            <label class="form-check-label" for="assign-mark-done">
+                                Marcar como Hecho
+                            </label>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Asignar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Project Assignment Detail Modal -->
+    <div class="modal fade" id="projectAssignmentDetailModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Dealle del proyecto asignado:</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-2">
+                        <strong>Proyecto:</strong>
+                        <div id="projectAssignment-detail-name"></div>
+                    </div>
+                    <div class="mb-2">
+                        <strong>Módulo:</strong>
+                        <div id="projectAssignment-detail-module"></div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="projectAssignment-detail-group" class="form-label">Nombre del Equipo</label>
+                        <input type="text" class="form-control" id="projectAssignment-detail-group" />
+                    </div>
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="projectAssignment-detail-done">
+                        <label class="form-check-label" for="projectAssignment-detail-done">
+                            Marcar como Hecho
+                        </label>
+                    </div>
+                    <div class="mb-2">
+                        <strong>Inegrantes del equipo:</strong>
+                        <ul id="projectAssignment-detail-teammates" class="mb-0"></ul>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                    <button type="button" class="btn btn-primary"
+                        onclick="saveProjectAssignmentDetail()">Guardar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Collaborator Modal (by Email) -->
+    <div class="modal fade" id="addCollaboratorModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Agregar colaborador</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="collaborator-form">
+                        <div class="mb-3">
+                            <label for="collaborator-email" class="form-label">Email</label>
+                            <input type="email" class="form-control" id="collaborator-email" required />
+                            <small class="text-muted">Ingresa el email existente de un compañero para definirlo como
+                                colaborador</small>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="addCollaboratorByEmail()">Agregar
+                        colaborador</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Team Member Modal -->
+    <div class="modal fade" id="teamModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Agregar miembro del Equipo</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="team-form">
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold">Seleccionar colaborador</label>
+                            <select class="form-select" id="team-from-collaborator"
+                                onchange="fillTeamFromCollaborator()" required>
+                                <option value="">— Selecciona un colaborador —</option>
+                            </select>
+                            <div class="form-text">Solo colaboradores asignados a este programa pueden ser agregados
+                            </div>
+                        </div>
+                        <!-- Collaborator info preview -->
+                        <div id="team-collab-preview" class="d-none mb-3">
+                            <div class="alert alert-light border d-flex align-items-center gap-3 py-2">
+                                <i class="bi bi-person-badge fs-4 text-primary"></i>
+                                <div>
+                                    <div class="fw-semibold" id="team-preview-name"></div>
+                                    <div class="text-muted small" id="team-preview-email"></div>
+                                    <span class="badge mt-1" id="team-preview-role-badge"></span>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- Module selection removed: automatically inherited from collaborator -->
+
+                        <div class="mb-3">
+                            <label class="form-label">LinkedIn <span class="text-muted small">(opcional)</span></label>
+                            <input type="url" class="form-control" id="team-linkedin"
+                                placeholder="https://linkedin.com/in/...">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="addTeamMember()">Agregar Miembro</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Team Member Modal -->
+    <div class="modal fade" id="editTeamModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Editar miembro del Equipo</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="edit-team-form">
+                        <input type="hidden" id="edit-team-index">
+                        <div class="mb-3">
+                            <label class="form-label">Nombre</label>
+                            <input type="text" class="form-control bg-light" id="edit-team-name" readonly>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Rol</label>
+                            <input type="text" class="form-control bg-light" id="edit-team-role" readonly>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Email</label>
+                            <input type="email" class="form-control bg-light" id="edit-team-email" readonly>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-bold"><i class="bi bi-journal-check me-1 text-primary"></i>Participación en Módulos</label>
+                            <div id="edit-team-module-list" class="alert alert-light border rounded p-2 mb-1" 
+                                 style="font-size: 0.9rem; min-height: 40px; background-color: #fcfcfc;">
+                                <!-- Assigned modules as badges will be injected here -->
+                                <span class="text-muted small">Cargando módulos...</span>
+                            </div>
+                            <div class="form-text small text-muted">
+                                <i class="bi bi-info-circle me-1"></i>Para cambiar los módulos de este integrante, debes hacerlo desde la pestaña de <strong>Colaboradores</strong>.
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">LinkedIn <span class="text-muted small">(opcional)</span></label>
+                            <input type="url" class="form-control" id="edit-team-linkedin" placeholder="https://linkedin.com/in/...">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="updateTeamMember()">Guardar Cambios</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+
+    <!-- Resource Modal — Search & Select from evaluation.coderf5.es/v1/resources -->
+    <div class="modal fade" id="resourceModal" tabindex="-1">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header" style="background:linear-gradient(135deg,#2563eb,#7c3aed);color:#fff;">
+                    <h5 class="modal-title fw-bold">
+                        <i class="bi bi-search me-2"></i>Buscar y agregar recurso
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body p-0">
+                    <!-- Search bar + filters -->
+                    <div class="p-3 border-bottom bg-light">
+                        <div class="row g-2 align-items-end">
+                            <div class="col-md-6">
+                                <label class="form-label small fw-semibold mb-1">Buscar recurso</label>
+                                <div class="input-group">
+                                    <span class="input-group-text bg-white"><i
+                                            class="bi bi-search text-muted"></i></span>
+                                    <input type="text" id="resource-search-input" class="form-control border-start-0"
+                                        placeholder="Nombre, tecnología, proveedor…" oninput="filterResourceCatalog()">
+                                    <button class="btn btn-outline-secondary" type="button"
+                                        onclick="document.getElementById('resource-search-input').value='';filterResourceCatalog()">
+                                        <i class="bi bi-x-lg"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-semibold mb-1">Área</label>
+                                <select id="resource-area-filter" class="form-select"
+                                    onchange="filterResourceCatalog()">
+                                    <option value="">Todas las áreas</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label small fw-semibold mb-1">Tipo</label>
+                                <select id="resource-type-filter" class="form-select"
+                                    onchange="filterResourceCatalog()">
+                                    <option value="">Todos los tipos</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="mt-2 d-flex align-items-center gap-2">
+                            <span id="resource-catalog-count" class="badge bg-secondary">0 recursos</span>
+                            <span id="resource-catalog-loading" class="text-muted small d-none">
+                                <span class="spinner-border spinner-border-sm me-1"></span>Cargando catálogo…
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Resource grid -->
+                    <div id="resource-catalog-grid" class="p-3" style="min-height:300px;"></div>
+                    <div class="text-center text-muted py-5 d-none" id="resource-catalog-empty">
+                        <i class="bi bi-inbox display-5 mb-2 opacity-50 d-block"></i>
+                        No se encontraron recursos con estos filtros
+                    </div>
+                </div>
+                <div class="modal-footer bg-light">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Collaborator Selection Modal -->
+    <div class="modal fade" id="collaboratorModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Agregar Colaborador</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label for="collaborator-select" class="form-label">Seleccionar usuario</label>
+                        <select class="form-select" id="collaborator-select" onchange="onCollaboratorSelected()">
+                            <option value="">Loading users...</option>
+                        </select>
+                        <div class="form-text">Los usuarios registrados recientemente deben almenos haber hecho un login
+                            para aparecer aquí.</div>
+                    </div>
+                    <div id="collaborator-info-preview" class="d-none">
+                        <div class="alert alert-light border d-flex align-items-center gap-3 mb-3">
+                            <i class="bi bi-person-badge fs-4 text-primary"></i>
+                            <div>
+                                <div class="fw-semibold" id="collab-preview-name"></div>
+                                <div class="text-muted small" id="collab-preview-email"></div>
+                                <span class="badge mt-1" id="collab-preview-role-badge"></span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Asignación de módulo <span
+                                class="text-muted small">(Opcional)</span></label>
+                        <div id="collaborator-module-checklist" class="d-flex flex-column gap-2 border rounded p-2"
+                            style="max-height:180px; overflow-y:auto;">
+                            <span class="text-muted small">Cargando módulos...</span>
+                        </div>
+                        <div class="form-text">Selecciona los módulos en los que estará presente. Puede ser más de uno o
+                            todos.</div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="addCollaboratorById()">Agregar
+                        Colaborador</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Collaborator info & Module Assignment modal -->
+    <div class="modal fade" id="collaboratorModulesModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content border-0 shadow">
+                <div class="modal-header border-0 bg-light py-3">
+                    <h5 class="modal-title fw-bold">
+                        <i class="bi bi-person-gear text-primary me-2"></i>Gestionar Colaborador
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body px-4">
+                    <!-- Read-only header info -->
+                    <div class="alert alert-light border border-dashed rounded-3 p-3 mb-4">
+                        <div class="fw-bold fs-5 text-dark mb-1" id="collab-name-display"></div>
+                        <div class="text-muted small d-flex align-items-center gap-1 mb-2">
+                            <i class="bi bi-envelope"></i><span id="collab-email-display"></span>
+                        </div>
+                        <span class="badge bg-primary px-2" id="collab-role-display"></span>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Módulos Asignados</label>
+                        <p class="text-muted extra-small mb-2">Selecciona los módulos donde el colaborador tendrá presencia:</p>
+                        <div id="collab-modules-checklist" class="d-flex flex-column gap-2 border rounded-3 p-3 bg-light" 
+                             style="max-height:220px; overflow-y:auto;">
+                            <!-- Checkboxes generated dynamically -->
+                        </div>
+                        <div class="form-text small mt-2">Los cambios se guardarán para esta promoción en curso.</div>
+                    </div>
+                </div>
+                <div class="modal-footer border-0 px-4 pb-4">
+                    <button type="button" class="btn btn-light px-4" data-bs-dismiss="modal">Cerrar</button>
+                    <button type="button" class="btn btn-primary px-4 shadow-sm" onclick="saveCollaboratorModules()">
+                        <i class="bi bi-save me-1"></i>Guardar Cambios
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sesiones Empleabilidad Modal -->
+    <div class="modal fade" id="employabilityModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="employabilityModalTitle">Agregar sesiones de empleabilidad</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="employability-form">
+                        <div class="mb-3">
+                            <label for="employability-name" class="form-label">Título de la sesión</label>
+                            <input type="text" class="form-control" id="employability-name"
+                                placeholder="e.g., CV Preparation" required />
+                        </div>
+                        <div class="mb-3">
+                            <label for="employability-url" class="form-label">URL (Opcional)</label>
+                            <input type="url" class="form-control" id="employability-url" placeholder="https://..." />
+                        </div>
+                        <div class="mb-3">
+                            <label for="employability-start-month" class="form-label">Mes de inicio</label>
+                            <input type="number" class="form-control" id="employability-start-month" min="1" value="1"
+                                required />
+                        </div>
+                        <div class="mb-3">
+                            <label for="employability-duration" class="form-label">Duración (Cuántos Meses)</label>
+                            <input type="number" class="form-control" id="employability-duration" min="1" value="1"
+                                required />
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="saveEmployabilityItem()">Guardar
+                        sesión</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Attendance Detail Modal -->
+    <div class="modal fade" id="attendanceModal" tabindex="-1">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Detalles de la asistencia</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="attendance-detail-info" class="mb-3">
+                        <p><strong>Estudiante:</strong> <span id="attendance-modal-student-name">-</span></p>
+                        <p><strong>Fecha:</strong> <span id="attendance-modal-date">-</span></p>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Estado</label>
+                        <select class="form-select" id="attendance-modal-status">
+                            <option value="">No marcado</option>
+                            <option value="Presente">Presente</option>
+                            <option value="Ausente">Ausente</option>
+                            <option value="Con retraso">Con retraso</option>
+                            <option value="Justificado">Justificado</option>
+                            <option value="Sale antes">Sale antes</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Nota / Comentario</label>
+                        <textarea class="form-control" id="attendance-modal-note" rows="3"
+                            placeholder="Add a comment..."></textarea>
+                    </div>
+
+                    <hr>
+                    <h6>Estadísticas de asistencia (Mes actual)</h6>
+                    <div class="row text-center mt-2">
+                        <div class="col-3">
+                            <div class="small fw-bold text-success">Pres.</div>
+                            <div id="student-stat-present">0</div>
+                        </div>
+                        <div class="col-3">
+                            <div class="small fw-bold text-danger">Aus.</div>
+                            <div id="student-stat-absent">0</div>
+                        </div>
+                        <div class="col-3">
+                            <div class="small fw-bold text-warning">Retr.</div>
+                            <div id="student-stat-late">0</div>
+                        </div>
+                        <div class="col-3">
+                            <div class="small fw-bold text-info">Just.</div>
+                            <div id="student-stat-justified">0</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-info me-auto" id="view-student-summary-btn">
+                        <i class="bi bi-list-check me-1"></i> Resumen del mes
+                    </button>
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-primary" onclick="saveAttendanceFromModal()">Guardar
+                        Cambios</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Student Monthly Summary Modal -->
+    <div class="modal fade" id="studentSummaryModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header"
+                    style="background-color: var(--complementario-1-extra-light); border-bottom: 2px solid var(--principal-1);">
+                    <h5 class="modal-title" style="color: var(--principal-1); font-weight: 600;"><i
+                            class="bi bi-person me-2"></i>Resumen del mes: <span id="summary-student-name">-</span></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <h6 id="summary-month-title" class="mb-4" style="color: var(--principal-1); font-weight: 600;">-
+                    </h6>
+
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover">
+                            <thead style="background-color: var(--complementario-1-extra-light);">
+                                <tr>
+                                    <th style="color: var(--principal-1); font-weight: 600;">Fecha</th>
+                                    <th style="color: var(--principal-1); font-weight: 600;">Estado</th>
+                                    <th style="color: var(--principal-1); font-weight: 600;">Nota / Comentario</th>
+                                </tr>
+                            </thead>
+                            <tbody id="student-summary-body">
+                                <!-- Loaded dynamically -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer"
+                    style="background-color: var(--complementario-1-extra-light); gap: 8px; flex-wrap: wrap;">
+                    <button type="button" class="btn btn-sm" id="summary-pdf-month-btn"
+                        onclick="exportStudentAttendancePdf('month')"
+                        style="background-color: var(--complementario-2); color: var(--principal-2); border: none;">
+                        <i class="bi bi-file-earmark-pdf me-1"></i>PDF este mes
+                    </button>
+                    <button type="button" class="btn btn-sm" id="summary-pdf-all-btn"
+                        onclick="exportStudentAttendancePdf('all')"
+                        style="background-color: var(--principal-1); color: white; border: none;">
+                        <i class="bi bi-file-earmark-pdf me-1"></i>PDF todos los meses
+                    </button>
+                    <button type="button" class="btn btn-sm" data-bs-dismiss="modal"
+                        style="background-color: var(--complementario-1); color: white; border: none;">
+                        Cerrar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Acta de Inicio Modal -->
+    <div class="modal fade" id="actaInicioModal" tabindex="-1" aria-labelledby="actaInicioModalLabel"
+        aria-hidden="true">
+        <div class="modal-dialog modal-xl modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header" style="background:#E85D26;">
+                    <div>
+                        <h5 class="modal-title text-white mb-0" id="actaInicioModalLabel">
+                            <i class="bi bi-file-earmark-lock2 me-2"></i>Acta de Inicio — Datos Confidenciales
+                        </h5>
+                        <small class="text-white opacity-75">Solo visible para el equipo. No se muestra a los
+                            estudiantes.</small>
+                    </div>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+
+                        <!-- Escuela -->
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Escuela y/o área responsable</label>
+                            <select class="form-select" id="acta-school">
+                                <option value="">-- Selecciona comunidad --</option>
+                                <option value="Andalucía">Andalucía</option>
+                                <option value="Aragón">Aragón</option>
+                                <option value="Asturias">Asturias</option>
+                                <option value="Baleares">Baleares</option>
+                                <option value="Canarias">Canarias</option>
+                                <option value="Cantabria">Cantabria</option>
+                                <option value="Castilla-La Mancha">Castilla-La Mancha</option>
+                                <option value="Castilla y León">Castilla y León</option>
+                                <option value="Cataluña">Cataluña</option>
+                                <option value="Comunidad Valenciana">Comunidad Valenciana</option>
+                                <option value="Extremadura">Extremadura</option>
+                                <option value="Galicia">Galicia</option>
+                                <option value="La Rioja">La Rioja</option>
+                                <option value="Madrid">Madrid</option>
+                                <option value="Murcia">Murcia</option>
+                                <option value="Navarra">Navarra</option>
+                                <option value="País Vasco">País Vasco</option>
+                                <option value="Ceuta">Ceuta</option>
+                                <option value="Melilla">Melilla</option>
+                            </select>
+                        </div>
+
+                        <!-- Tipo proyecto -->
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Tipo proyecto formativo</label>
+                            <input type="text" class="form-control" id="acta-project-type" value="Bootcamp"
+                                placeholder="Bootcamp">
+                        </div>
+
+                        <!-- Fechas salida positiva -->
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Fecha inicio periodo salida positiva</label>
+                            <input type="date" class="form-control" id="acta-positive-exit-start">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Fecha fin periodo salida positiva</label>
+                            <input type="date" class="form-control" id="acta-positive-exit-end">
+                        </div>
+
+                        <!-- Horas totales -->
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Horas totales de formación</label>
+                            <select class="form-select" id="acta-total-hours">
+                                <option value="">-- Selecciona --</option>
+                                <option value="450 horas">450 horas</option>
+                                <option value="850 horas">850 horas</option>
+                                <option value="1.250 horas">1.250 horas</option>
+                            </select>
+                        </div>
+
+                        <!-- Modalidad -->
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Modalidad</label>
+                            <select class="form-select" id="acta-modality">
+                                <option value="">-- Selecciona --</option>
+                                <option value="Presencial">Presencial</option>
+                                <option value="Online">Online</option>
+                                <option value="Híbrido (Presencial + Online)">Híbrido (Presencial + Online)</option>
+                            </select>
+                        </div>
+
+                        <!-- Días presenciales y lugar -->
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Días presenciales y lugar</label>
+                            <div class="d-flex flex-wrap gap-2 mb-2" id="acta-presential-days-checkboxes">
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="checkbox" id="pd-lun" value="lunes">
+                                    <label class="form-check-label" for="pd-lun">Lunes</label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="checkbox" id="pd-mar" value="martes">
+                                    <label class="form-check-label" for="pd-mar">Martes</label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="checkbox" id="pd-mie" value="miércoles">
+                                    <label class="form-check-label" for="pd-mie">Miércoles</label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="checkbox" id="pd-jue" value="jueves">
+                                    <label class="form-check-label" for="pd-jue">Jueves</label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="checkbox" id="pd-vie" value="viernes">
+                                    <label class="form-check-label" for="pd-vie">Viernes</label>
+                                </div>
+                            </div>
+                            <select class="form-select" id="acta-presential-location">
+                                <option value="">-- Selecciona sede --</option>
+                                <option value="C/ Fernando Poo, 25, Arganzuela, 28045 Madrid">C/ Fernando Poo, 25,
+                                    Arganzuela, 28045 Madrid</option>
+                                <option value="Av. del Bogatell, 82, Sant Martí, 08005 Barcelona">Av. del Bogatell, 82,
+                                    Sant Martí, 08005 Barcelona</option>
+                                <option value="C/ María Josefa, 27, Centro, 33209 Gijón, Asturias">C/ María Josefa, 27,
+                                    Centro, 33209 Gijón, Asturias</option>
+                            </select>
+                        </div>
+
+                        <!-- Materiales -->
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Materiales/recursos necesarios</label>
+                            <textarea class="form-control" id="acta-materials"
+                                rows="2">No son necesarios recursos adicionales.</textarea>
+                        </div>
+
+                        <!-- Período prácticas -->
+                        <div class="col-md-4">
+                            <label class="form-label fw-semibold">Período de prácticas</label>
+                            <select class="form-select" id="acta-internships">
+                                <option value="">Sin especificar</option>
+                                <option value="true">Sí</option>
+                                <option value="false">No</option>
+                            </select>
+                        </div>
+
+                        <!-- Financiadores (etiquetas únicas) -->
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Financiadores</label>
+                            <small class="text-muted d-block mb-1">Añade cada financiador como etiqueta única. Pulsa
+                                Enter o el botón para añadir.</small>
+                            <div class="input-group mb-2">
+                                <input type="text" class="form-control" id="acta-funder-input" placeholder="Ej: SAGE.">
+                                <button class="btn btn-outline-secondary" type="button" onclick="actaAddFunder()">
+                                    <i class="bi bi-plus"></i> Añadir
+                                </button>
+                            </div>
+                            <div id="acta-funders-tags" class="d-flex flex-wrap gap-2 min-height-tag"></div>
+                        </div>
+
+                        <!-- Fecha justificación financiadores -->
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Fecha de justificación a cada financiador</label>
+                            <textarea class="form-control" id="acta-funder-deadlines" rows="2"
+                                placeholder="Ej: Realización de reportes a JP Morgan y Sage."></textarea>
+                        </div>
+
+                        <!-- OKR y KPIs FF5 -->
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">OKR y KPIs de FF5</label>
+                            <textarea class="form-control" id="acta-okr-kpis" rows="4">PIPO3.R1 Satisfacción 4,2/5 de coders sobre la excelencia del equipo formativo de la formación
+ISEC2.R1 Jornadas de selección con un 40% de personas participantes con el proceso 100% finalizado.
+ISEC3.R2 Resultado 78% salida positiva.
+ISECR2 Finalizar cada programa con un máximo de bajas de 10%.</textarea>
+                        </div>
+
+                        <!-- KPIs financiadores (por financiador) -->
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">KPIs financiadores</label>
+                            <small class="text-muted d-block mb-2">Define los KPIs para cada financiador
+                                añadido.</small>
+                            <div id="acta-funder-kpis-container">
+                                <!-- Generated dynamically per funder -->
+                                <p class="text-muted fst-italic small" id="acta-funder-kpis-empty">Añade financiadores
+                                    primero para definir sus KPIs.</p>
+                            </div>
+                        </div>
+
+                        <!-- Datalist for user search in day-off rows -->
+                        <datalist id="acta-users-datalist"></datalist>
+
+                        <!-- Día off Formador/a -->
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Día off Formador/a</label>
+                            <small class="text-muted d-block mb-1">Por módulo: selecciona el día libre del formador/a
+                                principal.</small>
+                            <div id="acta-trainer-dayoff-rows">
+                                <!-- Rows added dynamically per module, and one manual row -->
+                            </div>
+                            <button class="btn btn-sm btn-outline-secondary mt-1" type="button"
+                                onclick="actaAddDayOffRow('trainer')">
+                                <i class="bi bi-plus"></i> Añadir módulo
+                            </button>
+                        </div>
+
+                        <!-- Día off CoFormador/a -->
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Día off CoFormador/a</label>
+                            <small class="text-muted d-block mb-1">Por módulo: selecciona el día libre del
+                                coformador/a.</small>
+                            <div id="acta-cotrainer-dayoff-rows">
+                            </div>
+                            <button class="btn btn-sm btn-outline-secondary mt-1" type="button"
+                                onclick="actaAddDayOffRow('cotrainer')">
+                                <i class="bi bi-plus"></i> Añadir módulo
+                            </button>
+                        </div>
+
+                        <!-- Reuniones de proyecto -->
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Planificación reuniones de proyecto</label>
+                            <textarea class="form-control" id="acta-project-meetings"
+                                rows="2">Ver el calendario de reuniones en Asana.</textarea>
+                        </div>
+
+                        <!-- Reuniones de equipo -->
+                        <div class="col-12">
+                            <label class="form-label fw-semibold">Planificación reuniones de equipo</label>
+                            <div class="row g-2 align-items-center">
+                                <div class="col-auto">
+                                    <select class="form-select" id="acta-team-meeting-day" style="min-width:130px;">
+                                        <option value="lunes">Lunes</option>
+                                        <option value="martes">Martes</option>
+                                        <option value="miércoles">Miércoles</option>
+                                        <option value="jueves" selected>Jueves</option>
+                                        <option value="viernes">Viernes</option>
+                                    </select>
+                                </div>
+                                <div class="col-auto d-flex align-items-center gap-1">
+                                    <input type="time" class="form-control" id="acta-team-meeting-start" value="14:30"
+                                        style="width:120px;">
+                                    <span class="text-muted">–</span>
+                                    <input type="time" class="form-control" id="acta-team-meeting-end" value="15:00"
+                                        style="width:120px;">
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Aprobación y difusión del documento -->
+                        <div class="col-12 mt-2">
+                            <hr class="my-2">
+                            <label class="form-label fw-semibold">
+                                <i class="bi bi-pen me-1 text-secondary"></i>Aprobación y difusión del documento
+                            </label>
+                            <small class="text-muted d-block mb-2">Persona responsable de aprobar y difundir este
+                                acta.</small>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Nombre</label>
+                            <input type="text" class="form-control" id="acta-approval-name"
+                                placeholder="Nombre completo" list="acta-users-datalist">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold">Cargo</label>
+                            <input type="text" class="form-control" id="acta-approval-role"
+                                placeholder="Ej: Project Manager">
+                        </div>
+
+                    </div><!-- /row -->
+                </div><!-- /modal-body -->
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-outline-secondary"
+                        onclick="Reports.printActaInicio(promotionId)">
+                        <i class="bi bi-file-earmark-pdf me-1"></i>Generar PDF
+                    </button>
+                    <button type="button" class="btn btn-primary" onclick="saveActaData()"
+                        style="background:#E85D26;border-color:#E85D26;">
+                        <i class="bi bi-save me-1"></i>Guardar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .min-height-tag {
+            min-height: 32px;
+        }
+
+        .acta-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            background: #f0f0f0;
+            border: 1px solid #ccc;
+            border-radius: 20px;
+            padding: 2px 10px 2px 12px;
+            font-size: .85rem;
+        }
+
+        .acta-tag .rm {
+            cursor: pointer;
+            color: #888;
+            font-size: 1rem;
+            line-height: 1;
+        }
+
+        .acta-tag .rm:hover {
+            color: #c00;
+        }
+
+        .acta-dayoff-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 6px;
+            flex-wrap: wrap;
+        }
+
+        .acta-dayoff-row input[type=text] {
+            flex: 1;
+            min-width: 120px;
+        }
+    </style>
+
+    <!-- Profile Modal -->
+    <div class="modal fade" id="profileModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-warning bg-opacity-10 border-warning">
+                    <h5 class="modal-title">Perfil</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <ul class="nav nav-tabs mb-4" id="profileTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="profile-tab" data-bs-toggle="tab" data-bs-target="#profile-content" type="button" role="tab">Información general</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="password-tab" data-bs-toggle="tab" data-bs-target="#password-content" type="button" role="tab">Cambiar contraseña</button>
+                        </li>
+                    </ul>
+
+                    <!-- Profile Information Tab -->
+                    <div class="tab-content" id="profileTabContent">
+                        <div class="tab-pane fade show active" id="profile-content" role="tabpanel">
+                            <div class="mb-3">
+                                <label for="profile-name" class="form-label">Nombre</label>
+                                <input type="text" class="form-control" id="profile-name">
+                            </div>
+                            <div class="mb-3">
+                                <label for="profile-lastName" class="form-label">Apellido</label>
+                                <input type="text" class="form-control" id="profile-lastName">
+                            </div>
+                            <div class="mb-3">
+                                <label for="profile-email" class="form-label">Email</label>
+                                <input type="email" class="form-control" id="profile-email" disabled>
+                            </div>
+                            <div class="mb-3">
+                                <label for="profile-location" class="form-label">Comunidad Autónoma</label>
+                                <select class="form-select" id="profile-location">
+                                    <option value="">-- Selecciona tu comunidad --</option>
+                                    <option value="Andalucía">Andalucía</option>
+                                    <option value="Aragón">Aragón</option>
+                                    <option value="Asturias">Asturias</option>
+                                    <option value="Islas Baleares">Islas Baleares</option>
+                                    <option value="Canarias">Canarias</option>
+                                    <option value="Cantabria">Cantabria</option>
+                                    <option value="Castilla-La Mancha">Castilla-La Mancha</option>
+                                    <option value="Castilla y León">Castilla y León</option>
+                                    <option value="Cataluña">Cataluña</option>
+                                    <option value="Ceuta">Ceuta</option>
+                                    <option value="Comunidad de Madrid">Comunidad de Madrid</option>
+                                    <option value="Comunidad Foral de Navarra">Comunidad Foral de Navarra</option>
+                                    <option value="Comunidad Valenciana">Comunidad Valenciana</option>
+                                    <option value="Extremadura">Extremadura</option>
+                                    <option value="Galicia">Galicia</option>
+                                    <option value="La Rioja">La Rioja</option>
+                                    <option value="Melilla">Melilla</option>
+                                    <option value="País Vasco">País Vasco</option>
+                                    <option value="Región de Murcia">Región de Murcia</option>
+                                </select>
+                            </div>
+                            <div id="profile-alert" class="alert hidden" role="alert"></div>
+                        </div>
+
+                        <!-- Change Password Tab -->
+                        <div class="tab-pane fade" id="password-content" role="tabpanel">
+                            <div class="alert alert-info d-flex align-items-start gap-2 mb-4" role="alert">
+                                <i class="bi bi-info-circle-fill mt-1"></i>
+                                <span>Te enviaremos un enlace a tu correo electrónico para que puedas cambiar tu contraseña de forma segura.</span>
+                            </div>
+                            <div class="mb-3">
+                                <label for="reset-email" class="form-label">Tu correo electrónico</label>
+                                <input type="email" class="form-control" id="reset-email" placeholder="ejemplo@correo.com">
+                            </div>
+                            <div id="password-alert" class="alert hidden" role="alert"></div>
+                            <div class="mt-3">
+                                <button type="button" class="btn btn-warning w-100" onclick="changePassword()">
+                                    <i class="bi bi-envelope me-2"></i>Enviar enlace de cambio de contraseña
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                    <button type="button" class="btn btn-warning" id="profile-save-btn" onclick="saveProfileInfo()">Guardar perfil</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="js/config.js"></script>
+    <script src="js/sidebar-desktop-toggle.js"></script>
+    <script src="js/notes.js"></script>
+    <script src="js/reports.js"></script>
+    <script src="js/program-competences.js"></script>
+    <script src="js/student-tracking.js"></script>
+    <script src="js/promotion-detail.js"></script>
+</body>
+
+</html>

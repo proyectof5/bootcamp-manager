@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Login - Bootcamp Manager</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet" />
+    <link rel="stylesheet" href="./css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Homemade+Apple&display=swap" rel="stylesheet">
+
+    <link rel="icon" type="image/png" href="./img/favicon_bootcamp_manager.png">
+
+    <style>
+        body {
+            background-image: url("./img/Fondo-factoria-f5-color.png");
+            background-size: 150px 150px; 
+             background-repeat: repeat; 
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .login-container {
+            width: 100%;
+            max-width: 450px;
+            background: white;
+            margin: 1rem;
+            padding: 0;
+            border-radius: 15px;
+            box-shadow: 0 4px 20px rgba(106, 47, 28, 0.7);
+            overflow: hidden;
+        }
+
+        .logo-section {
+            text-align: center;
+            background:var(--principal-1);
+            padding: 20px 20px;
+            color: white;
+        }
+
+        .logo-section img {
+            max-width: 90%;
+        }
+
+        .logo-section h1 {
+            color: white;
+            font-size: 1.8rem;
+            font-weight: 700;
+            margin-bottom: 5px;
+        }
+
+        .logo-section p {
+            color: #f0f0f0;
+            font-size: 0.9rem;
+        }
+
+        .logo-section h2 {
+            color:var(--principal-1);
+            font-size: 1.2rem;
+            font-weight: 700;
+            margin: 0;
+            text-align: center;
+             font-family: "Homemade Apple", cursive;
+            font-weight: 400;
+            font-style: normal;
+        }
+
+        .role-selection {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-label {
+            color: #555;
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+
+        #login-form {
+            padding: 10px 40px 40px 40px;
+        }
+
+        .form-control {
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            padding: 12px 15px;
+            font-size: 0.95rem;
+        }
+
+        .form-control:focus {
+            border-color:var(--principal-1);
+            box-shadow: 0 0 0 0.2rem rgba(255, 71, 0, 0.25);
+        }
+
+        .btn-login {
+            background: linear-gradient(135deg, var(--principal-1) 0%);
+            border: none;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 6px;
+            font-weight: 600;
+            width: 100%;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-size: 1rem;
+        }
+
+        .btn-login:hover {
+            opacity: 0.9;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px var(--principal-1);
+        }
+
+        .btn-login:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .alert {
+            margin-bottom: 20px;
+            border-radius: 6px;
+        }
+
+        .hidden {
+            display: none;
+        }
+
+        .spinner-sm {
+            display: none;
+            width: 16px;
+            height: 16px;
+        }
+
+        .divider {
+            margin: 20px 0;
+            position: relative;
+            color: #999;
+        }
+
+        .divider:before {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 0;
+            right: 0;
+            height: 1px;
+            background: #ddd;
+        }
+
+        .divider span {
+            position: relative;
+            background: white;
+            padding: 0 10px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .help-text {
+            color: #999;
+            font-size: 0.85rem;
+            margin-top: 5px;
+        }
+
+        .role-selection {
+            display: none !important;
+        }
+
+        .password-input-group {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+
+        .password-input-group input {
+            padding-right: 45px;
+        }
+
+        .password-toggle {
+            position: absolute;
+            right: 12px;
+            background: none;
+            border: none;
+            color: #999;
+            cursor: pointer;
+            padding: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: color 0.2s ease;
+        }
+
+        .password-toggle:hover {
+            color: var(--principal-1);
+        }
+    </style>
+</head>
+
+<body>
+    <div class="login-container">
+
+        <div class="logo-section">
+                    <img class="logotype"src="./img/bootcamp_manager_logotype_bold_organge.png" /> 
+
+            <!-- <img src="./img/Factoria-F5-Official-Logo-2.png" alt="FactoriaF5" /> -->
+        </div>
+        <h2 class="welcome-title">preparate para dar el salto...</h2>
+        <div id="danger-alert" class="alert alert-danger hidden" role="alert"></div>
+        <div id="success-alert" class="alert alert-success hidden" role="alert"></div>
+
+        <form id="login-form" onsubmit="event.preventDefault(); handleLogin();">
+            <div class="form-group">
+                <label for="email" class="form-label" data-i18n="email-address">Email Address</label>
+                <input type="email" id="email" class="form-control" placeholder="your.email@example.com" required />
+            </div>
+
+            <div class="form-group">
+                <label for="password" class="form-label" data-i18n="password">Password</label>
+                <div class="password-input-group">
+                    <input type="password" id="password" class="form-control" placeholder="Enter your password"
+                        required />
+                    <button type="button" class="password-toggle" onclick="togglePasswordVisibility('password')">
+                        <i class="bi bi-eye"></i>
+                    </button>
+                </div>
+                <div class="help-text" id="help-text" data-i18n="your-assigned-password">Use your assigned password
+                </div>
+            </div>
+
+            <button type="button" class="btn-login" id="login-button" onclick="handleLogin()">
+                <span class="login-text">Sign In</span>
+                <span class="spinner-sm spinner-border spinner-border-sm ms-2" role="status" aria-hidden="true"></span>
+            </button>
+
+            <div class="text-center mt-3">
+                <a href="#" class="text-muted" style="font-size:.85rem; text-decoration:none;"
+                    onclick="openForgotPassword(); return false;">
+                    <i class="bi bi-key me-1"></i>¿Has olvidado tu contraseña?
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Forgot Password Modal -->
+    <div class="modal fade" id="forgotPasswordModal" tabindex="-1" aria-labelledby="forgotPasswordModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered" style="max-width:420px;">
+            <div class="modal-content border-0 shadow" style="border-radius:12px; overflow:hidden;">
+                <div class="modal-header border-0" style="background:var(--principal-1);">
+                    <h5 class="modal-title text-white fw-bold" id="forgotPasswordModalLabel">
+                        <i class="bi bi-key me-2"></i>Restablecer contraseña
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body px-4 py-4">
+                    <p class="text-muted small mb-3">
+                        Introduce tu dirección de correo electrónico y te enviaremos un enlace para restablecer tu contraseña.
+                    </p>
+                    <div id="forgot-alert" class="alert hidden mb-3" role="alert"></div>
+                    <div class="form-group mb-0">
+                        <label for="forgot-email" class="form-label">Correo electrónico</label>
+                        <input type="email" id="forgot-email" class="form-control"
+                            placeholder="tu.correo@ejemplo.com" required
+                            onkeydown="if(event.key==='Enter') sendForgotPassword();" />
+                    </div>
+                </div>
+                <div class="modal-footer border-0 px-4 pb-4 pt-0 d-flex gap-2">
+                    <button type="button" class="btn btn-outline-secondary flex-grow-1" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn flex-grow-1 text-white fw-semibold" id="forgot-submit-btn"
+                        style="background:var(--principal-1); border:none;"
+                        onclick="sendForgotPassword()">
+                        <span id="forgot-btn-text"><i class="bi bi-send me-1"></i>Enviar enlace</span>
+                        <span id="forgot-btn-spinner" class="spinner-border spinner-border-sm d-none" role="status"></span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+        <!-- <img class="logotype"src="./img/bootcamp_manager_logotype_bold_organge.png" />  -->
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="js/config.js"></script>
+    <script src="js/translations.js"></script>
+    <script src="js/login.js"></script>
+
+    <script>
+        // Highlight current language button
+        document.addEventListener('DOMContentLoaded', function () {
+            updateLangButtons();
+        });
+
+        function updateLangButtons() {
+            const enBtn = document.getElementById('lang-en');
+            const esBtn = document.getElementById('lang-es');
+            if (!enBtn || !esBtn) return;
+            const currentLang = getCurrentLanguage();
+            enBtn.style.background = currentLang === 'en' ? '#ff4700' : 'transparent';
+            esBtn.style.background = currentLang === 'es' ? '#ff4700' : 'transparent';
+        }
+
+        // Override setLanguage to update buttons
+        const originalSetLanguage = setLanguage;
+        window.setLanguage = function (lang) {
+            originalSetLanguage(lang);
+            updateLangButtons();
+        };
+
+        // Toggle password visibility
+        function togglePasswordVisibility(inputId) {
+            const input = document.getElementById(inputId);
+            const button = event.currentTarget;
+            const icon = button.querySelector('i');
+
+            if (input.type === 'password') {
+                input.type = 'text';
+                icon.classList.remove('bi-eye');
+                icon.classList.add('bi-eye-slash');
+            } else {
+                input.type = 'password';
+                icon.classList.remove('bi-eye-slash');
+                icon.classList.add('bi-eye');
+            }
+        }
+
+        // ── Forgot password ──────────────────────────────────────────────────
+        function openForgotPassword() {
+            const alertEl = document.getElementById('forgot-alert');
+            alertEl.classList.add('hidden');
+            alertEl.textContent = '';
+            document.getElementById('forgot-email').value = '';
+            document.getElementById('forgot-btn-text').classList.remove('d-none');
+            document.getElementById('forgot-btn-spinner').classList.add('d-none');
+            document.getElementById('forgot-submit-btn').disabled = false;
+            const modal = new bootstrap.Modal(document.getElementById('forgotPasswordModal'));
+            modal.show();
+            setTimeout(() => document.getElementById('forgot-email').focus(), 400);
+        }
+
+        async function sendForgotPassword() {
+            const email = document.getElementById('forgot-email').value.trim();
+            const alertEl = document.getElementById('forgot-alert');
+            const btnText = document.getElementById('forgot-btn-text');
+            const btnSpinner = document.getElementById('forgot-btn-spinner');
+            const submitBtn = document.getElementById('forgot-submit-btn');
+
+            alertEl.classList.add('hidden');
+
+            if (!email) {
+                alertEl.className = 'alert alert-warning';
+                alertEl.textContent = 'Por favor, introduce tu correo electrónico.';
+                alertEl.classList.remove('hidden');
+                return;
+            }
+
+            // Show loading state
+            btnText.classList.add('d-none');
+            btnSpinner.classList.remove('d-none');
+            submitBtn.disabled = true;
+
+            try {
+                const base = window.APP_CONFIG?.API_URL || window.location.origin;
+                const response = await fetch(`${base}/api/auth/forgot-password`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email })
+                });
+
+                let data = {};
+                const text = await response.text();
+                try { data = JSON.parse(text); } catch { /* no JSON */ }
+
+                if (response.ok) {
+                    alertEl.className = 'alert alert-success';
+                    alertEl.textContent = data.message || 'En breves recibirás un correo con el enlace para restablecer tu contraseña.';
+                    alertEl.classList.remove('hidden');
+                    // Disable the form after success to avoid re-sends
+                    document.getElementById('forgot-email').disabled = true;
+                    submitBtn.disabled = true;
+                } else {
+                    alertEl.className = 'alert alert-danger';
+                    alertEl.textContent = data.message || data.error || 'No se pudo enviar el correo. Comprueba la dirección e inténtalo de nuevo.';
+                    alertEl.classList.remove('hidden');
+                    btnText.classList.remove('d-none');
+                    btnSpinner.classList.add('d-none');
+                    submitBtn.disabled = false;
+                }
+            } catch (error) {
+                console.error('[forgotPassword] Error:', error);
+                alertEl.className = 'alert alert-danger';
+                alertEl.textContent = 'Error de conexión. Inténtalo de nuevo.';
+                alertEl.classList.remove('hidden');
+                btnText.classList.remove('d-none');
+                btnSpinner.classList.add('d-none');
+                submitBtn.disabled = false;
+            }
+        }
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,21 @@
+
+services:
+  # ── App ────────────────────────────────────────────────────────────────────
+  app:
+    build: .
+    container_name: roadmap_app
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "3000:3000"
+    volumes:
+      # Mount source so you can iterate without rebuilding the image in dev
+      - .:/app
+      - /app/node_modules
+    networks:
+      - roadmap_net
+
+networks:
+  roadmap_net:
+    driver: bridge
