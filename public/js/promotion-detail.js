@@ -12137,3 +12137,42 @@ function showToast(message, type = 'info') {
     t.show();
     toastEl.addEventListener('hidden.bs.toast', () => toastEl.remove());
 }
+
+// ==================== SYLLABUS PDF (PROMOCIÓN ACTIVA) ====================
+
+/**
+ * Descarga el Syllabus PDF de la promoción activa.
+ * Combina los datos de window.currentPromotion y extendedInfoData.
+ */
+function downloadPromotionSyllabus() {
+    const promotion = window.currentPromotion;
+    if (!promotion) {
+        alert('Aún no se han cargado los datos de la promoción. Espera un momento e inténtalo de nuevo.');
+        return;
+    }
+    if (!window.SyllabusPDF) {
+        alert('El módulo de generación de PDF no está disponible. Recarga la página.');
+        return;
+    }
+
+    const btn = document.getElementById('syllabus-pdf-btn');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Generando…';
+    }
+
+    // Usamos setTimeout para dejar que el navegador actualice el botón antes de bloquear con jsPDF
+    setTimeout(() => {
+        try {
+            SyllabusPDF.fromPromotion(promotion, extendedInfoData || {});
+        } catch (err) {
+            console.error('[Syllabus] Error generando PDF:', err);
+            alert('Error al generar el Syllabus PDF: ' + err.message);
+        } finally {
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-file-earmark-pdf me-2"></i>Syllabus PDF';
+            }
+        }
+    }, 50);
+}

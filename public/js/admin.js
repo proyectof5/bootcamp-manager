@@ -359,7 +359,12 @@ function renderTemplates(templates) {
                         <span class="badge bg-light text-dark border"><i class="bi bi-stars me-1"></i>${competencesCount} competencias</span>
                         <span class="badge bg-light text-dark border"><i class="bi bi-lightbulb me-1"></i>${pildorasCount} píldoras</span>
                     </div>
-                    <div class="d-flex gap-2">
+                    <div class="d-flex gap-2 flex-wrap">
+                        <button class="btn btn-sm btn-outline-secondary flex-fill"
+                                onclick="downloadTemplateSyllabus('${escapeHtml(t.id)}')"
+                                title="Descargar Syllabus PDF">
+                            <i class="bi bi-file-earmark-pdf me-1"></i>Syllabus
+                        </button>
                         <button class="btn btn-sm btn-outline-warning flex-fill"
                                 onclick="openEditTemplateModal('${escapeHtml(t.id)}', '${escapeHtml(t.name)}', '${escapeHtml(t.description || '')}', ${t.weeks || 0}, ${t.hours || 0})">
                             <i class="bi bi-pencil me-1"></i>Editar
@@ -498,5 +503,39 @@ async function handleEditTemplate(e) {
         if (btn)     btn.disabled = false;
         if (spinner) spinner.classList.add('d-none');
         if (label)   label.classList.remove('d-none');
+    }
+}
+
+// ==================== SYLLABUS PDF (PLANTILLAS) ====================
+
+/**
+ * Descarga el Syllabus PDF de una plantilla de bootcamp.
+ * Obtiene los datos completos de la plantilla y delega en SyllabusPDF.fromTemplate().
+ */
+async function downloadTemplateSyllabus(templateId) {
+    const token = localStorage.getItem('token');
+    const btn = event.currentTarget;
+    const originalHtml = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Generando…';
+
+    try {
+        const res = await fetch(`${API_URL}/api/bootcamp-templates/${templateId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const template = await res.json();
+
+        if (!window.SyllabusPDF) {
+            alert('El módulo de generación de PDF no está disponible. Recarga la página.');
+            return;
+        }
+        SyllabusPDF.fromTemplate(template);
+    } catch (err) {
+        console.error('[Syllabus] Error generando PDF de plantilla:', err);
+        alert('Error al generar el Syllabus PDF: ' + err.message);
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
     }
 }
