@@ -1310,6 +1310,24 @@ app.put('/api/bootcamp-templates/:templateId', verifyToken, async (req, res) => 
 
 // ==================== AUTHENTICATION ====================
 
+// Returns the local teacher record for the currently authenticated user.
+// Clients call this after login to get the local UUID that is stored as teacherId on promotions.
+app.get('/api/me', verifyToken, async (req, res) => {
+  try {
+    const teacher = await Teacher.findOne({ where: { id: req.user.id, deletedAt: null } });
+    if (!teacher) return res.status(404).json({ error: 'Teacher not found' });
+    res.json({
+      id: teacher.id,
+      name: teacher.name,
+      email: teacher.email,
+      userRole: teacher.userRole,
+      role: req.user.role
+    });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
 // Proxy to external auth API — avoids CORS issues when called from the browser
 app.post('/api/auth/external-login', async (req, res) => {
   try {
@@ -4205,7 +4223,9 @@ app.get('/api/promotions/:promotionId/collaborators', verifyToken, async (req, r
     if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
 
     const collaboratorIds = promotion.collaborators || [];
-    const collaborators = await Teacher.findAll({ where: { id: { [Op.in]: collaboratorIds } } });
+    const collaborators = collaboratorIds.length > 0
+      ? await Teacher.findAll({ where: { id: { [Op.in]: collaboratorIds } } })
+      : [];
     const owner = await Teacher.findOne({ where: { id: promotion.teacherId } });
 
     const result = [];
@@ -4218,7 +4238,8 @@ app.get('/api/promotions/:promotionId/collaborators', verifyToken, async (req, r
       });
     }
     collaborators.forEach(c => {
-      const entry = (promotion.collaboratorModules || []).find(m => m.teacherId === c.id);
+      const collabModules = Array.isArray(promotion.collaboratorModules) ? promotion.collaboratorModules : [];
+      const entry = collabModules.find(m => m.teacherId === c.id);
       result.push({
         id: c.id, name: c.name, email: c.email,
         userRole: c.userRole || 'Formador/a',
@@ -4240,21 +4261,28 @@ app.post('/api/promotions/:promotionId/collaborators', verifyToken, async (req, 
     const promotion = await Promotion.findOne({ where: { id: req.params.promotionId } });
     if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
 
-    if (promotion.teacherId !== req.user.id) return res.status(403).json({ error: 'Only owner can add collaborators' });
+    console.log('[POST collaborators] req.user.id:', req.user.id, '| promotion.teacherId:', promotion.teacherId, '| match:', promotion.teacherId === req.user.id);
+
+    const isOwner = promotion.teacherId === req.user.id;
+    const isAdmin = req.user.role === 'superadmin';
+    if (!isOwner && !isAdmin) return res.status(403).json({ error: 'Only owner can add collaborators' });
     if (teacherId === promotion.teacherId) return res.status(400).json({ error: 'Cannot add owner as collaborator' });
 
     if (!promotion.collaborators) promotion.collaborators = [];
     if (promotion.collaborators.includes(teacherId)) return res.status(400).json({ error: 'Teacher already a collaborator' });
 
-    promotion.collaborators.push(teacherId);
+    // Revert raw SQL approach — use proper Sequelize setter by reassigning (not mutating)
+    // Mutating the getter's return value doesn't update dataValues; reassignment triggers the setter.
+    const updatedCollaborators = [...(promotion.collaborators || []), teacherId];
+    promotion.collaborators = updatedCollaborators;
 
-    if (!promotion.collaboratorModules) promotion.collaboratorModules = [];
+    // Normalize: existing rows may have collaboratorModules stored as {} instead of []
+    const existingModules = Array.isArray(promotion.collaboratorModules) ? promotion.collaboratorModules : [];
     const resolvedModuleIds = Array.isArray(moduleIds) ? moduleIds : [];
-    promotion.collaboratorModules.push({ teacherId, moduleIds: resolvedModuleIds });
-    promotion.changed('collaborators', true);
-    promotion.changed('collaboratorModules', true);
+    promotion.collaboratorModules = [...existingModules, { teacherId, moduleIds: resolvedModuleIds }];
 
     await sqlSave(promotion);
+
     const teacher = await Teacher.findOne({ where: { id: teacherId } });
     res.status(201).json({ message: 'Collaborator added', collaborator: teacher });
   } catch (error) {
@@ -4276,17 +4304,18 @@ app.put('/api/promotions/:promotionId/collaborators/:teacherId/modules', verifyT
     if (!isOwner && !isCollab && !isAdmin) return res.status(403).json({ error: 'Only teaching team can manage module assignments' });
 
     if (req.params.teacherId === promotion.teacherId) {
-      promotion.ownerModules = moduleIds;
-      promotion.changed('ownerModules', true);
+      // Reassign to trigger the setter
+      promotion.ownerModules = [...moduleIds];
     } else {
-      if (!promotion.collaboratorModules) promotion.collaboratorModules = [];
-      const entry = promotion.collaboratorModules.find(m => m.teacherId === req.params.teacherId);
-      if (entry) {
-        entry.moduleIds = moduleIds;
+      const existingModules = Array.isArray(promotion.collaboratorModules) ? promotion.collaboratorModules : [];
+      const idx = existingModules.findIndex(m => m.teacherId === req.params.teacherId);
+      let updated;
+      if (idx !== -1) {
+        updated = existingModules.map(m => m.teacherId === req.params.teacherId ? { ...m, moduleIds } : m);
       } else {
-        promotion.collaboratorModules.push({ teacherId: req.params.teacherId, moduleIds });
+        updated = [...existingModules, { teacherId: req.params.teacherId, moduleIds }];
       }
-      promotion.changed('collaboratorModules', true);
+      promotion.collaboratorModules = updated;
     }
     await sqlSave(promotion);
     res.json({ message: 'Module assignments updated' });
@@ -4305,10 +4334,10 @@ app.delete('/api/promotions/:promotionId/collaborators/:teacherId', verifyToken,
     const isAdmin = req.user.userRole === 'superadmin';
     if (!isOwner && !isCollab && !isAdmin) return res.status(403).json({ error: 'Only teaching team can manage collaborators' });
 
+    // Reassign to trigger setters (mutating getter return values doesn't persist)
     promotion.collaborators = (promotion.collaborators || []).filter(id => id !== req.params.teacherId);
-    promotion.collaboratorModules = (promotion.collaboratorModules || []).filter(m => m.teacherId !== req.params.teacherId);
-    promotion.changed('collaborators', true);
-    promotion.changed('collaboratorModules', true);
+    promotion.collaboratorModules = (Array.isArray(promotion.collaboratorModules) ? promotion.collaboratorModules : []).filter(m => m.teacherId !== req.params.teacherId);
+
     await sqlSave(promotion);
     res.json({ message: 'Collaborator removed' });
   } catch (error) {

@@ -435,6 +435,22 @@ document.addEventListener('DOMContentLoaded', () => {
         });
 
         // 1. Load Promotion basics (Populates modules list for all other components)
+        // Always resolve the local DB UUID via /api/me so that teacherId comparisons work correctly,
+        // regardless of what was previously stored in localStorage.
+        const _token = localStorage.getItem('token');
+        if (_token && currentUser) {
+            try {
+                const meRes = await fetch(`${API_URL}/api/me`, { headers: { 'Authorization': `Bearer ${_token}` } });
+                if (meRes.ok) {
+                    const meData = await meRes.json();
+                    currentUser.id = meData.id;
+                    if (meData.userRole) currentUser.userRole = meData.userRole;
+                    localStorage.setItem('user', JSON.stringify(currentUser));
+                }
+            } catch (meErr) {
+                console.warn('[init] Could not resolve local teacher id:', meErr.message);
+            }
+        }
         await loadPromotion();
 
         if (isTeacherOrAdmin()) {
@@ -6033,8 +6049,11 @@ async function loadCollaborators() {
 
         if (response.ok) {
             const collaborators = await response.json();
+            console.log('[loadCollaborators] received:', JSON.stringify(collaborators));
             _currentCollabModulesList = collaborators;
             displayCollaborators(collaborators);
+        } else {
+            console.error('[loadCollaborators] error:', response.status, await response.text());
         }
     } catch (error) {
         console.error('Error loading collaborators:', error);
@@ -6325,8 +6344,16 @@ async function addCollaboratorById() {
     }
     const checked = document.querySelectorAll('#collaborator-module-checklist .form-check-input:checked');
     const moduleIds = Array.from(checked).map(cb => cb.value);
-    //console.log('[addCollaboratorById] teacherId:', teacherId, 'moduleIds:', moduleIds, 'checked count:', checked.length);
-    //console.log('[addCollaboratorById] all checkboxes in list:', document.querySelectorAll('#collaborator-module-checklist .form-check-input').length);
+
+    // Diagnostic: log what we're sending vs what the promotion has
+    console.log('[addCollaboratorById] currentUser.id:', currentUser.id);
+    console.log('[addCollaboratorById] promotion.teacherId:', window.currentPromotion?.teacherId);
+    console.log('[addCollaboratorById] match:', currentUser.id === window.currentPromotion?.teacherId);
+    console.log('[addCollaboratorById] teacherId to add:', teacherId, '| moduleIds:', moduleIds);
+
+    // Disable button while request is in flight
+    const addBtn = document.querySelector('#collaboratorModal .btn-primary');
+    if (addBtn) { addBtn.disabled = true; addBtn.textContent = 'Agregando...'; }
 
     const token = localStorage.getItem('token');
     try {
@@ -6339,16 +6366,21 @@ async function addCollaboratorById() {
             body: JSON.stringify({ teacherId, moduleIds })
         });
 
+        const data = await response.json();
+        console.log('[addCollaboratorById] response status:', response.status, '| body:', JSON.stringify(data));
+
         if (response.ok) {
             collaboratorModal.hide();
-            location.reload();
+            await loadCollaborators();
         } else {
-            const data = await response.json();
+            console.error('[addCollaboratorById] Server error:', response.status, data);
             alert(data.error || 'Failed to add collaborator');
+            if (addBtn) { addBtn.disabled = false; addBtn.textContent = 'Agregar Colaborador'; }
         }
     } catch (error) {
         console.error('Error adding collaborator:', error);
         alert('Connection error');
+        if (addBtn) { addBtn.disabled = false; addBtn.textContent = 'Agregar Colaborador'; }
     }
 }
 

@@ -5,10 +5,28 @@ let currentPromotionId = null;
 let currentUser = {};
 
 // Initialize
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     checkAuth();
     promotionModal = new bootstrap.Modal(document.getElementById('promotionModal'));
     loadTeacherInfo();
+
+    // Resolve local DB UUID for users who logged in before the /api/me fix.
+    // If currentUser.id looks like an email, fetch /api/me to get the real local UUID.
+    const _token = localStorage.getItem('token');
+    if (_token && currentUser && currentUser.id && currentUser.id.includes('@')) {
+        try {
+            const meRes = await fetch(`${API_URL}/api/me`, { headers: { 'Authorization': `Bearer ${_token}` } });
+            if (meRes.ok) {
+                const meData = await meRes.json();
+                currentUser.id = meData.id;
+                if (meData.userRole) currentUser.userRole = meData.userRole;
+                localStorage.setItem('user', JSON.stringify(currentUser));
+            }
+        } catch (meErr) {
+            console.warn('[dashboard] Could not resolve local teacher id:', meErr.message);
+        }
+    }
+
     loadPromotions();
     loadBootcampTemplates();
     setupNavigation();

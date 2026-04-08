@@ -106,7 +106,23 @@ window.handleLogin = async function () {
             localStorage.setItem('token', token);
             localStorage.setItem('user', JSON.stringify(user));
             localStorage.setItem('role', role);
-            //console.log('Saved user to localStorage:', JSON.stringify(user));
+
+            // Resolve local DB UUID so that teacherId comparisons work correctly.
+            // The JWT payload only has the external userId/email; the local Teacher record
+            // has a different UUID which is stored as teacherId on promotions.
+            try {
+                var meRes = await fetch((window.APP_CONFIG?.API_URL || window.location.origin) + '/api/me', {
+                    headers: { 'Authorization': 'Bearer ' + token }
+                });
+                if (meRes.ok) {
+                    var meData = await meRes.json();
+                    user.id = meData.id; // local UUID
+                    if (meData.userRole) user.userRole = meData.userRole;
+                    localStorage.setItem('user', JSON.stringify(user));
+                }
+            } catch (meErr) {
+                console.warn('[login] Could not resolve local teacher id:', meErr.message);
+            }
 
             showAlert('Login successful! Redirecting...', 'success');
             setTimeout(function() {
