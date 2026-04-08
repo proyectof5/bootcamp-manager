@@ -62,21 +62,29 @@ const EXTERNAL_AUTH_BASE = IS_PRODUCTION
 console.log(`[config] NODE_ENV=${process.env.NODE_ENV || 'development'} → EXTERNAL_AUTH_BASE=${EXTERNAL_AUTH_BASE}`);
 
 // Public key of the external auth server (https://users.coderf5.es) — used to verify RS256 tokens
+// Priority: EXTERNAL_JWT_PUBLIC_KEY env var > backend/keys/public.pem file (legacy fallback)
 let EXTERNAL_JWT_PUBLIC_KEY = null;
-try {
-  // Try both lowercase and uppercase paths for cross-platform compatibility
-  let keyPath = join(__dirname, 'backend', 'keys', 'public.pem');
+if (process.env.EXTERNAL_JWT_PUBLIC_KEY) {
+  // Replace literal \n with actual newlines in case the key is stored as a single line in the env var
+  EXTERNAL_JWT_PUBLIC_KEY = process.env.EXTERNAL_JWT_PUBLIC_KEY.replace(/\\n/g, '\n');
+  log.debug('[auth] Loaded external JWT public key from EXTERNAL_JWT_PUBLIC_KEY env var');
+} else {
+  // Legacy fallback: load from file
   try {
-    EXTERNAL_JWT_PUBLIC_KEY = readFileSync(keyPath, 'utf8');
-  } catch {
-    // Try with uppercase Keys folder (Windows case sensitivity issue)
-    keyPath = join(__dirname, 'backend', 'Keys', 'public.pem');
-    EXTERNAL_JWT_PUBLIC_KEY = readFileSync(keyPath, 'utf8');
+    let keyPath = join(__dirname, 'backend', 'keys', 'public.pem');
+    try {
+      EXTERNAL_JWT_PUBLIC_KEY = readFileSync(keyPath, 'utf8');
+    } catch {
+      // Try with uppercase Keys folder (Windows case sensitivity issue)
+      keyPath = join(__dirname, 'backend', 'Keys', 'public.pem');
+      EXTERNAL_JWT_PUBLIC_KEY = readFileSync(keyPath, 'utf8');
+    }
+    log.debug('[auth] Loaded external JWT public key from file: ' + keyPath);
+    console.warn('[auth] Consider setting EXTERNAL_JWT_PUBLIC_KEY as an environment variable instead of using a key file.');
+  } catch (e) {
+    console.warn('[auth] Could not load public key — external tokens will be rejected:', e.message);
+    console.warn('[auth] Set EXTERNAL_JWT_PUBLIC_KEY in your .env file or make sure backend/keys/public.pem exists.');
   }
-  log.debug('[auth] Loaded external JWT public key from ' + keyPath);
-} catch (e) {
-  console.warn('[auth] Could not load public key — external tokens will be rejected:', e.message);
-  console.warn('[auth] Make sure the file exists at backend/keys/public.pem or update EXTERNAL_AUTH_BASE in .env');
 }
 
 // SQL Database Connection (Sequelize)
