@@ -5847,6 +5847,7 @@ function openEditPromotionModal() {
     const nameEl   = document.getElementById('edit-promotion-name');
     const descEl   = document.getElementById('edit-promotion-desc');
     const weeksEl  = document.getElementById('edit-promotion-weeks');
+    const hoursEl  = document.getElementById('edit-promotion-hours');
     const startEl  = document.getElementById('edit-promotion-start');
     const endEl    = document.getElementById('edit-promotion-end');
     const alertEl  = document.getElementById('edit-promotion-alert');
@@ -5854,6 +5855,8 @@ function openEditPromotionModal() {
     if (nameEl)  nameEl.value  = promotion.name        || '';
     if (descEl)  descEl.value  = promotion.description || '';
     if (weeksEl) weeksEl.value = promotion.weeks       || '';
+    // Pre-fill totalHours from extendedInfoData if available
+    if (hoursEl) hoursEl.value = extendedInfoData?.totalHours || '';
 
     // Dates arrive as ISO strings — convert to YYYY-MM-DD for <input type="date">
     if (startEl) startEl.value = promotion.startDate ? promotion.startDate.slice(0, 10) : '';
@@ -5875,6 +5878,7 @@ async function saveEditPromotion(event) {
     const nameEl   = document.getElementById('edit-promotion-name');
     const descEl   = document.getElementById('edit-promotion-desc');
     const weeksEl  = document.getElementById('edit-promotion-weeks');
+    const hoursEl  = document.getElementById('edit-promotion-hours');
     const startEl  = document.getElementById('edit-promotion-start');
     const endEl    = document.getElementById('edit-promotion-end');
     const alertEl  = document.getElementById('edit-promotion-alert');
@@ -5886,6 +5890,7 @@ async function saveEditPromotion(event) {
         name:        nameEl?.value.trim(),
         description: descEl?.value.trim(),
         weeks:       parseInt(weeksEl?.value, 10) || undefined,
+        totalHours:  parseInt(hoursEl?.value, 10) || undefined,
         startDate:   startEl?.value || undefined,
         endDate:     endEl?.value   || undefined,
     };
@@ -5918,6 +5923,11 @@ async function saveEditPromotion(event) {
         }
 
         if (_editPromotionModal) _editPromotionModal.hide();
+
+        // Update local extendedInfoData with new totalHours so Syllabus picks it up
+        if (payload.totalHours && extendedInfoData) {
+            extendedInfoData.totalHours = String(payload.totalHours);
+        }
 
         // Reload promotion data to refresh header/progress bar
         await loadPromotion();
@@ -12183,28 +12193,10 @@ function downloadPromotionSyllabus() {
         return;
     }
     if (!window.SyllabusPDF) {
-        alert('El módulo de generación de PDF no está disponible. Recarga la página.');
+        alert('El módulo de generación no está disponible. Recarga la página.');
         return;
     }
 
-    const btn = document.getElementById('syllabus-pdf-btn');
-    if (btn) {
-        btn.disabled = true;
-        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Generando…';
-    }
-
-    // Usamos setTimeout para dejar que el navegador actualice el botón antes de bloquear con jsPDF
-    setTimeout(() => {
-        try {
-            SyllabusPDF.fromPromotion(promotion, extendedInfoData || {});
-        } catch (err) {
-            console.error('[Syllabus] Error generando PDF:', err);
-            alert('Error al generar el Syllabus PDF: ' + err.message);
-        } finally {
-            if (btn) {
-                btn.disabled = false;
-                btn.innerHTML = '<i class="bi bi-file-earmark-pdf me-2"></i>Syllabus PDF';
-            }
-        }
-    }, 50);
+    // El modal de selección de formato lo muestra SyllabusPDF internamente
+    SyllabusPDF.fromPromotion(promotion, extendedInfoData || {});
 }

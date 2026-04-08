@@ -228,6 +228,10 @@ window.applyTemplate = function () {
         document.getElementById('promotion-weeks').value = template.weeks;
         document.getElementById('promotion-name').value = template.name;
         document.getElementById('promotion-desc').value = template.description || '';
+        const hoursEl = document.getElementById('promotion-hours');
+        if (hoursEl && (template.totalHours || template.hours)) {
+            hoursEl.value = template.totalHours || template.hours || '';
+        }
     }
 }
 
@@ -239,6 +243,7 @@ function setupPromotionForm() {
         const name = document.getElementById('promotion-name').value;
         const description = document.getElementById('promotion-desc').value;
         const weeks = parseInt(document.getElementById('promotion-weeks').value);
+        const totalHours = parseInt(document.getElementById('promotion-hours')?.value) || undefined;
         const startDate = document.getElementById('promotion-start').value;
         const endDate = document.getElementById('promotion-end').value;
         // Only pass templateId on creation (not when editing an existing promotion)
@@ -259,7 +264,7 @@ function setupPromotionForm() {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
                 },
-                body: JSON.stringify({ name, description, weeks, startDate, endDate, templateId })
+                body: JSON.stringify({ name, description, weeks, totalHours, startDate, endDate, templateId })
             });
 
             if (response.ok) {

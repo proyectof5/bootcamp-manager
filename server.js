@@ -3306,7 +3306,7 @@ app.get('/api/promotions/:id', async (req, res) => {
 
 app.post('/api/promotions', verifyToken, async (req, res) => {
   try {
-    const { name, description, startDate, endDate, weeks, modules, templateId } = req.body;
+    const { name, description, startDate, endDate, weeks, modules, templateId, totalHours } = req.body;
     if (!name || !weeks) return res.status(400).json({ error: 'Name and weeks are required' });
 
     // Build modules list: from body or from template
@@ -3418,6 +3418,16 @@ app.post('/api/promotions', verifyToken, async (req, res) => {
         await ExtendedInfo.create({ promotionId: promotion.id, ..._fields });
       }
     })();
+    } else if (totalHours) {
+      // No template but totalHours provided — create/update ExtendedInfo with just that field
+      let _ei = await ExtendedInfo.findOne({ where: { promotionId: promotion.id } });
+      if (_ei) {
+        _ei.totalHours = String(totalHours);
+        _ei.changed('totalHours', true);
+        await _ei.save();
+      } else {
+        await ExtendedInfo.create({ promotionId: promotion.id, totalHours: String(totalHours) });
+      }
     }
 
     res.status(201).json(promotion);
@@ -3437,6 +3447,19 @@ app.put('/api/promotions/:id', verifyToken, async (req, res) => {
       if (req.body.hasOwnProperty(key)) promotion[key] = req.body[key];
     }
     await sqlSave(promotion);
+
+    // If totalHours is provided, persist it in ExtendedInfo
+    if (req.body.hasOwnProperty('totalHours')) {
+      let _ei = await ExtendedInfo.findOne({ where: { promotionId: req.params.id } });
+      if (_ei) {
+        _ei.totalHours = String(req.body.totalHours || '');
+        _ei.changed('totalHours', true);
+        await _ei.save();
+      } else {
+        await ExtendedInfo.create({ promotionId: req.params.id, totalHours: String(req.body.totalHours || '') });
+      }
+    }
+
     res.json(promotion);
   } catch (error) {
     res.status(500).json({ error: error.message });

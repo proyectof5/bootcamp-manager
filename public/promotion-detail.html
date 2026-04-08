@@ -917,8 +917,8 @@
                                 <i class="bi bi-eye me-2"></i>Preview Roadmap
                             </button>
                             <button id="syllabus-pdf-btn" class="btn btn-outline-secondary"
-                                onclick="downloadPromotionSyllabus()" title="Descargar Syllabus PDF">
-                                <i class="bi bi-file-earmark-pdf me-2"></i>Syllabus PDF
+                                onclick="downloadPromotionSyllabus()" title="Descargar Syllabus (PDF o Word)">
+                                <i class="bi bi-file-earmark-text me-2"></i>Syllabus
                             </button>
                             <button id="save-program-details-btn" class="btn btn-primary" onclick="saveExtendedInfo()"
                                 title="Save all changes to Program Details">
@@ -1543,6 +1543,15 @@
                                 <label for="edit-promotion-weeks" class="form-label fw-semibold">Número de semanas <span class="text-danger">*</span></label>
                                 <input type="number" class="form-control" id="edit-promotion-weeks" min="1" required />
                             </div>
+                            <div class="col-md-4">
+                                <label for="edit-promotion-hours" class="form-label fw-semibold">Horas totales</label>
+                                <input type="number" class="form-control" id="edit-promotion-hours" min="1" placeholder="ej. 900" />
+                            </div>
+                            <div class="col-md-4">
+                                <!-- spacer -->
+                            </div>
+                        </div>
+                        <div class="row g-3 mt-1">
                             <div class="col-md-4">
                                 <label for="edit-promotion-start" class="form-label fw-semibold">Fecha de inicio</label>
                                 <input type="date" class="form-control" id="edit-promotion-start" />
