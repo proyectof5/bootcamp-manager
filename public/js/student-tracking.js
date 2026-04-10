@@ -9,7 +9,7 @@
 (function (window) {
     'use strict';
 
-    const API_URL = window.APP_CONFIG?.API_URL || window.location.origin;
+    const API_URL = window.APP_CONFIG?.API_URL || window.API_URL || window.location.origin;
 
     // ─── Estado interno ───────────────────────────────────────────────────────
     let _promotionId = null;
@@ -491,15 +491,15 @@
         if (!note) { _showToast('La nota no puede estar vacía', 'warning'); return; }
         // Use 'text' + 'date' to match the Student model schema (prevents Mongoose strict mode stripping the fields)
         _teacherNotes.push({ text: note, date: new Date().toISOString() });
-        _markUnsaved('technical');
         _renderTeacherNotes();
         _cancelInlineForm('ficha-teacher-notes-list');
+        _saveTechnical(true);
     }
 
     function _removeNote(i) {
         _teacherNotes.splice(i, 1);
-        _markUnsaved('technical');
         _renderTeacherNotes();
+        _saveTechnical(true);
     }
 
     function _markUnsaved(section) {
@@ -1024,11 +1024,11 @@
             // Update local state for current student (members = teammates, not themselves)
             _teams.push({ ...teamEntry, members: members });
             window._pendingProjectCompetences = [];
-            _markUnsaved('technical');
             _renderTeams();
             _cancelInlineForm('ficha-teams-list');
             const propagated = result.results?.filter(r => r.status === 'updated' && r.studentId !== _currentStudentId).length || 0;
             _showToast(`Equipo guardado${propagated > 0 ? ` y propagado a ${propagated} compañero(s)` : ''}`, 'success');
+            _saveTechnical(true);
         } catch (e) {
             console.error('[StudentTracking] Error guardando equipo:', e);
             _showToast('Error de conexión al guardar el equipo', 'danger');
@@ -1037,8 +1037,8 @@
 
     function _removeTeam(i) {
         _teams.splice(i, 1);
-        _markUnsaved('technical');
         _renderTeams();
+        _saveTechnical(true);
     }
 
     function _openTeamEdit(i) {
@@ -1244,7 +1244,7 @@
         _renderTeams();
         _cancelInlineForm('ficha-teams-list');
         // Persist immediately — same behaviour as the "Guardar Seguimiento Técnico" button
-        await _saveTechnical();
+        await _saveTechnical(true);
     }
 
     // ─── Renderizado: Competencias ────────────────────────────────────────────
@@ -1455,15 +1455,15 @@
         const toolsUsed = toolsRaw.split(',').map(t => t.trim()).filter(Boolean);
         if (!name) { _showToast('El nombre de la competencia es obligatorio', 'warning'); return; }
         _competences.push({ competenceId, competenceName: name, level, evaluatedDate, toolsUsed });
-        _markUnsaved('technical');
         _renderCompetences();
         _cancelInlineForm('ficha-competences-list');
+        _saveTechnical(true);
     }
 
     function _removeCompetence(i) {
         _competences.splice(i, 1);
-        _markUnsaved('technical');
         _renderCompetences();
+        _saveTechnical(true);
     }
 
     // ─── Renderizado: Módulos completados ─────────────────────────────────────
@@ -1747,15 +1747,15 @@
         const notes = document.getElementById('mod-notes')?.value?.trim() || '';
         if (!moduleName || moduleName === 'Seleccionar módulo...') { _showToast('Selecciona un módulo', 'warning'); return; }
         _completedModules.push({ moduleId, moduleName, finalGrade, completionDate, notes });
-        _markUnsaved('technical');
         _renderModules();
         _cancelInlineForm('ficha-modules-list');
+        _saveTechnical(true);
     }
 
     function _removeModule(i) {
         _completedModules.splice(i, 1);
-        _markUnsaved('technical');
         _renderModules();
+        _saveTechnical(true);
     }
 
     /**
@@ -1781,8 +1781,8 @@
             m.completionDate = _todayISO();
         }
 
-        _markUnsaved('technical');
         _renderModules();
+        _saveTechnical(true);
     }
 
     // ─── Renderizado: Píldoras completadas (automático desde BD) ─────────────
@@ -2115,7 +2115,7 @@
         }
     }
 
-    async function _saveTechnical() {
+    async function _saveTechnical(silent = false) {
         const token = localStorage.getItem('token');
 
         // Compute completedPildoras from live ExtendedInfo data (status === 'Presentada' + student is in the list)
@@ -2150,7 +2150,7 @@
             });
             if (!res.ok) throw new Error((await res.json()).error || 'Error al guardar');
             _markSaved();
-            _showToast('Seguimiento técnico guardado ✓');
+            if (!silent) _showToast('Seguimiento técnico guardado ✓');
         } catch (e) {
             console.error('[StudentTracking] saveTechnical error:', e);
             _showToast(e.message || 'Error al guardar seguimiento técnico', 'danger');

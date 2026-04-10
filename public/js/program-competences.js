@@ -9,7 +9,7 @@
 (function (window) {
     'use strict';
 
-    const API_URL = window.APP_CONFIG?.API_URL || window.location.origin;
+    const API_URL = window.APP_CONFIG?.API_URL || window.API_URL || window.location.origin;
 
     // ─── Catálogo cargado desde la BD (reemplaza el hardcoded) ────────────────
     let COMPETENCES_CATALOG = [];

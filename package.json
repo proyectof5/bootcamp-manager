@@ -26,6 +26,7 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node server.js",
+    "frontend": "npx serve public -p 5000 --no-clipboard --config serve.json",
     "docker:up": "docker compose up -d",
     "docker:down": "docker compose down",
     "docker:logs": "docker compose logs -f app",

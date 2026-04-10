@@ -1,4 +1,4 @@
-const API_URL = window.APP_CONFIG?.API_URL || window.location.origin;
+const API_URL = window.APP_CONFIG?.API_URL || window.API_URL || window.location.origin;
 
 /** Capitaliza la primera letra de cada palabra y deja el resto en minúsculas */
 function toTitleCase(str) {
@@ -7568,9 +7568,19 @@ function updateAttendanceStats() {
     document.getElementById('stat-attendance-avg').textContent = `${avg}%`;
 }
 
+// ── Per-cell debounce map: cellKey -> { timer, pendingStatus } ───────────────
+// This allows rapid clicks on the same cell to accumulate (cycling the status
+// optimistically) while firing only ONE network request per cell — the very last
+// desired state — after a short idle period.
+// Clicks on DIFFERENT cells are always independent and never block each other.
+const _attendancePendingMap = new Map(); // key: "studentId|date"
+
 function cycleAttendanceStatus(cell) {
     const studentId = cell.dataset.studentId;
     const date = cell.dataset.date;
+    const cellKey = `${studentId}|${date}`;
+
+    // Determine the current "displayed" status (may differ from saved if user clicked rapidly)
     const currentStatus = cell.dataset.status;
 
     // Cycle: "" -> "Presente" -> "Ausente" -> "Con retraso" -> "Justificado" -> "Sale antes" -> ""
@@ -7582,10 +7592,52 @@ function cycleAttendanceStatus(cell) {
     else if (currentStatus === "Justificado") nextStatus = "Sale antes";
     else if (currentStatus === "Sale antes") nextStatus = "";
 
-    updateAttendance(studentId, date, nextStatus, null, cell);
+    // Update dataset immediately so the next rapid click cycles from the right state
+    cell.dataset.status = nextStatus;
+
+    // Apply visual feedback right away (no waiting for the server)
+    _applyAttendanceCellStyle(cell, nextStatus, cell.classList.contains('attendance-has-note'));
+
+    // Cancel any pending debounced save for this cell and schedule a fresh one
+    const existing = _attendancePendingMap.get(cellKey);
+    if (existing?.timer) clearTimeout(existing.timer);
+
+    const timer = setTimeout(() => {
+        _attendancePendingMap.delete(cellKey);
+        // Show subtle saving indicator
+        cell.style.opacity = '0.6';
+        _flushAttendanceSave(studentId, date, nextStatus, null, cell);
+    }, 300); // 300 ms debounce — comfortable for rapid multi-cell clicking
+
+    _attendancePendingMap.set(cellKey, { timer, pendingStatus: nextStatus });
 }
 
-async function updateAttendance(studentId, date, status, note, cell) {
+// Applies visual style to a cell without touching the DOM outside it
+function _applyAttendanceCellStyle(cell, status, hasNote) {
+    cell.className = 'attendance-cell';
+    if (hasNote) cell.classList.add('attendance-has-note');
+    if (status === 'Presente') {
+        cell.classList.add('attendance-present');
+        cell.innerHTML = '<i class="bi bi-check-lg"></i>';
+    } else if (status === 'Ausente') {
+        cell.classList.add('attendance-absent');
+        cell.innerHTML = '<i class="bi bi-x-lg"></i>';
+    } else if (status === 'Con retraso') {
+        cell.classList.add('attendance-late');
+        cell.innerHTML = '<i class="bi bi-clock"></i>';
+    } else if (status === 'Justificado') {
+        cell.classList.add('attendance-justified');
+        cell.innerHTML = '<i class="bi bi-info-circle"></i>';
+    } else if (status === 'Sale antes') {
+        cell.classList.add('attendance-early-leave');
+        cell.innerHTML = '<i class="bi bi-box-arrow-left"></i>';
+    } else {
+        cell.innerHTML = '';
+    }
+}
+
+// Sends the actual network request for a single cell save (called after debounce)
+async function _flushAttendanceSave(studentId, date, status, note, cell) {
     try {
         const token = localStorage.getItem('token');
         const body = { studentId, date, status };
@@ -7600,51 +7652,97 @@ async function updateAttendance(studentId, date, status, note, cell) {
             body: JSON.stringify(body)
         });
 
-        if (response.ok) {
-            const updatedRecord = await response.json();
-
-            // Update local attendanceData array
-            const index = attendanceData.findIndex(a => a.studentId === studentId && a.date === date);
-            if (index > -1) {
-                if (status === "" && (!updatedRecord.note)) {
-                    attendanceData.splice(index, 1);
-                } else {
-                    attendanceData[index] = updatedRecord;
-                }
-            } else if (status !== "" || updatedRecord.note) {
-                attendanceData.push(updatedRecord);
-            }
-
-            // If we have the cell element, update it directly
-            if (cell) {
-                cell.dataset.status = status;
-                cell.className = 'attendance-cell';
-                if (updatedRecord.note) cell.classList.add('attendance-has-note');
-
-                if (status === 'Presente') {
-                    cell.classList.add('attendance-present');
-                    cell.innerHTML = '<i class="bi bi-check-lg"></i>';
-                } else if (status === 'Ausente') {
-                    cell.classList.add('attendance-absent');
-                    cell.innerHTML = '<i class="bi bi-x-lg"></i>';
-                } else if (status === 'Con retraso') {
-                    cell.classList.add('attendance-late');
-                    cell.innerHTML = '<i class="bi bi-clock"></i>';
-                } else if (status === 'Justificado') {
-                    cell.classList.add('attendance-justified');
-                    cell.innerHTML = '<i class="bi bi-info-circle"></i>';
-                } else if (status === 'Sale antes') {
-                    cell.classList.add('attendance-early-leave');
-                    cell.innerHTML = '<i class="bi bi-box-arrow-left"></i>';
-                } else {
-                    cell.innerHTML = '';
-                }
-            } else {
-                // If no cell provided, just re-render (e.g. from modal)
-                renderAttendanceTable();
-            }
-            updateAttendanceStats();
+        if (!response.ok) {
+            const errBody = await response.text();
+            console.error('[Attendance] Server error:', response.status, errBody);
+            if (cell) cell.style.opacity = '';
+            return;
         }
+
+        const updatedRecord = await response.json();
+
+        // Update local attendanceData — use the COMMITTED status from the server response
+        // (matches what we sent, but trust the server as source of truth)
+        const savedStatus = updatedRecord.status ?? status;
+        // Compare as strings to guard against MySQL returning numeric IDs
+        const index = attendanceData.findIndex(a =>
+            String(a.studentId) === String(studentId) && a.date === date
+        );
+        if (index > -1) {
+            if (savedStatus === "" && !updatedRecord.note) {
+                attendanceData.splice(index, 1);
+            } else {
+                attendanceData[index] = updatedRecord;
+            }
+        } else if (savedStatus !== "" || updatedRecord.note) {
+            attendanceData.push(updatedRecord);
+        }
+
+        // Restore opacity and sync the cell with the confirmed server state
+        if (cell) {
+            cell.style.opacity = '';
+            // Only re-apply style if the cell's displayed status matches what we saved
+            // (if the user clicked again while the request was in flight, dataset.status
+            //  will already reflect the newer pending state — don't clobber it)
+            if (cell.dataset.status === status) {
+                _applyAttendanceCellStyle(cell, savedStatus, !!updatedRecord.note);
+                cell.dataset.status = savedStatus;
+            }
+        } else {
+            renderAttendanceTable();
+        }
+
+        updateAttendanceStats();
+    } catch (error) {
+        console.error('Error updating attendance:', error);
+        if (cell) cell.style.opacity = '';
+    }
+}
+
+async function updateAttendance(studentId, date, status, note, cell) {
+    // Legacy entry-point used by the modal save path — goes straight through, no debounce needed
+    try {
+        const token = localStorage.getItem('token');
+        const body = { studentId, date, status };
+        if (note !== null && note !== undefined) body.note = note;
+
+        const response = await fetch(`${API_URL}/api/promotions/${promotionId}/attendance`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(body)
+        });
+
+        if (!response.ok) {
+            const errBody = await response.text();
+            console.error('[Attendance] Server error:', response.status, errBody);
+            if (cell) cell.style.opacity = '';
+            return;
+        }
+
+        const updatedRecord = await response.json();
+
+        const index = attendanceData.findIndex(a => String(a.studentId) === String(studentId) && a.date === date);
+        if (index > -1) {
+            if (status === "" && !updatedRecord.note) {
+                attendanceData.splice(index, 1);
+            } else {
+                attendanceData[index] = updatedRecord;
+            }
+        } else if (status !== "" || updatedRecord.note) {
+            attendanceData.push(updatedRecord);
+        }
+
+        if (cell) {
+            cell.style.opacity = '';
+            _applyAttendanceCellStyle(cell, status, !!updatedRecord.note);
+            cell.dataset.status = status;
+        } else {
+            renderAttendanceTable();
+        }
+        updateAttendanceStats();
     } catch (error) {
         console.error('Error updating attendance:', error);
     }
@@ -8421,7 +8519,8 @@ async function loadEvaluation() {
         window._evalState.catalog = catalog;  // full catalog for competence picker
         window._evalState.allStudents = studentsData;
         window._evalState.students = studentsData.filter(s => !s.isWithdrawn);
-        window._evalState.savedEvaluations = ext.projectEvaluations || [];
+        const rawEvals = ext.projectEvaluations;
+        window._evalState.savedEvaluations = Array.isArray(rawEvals) ? rawEvals : [];
         //console.log('[DEBUG] Loaded evaluations:', window._evalState.savedEvaluations);
         window._evalState.projectCompetences = ext.projectCompetences || []; // per-project competence definitions
         window._evalState.virtualClassroom = ext.virtualClassroom || null;

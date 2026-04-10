@@ -1,4 +1,4 @@
-const API_URL = window.APP_CONFIG?.API_URL || window.location.origin;
+const API_URL = window.APP_CONFIG?.API_URL || window.API_URL || window.location.origin;
 
 document.addEventListener('DOMContentLoaded', () => {
     checkAuth();

@@ -22,6 +22,8 @@ const BootcampTemplate = sequelize.define('BootcampTemplate', {
     id:              { type: DataTypes.STRING,  primaryKey: true },
     name:            { type: DataTypes.STRING,  allowNull: false },
     description:     { type: DataTypes.TEXT,    defaultValue: '' },
+    weeks:           { type: DataTypes.INTEGER, defaultValue: null, allowNull: true },
+    hours:           { type: DataTypes.INTEGER, defaultValue: null, allowNull: true },
     type:            { type: DataTypes.STRING,  defaultValue: 'bootcamp' },
     language:        { type: DataTypes.STRING,  defaultValue: 'es' },
     modules:         { type: DataTypes.TEXT,    defaultValue: '[]',  get() { return parseJson(this.getDataValue('modules'), []); },         set(v) { this.setDataValue('modules', typeof v === 'string' ? v : JSON.stringify(v)); } },

@@ -9,7 +9,7 @@
 (function (window) {
     'use strict';
 
-    const API_URL = window.APP_CONFIG?.API_URL || window.location.origin;
+    const API_URL = window.APP_CONFIG?.API_URL || window.API_URL || window.location.origin;
 
     // ─── Brand colours (Factoría F5 palette) ────────────────────────────────
     const PRIMARY   = '#FF6B35';   // orange

@@ -1,4 +1,4 @@
-const API_URL = window.APP_CONFIG?.API_URL || window.location.origin;
+const API_URL = window.APP_CONFIG?.API_URL || window.API_URL || window.location.origin;
 
 let promotionModal;
 let currentPromotionId = null;
@@ -198,7 +198,9 @@ function populateTemplateSelect(templates) {
     templates.filter(t => !t.isCustom).forEach(template => {
         const option = document.createElement('option');
         option.value = template.id;
-        option.textContent = `${template.name} (${template.weeks} weeks, ${template.hours || template.weeks * 35} hours)`;
+        const wLabel = template.weeks ? `${template.weeks}w` : '?w';
+        const hLabel = template.hours ? `${template.hours}h` : (template.weeks ? `${template.weeks * 35}h` : '?h');
+        option.textContent = `${template.name} (${wLabel}, ${hLabel})`;
         select.appendChild(option);
     });
 
@@ -210,7 +212,9 @@ function populateTemplateSelect(templates) {
         templates.filter(t => t.isCustom).forEach(template => {
             const option = document.createElement('option');
             option.value = template.id;
-            option.textContent = `${template.name} (${template.weeks} weeks, ${template.hours || template.weeks * 35} hours)`;
+            const wLabel = template.weeks ? `${template.weeks}w` : '?w';
+            const hLabel = template.hours ? `${template.hours}h` : (template.weeks ? `${template.weeks * 35}h` : '?h');
+            option.textContent = `${template.name} (${wLabel}, ${hLabel})`;
             divider.appendChild(option);
         });
 
@@ -225,12 +229,13 @@ window.applyTemplate = function () {
 
     const template = bootcampTemplates[templateId];
     if (template) {
-        document.getElementById('promotion-weeks').value = template.weeks;
+        if (template.weeks) document.getElementById('promotion-weeks').value = template.weeks;
         document.getElementById('promotion-name').value = template.name;
         document.getElementById('promotion-desc').value = template.description || '';
         const hoursEl = document.getElementById('promotion-hours');
-        if (hoursEl && (template.totalHours || template.hours)) {
-            hoursEl.value = template.totalHours || template.hours || '';
+        if (hoursEl) {
+            const hoursVal = template.hours || template.totalHours || '';
+            if (hoursVal) hoursEl.value = hoursVal;
         }
     }
 }
@@ -240,12 +245,16 @@ function setupPromotionForm() {
     document.getElementById('promotion-form').addEventListener('submit', async (e) => {
         e.preventDefault();
 
-        const name = document.getElementById('promotion-name').value;
+        const name = document.getElementById('promotion-name').value.trim();
         const description = document.getElementById('promotion-desc').value;
-        const weeks = parseInt(document.getElementById('promotion-weeks').value);
+        const weeksRaw = parseInt(document.getElementById('promotion-weeks').value);
+        const weeks = isNaN(weeksRaw) ? undefined : weeksRaw;
         const totalHours = parseInt(document.getElementById('promotion-hours')?.value) || undefined;
         const startDate = document.getElementById('promotion-start').value;
         const endDate = document.getElementById('promotion-end').value;
+
+        if (!name) { alert('El nombre de la promoción es obligatorio.'); return; }
+        if (!weeks) { alert('El número de semanas es obligatorio. Si usaste una plantilla sin semanas definidas, introdúcelo manualmente.'); return; }
         // Only pass templateId on creation (not when editing an existing promotion)
         const templateId = !currentPromotionId
             ? (document.getElementById('promotion-template').value || null)
@@ -280,10 +289,12 @@ function setupPromotionForm() {
                     loadPromotions();
                 }
             } else {
-                alert('Error saving promotion');
+                const errData = await response.json().catch(() => ({}));
+                alert(errData.error || 'Error al guardar la promoción');
             }
         } catch (error) {
             console.error('Error saving promotion:', error);
+            alert('Error de conexión. Por favor, inténtalo de nuevo.');
         }
     });
 }

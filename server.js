@@ -7,7 +7,7 @@ import { readFileSync } from 'fs';
 import { v4 as uuidv4 } from 'uuid';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
-import { Op } from 'sequelize';
+import { Op, Transaction } from 'sequelize';
 import multer from 'multer';
 import xlsx from 'xlsx';
 import 'dotenv/config';
@@ -122,23 +122,35 @@ const upload = multer({
 });
 
 // CORS configuration
+// In production, set FRONTEND_URL env var to your GitHub Pages / custom domain URL.
+// Multiple origins can be separated by commas: https://foo.github.io,https://myapp.com
+const FRONTEND_URL = process.env.FRONTEND_URL || '';
+const extraOrigins = FRONTEND_URL
+  ? FRONTEND_URL.split(',').map(u => u.trim()).filter(Boolean)
+  : [];
+
 const allowedOrigins = [
+  // Local development — backend port (monorepo mode)
   'http://localhost:3000',
   'http://127.0.0.1:3000',
-  'http://localhost:3000',
-  'http://127.0.0.1:3000',
+  // Local development — frontend served separately (e.g. npx serve / VS Code Live Server)
+  'http://localhost:5000',
+  'http://127.0.0.1:5000',
   'http://localhost:5500',
-  'http://localhost:5500',
+  'http://127.0.0.1:5500',
+  // Known production origins (keep as fallback even without the env var)
   'https://alexandrazambrano.github.io',
-  'https://roadmap-manager-latest.onrender.com'
+  'https://proyectof5.github.io',
+  'https://roadmap-manager-latest.onrender.com',
+  ...extraOrigins,
 ];
 
 app.use(cors({
   origin: function (origin, callback) {
-    // allow requests with no origin (like mobile apps or curl requests)
+    // allow requests with no origin (like mobile apps, curl or server-to-server)
     if (!origin) return callback(null, true);
     if (allowedOrigins.indexOf(origin) === -1) {
-      var msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+      const msg = `CORS: origin "${origin}" is not allowed. Add it to FRONTEND_URL in .env or to allowedOrigins in server.js`;
       return callback(new Error(msg), false);
     }
     return callback(null, true);
@@ -1201,7 +1213,7 @@ app.get('/api/bootcamp-templates', verifyToken, async (req, res) => {
 // Create custom template
 app.post('/api/bootcamp-templates', verifyToken, async (req, res) => {
   try {
-    const { name, description, type, language, modules, schedule, resources, employability, competences, modulesPildoras } = req.body;
+    const { name, description, weeks, hours, type, language, modules, schedule, resources, employability, competences, modulesPildoras } = req.body;
 
     if (!name) {
       return res.status(400).json({ error: 'Name is required' });
@@ -1211,6 +1223,8 @@ app.post('/api/bootcamp-templates', verifyToken, async (req, res) => {
       id:              `custom-${uuidv4()}`,
       name,
       description:     description || '',
+      weeks:           weeks ? parseInt(weeks, 10) : null,
+      hours:           hours ? parseInt(hours, 10) : null,
       type:            type || 'bootcamp',
       language:        language || 'es',
       modules:         modules || [],
@@ -1286,11 +1300,13 @@ app.put('/api/bootcamp-templates/:templateId', verifyToken, async (req, res) => 
       return res.status(403).json({ error: 'Unauthorized' });
     }
 
-    const { name, description, type, language, modules, resources, employability,
+    const { name, description, weeks, hours, type, language, modules, resources, employability,
             competences, schedule, modulesPildoras } = req.body;
 
     if (name !== undefined) template.name = name;
     if (description !== undefined) template.description = description;
+    if (weeks !== undefined) template.weeks = weeks ? parseInt(weeks, 10) : null;
+    if (hours !== undefined) template.hours = hours ? parseInt(hours, 10) : null;
     if (type !== undefined) template.type = type;
     if (language !== undefined) template.language = language;
     if (modules !== undefined) template.modules = modules;
@@ -1621,6 +1637,7 @@ app.get('/api/promotions/:promotionId/attendance', verifyToken, async (req, res)
       }
     });
 
+    log.debug(`[Attendance GET] promotionId=${req.params.promotionId} month=${month} rows=${attendance.length}`);
     res.json(attendance);
   } catch (error) {
     res.status(500).json({ error: error.message });
@@ -1635,23 +1652,33 @@ app.put('/api/promotions/:promotionId/attendance', verifyToken, async (req, res)
 
     const promotion = await Promotion.findOne({ where: { id: req.params.promotionId } });
     if (!promotion) return res.status(404).json({ error: 'Promotion not found' });
-    if (!canEditPromotion(promotion, req.user.id)) return res.status(403).json({ error: 'Unauthorized' });
-
-
-    const updateData = { status };
-    if (note !== undefined && note !== null) updateData.note = note;
-
-    let attendance = await Attendance.findOne({ where: { promotionId: req.params.promotionId, studentId, date } });
-    if (attendance) {
-      Object.assign(attendance, updateData);
-      await sqlSave(attendance);
-    } else {
-      attendance = await Attendance.create({ promotionId: req.params.promotionId, studentId, date, ...updateData });
+    if (!canEditPromotion(promotion, req.user.id)) {
+      log.warn(`[Attendance PUT] Unauthorized: user=${req.user.id} teacherId=${promotion.teacherId} collaborators=${JSON.stringify(promotion.collaborators)}`);
+      return res.status(403).json({ error: 'Unauthorized' });
     }
 
-    res.json(attendance);
+    const where = { promotionId: req.params.promotionId, studentId, date };
+    const noteVal = (note !== undefined && note !== null) ? note : '';
+
+    // Use a serializable transaction so that concurrent saves for the same
+    // (promotionId, studentId, date) are fully isolated — no race, no duplicate PK.
+    const record = await db.transaction({ isolationLevel: Transaction.ISOLATION_LEVELS.SERIALIZABLE }, async (t) => {
+      let row = await Attendance.findOne({ where, transaction: t });
+      if (row) {
+        row.status = status ?? '';
+        row.note = noteVal;
+        await row.save({ transaction: t });
+      } else {
+        row = await Attendance.create({ ...where, status: status ?? '', note: noteVal }, { transaction: t });
+      }
+      return row;
+    });
+
+    log.debug(`[Attendance PUT] Saved: student=${studentId} date=${date} status=${status}`);
+    res.json(record);
   } catch (error) {
-    res.status(500).json({ error: error.message });
+    console.error('[Attendance PUT] Error:', error.name, error.message, error.errors || '');
+    res.status(500).json({ error: error.message, details: error.errors?.map(e => e.message) });
   }
 });
 
@@ -2617,6 +2644,7 @@ app.post('/api/promotions/:promotionId/modules/:moduleId/pildoras/upload-excel',
     let extendedInfo = await ExtendedInfo.findOne({ where: { promotionId: req.params.promotionId } });
     if (!extendedInfo) {
       extendedInfo = await ExtendedInfo.create({
+        id: uuidv4(),
         promotionId: req.params.promotionId,
         schedule: {},
         team: [],
@@ -2776,6 +2804,7 @@ app.post('/api/promotions/:promotionId/pildoras/upload-excel', verifyToken, uplo
     let extendedInfo = await ExtendedInfo.findOne({ where: { promotionId: req.params.promotionId } });
     if (!extendedInfo) {
       extendedInfo = await ExtendedInfo.create({
+        id: uuidv4(),
         promotionId: req.params.promotionId,
         schedule: {},
         team: [],
@@ -2813,6 +2842,7 @@ app.get('/api/promotions/:promotionId/modules-pildoras', verifyToken, async (req
     let extendedInfo = await ExtendedInfo.findOne({ where: { promotionId: req.params.promotionId } });
     if (!extendedInfo) {
       extendedInfo = await ExtendedInfo.create({
+        id: uuidv4(),
         promotionId: req.params.promotionId,
         schedule: {},
         team: [],
@@ -2905,6 +2935,7 @@ app.put('/api/promotions/:promotionId/modules/:moduleId/pildoras', verifyToken, 
     let extendedInfo = await ExtendedInfo.findOne({ where: { promotionId: req.params.promotionId } });
     if (!extendedInfo) {
       extendedInfo = await ExtendedInfo.create({
+        id: uuidv4(),
         promotionId: req.params.promotionId,
         schedule: {},
         team: [],
@@ -3415,7 +3446,7 @@ app.post('/api/promotions', verifyToken, async (req, res) => {
         for (const k of Object.keys(_fields)) _ei.changed(k, true);
         await _ei.save();
       } else {
-        await ExtendedInfo.create({ promotionId: promotion.id, ..._fields });
+        await ExtendedInfo.create({ id: uuidv4(), promotionId: promotion.id, ..._fields });
       }
     })();
     } else if (totalHours) {
@@ -3426,7 +3457,7 @@ app.post('/api/promotions', verifyToken, async (req, res) => {
         _ei.changed('totalHours', true);
         await _ei.save();
       } else {
-        await ExtendedInfo.create({ promotionId: promotion.id, totalHours: String(totalHours) });
+        await ExtendedInfo.create({ id: uuidv4(), promotionId: promotion.id, totalHours: String(totalHours) });
       }
     }
 
@@ -3456,7 +3487,7 @@ app.put('/api/promotions/:id', verifyToken, async (req, res) => {
         _ei.changed('totalHours', true);
         await _ei.save();
       } else {
-        await ExtendedInfo.create({ promotionId: req.params.id, totalHours: String(req.body.totalHours || '') });
+        await ExtendedInfo.create({ id: uuidv4(), promotionId: req.params.id, totalHours: String(req.body.totalHours || '') });
       }
     }
 
@@ -3711,7 +3742,7 @@ app.post('/api/promotions/:promotionId/extended-info', verifyToken, async (req, 
         for (const k of Object.keys($setFields)) newInfo.changed(k, true);
         await newInfo.save();
       } else {
-        newInfo = await ExtendedInfo.create({ promotionId: req.params.promotionId, ...$setFields });
+        newInfo = await ExtendedInfo.create({ id: uuidv4(), promotionId: req.params.promotionId, ...$setFields });
       }
       return newInfo;
     })(); const newInfo = await ExtendedInfo.findOne({ where: { promotionId: req.params.promotionId } });
@@ -3899,7 +3930,7 @@ app.post('/api/promotions/:promotionId/asana-content', verifyToken, async (req, 
     (async () => {
       let _ei = await ExtendedInfo.findOne({ where: { promotionId: req.params.promotionId } });
       if (_ei) { _ei.asanaContentUrl = asanaContentUrl || ''; _ei.changed('asanaContentUrl', true); await _ei.save(); }
-      else { _ei = await ExtendedInfo.create({ promotionId: req.params.promotionId, asanaContentUrl: asanaContentUrl || '' }); }
+      else { _ei = await ExtendedInfo.create({ id: uuidv4(), promotionId: req.params.promotionId, asanaContentUrl: asanaContentUrl || '' }); }
       return _ei;
     })(); const updatedInfo = await ExtendedInfo.findOne({ where: { promotionId: req.params.promotionId } });
     res.json({ asanaContentUrl: updatedInfo.asanaContentUrl });
@@ -3931,7 +3962,7 @@ app.put('/api/promotions/:promotionId/shared-notes', verifyToken, async (req, re
     (async () => {
       let _ei = await ExtendedInfo.findOne({ where: { promotionId: req.params.promotionId } });
       if (_ei) { _ei.sharedNotes = notes; _ei.changed('sharedNotes', true); await _ei.save(); }
-      else { _ei = await ExtendedInfo.create({ promotionId: req.params.promotionId, sharedNotes: notes }); }
+      else { _ei = await ExtendedInfo.create({ id: uuidv4(), promotionId: req.params.promotionId, sharedNotes: notes }); }
       return _ei;
     })(); const updated = await ExtendedInfo.findOne({ where: { promotionId: req.params.promotionId } });
     res.json({ sharedNotes: updated.sharedNotes || [] });

@@ -16,6 +16,18 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # ── Frontend → GitHub Pages ──────────────────────────────────────────────────
+  # The frontend is the static files in /public.
+  # config.js contains the placeholder __BACKEND_URL_PLACEHOLDER__ which is
+  # replaced here with the real backend URL (stored as a GitHub secret).
+  #
+  # Required secrets:
+  #   RENDER_BACKEND_URL  → e.g. https://roadmap-manager-latest.onrender.com
+  #
+  # Local development:
+  #   Serve /public with any static server on port 5000:
+  #     npx serve public -p 5000
+  #   config.js will auto-detect localhost and point to http://localhost:3000
   deploy-frontend:
     name: Deploy Frontend to GitHub Pages
     environment:
@@ -26,10 +38,13 @@ jobs:
       - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Inject Backend URL
+      - name: Inject Backend URL into config.js
         run: |
           if [ -n "${{ secrets.RENDER_BACKEND_URL }}" ]; then
+            echo "Injecting RENDER_BACKEND_URL: ${{ secrets.RENDER_BACKEND_URL }}"
             sed -i "s|__BACKEND_URL_PLACEHOLDER__|${{ secrets.RENDER_BACKEND_URL }}|g" public/js/config.js
+          else
+            echo "⚠️  RENDER_BACKEND_URL secret is not set. Frontend will use window.location.origin as API URL."
           fi
 
       - name: Setup Pages
@@ -44,6 +59,10 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@v4
 
+  # ── Backend → Docker Hub + Render ───────────────────────────────────────────
+  # Required secrets:
+  #   DOCKERHUB_USERNAME, DOCKERHUB_TOKEN, DOCKERHUB_REPO
+  #   RENDER_DEPLOY_HOOK_URL  (optional — triggers redeploy on Render)
   build-and-push-docker:
     name: Build and Push Docker Image
     runs-on: ubuntu-latest
@@ -76,6 +95,8 @@ jobs:
         run: |
           if [ -n "${{ secrets.RENDER_DEPLOY_HOOK_URL }}" ]; then
             curl -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
+            echo "✅ Render deploy triggered."
           else
-            echo "RENDER_DEPLOY_HOOK_URL secret not set. Skipping trigger."
+            echo "ℹ️  RENDER_DEPLOY_HOOK_URL secret not set. Skipping trigger."
+          fi
           fi
