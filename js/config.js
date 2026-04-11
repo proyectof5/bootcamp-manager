@@ -4,7 +4,7 @@
     // ── How API_URL is resolved ────────────────────────────────────────────────
     // 1. PRODUCTION (GitHub Pages / any external host):
     //    GitHub Actions replaces __BACKEND_URL_PLACEHOLDER__ with the secret
-    //    RENDER_BACKEND_URL before deploying. Set that secret to your backend URL,
+    //    BACKEND_URL before deploying. Set that secret to your backend URL,
     //    e.g. https://roadmap-manager-latest.onrender.com
     //
     // 2. LOCAL DEVELOPMENT:
