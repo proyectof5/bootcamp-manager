@@ -9,6 +9,33 @@
     <link rel="icon" type="image/png" href="./img/favicon_bootcamp_manager.png">
     <style>
     </style>
+    <!-- GitHub Pages SPA: restore path after 404 redirect -->
+    <script>
+        (function() {
+            var redirect = sessionStorage.getItem('spa_redirect');
+            if (redirect) {
+                sessionStorage.removeItem('spa_redirect');
+                // Map path to the correct .html file
+                var map = {
+                    '/login': 'login.html',
+                    '/dashboard': 'dashboard.html',
+                    '/admin': 'admin.html',
+                    '/auth': 'auth.html',
+                    '/promotion-detail': 'promotion-detail.html',
+                    '/public-promotion': 'public-promotion.html',
+                    '/student-dashboard': 'student-dashboard.html'
+                };
+                var base = redirect.split('?')[0].replace(/\/$/, '');
+                // Strip repo base path if present (e.g. /bootcamp-manager)
+                var segments = base.split('/');
+                var last = '/' + segments[segments.length - 1];
+                var dest = map[last];
+                if (dest) {
+                    window.location.replace(dest + (redirect.indexOf('?') >= 0 ? redirect.slice(redirect.indexOf('?')) : ''));
+                }
+            }
+        })();
+    </script>
 </head>
 
 <body>
