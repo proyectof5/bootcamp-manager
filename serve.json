@@ -1,0 +1,24 @@
+{
+  "cleanUrls": true,
+  "trailingSlash": false,
+  "directoryListing": false,
+  "rewrites": [
+    { "source": "/", "destination": "/index.html" },
+    { "source": "/login", "destination": "/login.html" },
+    { "source": "/dashboard", "destination": "/dashboard.html" },
+    { "source": "/admin", "destination": "/admin.html" },
+    { "source": "/auth", "destination": "/auth.html" },
+    { "source": "/promotion-detail", "destination": "/promotion-detail.html" },
+    { "source": "/promotion-detail.html", "destination": "/promotion-detail.html" },
+    { "source": "/public-promotion", "destination": "/public-promotion.html" },
+    { "source": "/student-dashboard", "destination": "/student-dashboard.html" }
+  ],
+  "headers": [
+    {
+      "source": "**/*.@(js|css|html)",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,61 @@
+name: Deploy Frontend to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Only one concurrent deployment at a time
+concurrency:
+  group: "pages-frontend"
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    name: Build & Deploy Frontend
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+
+    steps:
+      # ── 1. Checkout ───────────────────────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # ── 2. Inject backend URL ─────────────────────────────────────────────────
+      # Replaces __BACKEND_URL_PLACEHOLDER__ in config.js with the real backend URL.
+      # Set the secret BACKEND_URL in:
+      #   GitHub repo → Settings → Secrets and variables → Actions → New repository secret
+      # Example value: https://roadmap-manager-latest.onrender.com
+      - name: Inject Backend URL into config.js
+        run: |
+          CONFIG="js/config.js"
+          if [ -n "${{ secrets.BACKEND_URL }}" ]; then
+            echo "✅ Injecting BACKEND_URL into $CONFIG"
+            sed -i "s|__BACKEND_URL_PLACEHOLDER__|${{ secrets.BACKEND_URL }}|g" "$CONFIG"
+          else
+            echo "⚠️  Secret BACKEND_URL is not set."
+            echo "   The frontend will fall back to window.location.origin as API URL."
+          fi
+
+      # ── 3. Configure GitHub Pages ─────────────────────────────────────────────
+      - name: Setup GitHub Pages
+        uses: actions/configure-pages@v5
+
+      # ── 4. Upload the repo root as the Pages artifact ─────────────────────────
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: '.'
+
+      # ── 5. Deploy ─────────────────────────────────────────────────────────────
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

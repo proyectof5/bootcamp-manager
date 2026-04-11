@@ -1,0 +1,434 @@
+/* Override Bootstrap blue spinners → brand orange */
+.spinner-border,
+.spinner-grow {
+    color: #FF6B35 !important;
+}
+
+:root {
+    --principal-1: #FF4700;
+    --principal-2: #020100;
+    --principal-3: #FFFFFF;
+    --complementario-1: #9c9c9c;
+    --complementario-2: #FFA37F;
+    ;
+
+
+    /* colores fuera de la paleta oficial */
+    --complementario-1-light: #f9dccd;
+    --complementario-1-extra-light: #f5f2f2;
+    --green-f5: #9af6c2;
+    --purple-f5: #6f42c1;
+    --purple-light-f5: #d1c4e9;
+    --blue-light-f5: #345253;
+
+
+    --grey-f5: #897d7c;
+    --grey-light-f5: #e2d2cd;
+    --bs-nav-link-hover-color: #FFFFFF;
+
+    /*crok default colors*/
+    --green-crok: #0a8950;
+    --green-light-crok: #0a8950a6;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f5f7fa;
+    height: 100vh;
+    display: flex;
+    flex-wrap: wrap;
+}
+
+/* sidebar */
+
+.sidebar {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    background-color: var(--principal-1);
+    overflow-y: auto;
+}
+
+.sidebar-content {
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+}
+
+.nav {
+    /* ¿porqué da prioridad a el color de bootstrap? */
+    color: var(--principal-3) !important;
+    --bs-nav-link-color-hover: var(--principal-3);
+}
+
+.nav-title {
+    color: var(--principal-3);
+}
+
+.nav-link {
+    color: var(--principal-3);
+    /* font-size: large; */
+    border-radius: 5px;
+    font-size: 0.8rem;
+
+}
+
+.nav-link:hover {
+    background-color: var(--principal-3);
+    color: black
+}
+
+/* main */
+
+.section-title {
+    color: var(--principal-1);
+}
+
+.welcome-title {
+    color: var(--principal-1);
+    font-size: 0.7rem;
+    margin: 1rem 0;
+    text-align: center;
+    font-family: "Homemade Apple";
+    font-weight: 600;
+    font-style: normal
+}
+
+.logotype {
+    width: 70%;
+    align-items: center;
+    justify-content: center;
+}
+
+.section-container {
+    margin-bottom: 20px;
+}
+
+.card {
+    min-height: 100%;
+    /* Better than fixed height */
+    border-radius: 10px;
+    border: none;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    margin-bottom: 24px;
+}
+
+.card-body p {
+    white-space: pre-wrap;
+}
+
+.gantt-container {
+    overflow-x: auto;
+    width: 100%;
+}
+
+#gantt-table {
+    border-collapse: collapse;
+    width: auto;
+    min-width: 100%;
+}
+
+#gantt-table th,
+#gantt-table td {
+    border: 1px solid #dddddd;
+    text-align: center;
+    padding: 8px;
+    font-size: 0.7rem;
+    min-width: 30px;
+}
+
+#gantt-table th {
+    font-size: 0.5rem;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+#gantt-table td.block {
+    color: white;
+    font-weight: bold;
+}
+
+#gantt-table td.block.pildora {
+    background-color: var(--complementario-2)
+}
+
+.project {
+    background-color: var(--complementario-1-light);
+}
+
+.transicion {
+    background-color: var(--purple-light-f5);
+}
+
+.temas {
+    background-color: var(--complementario-2);
+}
+
+
+.certificate-course {
+    background-color: var(--blue-light-f5);
+}
+
+.badge {
+    font-weight: normal;
+    color: black;
+}
+
+#gantt-table td.block.tema {
+    background-color: var(--complementario-2);
+}
+
+#gantt-table td.tema {
+    background-color: var(--complementario-2);
+}
+
+#gantt-table td.block.transicion {
+    background-color: var(--purple-light-f5);
+}
+
+#gantt-table td.transicion {
+    background-color: var(--purple-light-f5);
+}
+
+#gantt-table td.proyecto {
+    background-color: var(--complementario-1-light);
+}
+
+#gantt-table td.block.proyecto {
+    background-color: var(--complementario-1-light);
+}
+
+#gantt-table td.empty {
+    background-color: white;
+    /* Changed from var(--principal-3) just to be safe */
+}
+
+#gantt-table .label {
+    color: rgb(0, 0, 0);
+    text-align: left;
+    position: sticky;
+    left: 0;
+    background: white;
+    /* Important for sticky */
+    z-index: 2;
+    min-width: 150px;
+}
+
+.icon {
+    margin-right: 5px;
+}
+
+#generate {
+    margin-bottom: 15px;
+    display: none;
+}
+
+.btn:hover {
+    background-color: #adcbf9;
+}
+
+.btn a {
+    color: var(--bs-primary);
+}
+
+.badge-soft-success {
+    background-color: rgba(25, 135, 84, 0.3);
+}
+
+.badge-soft-danger {
+    background-color: rgba(220, 53, 69, 0.3);
+}
+
+.accordion-item:first-of-type .accordion-button,
+.accordion-button:not(.collapsed) {
+    background-color: var(--complementario-2);
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* Responsive tweaks for smaller devices */
+@media (max-width: 768px) {
+    .sidebar {
+        position: static;
+        height: auto;
+    }
+
+    main {
+        margin-top: 1rem;
+    }
+
+    .section-container {
+        padding: 0 0.5rem;
+    }
+
+    #gantt-table th,
+    #gantt-table td {
+        font-size: 0.5rem;
+        padding: 4px;
+        min-width: 24px;
+    }
+}
+
+/* Attendance Table Styles */
+.attendance-table-wrapper {
+    max-height: 700px;
+    overflow: auto;
+}
+
+#attendance-table th,
+#attendance-table td {
+    text-align: center;
+    vertical-align: middle;
+    padding: 10px;
+    min-width: 45px;
+    font-size: 0.7rem;
+}
+
+#attendance-table td.sticky-column,
+#attendance-table th.sticky-column {
+    position: sticky;
+    left: 0;
+    text-align: left;
+    background-color: #f8f9fa;
+    z-index: 5;
+    border-right: 2px solid #dee2e6;
+}
+
+#attendance-table td.attendance-cell {
+    cursor: pointer;
+    transition: background-color 0.2s;
+}
+
+#attendance-table td.attendance-cell:hover {
+    filter: brightness(0.95);
+    background-color: #f0f0f0;
+}
+
+/* Status Colors */
+.attendance-present {
+    background-color: rgba(25, 135, 84, 0.2) !important;
+    color: #198754;
+    font-weight: bold;
+}
+
+.attendance-absent {
+    background-color: rgba(220, 53, 69, 0.2) !important;
+    color: #dc3545;
+    font-weight: bold;
+}
+
+.attendance-late {
+    background-color: rgba(255, 193, 7, 0.2) !important;
+    color: #997404;
+    font-weight: bold;
+}
+
+.attendance-dot {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+}
+
+/* Píldoras table expand/collapse for public view */
+.pildora-table-row-hidden {
+    display: none;
+}
+
+.pildora-table-expand-row {
+    margin-top: 1rem;
+    margin-bottom: 0.5rem;
+    text-align: center;
+}
+
+.pildora-table-expand-row button {
+    color: var(--principal-1);
+    font-weight: 500;
+    text-decoration: none;
+}
+
+.pildora-table-expand-row button:focus {
+    outline: none;
+    box-shadow: none;
+}
+
+/* Quick Actions / Quick Links Dashboard Style */
+#quick-links-list {
+    display: grid !important;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 12px;
+}
+
+.quick-action-card {
+    position: relative;
+    transition: all 0.3s ease;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+    border: 1px solid #e9ecef;
+    overflow: hidden;
+    height: 100%;
+}
+
+.quick-action-card:hover:not(.disabled) {
+    box-shadow: 0 4px 16px rgba(255, 71, 0, 0.15);
+    transform: translateY(-3px);
+    border-color: #ff4700;
+}
+
+.quick-action-card.disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.quick-action-link {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 16px 12px;
+    text-decoration: none;
+    color: #333;
+    gap: 8px;
+    height: 100%;
+    transition: all 0.2s ease;
+    width: 100%;
+    border: none;
+    background: none;
+}
+
+.quick-action-link:hover:not(.disabled) {
+    color: #ff4700;
+}
+
+.quick-action-icon {
+    font-size: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: transform 0.2s ease;
+    color: var(--principal-1); /* Default color if not specified */
+}
+
+.quick-action-card:hover:not(.disabled) .quick-action-icon {
+    transform: scale(1.15);
+}
+
+.quick-action-label {
+    font-size: 0.85rem;
+    font-weight: 500;
+    text-align: center;
+    line-height: 1.2;
+    color: #333;
+}
+
+.quick-action-card:hover:not(.disabled) .quick-action-label {
+    color: #ff4700;
+}
+
+@media (max-width: 576px) {
+    #quick-links-list {
+        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)) !important;
+    }
+}
