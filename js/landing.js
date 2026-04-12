@@ -44,15 +44,14 @@ function displayPromotions(promotions) {
         const card = document.createElement('div');
         card.className = 'promotion-card';
         
-        // Generate correct path for different environments
+        // Generate correct path for different environments (no .html to avoid query string loss)
         const isGitHubPages = window.location.hostname.includes('github.io');
         let promotionPath;
         if (isGitHubPages) {
-            const pathParts = window.location.pathname.split('/');
-            const repoName = pathParts[1];
-            promotionPath = `/${repoName}/public-promotion.html`;
+            const repoName = window.location.pathname.split('/')[1];
+            promotionPath = `/${repoName}/public-promotion`;
         } else {
-            promotionPath = 'public-promotion.html';
+            promotionPath = '/public-promotion';
         }
         
         card.onclick = () => window.location.href = `${promotionPath}?id=${promotion.id}`;

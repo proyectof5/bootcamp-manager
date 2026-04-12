@@ -11,6 +11,7 @@
     { "source": "/promotion-detail", "destination": "/promotion-detail.html" },
     { "source": "/promotion-detail.html", "destination": "/promotion-detail.html" },
     { "source": "/public-promotion", "destination": "/public-promotion.html" },
+    { "source": "/public-promotion.html", "destination": "/public-promotion.html" },
     { "source": "/student-dashboard", "destination": "/student-dashboard.html" }
   ],
   "headers": [

@@ -2659,20 +2659,7 @@ async function loadAccessSettingsInTeacherArea() {
 
             // Update the access link in teacher area
             if (accessLinkInput) {
-                const baseUrl = window.location.origin;
-                const isGitHubPages = window.location.hostname.includes('github.io');
-
-                let path;
-                if (isGitHubPages) {
-                    const pathParts = window.location.pathname.split('/');
-                    const repoName = pathParts[1];
-                    path = `/${repoName}/public-promotion.html`;
-                } else {
-                    path = '/public-promotion.html';
-                }
-
-                let url = `${baseUrl}${path}?id=${promotionId}`;
-                accessLinkInput.value = url;
+                accessLinkInput.value = `${window.location.origin}${getPublicPromotionPath()}?id=${promotionId}`;
             }
         }
 
@@ -6020,21 +6007,23 @@ async function deleteSection(sectionId) {
     }
 }
 
+/**
+ * Returns the base path for the public promotion page.
+ * Uses clean URLs (no .html) to avoid serve/GitHub Pages redirect stripping query strings.
+ */
+function getPublicPromotionPath() {
+    const isGitHubPages = window.location.hostname.includes('github.io');
+    if (isGitHubPages) {
+        const repoName = window.location.pathname.split('/')[1];
+        return `/${repoName}/public-promotion`;
+    }
+    return '/public-promotion';
+}
+
 async function previewPromotion() {
     // Generate the same link as Access Settings
     const baseUrl = window.location.origin;
-    const isGitHubPages = window.location.hostname.includes('github.io');
-
-    let path;
-    if (isGitHubPages) {
-        const pathParts = window.location.pathname.split('/');
-        const repoName = pathParts[1];
-        path = `/${repoName}/public-promotion.html`;
-    } else {
-        path = '/public-promotion.html';
-    }
-
-    let previewLink = `${baseUrl}${path}?id=${promotionId}&preview=1`;
+    let previewLink = `${baseUrl}${getPublicPromotionPath()}?id=${promotionId}&preview=1`;
 
     // Try to get the password to auto-verify access
     try {
@@ -6461,20 +6450,7 @@ async function loadAccessPassword() {
 
             // Update the access link
             if (accessLinkInput) {
-                const baseUrl = window.location.origin;
-                const isGitHubPages = window.location.hostname.includes('github.io');
-
-                let path;
-                if (isGitHubPages) {
-                    const pathParts = window.location.pathname.split('/');
-                    const repoName = pathParts[1];
-                    path = `/${repoName}/public-promotion.html`;
-                } else {
-                    path = '/public-promotion.html';
-                }
-
-                let url = `${baseUrl}${path}?id=${promotionId}`;
-                accessLinkInput.value = url;
+                accessLinkInput.value = `${window.location.origin}${getPublicPromotionPath()}?id=${promotionId}`;
             }
         }
     } catch (error) {
@@ -6535,20 +6511,7 @@ async function updateAccessPassword(source = 'default') {
             // Update the access link
             const accessLinkInput = document.getElementById(`${prefix}student-access-link`);
             if (accessLinkInput) {
-                const baseUrl = window.location.origin;
-                const isGitHubPages = window.location.hostname.includes('github.io');
-
-                let path;
-                if (isGitHubPages) {
-                    const pathParts = window.location.pathname.split('/');
-                    const repoName = pathParts[1];
-                    path = `/${repoName}/public-promotion.html`;
-                } else {
-                    path = '/public-promotion.html';
-                }
-
-                let url = `${baseUrl}${path}?id=${promotionId}`;
-                accessLinkInput.value = url;
+                accessLinkInput.value = `${window.location.origin}${getPublicPromotionPath()}?id=${promotionId}`;
             }
         } else {
             const data = await response.json();
