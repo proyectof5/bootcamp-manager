@@ -450,7 +450,9 @@ function generateGanttChart(promotion) {
     table.appendChild(headerRow);
 
     // Sesiones Empleabilidad — accordion header row + collapsible tbody (one row per session)
-    if (employability && employability.length > 0) {
+    // Only render if showEmployability is not explicitly set to false
+    const showEmp = window._showEmployability !== false;
+    if (showEmp && employability && employability.length > 0) {
         const empGroupId = 'employability-group';
 
         // Header row (acts as the accordion toggle)
@@ -1635,6 +1637,14 @@ function _renderPublicCompetences(filterArea) {
 function displayExtendedInfo(info) {
     // Store extended info globally for píldoras navigation
     window.publicPromotionExtendedInfo = info;
+
+    // Apply employability visibility — default true if not explicitly set
+    window._showEmployability = info.showEmployability !== false;
+
+    // Regenerate gantt to apply showEmployability change
+    if (window.publicPromotionData) {
+        generateGanttChart(window.publicPromotionData);
+    }
 
     // Clear existing extended info sections to avoid duplicates on reload
     ['#pildoras-wrapper', '#recursos-wrapper', '#horario-wrapper', '#evaluacion-wrapper', '#equipo-wrapper'].forEach(sel => {

@@ -749,17 +749,15 @@
                 <div class="kv"><strong>Fecha de generación:</strong> ${_today()}</div>
             </div>`;
 
-            // ── Notas del profesor ──
-            html += `<h3><span style="color:${PRIMARY}">✦</span> Notas del Profesor</h3>`;
+            // ── Notas del profesor ── (omitir si vacío)
             const notes = tt.teacherNotes || [];
             if (notes.length) {
+                html += `<h3><span style="color:${PRIMARY}">✦</span> Notas del Profesor</h3>`;
                 html += `<table><thead><tr><th>Fecha</th><th>Nota</th></tr></thead><tbody>`;
                 notes.forEach(n => {
                     html += `<tr><td style="white-space:nowrap;">${_fmtDate(n.createdAt || n.date)}</td><td>${_esc(n.note || n.text || '')}</td></tr>`;
                 });
                 html += `</tbody></table>`;
-            } else {
-                html += `<p class="empty-note">Sin notas registradas.</p>`;
             }
 
             // ── Proyectos realizados ──
@@ -792,6 +790,29 @@
                 });
             } else {
                 html += `<p class="empty-note">Sin proyectos registrados.</p>`;
+            }
+
+            // ── Proyectos Pendientes de Entrega ──
+            // Compara los proyectos del roadmap con los teams ya evaluados del alumno
+            const evaluatedProjectNames = new Set(
+                (tt.teams || []).map(t => (t.teamName || '').trim().toLowerCase())
+            );
+            const pendingProjects = [];
+            (promo.modules || []).forEach(mod => {
+                (mod.projects || []).forEach(proj => {
+                    const projName = typeof proj === 'string' ? proj : (proj.name || '');
+                    if (projName && !evaluatedProjectNames.has(projName.trim().toLowerCase())) {
+                        pendingProjects.push({ projectName: projName, moduleName: mod.name || '—' });
+                    }
+                });
+            });
+            if (pendingProjects.length) {
+                html += `<h3><span style="color:${PRIMARY}">✦</span> Proyectos Pendientes de Entrega</h3>`;
+                html += `<table><thead><tr><th>Proyecto</th><th>Módulo</th></tr></thead><tbody>`;
+                pendingProjects.forEach(p => {
+                    html += `<tr><td>${_esc(p.projectName)}</td><td>${_esc(p.moduleName)}</td></tr>`;
+                });
+                html += `</tbody></table>`;
             }
 
             // ── Módulos completados ──
@@ -833,8 +854,9 @@
                 });
             });
 
-            html += `<h3><span style="color:${PRIMARY}">✦</span> Píldoras Presentadas</h3>`;
+            // ── Píldoras Presentadas (omitir si vacío) ──
             if (_pilPresentadas.length) {
+                html += `<h3><span style="color:${PRIMARY}">✦</span> Píldoras Presentadas</h3>`;
                 html += `<table><thead><tr><th>Título</th><th>Módulo</th><th>Fecha</th><th>Modalidad</th></tr></thead><tbody>`;
                 _pilPresentadas.forEach(p => {
                     html += `<tr>
@@ -845,12 +867,11 @@
                     </tr>`;
                 });
                 html += `</tbody></table>`;
-            } else {
-                html += `<p class="empty-note">Sin píldoras presentadas.</p>`;
             }
 
-            html += `<h3><span style="color:${PRIMARY}">✦</span> Píldoras No Presentadas / Pendientes</h3>`;
+            // ── Píldoras No Presentadas / Pendientes (omitir si vacío) ──
             if (_pilPendientes.length) {
+                html += `<h3><span style="color:${PRIMARY}">✦</span> Píldoras No Presentadas / Pendientes</h3>`;
                 html += `<table><thead><tr><th>Título</th><th>Módulo</th><th>Fecha prevista</th><th>Estado</th></tr></thead><tbody>`;
                 _pilPendientes.forEach(p => {
                     html += `<tr>
@@ -861,8 +882,6 @@
                     </tr>`;
                 });
                 html += `</tbody></table>`;
-            } else {
-                html += `<p class="empty-note">Todas las píldoras asignadas han sido presentadas.</p>`;
             }
 
             const filename = `tecnico_${(fullName).replace(/\s+/g,'-')}.pdf`;
@@ -1687,13 +1706,18 @@ async function printActaInicio(promotionId) {
         return res.json();
     }
 
-    /** Fetch all projects (teams) that belong to a named project across multiple students */
-    function _techPageHtml(s, promo, razonInforme) {
+    /** Builds the HTML for the technical tracking PDF page.
+     * @param {object} s - Student object (must include projectsAssignments)
+     * @param {object} promo - Promotion object
+     * @param {string} razonInforme - Reason for the report
+     * @param {Array}  modulesPildoras - Extended módules+pildoras from /modules-pildoras endpoint
+     */
+    function _techPageHtml(s, promo, razonInforme, modulesPildoras = []) {
         const tt = s.technicalTracking || {};
         const fullName = `${s.name || ''} ${s.lastname || ''}`.trim();
         let html = _header('Ficha de Seguimiento Técnico', fullName, promo.name, _today(), promo);
 
-        // ── Motivo del informe (right after header) ──
+        // ── Motivo del informe ──
         html += _razonBlock(razonInforme || '');
 
         html += `<div class="section-box accent row2">
@@ -1707,16 +1731,18 @@ async function printActaInicio(promotionId) {
             </div>
         </div>`;
 
-        html += `<h3>✦ Notas del Profesor</h3>`;
+        // ── Notas del Profesor (omitir si vacío) ──
         const notes = tt.teacherNotes || [];
         if (notes.length) {
+            html += `<h3>✦ Notas del Profesor</h3>`;
             html += `<table><thead><tr><th>Fecha</th><th>Nota</th></tr></thead><tbody>`;
             notes.forEach(n => {
                 html += `<tr><td style="white-space:nowrap;">${_fmtDate(n.createdAt || n.date)}</td><td>${_esc(n.note || n.text || '')}</td></tr>`;
             });
             html += `</tbody></table>`;
-        } else { html += `<p class="empty-note">Sin notas registradas.</p>`; }
+        }
 
+        // ── Proyectos Realizados ──
         html += `<h3>✦ Proyectos Realizados</h3>`;
         const teams = tt.teams || [];
         if (teams.length) {
@@ -1746,6 +1772,30 @@ async function printActaInicio(promotionId) {
             });
         } else { html += `<p class="empty-note">Sin proyectos registrados.</p>`; }
 
+        // ── Proyectos Pendientes de Entrega (omitir si vacío) ──
+        // Compara proyectos del roadmap con los teams ya evaluados del alumno
+        const _evaluatedNames = new Set(
+            (tt.teams || []).map(t => (t.teamName || '').trim().toLowerCase())
+        );
+        const _pendingProjects = [];
+        (promo.modules || []).forEach(mod => {
+            (mod.projects || []).forEach(proj => {
+                const projName = typeof proj === 'string' ? proj : (proj.name || '');
+                if (projName && !_evaluatedNames.has(projName.trim().toLowerCase())) {
+                    _pendingProjects.push({ projectName: projName, moduleName: mod.name || '—' });
+                }
+            });
+        });
+        if (_pendingProjects.length) {
+            html += `<h3>✦ Proyectos Pendientes de Entrega</h3>`;
+            html += `<table><thead><tr><th>Proyecto</th><th>Módulo</th></tr></thead><tbody>`;
+            _pendingProjects.forEach(p => {
+                html += `<tr><td>${_esc(p.projectName)}</td><td>${_esc(p.moduleName)}</td></tr>`;
+            });
+            html += `</tbody></table>`;
+        }
+
+        // ── Módulos Completados ──
         html += `<h3>✦ Módulos Completados</h3>`;
         const mods = tt.completedModules || [];
         if (mods.length) {
@@ -1756,6 +1806,55 @@ async function printActaInicio(promotionId) {
             });
             html += `</tbody></table>`;
         } else { html += `<p class="empty-note">Sin módulos completados.</p>`; }
+
+        // ── Píldoras (calculadas desde modulesPildoras si disponible) ──
+        if (modulesPildoras.length) {
+            const _pilPresentadas = [];
+            const _pilPendientes  = [];
+            modulesPildoras.forEach(mp => {
+                (mp.pildoras || []).forEach(p => {
+                    const sIds = (p.students || []).map(s2 => String(s2.id));
+                    if (!sIds.includes(String(s.id))) return;
+                    const entry = {
+                        pildoraTitle: p.title || '—',
+                        moduleName:   mp.moduleName || '—',
+                        date:         p.date || null,
+                        mode:         p.mode || null,
+                        status:       p.status || ''
+                    };
+                    if (p.status === 'Presentada') _pilPresentadas.push(entry);
+                    else                            _pilPendientes.push(entry);
+                });
+            });
+
+            if (_pilPresentadas.length) {
+                html += `<h3>✦ Píldoras Presentadas</h3>`;
+                html += `<table><thead><tr><th>Título</th><th>Módulo</th><th>Fecha</th><th>Modalidad</th></tr></thead><tbody>`;
+                _pilPresentadas.forEach(p => {
+                    html += `<tr>
+                        <td>${_esc(p.pildoraTitle)}</td>
+                        <td>${_esc(p.moduleName)}</td>
+                        <td>${_fmtDate(p.date)}</td>
+                        <td>${_esc(p.mode || '—')}</td>
+                    </tr>`;
+                });
+                html += `</tbody></table>`;
+            }
+
+            if (_pilPendientes.length) {
+                html += `<h3>✦ Píldoras No Presentadas / Pendientes</h3>`;
+                html += `<table><thead><tr><th>Título</th><th>Módulo</th><th>Fecha prevista</th><th>Estado</th></tr></thead><tbody>`;
+                _pilPendientes.forEach(p => {
+                    html += `<tr>
+                        <td>${_esc(p.pildoraTitle)}</td>
+                        <td>${_esc(p.moduleName)}</td>
+                        <td>${_fmtDate(p.date)}</td>
+                        <td><span style="color:#dc3545; font-weight:600;">${_esc(p.status || 'Pendiente')}</span></td>
+                    </tr>`;
+                });
+                html += `</tbody></table>`;
+            }
+        }
 
         return html;
     }
@@ -1816,15 +1915,20 @@ async function printActaInicio(promotionId) {
 
         const token = localStorage.getItem('token');
         try {
-            const promoRes = await fetch(`${API_URL}/api/promotions/${promotionId}`, { headers: { 'Authorization': `Bearer ${token}` } });
+            const [promoRes, pildarasRes] = await Promise.all([
+                fetch(`${API_URL}/api/promotions/${promotionId}`, { headers: { 'Authorization': `Bearer ${token}` } }),
+                fetch(`${API_URL}/api/promotions/${promotionId}/modules-pildoras`, { headers: { 'Authorization': `Bearer ${token}` } })
+            ]);
             const promo = promoRes.ok ? await promoRes.json() : {};
+            const pildarasData = pildarasRes.ok ? await pildarasRes.json() : {};
+            const modulesPildoras = pildarasData.modulesPildoras || [];
             const students = await Promise.all(studentIds.map(id => _fetchStudent(id, promotionId, token)));
 
             if (students.length === 1) {
                 const s = students[0];
                 const fullName = `${s.name||''} ${s.lastname||''}`.trim();
                 _showSaving('Generando PDF…');
-                await _savePdf(_techPageHtml(s, promo, razonInforme), `tecnico_${fullName.replace(/\s+/g,'-')}.pdf`);
+                await _savePdf(_techPageHtml(s, promo, razonInforme, modulesPildoras), `tecnico_${fullName.replace(/\s+/g,'-')}.pdf`);
             } else {
                 // Sequential processing — one iframe at a time
                 const files = [];
@@ -1833,7 +1937,7 @@ async function printActaInicio(promotionId) {
                     const fullName = `${s.name||''} ${s.lastname||''}`.trim();
                     const fname = `tecnico_${fullName.replace(/\s+/g,'-')}.pdf`;
                     _showSaving(`Generando PDF ${i + 1} de ${students.length}: ${fullName}…`);
-                    const blob = await _getPdfBlob(_techPageHtml(s, promo, razonInforme), fname);
+                    const blob = await _getPdfBlob(_techPageHtml(s, promo, razonInforme, modulesPildoras), fname);
                     files.push({ blob, filename: fname });
                 }
                 _showSaving(`Comprimiendo ${files.length} PDFs…`);

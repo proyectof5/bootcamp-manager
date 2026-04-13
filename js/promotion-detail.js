@@ -608,6 +608,13 @@ Evaluación Global al Final del Bootcamp
                 assignmentToggle.checked = !!extendedInfoData.pildorasAssignmentOpen;
             }
 
+            // Set Empleabilidad Visibility Toggle
+            const empToggle = document.getElementById('show-employability-toggle');
+            if (empToggle) {
+                // Default true if not set yet
+                empToggle.checked = extendedInfoData.showEmployability !== false;
+            }
+
             // Init Competencias module in view-only mode (only showing those used in projects)
             if (window.ProgramCompetences) {
                 const usedCompIds = new Set();
@@ -2451,8 +2458,29 @@ async function saveActaData() {
     }
 }
 
+async function toggleShowEmployability(show) {
+    extendedInfoData.showEmployability = show;
+    const token = localStorage.getItem('token');
+    try {
+        const response = await fetch(`${API_URL}/api/promotions/${promotionId}/extended-info`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ showEmployability: show })
+        });
+        if (!response.ok) {
+            alert('Error al actualizar la visibilidad de empleabilidad');
+            document.getElementById('show-employability-toggle').checked = !show;
+            extendedInfoData.showEmployability = !show;
+        }
+    } catch (error) {
+        console.error('Error toggling employability visibility:', error);
+        alert('Error al actualizar la visibilidad de empleabilidad');
+        document.getElementById('show-employability-toggle').checked = !show;
+        extendedInfoData.showEmployability = !show;
+    }
+}
+
 async function togglePildorasAssignment(isOpen) {
-    extendedInfoData.pildorasAssignmentOpen = isOpen;
     //console.log('Toggling píldoras self-assignment:', isOpen);
 
     const token = localStorage.getItem('token');
