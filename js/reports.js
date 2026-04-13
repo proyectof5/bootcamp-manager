@@ -182,8 +182,15 @@
                     return el.getBoundingClientRect().bottom - bodyTop;
                 }).filter(v => v > 0);
 
+                // Also collect top-edges of elements that must not be split mid-card
+                // so we can push the page break to just before the card starts
+                const noBreakTopsPx = Array.from(iDoc.querySelectorAll('.section-box, .no-break')).map(el => {
+                    return el.getBoundingClientRect().top - bodyTop;
+                }).filter(v => v > 0);
+
                 // Sort unique values to ensure logical slicing
                 const uniqueBottoms = [...new Set(rowBottomsPx)].sort((a, b) => a - b);
+                const uniqueNoBreakTops = [...new Set(noBreakTopsPx)].sort((a, b) => a - b);
 
                 html2canvas(body, {
                     scale: 2,
@@ -214,16 +221,41 @@
                     // Convert element bottoms from CSS px → mm
                     const rowBottomsMm = uniqueBottoms.map(px => px * cssPxToMm);
 
+                    // Convert no-break element tops to mm (used to avoid cutting into a card)
+                    const noBreakTopsMm = uniqueNoBreakTops.map(px => px * cssPxToMm);
+
                     // ── Smart page-break: build slices that always end at an element boundary ──
                     const slices = [];
                     let yPos = 0;
                     while (yPos < canvasMmH - 0.5) {
                         let sliceH = Math.min(usableH, canvasMmH - yPos);
                         if (sliceH < canvasMmH - yPos) {
-                            // Not the last page — find the last row-bottom that fits
+                            // Not the last page — find the best cut point
                             const sliceEnd = yPos + sliceH;
-                            const fits = rowBottomsMm.filter(e => e > yPos + 5 && e <= sliceEnd - 1);
-                            if (fits.length) sliceH = fits[fits.length - 1] - yPos;
+
+                            // Check if a no-break card starts inside the slice but isn't at the very top.
+                            // If so, pull the cut back to just before that card's top (push card to next page).
+                            const cardStartInSlice = noBreakTopsMm.filter(t => t > yPos + 5 && t < sliceEnd - 2);
+                            if (cardStartInSlice.length) {
+                                // Find the last card-top that still leaves a meaningful slice
+                                // Walk backwards: pick last card top where the cut would be > yPos+10mm
+                                const preferredCut = cardStartInSlice[cardStartInSlice.length - 1];
+                                // Only use it if it gives us a reasonable slice (at least 20mm)
+                                if (preferredCut - yPos >= 20) {
+                                    sliceH = preferredCut - yPos;
+                                } else {
+                                    // Try earlier card start
+                                    const earlier = cardStartInSlice.find(t => t - yPos >= 20);
+                                    if (earlier !== undefined) sliceH = earlier - yPos;
+                                }
+                            }
+
+                            // Fallback: use row bottoms as before (for tables / non-card elements)
+                            const fits = rowBottomsMm.filter(e => e > yPos + 5 && e <= yPos + sliceH - 1);
+                            if (fits.length && Math.abs(fits[fits.length - 1] - (yPos + sliceH)) < 2) {
+                                // Row bottom aligns closely — prefer it
+                                sliceH = fits[fits.length - 1] - yPos;
+                            }
                         }
                         slices.push({ yPos, sliceH });
                         yPos += sliceH;
@@ -608,6 +640,10 @@
         <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">
           <i class="bi bi-x me-1"></i>Cancelar
         </button>
+        <button type="button" class="btn btn-sm" id="${id}-excel-btn"
+          style="background:#1D6F42;color:#fff;border:none;">
+          <i class="bi bi-file-earmark-spreadsheet me-1"></i>Descargar Excel
+        </button>
         <button type="button" class="btn btn-sm" id="${id}-download-btn" 
           style="background:#f1f3f5;color:#4A4A6A;border:1px solid #dee2e6;">
           <i class="bi bi-download me-1"></i>Descargar PDF
@@ -632,6 +668,7 @@
             const destSel   = document.getElementById(`${id}-dest-select`);
             const manualIn  = document.getElementById(`${id}-manual-email`);
             const downBtn   = document.getElementById(`${id}-download-btn`);
+            const excelBtn  = document.getElementById(`${id}-excel-btn`);
             const sendBtn   = document.getElementById(`${id}-send-btn`);
 
             sendCheck.addEventListener('change', () => {
@@ -639,6 +676,7 @@
                 emailSec.style.display = checked ? 'block' : 'none';
                 sendBtn.style.display  = checked ? 'inline-block' : 'none';
                 downBtn.style.display  = checked ? 'none' : 'inline-block';
+                excelBtn.style.display = checked ? 'none' : 'inline-block';
             });
 
             destSel.addEventListener('change', () => {
@@ -653,6 +691,17 @@
                resolve({
                  weekIdx: isNaN(val) ? 0 : val,
                  action: 'download'
+               });
+            });
+
+            excelBtn.addEventListener('click', () => {
+               if (resolved) return;
+               resolved = true;
+               const val = parseInt(document.getElementById(`${id}-select`).value, 10);
+               modal.hide();
+               resolve({
+                 weekIdx: isNaN(val) ? 0 : val,
+                 action: 'excel'
                });
             });
 
@@ -2499,12 +2548,82 @@ async function printActaInicio(promotionId) {
                 <span style="color:#888;">F</span> = Festivo / No laborable
             </div>`;
 
-            const filename = `asistencia_semana_${selectedWeek.wIdx + 1}_${(promo.name || 'promo').replace(/\s+/g, '-')}.pdf`;
-            _showSaving(selection.action === 'send' ? 'Generando y enviando...' : 'Generando PDF...');
+            const filename = `asistencia_semana_${selectedWeek.wIdx + 1}_${(promo.name || 'promo').replace(/\s+/g, '-')}`;
 
-            const pdf = await _renderToPdf(html, filename);
+            if (selection.action === 'excel') {
+                // ── Build Excel with SheetJS ──────────────────────────────────
+                _showSaving('Generando Excel...');
+                const XLSX = window.XLSX;
+                if (!XLSX) throw new Error('Librería XLSX no disponible. Recarga la página.');
 
-            if (selection.action === 'send') {
+                const wb = XLSX.utils.book_new();
+
+                // Header row: Estudiante | Lun dd/mm | Mar dd/mm | ... | P | A | T | Comentarios
+                const dayLabels = ['Lu', 'Ma', 'Mi', 'Ju', 'Vi'];
+                const headerRow = ['Estudiante'];
+                workDays.forEach((wd, i) => {
+                    const dd = String(wd.getDate()).padStart(2, '0');
+                    const mm = String(wd.getMonth() + 1).padStart(2, '0');
+                    headerRow.push(`${dayLabels[i]} ${dd}/${mm}`);
+                });
+                headerRow.push('Presentes', 'Ausentes', 'Retrasos', 'Comentarios');
+
+                const wsData = [headerRow];
+
+                const stMapFull = { 'Presente': 'P', 'Ausente': 'A', 'Con retraso': 'T', 'Justificado': 'J', 'Sale antes': 'S' };
+                students.forEach(st => {
+                    const stuId = String(st.id || st._id);
+                    const stAtt = attMap[stuId] || {};
+                    let p = 0, a = 0, r = 0;
+                    const row = [`${st.name || ''} ${st.lastname || ''}`.trim()];
+                    const comments = [];
+
+                    workDays.forEach(wd => {
+                        const localDateStr = formatLocal(wd);
+                        if (holidays.has(localDateStr)) {
+                            row.push('F');
+                        } else {
+                            const rec = stAtt[localDateStr];
+                            if (rec) {
+                                const mark = stMapFull[rec.status] || rec.status.charAt(0);
+                                row.push(mark);
+                                if (mark === 'P') p++;
+                                else if (mark === 'A') a++;
+                                else if (mark === 'T') r++;
+                                if (rec.note) comments.push(`${wd.getDate()}: ${rec.note}`);
+                            } else {
+                                row.push('-');
+                            }
+                        }
+                    });
+
+                    row.push(p, a, r, comments.join(' | '));
+                    wsData.push(row);
+                });
+
+                // Legend row (blank + legend)
+                wsData.push([]);
+                wsData.push(['Leyenda: P=Presente  A=Ausente  T=Con retraso  J=Justificado  S=Sale antes  F=Festivo']);
+
+                const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+                // Column widths
+                ws['!cols'] = [
+                    { wch: 28 }, // Estudiante
+                    ...workDays.map(() => ({ wch: 10 })),
+                    { wch: 10 }, { wch: 10 }, { wch: 10 }, // P A T
+                    { wch: 45 }  // Comentarios
+                ];
+
+                const sheetName = `Semana ${selectedWeek.wIdx + 1}`;
+                XLSX.utils.book_append_sheet(wb, ws, sheetName);
+
+                XLSX.writeFile(wb, `${filename}.xlsx`);
+                _hideSaving();
+
+            } else if (selection.action === 'send') {
+                _showSaving('Generando y enviando...');
+                const pdf = await _renderToPdf(html, filename + '.pdf');
                 const base64Data = pdf.output('datauristring');
                 const emailRes = await fetch(`${API_URL}/api/reports/send-email`, {
                     method: 'POST',
@@ -2516,7 +2635,7 @@ async function printActaInicio(promotionId) {
                         to: selection.email,
                         subject: `Informe de Asistencia Semanal: ${promo.name} - Semana ${selectedWeek.wIdx + 1}`,
                         body: `Hola,<br><br>Se adjunta el informe de asistencia semanal correspondiente a la <strong>Semana ${selectedWeek.wIdx + 1}</strong> de la promoción <strong>${promo.name}</strong> (${_fmtDateEs(formatLocal(selectedWeek.dates[0]))} al ${_fmtDateEs(formatLocal(selectedWeek.dates[4]))}).<br><br>Un saludo,<br>Sistema de Gestión de Bootcamps`,
-                        filename: filename,
+                        filename: filename + '.pdf',
                         base64Data: base64Data
                     })
                 });
@@ -2529,7 +2648,10 @@ async function printActaInicio(promotionId) {
                     throw new Error(error.error || 'Error al enviar el email');
                 }
             } else {
-                pdf.save(filename);
+                // Default: download PDF
+                _showSaving('Generando PDF...');
+                const pdf = await _renderToPdf(html, filename + '.pdf');
+                pdf.save(filename + '.pdf');
                 _hideSaving();
             }
         } catch (e) {
