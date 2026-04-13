@@ -5599,13 +5599,10 @@ function displayStudents(students) {
             </td>
             <td>
                 <div class="fw-bold">
-                    ${!isStudWithdrawn
-                ? `<a href="#" class="student-name-link text-decoration-none text-dark"
-                            onclick="event.preventDefault(); window.StudentTracking?.openFicha('${student.id}')"
-                            title="Ver ficha de ${escapeHtml(studentFullName(student))}"
-                            >${student.name || student.lastname ? escapeHtml(studentFullName(student)) : 'N/A'}</a>`
-                : (student.name || student.lastname ? escapeHtml(studentFullName(student)) : 'N/A')
-            }
+                    <a href="#" class="student-name-link text-decoration-none ${isStudWithdrawn ? 'text-muted' : 'text-dark'}"
+                        onclick="event.preventDefault(); window.StudentTracking?.openFicha('${student.id}')"
+                        title="Ver ficha de ${escapeHtml(studentFullName(student))}${isStudWithdrawn ? ' (BAJA)' : ''}"
+                        >${student.name || student.lastname ? escapeHtml(studentFullName(student)) : 'N/A'}</a>
                     ${isStudWithdrawn ? `<span class="badge bg-danger ms-2" style="font-size:.65rem;" title="Baja desde ${student.withdrawal?.date ? new Date(student.withdrawal.date).toLocaleDateString('es-ES') : ''}">BAJA</span>` : ''}
                 </div>
             </td>
@@ -10180,7 +10177,9 @@ function _applySuggestedMix() {
  * Right: competences + feedback for the selected target.
  */
 function openEvaluationView(mIdx, pIdx) {
-    const { modules, competences, students, savedEvaluations } = window._evalState;
+    const { modules, competences, allStudents, savedEvaluations } = window._evalState;
+    // Use allStudents so withdrawn students appear in the targets list and can be evaluated
+    const students = allStudents || window._evalState.students;
     const mod = modules[mIdx];
     const proj = mod.projects[pIdx];
     const modId = mod.id || String(mIdx);
@@ -10263,8 +10262,8 @@ function _renderEvalTargetsList(saved, students) {
     const doneEvals = saved.evaluations || [];
     const isGrupal = saved.type === 'grupal';
     const targets = isGrupal
-        ? (saved.groups || []).map(g => ({ id: g.groupName, label: g.groupName, sub: `${(g.studentIds || []).length} miembros`, isGroup: true }))
-        : students.map(s => ({ id: String(s.id || s._id), label: `${s.name || ''} ${s.lastname || ''}`.trim(), sub: s.email || '', isGroup: false }));
+        ? (saved.groups || []).map(g => ({ id: g.groupName, label: g.groupName, sub: `${(g.studentIds || []).length} miembros`, isGroup: true, isWithdrawn: false }))
+        : students.map(s => ({ id: String(s.id || s._id), label: `${s.name || ''} ${s.lastname || ''}`.trim(), sub: s.email || '', isGroup: false, isWithdrawn: !!s.isWithdrawn }));
 
     if (labelEl) labelEl.textContent = isGrupal ? 'Grupos' : 'Estudiantes';
     if (countEl) countEl.textContent = targets.length;
@@ -10289,11 +10288,16 @@ function _renderEvalTargetsList(saved, students) {
             statusIcons += `<i class="bi bi-check-circle-fill eval-target-check" title="Evaluado" style="font-size: 0.9rem; margin-top: 2px;"></i>`;
         }
 
+        const withdrawnBadge = t.isWithdrawn
+            ? `<span class="badge bg-danger ms-1" style="font-size:0.6rem;vertical-align:middle;">BAJA</span>`
+            : '';
+        const nameStyle = t.isWithdrawn ? ' style="opacity:0.65;"' : '';
+
         return `<li class="eval-target-item ${isEvaluated ? 'evaluated' : ''}" data-target-id="${escapeHtml(String(t.id))}"
                     onclick="selectEvalTarget('${escapeHtml(String(t.id))}')">
-            <div class="eval-target-avatar">${t.isGroup ? `<i class="bi bi-people-fill" style="font-size:.85rem;"></i>` : escapeHtml(initials)}</div>
-            <div class="eval-target-info">
-                <div class="eval-target-name">${escapeHtml(t.label)}</div>
+            <div class="eval-target-avatar"${nameStyle}>${t.isGroup ? `<i class="bi bi-people-fill" style="font-size:.85rem;"></i>` : escapeHtml(initials)}</div>
+            <div class="eval-target-info"${nameStyle}>
+                <div class="eval-target-name">${escapeHtml(t.label)}${withdrawnBadge}</div>
                 <div class="eval-target-meta">${escapeHtml(t.sub)}</div>
             </div>
             <div class="eval-target-status d-flex flex-column align-items-center justify-content-center px-2">
@@ -10325,7 +10329,8 @@ function _showEvalRightContent() {
  */
 function selectEvalTarget(targetId) {
     const saved = window._evalCurrentSaved;
-    const students = window._evalState.students;
+    // Use allStudents so withdrawn students can be selected and their name resolved
+    const students = window._evalState.allStudents || window._evalState.students;
     if (!saved) return;
 
     // Reset removed-comps for this target when switching
@@ -11756,17 +11761,17 @@ async function saveIndividualStudentEval() {
 
         await _persistEvaluations();
 
-        // Sync to student ficha (individual only)
-        const { students } = window._evalState;
+        // Sync to student ficha (individual only) — use allStudents so withdrawn students are included
+        const { allStudents } = window._evalState;
         if (saved.type !== 'grupal') {
-            await _syncEvaluationsToStudentTracking(saved, mod, proj, students);
+            await _syncEvaluationsToStudentTracking(saved, mod, proj, allStudents);
         }
 
         showToast('Evaluación guardada correctamente', 'success');
 
         if (inSplitView) {
             // Stay in split view: refresh the target list and reload the right panel
-            _renderEvalTargetsList(saved, students);
+            _renderEvalTargetsList(saved, window._evalState.students);
             // Re-open same target so the header shows "Evaluado"
             selectEvalTarget(studentId);
             // Reset button
@@ -11904,7 +11909,7 @@ async function saveProjectEvaluation() {
 
     try {
         const saved = window._evalCurrentSaved;
-        const { modules, savedEvaluations, students } = window._evalState;
+        const { modules, savedEvaluations, allStudents } = window._evalState;
         const mIdx = window._evalState.currentModuleIdx;
         const pIdx = window._evalState.currentProjectIdx;
         if (saved == null || mIdx == null || pIdx == null) {
@@ -11944,8 +11949,9 @@ async function saveProjectEvaluation() {
         await _persistEvaluations();
 
         // ── Sync individual evaluations → student technicalTracking ──────────────
+        // Use allStudents so withdrawn students are included in the sync
         if (saved.type === 'individual') {
-            await _syncEvaluationsToStudentTracking(saved, mod, proj, students);
+            await _syncEvaluationsToStudentTracking(saved, mod, proj, allStudents);
         }
 
         bootstrap.Modal.getInstance(document.getElementById('evaluationModal'))?.hide();
@@ -12137,7 +12143,10 @@ async function _syncEvaluationsToStudentTracking(saved, mod, proj, students) {
             allModules.forEach(module => {
                 const mid = String(module.id || '');
                 const totalProjects = (module.projects || []).length;
-                if (totalProjects === 0) return; // skip modules with no projects
+                const totalCourses = (module.courses || []).length;
+
+                // Skip modules with neither projects nor courses
+                if (totalProjects === 0 && totalCourses === 0) return;
 
                 // Count unique evaluated project names for this module in the student's teams
                 const evaluatedProjectNames = new Set(
@@ -12146,9 +12155,8 @@ async function _syncEvaluationsToStudentTracking(saved, mod, proj, students) {
                         .map(t => t.teamName)
                 );
                 const evaluatedCount = evaluatedProjectNames.size;
-                const progressPct = Math.round((evaluatedCount / totalProjects) * 100);
 
-                if (evaluatedCount === 0) return; // don't create entry if nothing evaluated yet
+                if (evaluatedCount === 0 && totalProjects > 0) return; // don't create entry if nothing evaluated yet
 
                 // Compute average competence level for modules with evaluated projects
                 const moduleTeams = existingTeams.filter(t => String(t.moduleId) === mid);
@@ -12161,22 +12169,42 @@ async function _syncEvaluationsToStudentTracking(saved, mod, proj, students) {
 
                 const existingIdx = updatedCompletedModules.findIndex(cm => String(cm.moduleId) === mid);
                 const today = new Date().toISOString().split('T')[0];
-                const totalCourses = (module.courses || []).length;
-                const completedNotes = `${evaluatedCount}/${totalProjects} proyectos evaluados${totalCourses > 0 ? `, ${totalCourses} cursos` : ''}`;
+
+                // Preserve existing completedCourses
+                const existingCompletedCourses = existingIdx >= 0
+                    ? (updatedCompletedModules[existingIdx].completedCourses || [])
+                    : [];
+                const completedCoursesCount = existingCompletedCourses.length;
+
+                // ── Progress = weighted average of projects% and courses% ──────
+                // Projects contribute 100% if no courses exist; otherwise 50/50 split
+                let progressPct;
+                if (totalProjects > 0 && totalCourses > 0) {
+                    const projPct = Math.round((evaluatedCount / totalProjects) * 100);
+                    const coursePct = Math.round((completedCoursesCount / totalCourses) * 100);
+                    progressPct = Math.round((projPct + coursePct) / 2);
+                } else if (totalProjects > 0) {
+                    progressPct = Math.round((evaluatedCount / totalProjects) * 100);
+                } else {
+                    // Only courses (no projects)
+                    progressPct = Math.round((completedCoursesCount / totalCourses) * 100);
+                }
+
+                const completedNotes = `${evaluatedCount}/${totalProjects} proyectos evaluados${totalCourses > 0 ? `, ${completedCoursesCount}/${totalCourses} cursos completados` : ''}`;
 
                 const entry = {
                     moduleId: mid,
                     moduleName: module.name || '',
                     progressPercent: progressPct,
+                    evaluatedProjectsCount: evaluatedCount,   // ← store exact count, avoids rounding loss
+                    totalProjectsCount: totalProjects,         // ← store total for display in ficha
                     finalGrade: existingIdx >= 0 && updatedCompletedModules[existingIdx].finalGrade
                         ? updatedCompletedModules[existingIdx].finalGrade
                         : autoGrade,
                     completionDate: progressPct >= 100 ? today : (existingIdx >= 0 ? updatedCompletedModules[existingIdx].completionDate : ''),
                     notes: completedNotes,
                     // Preserve existing completedCourses so course checkboxes in the ficha are not lost
-                    completedCourses: existingIdx >= 0
-                        ? (updatedCompletedModules[existingIdx].completedCourses || [])
-                        : []
+                    completedCourses: existingCompletedCourses
                 };
 
                 if (existingIdx >= 0) {

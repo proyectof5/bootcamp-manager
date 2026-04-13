@@ -1510,17 +1510,43 @@
 
         const totalModules = allModules.length;
         const completedModulesCount = _completedModules.filter(m => {
-            const projPct = (m.progressPercent !== undefined && m.progressPercent !== null) ? parseInt(m.progressPercent) : null;
+            const isAutoEntry = m.progressPercent !== undefined && m.progressPercent !== null;
             const roadmapModule = _promotionModules.find(rm => String(rm.id) === String(m.moduleId));
-            const moduleCourses = roadmapModule ? (roadmapModule.courses || []) : [];
-            const coursePct = moduleCourses.length ? Math.round(((m.completedCourses || []).length / moduleCourses.length) * 100) : null;
-            
-            // If it has both projects and courses, average them. If only one, use that one.
-            const combined = (projPct !== null && coursePct !== null) 
-                ? Math.round((projPct + coursePct) / 2) 
-                : (projPct ?? coursePct ?? 0);
-            
-            return combined >= 100;
+            const moduleCourses  = roadmapModule ? (roadmapModule.courses  || []) : [];
+            const moduleProjects = roadmapModule ? (roadmapModule.projects || []) : [];
+            const completedCourses = new Set((m.completedCourses || []).map(c => String(c)));
+
+            // Resolve true evaluated count from stored fields or notes (avoids stale progressPercent)
+            let resolvedEvalCount = null;
+            let resolvedTotal = moduleProjects.length;
+            if (isAutoEntry && moduleProjects.length > 0) {
+                if (m.evaluatedProjectsCount !== undefined) {
+                    resolvedEvalCount = m.evaluatedProjectsCount;
+                    resolvedTotal = m.totalProjectsCount !== undefined ? m.totalProjectsCount : moduleProjects.length;
+                } else if (m.notes) {
+                    const nm = m.notes.match(/(\d+)\/(\d+)\s*proyectos/);
+                    if (nm) { resolvedEvalCount = parseInt(nm[1], 10); resolvedTotal = parseInt(nm[2], 10); }
+                }
+            }
+
+            const hasRoadmapProjects = moduleProjects.length > 0;
+            let projPct;
+            if (isAutoEntry) {
+                projPct = resolvedEvalCount !== null && resolvedTotal > 0
+                    ? Math.round((resolvedEvalCount / resolvedTotal) * 100)
+                    : Math.min(100, Math.max(0, parseInt(m.progressPercent) || 0));
+            } else {
+                projPct = hasRoadmapProjects ? 0 : null;
+            }
+
+            const coursePct = moduleCourses.length
+                ? Math.round((completedCourses.size / moduleCourses.length) * 100)
+                : null;
+
+            // Module is complete ONLY when both dimensions independently reach 100%
+            return (projPct === null || projPct >= 100)
+                && (coursePct === null || coursePct >= 100)
+                && (projPct !== null || coursePct !== null); // at least one dimension must exist
         }).length;
 
         const avgProgress = countForAvg > 0 ? Math.round(totalCombinedPct / countForAvg) : 0;
@@ -1584,9 +1610,10 @@
                 : null;
             const isAutoEntry = pct !== null;
 
-            // Find roadmap courses for this module
+            // Find roadmap courses and projects for this module
             const roadmapModule = _promotionModules.find(rm => String(rm.id) === String(m.moduleId));
             const moduleCourses = roadmapModule ? (roadmapModule.courses || []) : [];
+            const moduleProjects = roadmapModule ? (roadmapModule.projects || []) : [];
             const completedCourses = new Set((m.completedCourses || []).map(c => String(c)));
 
             // Courses checklist section
@@ -1618,44 +1645,92 @@
                 </div>` : '';
 
             // Combined progress (projects + courses)
+            // Resolve the true evaluated project count from stored fields or notes (avoids stale progressPercent)
+            let resolvedEvalCount = null;
+            let resolvedTotalCount = moduleProjects.length;
+            if (isAutoEntry && moduleProjects.length > 0) {
+                if (m.evaluatedProjectsCount !== undefined) {
+                    resolvedEvalCount  = m.evaluatedProjectsCount;
+                    resolvedTotalCount = m.totalProjectsCount !== undefined ? m.totalProjectsCount : moduleProjects.length;
+                } else if (m.notes) {
+                    const notesMatch = m.notes.match(/(\d+)\/(\d+)\s*proyectos/);
+                    if (notesMatch) {
+                        resolvedEvalCount  = parseInt(notesMatch[1], 10);
+                        resolvedTotalCount = parseInt(notesMatch[2], 10);
+                    }
+                }
+            }
+
+            // projPct: recalculate from resolved counts when available (avoids stale stored progressPercent)
+            const hasRoadmapProjects = moduleProjects.length > 0;
+            let projPct;
+            if (isAutoEntry) {
+                projPct = resolvedEvalCount !== null && resolvedTotalCount > 0
+                    ? Math.round((resolvedEvalCount / resolvedTotalCount) * 100)
+                    : pct; // fall back to stored value if no better source
+            } else {
+                projPct = hasRoadmapProjects ? 0 : null;
+            }
+
             const courseProgressPct = moduleCourses.length
                 ? Math.round((completedCourses.size / moduleCourses.length) * 100)
                 : null;
 
-            const combinedPct = isAutoEntry
-                ? (moduleCourses.length
-                    ? Math.round((pct + (courseProgressPct ?? 0)) / 2)
-                    : pct)
-                : null;
-            const displayPct = combinedPct ?? pct;
+            let combinedPct;
+            if (projPct !== null && courseProgressPct !== null) {
+                // Both dimensions exist → average them (100% only when both reach 100%)
+                combinedPct = Math.round((projPct + courseProgressPct) / 2);
+            } else if (projPct !== null) {
+                combinedPct = projPct;
+            } else if (courseProgressPct !== null) {
+                combinedPct = courseProgressPct;
+            } else {
+                combinedPct = null;
+            }
+            const displayPct = combinedPct;
+            const isComplete = displayPct !== null && displayPct >= 100
+                && (projPct === null || projPct >= 100)
+                && (courseProgressPct === null || courseProgressPct >= 100);
 
             // Color of progress bar based on percentage
-            const barColor = displayPct >= 100 ? 'bg-success'
+            const barColor = isComplete     ? 'bg-success'
                            : displayPct >= 60  ? 'bg-primary'
                            : displayPct >= 30  ? 'bg-warning'
                            : 'bg-danger';
 
-            const borderColor = displayPct >= 100 ? 'border-success'
+            const borderColor = isComplete     ? 'border-success'
                               : displayPct >= 60  ? 'border-primary'
                               : displayPct >= 30  ? 'border-warning'
-                              : (isAutoEntry || moduleCourses.length) ? 'border-danger' : 'border-primary';
+                              : (displayPct !== null) ? 'border-danger' : 'border-primary';
 
-            const progressBar = (isAutoEntry || moduleCourses.length) ? `
+            // Build a detail label showing what's pending
+            const progressDetail = (() => {
+                const parts = [];
+                if (projPct !== null) {
+                    // Use the already-resolved counts (from stored fields or notes)
+                    const evalCount  = resolvedEvalCount  !== null ? resolvedEvalCount  : (isAutoEntry ? Math.round((pct / 100) * moduleProjects.length) : 0);
+                    const totalCount = resolvedTotalCount !== null ? resolvedTotalCount : moduleProjects.length;
+                    parts.push(`${evalCount}/${totalCount} proy.`);
+                }
+                if (courseProgressPct !== null) parts.push(`${completedCourses.size}/${moduleCourses.length} cursos`);
+                return parts.length > 1 ? `<span class="text-muted fw-normal">(${parts.join(' · ')})</span>` : '';
+            })();
+
+            const progressBar = (displayPct !== null) ? `
                 <div class="mt-2">
                     <div class="d-flex justify-content-between align-items-center mb-1">
                         <small class="text-muted fw-semibold">
-                            Progreso del módulo
-                            ${moduleCourses.length && isAutoEntry ? `<span class="text-muted fw-normal">(proyectos + cursos)</span>` : ''}
+                            Progreso del módulo ${progressDetail}
                         </small>
-                        <small class="fw-bold" style="color:${displayPct >= 100 ? '#198754' : displayPct >= 60 ? '#0d6efd' : displayPct >= 30 ? '#ffc107' : '#dc3545'}">${displayPct ?? '—'}%</small>
+                        <small class="fw-bold" style="color:${isComplete ? '#198754' : displayPct >= 60 ? '#0d6efd' : displayPct >= 30 ? '#ffc107' : '#dc3545'}">${displayPct}%</small>
                     </div>
                     <div class="progress" style="height:8px;">
                         <div class="progress-bar ${barColor}" role="progressbar"
-                            style="width:${displayPct ?? 0}%; transition: width 0.5s ease;"
-                            aria-valuenow="${displayPct ?? 0}" aria-valuemin="0" aria-valuemax="100">
+                            style="width:${displayPct}%; transition: width 0.5s ease;"
+                            aria-valuenow="${displayPct}" aria-valuemin="0" aria-valuemax="100">
                         </div>
                     </div>
-                    ${(displayPct ?? 0) >= 100 ? `<div class="mt-1"><span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Módulo completado</span></div>` : ''}
+                    ${isComplete ? `<div class="mt-1"><span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Módulo completado</span></div>` : ''}
                 </div>` : '';
 
             const gradeBadge = m.finalGrade
@@ -1664,7 +1739,7 @@
 
             const dateInfo = m.completionDate
                 ? `<i class="bi bi-calendar-check me-1"></i>${_fmtDate(m.completionDate)}`
-                : ((displayPct ?? 0) >= 100 ? `<i class="bi bi-calendar-check me-1"></i>Completado` : '');
+                : (isComplete ? `<i class="bi bi-calendar-check me-1"></i>Completado` : '');
 
             const notesInfo = m.notes
                 ? `<div class="mt-1 small text-muted fst-italic"><i class="bi bi-info-circle me-1"></i>${_esc(m.notes)}</div>`
@@ -1774,11 +1849,20 @@
             m.completedCourses = m.completedCourses.filter(k => k !== key);
         }
 
-        // Set completion date if all courses done + auto-mark completionDate
+        // Set completion date only when all courses AND all projects are done
         const roadmapModule = _promotionModules.find(rm => String(rm.id) === String(m.moduleId));
         const totalCourses = roadmapModule ? (roadmapModule.courses || []).length : 0;
-        if (totalCourses > 0 && m.completedCourses.length >= totalCourses && !m.completionDate) {
+        const totalProjects = roadmapModule ? (roadmapModule.projects || []).length : 0;
+        const projPctNow = (m.progressPercent !== undefined && m.progressPercent !== null)
+            ? Math.min(100, Math.max(0, parseInt(m.progressPercent) || 0))
+            : (totalProjects > 0 ? 0 : 100); // no projects defined → not a blocker
+        const allCoursesDone = totalCourses === 0 || m.completedCourses.length >= totalCourses;
+        const allProjectsDone = projPctNow >= 100;
+        if (allCoursesDone && allProjectsDone && !m.completionDate) {
             m.completionDate = _todayISO();
+        } else if ((!allCoursesDone || !allProjectsDone) && m.completionDate && !m.manualCompletionDate) {
+            // Clear auto-set date if no longer complete (only if date wasn't set manually)
+            m.completionDate = '';
         }
 
         _renderModules();
