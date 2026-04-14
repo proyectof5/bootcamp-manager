@@ -804,9 +804,15 @@ function displaySections(sections) {
 
 function updateSidebar(sections) {
     const nav = document.getElementById('sidebar-nav');
-    nav.innerHTML = `
-        <li class="nav-item"><a class="nav-link" href="#roadmap" onclick="closeAulaVirtualPage()"><i class="bi bi-map me-2"></i>Roadmap</a></li>
-    `;
+    nav.innerHTML = '';
+
+    // Only show Roadmap if there are modules configured
+    const hasModules = window.publicPromotionData &&
+        Array.isArray(window.publicPromotionData.modules) &&
+        window.publicPromotionData.modules.length > 0;
+    if (hasModules) {
+        nav.innerHTML = `<li class="nav-item"><a class="nav-link" href="#roadmap" onclick="closeAulaVirtualPage()"><i class="bi bi-map me-2"></i>Roadmap</a></li>`;
+    }
 
     sections.forEach(section => {
         const li = document.createElement('li');
@@ -860,13 +866,25 @@ function updateSidebarWithExtendedInfo(info) {
             nav.appendChild(pildorasLi);
         }
 
-        // Add Calendar right after Píldoras
-        //console.log('Adding calendar section to sidebar right after pildoras');
+        // Add Calendar right after Píldoras, but only if a Google Calendar was configured
+        if (window._calendarConfigured) {
+            const calendarLi = document.createElement('li');
+            calendarLi.className = 'nav-item';
+            calendarLi.innerHTML = '<a class="nav-link" href="#calendar" onclick="switchPublicTab(\'progreso\')"><i class="bi bi-calendar me-2"></i>Calendario</a>';
+            pildorasLi.insertAdjacentElement('afterend', calendarLi);
+        }
+    } else if (window._calendarConfigured) {
+        // No pildoras but calendar exists — insert after Roadmap or at top
         const calendarLi = document.createElement('li');
         calendarLi.className = 'nav-item';
         calendarLi.innerHTML = '<a class="nav-link" href="#calendar" onclick="switchPublicTab(\'progreso\')"><i class="bi bi-calendar me-2"></i>Calendario</a>';
-
-        pildorasLi.insertAdjacentElement('afterend', calendarLi);
+        if (roadmapItem) {
+            roadmapItem.insertAdjacentElement('afterend', calendarLi);
+        } else if (quickLinksItem) {
+            nav.insertBefore(calendarLi, quickLinksItem);
+        } else {
+            nav.appendChild(calendarLi);
+        }
     }
 
     // Add Aula Virtual entry in sidebar (always visible)
@@ -958,6 +976,9 @@ async function loadCalendar() {
             if (calendarCard) calendarCard.classList.remove('hidden');
             const iframe = document.getElementById('calendar-iframe');
             if (iframe) iframe.src = `https://calendar.google.com/calendar/embed?src=${encodeURIComponent(calendar.googleCalendarId)}&ctz=Europe/Madrid`;
+
+            // Flag so that updateSidebarWithExtendedInfo knows calendar is configured
+            window._calendarConfigured = true;
         }
     } catch (error) {
         console.error('Error loading calendar:', error);
