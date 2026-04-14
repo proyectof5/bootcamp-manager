@@ -599,6 +599,23 @@ Evaluación Global al Final del Bootcamp
 
             _set('evaluation-text', extendedInfoData.evaluation || defaultEvaluation);
 
+            // evaluation-text is now a contenteditable div — set innerHTML directly
+            // (the _set above is a no-op for divs; this block handles it properly)
+            const evalEl = document.getElementById('evaluation-text');
+            if (evalEl) {
+                const raw = extendedInfoData.evaluation || defaultEvaluation;
+                // Detect plain text (no block-level HTML) so we render it nicely
+                const hasHtml = /<(p|ul|ol|li|br|b|strong|em|i|u)\b/i.test(raw);
+                if (hasHtml) {
+                    evalEl.innerHTML = raw;
+                } else {
+                    // Convert plain text with \n to <p> blocks for the rich editor
+                    evalEl.innerHTML = raw.split(/\n\n+/).map(para =>
+                        `<p>${para.replace(/\n/g, '<br>')}</p>`
+                    ).join('');
+                }
+            }
+
             // Acta de Inicio fields are loaded into extendedInfoData and populated
             // into the modal on demand when openActaModal() is called.
 
@@ -1969,8 +1986,9 @@ async function saveExtendedInfo() {
         modulePildoras.pildoras = currentModulePildoras;
     }
 
-    // Gather Evaluation
-    const evaluation = document.getElementById('evaluation-text').value;
+    // Gather Evaluation (rich-text contenteditable div → innerHTML)
+    const evalEl = document.getElementById('evaluation-text');
+    const evaluation = evalEl ? evalEl.innerHTML : '';
 
     // Note: Acta de Inicio fields are saved separately via saveActaData() from the modal.
     // extendedInfoData already holds them from the last load or saveActaData() call.

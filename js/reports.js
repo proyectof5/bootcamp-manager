@@ -1585,9 +1585,12 @@ async function printActaInicio(promotionId) {
             const secNum = empItems.length ? 8 : 7;
             html += `<h3>${secNum}. Criterios de Evaluación</h3>`;
             if (evaluation) {
-                html += `<div class="section-box">
-                    <pre style="white-space:pre-wrap; font-family:inherit; font-size:9.5pt;">${_esc(evaluation)}</pre>
-                </div>`;
+                // evaluation may be stored as HTML (rich-text editor); render it directly
+                const evalHasHtml = /<(p|ul|ol|li|br|b|strong|em|i|u)\b/i.test(evaluation);
+                const evalBody = evalHasHtml
+                    ? evaluation
+                    : `<pre style="white-space:pre-wrap; font-family:inherit; font-size:9.5pt;">${_esc(evaluation)}</pre>`;
+                html += `<div class="section-box" style="font-size:9.5pt;line-height:1.6;">${evalBody}</div>`;
             } else { html += `<p class="empty-note">Sin criterios de evaluación definidos.</p>`; }
 
             const filename = `descripcion-tecnica_${(promo.name||'promo').replace(/\s+/g,'-')}.pdf`;

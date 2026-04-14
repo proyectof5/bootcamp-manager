@@ -539,9 +539,26 @@ const SyllabusPDF = (() => {
         return y;
     }
 
+    // ─── Helper: strip HTML tags → plain text (for jsPDF rendering) ─────────
+    function _htmlToPlainText(html) {
+        if (!html) return '';
+        // Convert block elements to newlines before stripping tags
+        return html
+            .replace(/<br\s*\/?>/gi, '\n')
+            .replace(/<\/p>/gi, '\n')
+            .replace(/<\/li>/gi, '\n')
+            .replace(/<li[^>]*>/gi, '• ')
+            .replace(/<[^>]+>/g, '')
+            .replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&nbsp;/g, ' ').replace(/&quot;/g, '"')
+            .replace(/\n{3,}/g, '\n\n')
+            .trim();
+    }
+
     // ─── SECCIÓN: Metodología de Evaluación ───────────────────────────────────
     function buildEvaluationSection(doc, evaluation, y, margin, pageW, pageH, sectionNum) {
         if (!evaluation) return y;
+        // Strip HTML if stored as rich text
+        const evalText = /<[a-z]/i.test(evaluation) ? _htmlToPlainText(evaluation) : evaluation;
         y = checkPage(doc, y, 20, margin, pageH);
         y = sectionTitle(doc, `${sectionNum}. Metodología de Evaluación`, y, margin, pageW);
 
@@ -549,7 +566,7 @@ const SyllabusPDF = (() => {
         doc.setFont('helvetica', 'normal');
         setFontSize(doc, 7.5);
 
-        const lines = doc.splitTextToSize(evaluation, pageW - margin * 2 - 4);
+        const lines = doc.splitTextToSize(evalText, pageW - margin * 2 - 4);
         lines.forEach(line => {
             y = checkPage(doc, y, 5, margin, pageH);
             // Detección de líneas que son "títulos" (texto sin bullet pero corto)
@@ -764,7 +781,13 @@ const SyllabusPDF = (() => {
         // 6. Evaluación
         if (evaluation) {
             body += `<h2 style="color:#FF4700;font-family:Arial">${sN}. Evaluación</h2>`;
-            body += `<p style="font-family:Arial;white-space:pre-wrap">${esc(evaluation)}</p>`;
+            // evaluation may be stored as rich HTML or plain text
+            const evalHasHtml = /<[a-z]/i.test(evaluation);
+            if (evalHasHtml) {
+                body += `<div style="font-family:Arial;">${evaluation}</div>`;
+            } else {
+                body += `<p style="font-family:Arial;white-space:pre-wrap">${esc(evaluation)}</p>`;
+            }
         }
 
         const html = `<html xmlns:o="urn:schemas-microsoft-com:office:office"

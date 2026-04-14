@@ -462,7 +462,7 @@ function renderEvaluation(evaluation) {
         <h6 class="text-primary mb-3">
             <i class="bi bi-info-circle-fill me-2"></i>Custom Evaluation Information
         </h6>
-        <div class="text-dark">${escapeHtml(evaluation).replace(/\n/g, '<br>')}</div>
+        <div class="text-dark">${/<[a-z]/i.test(evaluation) ? evaluation : escapeHtml(evaluation).replace(/\n/g, '<br>')}</div>
     `;
     
     evaluationDiv.appendChild(dynamicDiv);

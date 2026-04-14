@@ -2269,6 +2269,11 @@ function createProgramInfoSections(info) {
         const evaluationSection = document.createElement('div');
         evaluationSection.className = 'col-md-12';
         evaluationSection.id = 'evaluacion';
+        // evaluation may be stored as HTML (rich text) or as plain text
+        const evalHasHtml = /<(p|ul|ol|li|br|b|strong|em|i|u)\b/i.test(info.evaluation);
+        const evalContent = evalHasHtml
+            ? info.evaluation
+            : escapeHtml(info.evaluation).replace(/\n/g, '<br>');
         evaluationSection.innerHTML = `
             <div class="card">
                 <div class="card-body">
@@ -2276,7 +2281,7 @@ function createProgramInfoSections(info) {
                         <i class="bi bi-clipboard-check me-2"></i>Evaluación
                     </h5>
                     <div class="mt-3">
-                        ${escapeHtml(info.evaluation).replace(/\n/g, '<br>')}
+                        ${evalContent}
                     </div>
                 </div>
             </div>
