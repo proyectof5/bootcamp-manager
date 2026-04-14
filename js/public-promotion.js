@@ -393,6 +393,7 @@ function generateGanttChart(promotion) {
     monthHeaderCell.style.minWidth = '150px';
     monthHeaderCell.style.maxWidth = '200px';
     monthHeaderCell.style.fontSize = '0.7rem';
+    monthHeaderCell.style.textAlign = 'left';
     monthRow.appendChild(monthHeaderCell);
 
     let currentMonth = 0;
@@ -432,6 +433,7 @@ function generateGanttChart(promotion) {
     weekHeaderCell.style.minWidth = '150px';
     weekHeaderCell.style.maxWidth = '200px';
     weekHeaderCell.style.fontSize = '0.7rem';
+    weekHeaderCell.style.textAlign = 'left';
     headerRow.appendChild(weekHeaderCell);
 
     for (let i = 1; i <= weeks; i++) {
@@ -476,6 +478,7 @@ function generateGanttChart(promotion) {
         headerLabel.style.minWidth = '150px';
         headerLabel.style.maxWidth = '200px';
         headerLabel.style.padding = '4px';
+        headerLabel.style.textAlign = 'left';
         headerRow.appendChild(headerLabel);
 
         // Compute the overall span of all employability sessions to show on the header row
@@ -524,6 +527,7 @@ function generateGanttChart(promotion) {
             itemLabel.style.minWidth = '150px';
             itemLabel.style.maxWidth = '200px';
             itemLabel.style.padding = '2px';
+            itemLabel.style.textAlign = 'left';
             itemRow.appendChild(itemLabel);
 
             const startWeek = (item.startMonth - 1) * 4;
@@ -567,6 +571,7 @@ function generateGanttChart(promotion) {
         nameCell.style.minWidth = '150px';
         nameCell.style.maxWidth = '200px';
         nameCell.style.padding = '4px';
+        nameCell.style.textAlign = 'left';
         row.appendChild(nameCell);
 
         for (let i = 0; i < weeks; i++) {
@@ -612,6 +617,7 @@ function generateGanttChart(promotion) {
                     coursesLabel.style.minWidth = '150px';
                     coursesLabel.style.maxWidth = '200px';
                     coursesLabel.style.padding = '2px';
+                    coursesLabel.style.textAlign = 'left';
                     coursesRow.appendChild(coursesLabel);
 
                     const absoluteStart = weekCounter + courseOff;
@@ -650,6 +656,7 @@ function generateGanttChart(promotion) {
                     projectsLabel.style.minWidth = '150px';
                     projectsLabel.style.maxWidth = '200px';
                     projectsLabel.style.padding = '2px';
+                    projectsLabel.style.textAlign = 'left';
                     projectsRow.appendChild(projectsLabel);
 
                     const absoluteStart = weekCounter + projectOff;
