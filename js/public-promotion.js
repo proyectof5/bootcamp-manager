@@ -1597,7 +1597,7 @@ function _renderPublicCompetences(filterArea) {
         'web': 'primary', 'ai': 'dark', 'accessibility': 'info',
         'green': 'success', 'inmersivo': 'warning'
     };
-
+    
     const LEVEL_COLORS = { 1: '#ffc107', 2: '#0d6efd', 3: '#198754' };
     const LEVEL_BG     = { 1: '#fff3cd', 2: '#cfe2ff', 3: '#d1e7dd' };
     const LEVEL_NAMES  = { 1: 'Básico',  2: 'Medio',   3: 'Avanzado' };
