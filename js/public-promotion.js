@@ -393,6 +393,7 @@ function generateGanttChart(promotion) {
     monthHeaderCell.style.minWidth = '150px';
     monthHeaderCell.style.maxWidth = '200px';
     monthHeaderCell.style.fontSize = '0.7rem';
+    monthHeaderCell.style.textAlign = 'left';
     monthRow.appendChild(monthHeaderCell);
 
     let currentMonth = 0;
@@ -432,6 +433,7 @@ function generateGanttChart(promotion) {
     weekHeaderCell.style.minWidth = '150px';
     weekHeaderCell.style.maxWidth = '200px';
     weekHeaderCell.style.fontSize = '0.7rem';
+    weekHeaderCell.style.textAlign = 'left';
     headerRow.appendChild(weekHeaderCell);
 
     for (let i = 1; i <= weeks; i++) {
@@ -476,6 +478,7 @@ function generateGanttChart(promotion) {
         headerLabel.style.minWidth = '150px';
         headerLabel.style.maxWidth = '200px';
         headerLabel.style.padding = '4px';
+        headerLabel.style.textAlign = 'left';
         headerRow.appendChild(headerLabel);
 
         // Compute the overall span of all employability sessions to show on the header row
@@ -524,6 +527,7 @@ function generateGanttChart(promotion) {
             itemLabel.style.minWidth = '150px';
             itemLabel.style.maxWidth = '200px';
             itemLabel.style.padding = '2px';
+            itemLabel.style.textAlign = 'left';
             itemRow.appendChild(itemLabel);
 
             const startWeek = (item.startMonth - 1) * 4;
@@ -567,6 +571,7 @@ function generateGanttChart(promotion) {
         nameCell.style.minWidth = '150px';
         nameCell.style.maxWidth = '200px';
         nameCell.style.padding = '4px';
+        nameCell.style.textAlign = 'left';
         row.appendChild(nameCell);
 
         for (let i = 0; i < weeks; i++) {
@@ -612,6 +617,7 @@ function generateGanttChart(promotion) {
                     coursesLabel.style.minWidth = '150px';
                     coursesLabel.style.maxWidth = '200px';
                     coursesLabel.style.padding = '2px';
+                    coursesLabel.style.textAlign = 'left';
                     coursesRow.appendChild(coursesLabel);
 
                     const absoluteStart = weekCounter + courseOff;
@@ -650,6 +656,7 @@ function generateGanttChart(promotion) {
                     projectsLabel.style.minWidth = '150px';
                     projectsLabel.style.maxWidth = '200px';
                     projectsLabel.style.padding = '2px';
+                    projectsLabel.style.textAlign = 'left';
                     projectsRow.appendChild(projectsLabel);
 
                     const absoluteStart = weekCounter + projectOff;
@@ -797,9 +804,15 @@ function displaySections(sections) {
 
 function updateSidebar(sections) {
     const nav = document.getElementById('sidebar-nav');
-    nav.innerHTML = `
-        <li class="nav-item"><a class="nav-link" href="#roadmap" onclick="closeAulaVirtualPage()"><i class="bi bi-map me-2"></i>Roadmap</a></li>
-    `;
+    nav.innerHTML = '';
+
+    // Only show Roadmap if there are modules configured
+    const hasModules = window.publicPromotionData &&
+        Array.isArray(window.publicPromotionData.modules) &&
+        window.publicPromotionData.modules.length > 0;
+    if (hasModules) {
+        nav.innerHTML = `<li class="nav-item"><a class="nav-link" href="#roadmap" onclick="closeAulaVirtualPage()"><i class="bi bi-map me-2"></i>Roadmap</a></li>`;
+    }
 
     sections.forEach(section => {
         const li = document.createElement('li');
@@ -853,26 +866,28 @@ function updateSidebarWithExtendedInfo(info) {
             nav.appendChild(pildorasLi);
         }
 
-        // Add Calendar right after Píldoras
-        //console.log('Adding calendar section to sidebar right after pildoras');
+        // Add Calendar right after Píldoras, but only if a Google Calendar was configured
+        if (window._calendarConfigured) {
+            const calendarLi = document.createElement('li');
+            calendarLi.className = 'nav-item';
+            calendarLi.innerHTML = '<a class="nav-link" href="#calendar" onclick="switchPublicTab(\'progreso\')"><i class="bi bi-calendar me-2"></i>Calendario</a>';
+            pildorasLi.insertAdjacentElement('afterend', calendarLi);
+        }
+    } else if (window._calendarConfigured) {
+        // No pildoras but calendar exists — insert after Roadmap or at top
         const calendarLi = document.createElement('li');
         calendarLi.className = 'nav-item';
         calendarLi.innerHTML = '<a class="nav-link" href="#calendar" onclick="switchPublicTab(\'progreso\')"><i class="bi bi-calendar me-2"></i>Calendario</a>';
-
-        pildorasLi.insertAdjacentElement('afterend', calendarLi);
+        if (roadmapItem) {
+            roadmapItem.insertAdjacentElement('afterend', calendarLi);
+        } else if (quickLinksItem) {
+            nav.insertBefore(calendarLi, quickLinksItem);
+        } else {
+            nav.appendChild(calendarLi);
+        }
     }
 
-    // Add Aula Virtual entry in sidebar (always visible)
-    const aulaLi = document.createElement('li');
-    aulaLi.className = 'nav-item';
-    // Usamos href="#" para evitar scroll por ancla; el comportamiento lo controla openAulaVirtualPage
-    aulaLi.innerHTML = '<a class="nav-link" href="#" onclick="openAulaVirtualPage(event)"><i class="bi bi-laptop me-2"></i>Aula Virtual</a>';
-
-    if (quickLinksItem) {
-        nav.insertBefore(aulaLi, quickLinksItem);
-    } else {
-        nav.appendChild(aulaLi);
-    }
+    // Aula Virtual sidebar entry is added later by loadVirtualClassroom() only when there is an active project
 
     // Add other Program Info sections before Quick Links
     if (info.schedule && hasScheduleData(info.schedule)) {
@@ -951,6 +966,9 @@ async function loadCalendar() {
             if (calendarCard) calendarCard.classList.remove('hidden');
             const iframe = document.getElementById('calendar-iframe');
             if (iframe) iframe.src = `https://calendar.google.com/calendar/embed?src=${encodeURIComponent(calendar.googleCalendarId)}&ctz=Europe/Madrid`;
+
+            // Flag so that updateSidebarWithExtendedInfo knows calendar is configured
+            window._calendarConfigured = true;
         }
     } catch (error) {
         console.error('Error loading calendar:', error);
@@ -1134,6 +1152,26 @@ async function loadExtendedInfo() {
 
 let _virtualClassroomState = null;
 
+function _addAulaVirtualToSidebar() {
+    const nav = document.getElementById('sidebar-nav');
+    if (!nav) return;
+    // Avoid duplicates
+    if (nav.querySelector('a[onclick*="openAulaVirtualPage"]')) return;
+    const aulaLi = document.createElement('li');
+    aulaLi.className = 'nav-item';
+    aulaLi.innerHTML = '<a class="nav-link" href="#" onclick="openAulaVirtualPage(event)"><i class="bi bi-laptop me-2"></i>Aula Virtual</a>';
+    const quickLinksAnchor = nav.querySelector('a[href="#quick-links"]');
+    const quickLinksItem = quickLinksAnchor ? quickLinksAnchor.parentElement : null;
+    if (quickLinksItem) {
+        nav.insertBefore(aulaLi, quickLinksItem);
+    } else {
+        nav.appendChild(aulaLi);
+    }
+    // Also reveal the CTA button in the "En Progreso" tab
+    const ctaDiv = document.getElementById('pp-cta-aula-virtual');
+    if (ctaDiv) ctaDiv.classList.remove('d-none');
+}
+
 async function loadVirtualClassroom() {
     try {
         const res = await fetch(`${API_URL}/api/promotions/${promotionId}/virtual-classroom`);
@@ -1150,6 +1188,9 @@ async function loadVirtualClassroom() {
         }
 
         _virtualClassroomState = data;
+
+        // Only add Aula Virtual to the sidebar when there is an active project
+        _addAulaVirtualToSidebar();
 
         // Preparar UI base (si la página ya estuviera abierta)
         const prefixEl = document.getElementById('aula-virtual-repo-prefix');
@@ -1556,35 +1597,39 @@ function _renderPublicCompetences(filterArea) {
         'web': 'primary', 'ai': 'dark', 'accessibility': 'info',
         'green': 'success', 'inmersivo': 'warning'
     };
-    const levelColorMap = { 1: 'secondary', 2: 'warning', 3: 'primary', 4: 'success' };
 
     const items = filtered.map((comp, i) => {
         const areaColor = areaColorMap[comp.area] || 'secondary';
         const selectedCount = (comp.selectedTools || []).length;
-        const allCount = (comp.allTools || comp.selectedTools || []).length;
-        const levelsCount = (comp.levels || []).length;
-
-        const startModuleBadge = comp.startModule
-            ? `<span class="badge bg-light text-dark border ms-2 small"><i class="bi bi-play-circle me-1 text-primary"></i>${escapeHtml(comp.startModule.name)}</span>`
-            : '';
 
         const toolBadges = (comp.selectedTools || []).map(t =>
             `<span class="badge bg-light text-dark border me-1 mb-1"><i class="bi bi-tools me-1 opacity-50"></i>${escapeHtml(t)}</span>`
         ).join('');
 
-        const levelRows = (comp.levels || []).map(l => `
-            <div class="d-flex align-items-start gap-2 mb-2">
-                <span class="badge bg-${levelColorMap[l.level] || 'secondary'} flex-shrink-0" style="min-width:2rem;text-align:center;">${l.level}</span>
-                <div>
-                    <strong class="small">${escapeHtml(l.description)}</strong>
-                    <ul class="mb-0 ps-3 small text-muted">
-                        ${(l.indicators || []).map(ind => `<li>${escapeHtml(ind)}</li>`).join('')}
-                    </ul>
+        const LEVEL_COLORS = { 1: '#ffc107', 2: '#0d6efd', 3: '#198754' };
+        const LEVEL_BG     = { 1: '#fff3cd', 2: '#cfe2ff', 3: '#d1e7dd' };
+        const LEVEL_NAMES  = { 1: 'Básico',  2: 'Medio',   3: 'Avanzado' };
+
+        const levelCols = [1, 2, 3].map(lvl => {
+            const l = (comp.levels || []).find(x => (x.level ?? x.levelId) === lvl);
+            const desc = l ? (l.description || l.levelName || LEVEL_NAMES[lvl]) : LEVEL_NAMES[lvl];
+            const inds = l ? (l.indicators || []) : [];
+            return `
+            <div class="col-md-4">
+                <div class="p-2 h-100 rounded border" style="background:${LEVEL_BG[lvl]};border-color:${LEVEL_COLORS[lvl]} !important;">
+                    <div class="fw-bold mb-1 text-uppercase" style="color:${LEVEL_COLORS[lvl]};font-size:0.6rem;letter-spacing:0.05em;">
+                        <i class="bi bi-award-fill me-1"></i>Nivel ${lvl}
+                    </div>
+                    <div class="fw-semibold mb-1" style="font-size:0.75rem;line-height:1.2;">${escapeHtml(desc)}</div>
+                    ${inds.length ? `<ul class="mb-0 ps-3 text-muted" style="font-size:0.7rem;line-height:1.2;">
+                        ${inds.map(ind => `<li>${escapeHtml(typeof ind === 'string' ? ind : (ind.name || ''))}</li>`).join('')}
+                    </ul>` : '<div class="text-muted fst-italic" style="font-size:0.7rem;">Sin indicadores.</div>'}
                 </div>
-            </div>`).join('');
+            </div>`;
+        }).join('');
 
         return `
-        <div class="accordion-item border-start border-4 border-${areaColor}">
+        <div class="accordion-item mb-2 shadow-sm border rounded overflow-hidden">
             <h2 class="accordion-header" id="pub-comp-header-${i}">
                 <button class="accordion-button collapsed py-2" type="button"
                     data-bs-toggle="collapse" data-bs-target="#pub-comp-body-${i}"
@@ -1592,38 +1637,18 @@ function _renderPublicCompetences(filterArea) {
                     <div class="d-flex align-items-center flex-wrap gap-2 w-100 me-3">
                         <span class="badge bg-${areaColor}">${escapeHtml(comp.area)}</span>
                         <strong>${escapeHtml(comp.name)}</strong>
-                        ${startModuleBadge}
-                        <span class="ms-auto d-flex gap-2 small text-muted">
-                            <span title="Herramientas"><i class="bi bi-tools me-1"></i>${selectedCount}</span>
-                            <span title="Niveles"><i class="bi bi-bar-chart-steps me-1"></i>${levelsCount}</span>
+                        <span class="ms-auto small text-muted">
+                            <i class="bi bi-tools me-1"></i>${selectedCount}
                         </span>
                     </div>
                 </button>
             </h2>
             <div id="pub-comp-body-${i}" class="accordion-collapse collapse"
                 aria-labelledby="pub-comp-header-${i}" data-bs-parent="#public-competences-accordion">
-                <div class="accordion-body pt-2 pb-3">
+                <div class="accordion-body pt-3 pb-3">
                     ${comp.description ? `<p class="text-muted small mb-3">${escapeHtml(comp.description)}</p>` : ''}
-                    ${comp.startModule ? `
-                    <div class="mb-3 p-2 bg-light rounded border d-inline-flex align-items-center gap-2">
-                        <i class="bi bi-play-circle text-primary"></i>
-                        <span class="small fw-semibold">Empieza a evaluarse en:</span>
-                        <span class="badge bg-primary">${escapeHtml(comp.startModule.name)}</span>
-                    </div>` : ''}
-                    <div class="row g-3">
-                        <div class="col-lg-6">
-                            <h6 class="small text-uppercase text-muted mb-2">
-                                <i class="bi bi-bar-chart-steps me-1"></i>Niveles e indicadores
-                            </h6>
-                            ${levelRows || '<span class="text-muted small fst-italic">Sin niveles definidos.</span>'}
-                        </div>
-                        <div class="col-lg-6">
-                            <h6 class="small text-uppercase text-muted mb-2">
-                                <i class="bi bi-tools me-1"></i>Herramientas
-                            </h6>
-                            ${toolBadges || '<span class="text-muted small fst-italic">No especificadas.</span>'}
-                        </div>
-                    </div>
+                    <div class="row g-2 mb-3">${levelCols}</div>
+                    ${toolBadges ? `<div class="mt-2"><strong class="small text-muted d-block mb-1"><i class="bi bi-tools me-1"></i>Herramientas</strong>${toolBadges}</div>` : ''}
                 </div>
             </div>
         </div>`;

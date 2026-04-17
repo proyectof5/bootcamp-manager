@@ -3750,8 +3750,6 @@ async function editModule(moduleId) {
             // Clear containers
             document.getElementById('courses-container').innerHTML = '';
             document.getElementById('projects-container').innerHTML = '';
-            const pildorasContainer = document.getElementById('pildoras-container');
-            if (pildorasContainer) pildorasContainer.innerHTML = '';
 
             // Populate courses
             if (module.courses && module.courses.length > 0) {
@@ -3775,13 +3773,6 @@ async function editModule(moduleId) {
                     const projectOff = isObj ? (Number(project.startOffset) || 0) : 0;
                     const projectCompIds = isObj ? (project.competenceIds || []) : [];
                     addProjectField(projectName, projectUrl, projectDur, projectOff, projectCompIds);
-                });
-            }
-
-            // Populate pildoras
-            if (module.pildoras && module.pildoras.length > 0) {
-                module.pildoras.forEach(p => {
-                    addPildoraField(p.title || '', p.type || 'individual');
                 });
             }
 
@@ -5127,37 +5118,6 @@ function saveProjectCompetencePicker() {
 }
 
 // Píldoras UI
-function addPildoraField(title = '', type = 'individual') {
-    const container = document.getElementById('pildoras-container');
-    const item = document.createElement('div');
-    item.className = 'pildora-item mb-3 p-2 border rounded bg-white';
-    item.innerHTML = `
-        <div class="row align-items-end g-2">
-            <div class="col-md-6">
-                <label class="form-label form-label-sm">Título de la Píldora</label>
-                <input type="text" class="form-control form-control-sm pildora-title" placeholder="e.g., Intro a Node.js" value="${escapeHtml(title)}" required />
-            </div>
-            <div class="col-md-4">
-                <label class="form-label form-label-sm">Tipo</label>
-                <select class="form-select form-select-sm pildora-type">
-                    <option value="individual" ${type === 'individual' ? 'selected' : ''}>Individual</option>
-                    <option value="couple" ${type === 'couple' ? 'selected' : ''}>Pareja</option>
-                </select>
-            </div>
-            <div class="col-md-2 text-end">
-                <button type="button" class="btn btn-sm btn-outline-danger" onclick="removePildoraField(this)">
-                    <i class="bi bi-trash"></i>
-                </button>
-            </div>
-        </div>
-    `;
-    container.appendChild(item);
-}
-
-function removePildoraField(button) {
-    button.closest('.pildora-item').remove();
-}
-
 function setupForms() {
     // Module form
     document.getElementById('module-form').addEventListener('submit', async (e) => {
@@ -5207,16 +5167,6 @@ function setupForms() {
             }
         });
 
-        // Collect pildoras
-        const pildoras = [];
-        document.querySelectorAll('#pildoras-container .pildora-item').forEach(item => {
-            const title = item.querySelector('.pildora-title')?.value || '';
-            const type = item.querySelector('.pildora-type')?.value || 'individual';
-            if (title) {
-                pildoras.push({ title, type, assignedStudentIds: [] });
-            }
-        });
-
         const token = localStorage.getItem('token');
 
         try {
@@ -5246,8 +5196,7 @@ function setupForms() {
                     name,
                     duration,
                     courses,
-                    projects,
-                    pildoras: pildoras.length > 0 ? pildoras : (promotion.modules[moduleIndex].pildoras || [])
+                    projects
                 };
 
                 const updateResponse = await fetch(`${API_URL}/api/promotions/${promotionId}`, {
@@ -5278,7 +5227,7 @@ function setupForms() {
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${token}`
                     },
-                    body: JSON.stringify({ name, duration, courses, projects, pildoras })
+                    body: JSON.stringify({ name, duration, courses, projects })
                 });
 
                 if (response.ok) {
