@@ -18,29 +18,30 @@
     const LIGHT_BG  = '#F8F9FA';
     const BORDER    = '#DEE2E6';
 
-    // ─── Shared print CSS ────────────────────────────────────────────────────
     function _baseCss() {
         return `
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
         @page { margin: 18mm 16mm 18mm 16mm; size: A4; }
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Inter', Arial, sans-serif; font-size: 10pt; color: #222; line-height: 1.5; background:#fff; }
-        h1 { font-size: 18pt; font-weight: 700; color: ${DARK}; }
-        h2 { font-size: 14pt; font-weight: 600; color: ${DARK}; margin-top: 14pt; margin-bottom: 6pt; }
-        h3 { font-size: 11pt; font-weight: 600; color: ${PRIMARY}; margin-top: 10pt; margin-bottom: 4pt; border-bottom: 1.5px solid ${PRIMARY}; padding-bottom: 2pt; }
-        h4 { font-size: 10pt; font-weight: 600; color: ${SECONDARY}; margin-top: 8pt; margin-bottom: 3pt; }
-        p  { margin-bottom: 5pt; }
-        table { width: 100%; border-collapse: collapse; margin-bottom: 8pt; font-size: 9.5pt; break-inside: auto; }
-        th { background: ${DARK}; color: #fff; padding: 5pt 7pt; text-align: left; font-weight: 600; }
-        td { padding: 5pt 7pt; border-bottom: 1px solid ${BORDER}; vertical-align: top; }
+        body { font-family: 'Inter', Arial, sans-serif; font-size: 10pt; color: #000; line-height: 1.6; background: #fff; }
+        h1 { font-size: 17pt; font-weight: 700; color: #000; }
+        h2 { font-size: 13pt; font-weight: 600; color: #000; margin-top: 16pt; margin-bottom: 6pt; }
+        h3 { font-size: 11pt; font-weight: 700; color: #000; margin-top: 14pt; margin-bottom: 5pt; }
+        h4 { font-size: 10pt; font-weight: 600; color: #000; margin-top: 10pt; margin-bottom: 3pt; }
+        p  { margin-bottom: 5pt; color: #000; }
+        ul, ol { margin-left: 14pt; margin-bottom: 5pt; }
+        li { margin-bottom: 2pt; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 10pt; font-size: 9.5pt; break-inside: auto; }
+        th { background: #f0f0f0; color: #000; padding: 5pt 7pt; text-align: left; font-weight: 600; border: 1px solid #ccc; }
+        td { padding: 5pt 7pt; border: 1px solid #ddd; vertical-align: top; color: #000; }
         tr { break-inside: avoid; break-after: auto; }
-        tr:nth-child(even) td { background: ${LIGHT_BG}; }
+        tr:nth-child(even) td { background: #fafafa; }
         .badge {
             display: inline-block; padding: 2pt 6pt; border-radius: 10pt;
             font-size: 8pt; font-weight: 600; line-height: 1.3;
         }
         .badge-orange  { background: ${PRIMARY}; color: #fff; }
-        .badge-dark    { background: ${DARK}; color: #fff; }
+        .badge-dark    { background: #333; color: #fff; }
         .badge-green   { background: #198754; color: #fff; }
         .badge-blue    { background: #0d6efd; color: #fff; }
         .badge-red     { background: #dc3545; color: #fff; }
@@ -48,25 +49,14 @@
         .badge-grey    { background: #6c757d; color: #fff; }
         .badge-info    { background: #0dcaf0; color: #000; }
         .badge-light   { background: #e9ecef; color: #333; border: 1px solid #ccc; }
-        .section-box {
-            border: 1px solid ${BORDER}; border-radius: 6pt;
-            padding: 10pt 12pt; margin-bottom: 10pt;
-            break-inside: avoid;
-        }
-        .card {
-            border: 1px solid ${BORDER}; border-radius: 6pt;
-            padding: 10pt 12pt; margin-bottom: 10pt;
-            break-inside: avoid;
-        }
-        .section-box.accent { border-left: 4px solid ${PRIMARY}; }
-        .section-box.green  { border-left: 4px solid #198754; }
-        .section-box.blue   { border-left: 4px solid #0d6efd; }
-        .section-box.red    { border-left: 4px solid #dc3545; }
+        .section-box { margin-bottom: 10pt; break-inside: avoid; }
+        .card        { margin-bottom: 10pt; break-inside: avoid; }
+        .section-box.accent, .section-box.green, .section-box.blue, .section-box.red { }
         .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10pt; }
         .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10pt; }
-        .kv { margin-bottom: 3pt; break-inside: avoid; }
-        .kv strong { color: ${SECONDARY}; }
-        .empty-note { color: #aaa; font-style: italic; font-size: 9pt; }
+        .kv { margin-bottom: 4pt; break-inside: avoid; }
+        .kv strong { color: #000; }
+        .empty-note { color: #888; font-style: italic; font-size: 9pt; }
         .pill-row { display: flex; flex-wrap: wrap; gap: 4pt; margin-top: 3pt; }
         .page-break { page-break-before: always; }
         .no-break { break-inside: avoid; }
@@ -86,37 +76,28 @@
             </div>`;
         }
 
+        const logoUrl = (window.APP_CONFIG?.BASE_URL || window.location.origin) + '/img/f5-logo-naranja.webp';
+
         return `
         <div style="display:flex; justify-content:space-between; align-items:flex-start;
-                    border-bottom: 3px solid ${PRIMARY}; padding-bottom: 10pt; margin-bottom: 14pt;">
+                    border-bottom: 1px solid #ccc; padding-bottom: 12pt; margin-bottom: 16pt;">
             <div>
-                <div style="font-size:8pt; color:${PRIMARY}; font-weight:700; letter-spacing:1.5px;
-                            text-transform:uppercase; margin-bottom:4pt;">
-                    Factoría F5 · Bootcamp Manager
-                </div>
-                <h1>${_esc(title)}</h1>
-                ${subtitle ? `<div style="font-size:11pt; color:${SECONDARY}; margin-top:3pt;">${_esc(subtitle)}</div>` : ''}
-                ${promotionName ? `<div style="font-size:9pt; color:#888; margin-top:3pt;">Promoción: <strong>${_esc(promotionName)}</strong></div>` : ''}
+                <h1 style="font-size:17pt; font-weight:700; color:#000; margin:0 0 3pt 0;">${_esc(title)}</h1>
+                ${subtitle ? `<div style="font-size:10.5pt; color:#000; margin-top:3pt;">${_esc(subtitle)}</div>` : ''}
+                ${promotionName ? `<div style="font-size:9pt; color:#333; margin-top:3pt;">Promoción: <strong>${_esc(promotionName)}</strong></div>` : ''}
                 ${periodHtml}
             </div>
-            <div style="text-align:right; font-size:9pt; color:#888; min-width:100pt;">
-                <div>${_esc(date)}</div>
-                <div style="margin-top:4pt;">
-                    <span style="display:inline-block; width:28pt; height:3pt; background:${PRIMARY}; border-radius:2pt;"></span>
-                    <span style="display:inline-block; width:14pt; height:3pt; background:${DARK}; border-radius:2pt; margin-left:2pt;"></span>
-                </div>
+            <div style="flex-shrink:0; margin-left:16pt;">
+                <img src="${logoUrl}" alt="Factoria F5 logo naranja"
+                     style="height:80pt; width:auto; display:block;"
+                     onerror="this.style.display='none'">
             </div>
         </div>`;
     }
 
     // ─── Footer ──────────────────────────────────────────────────────────────
     function _footer() {
-        return `
-        <div style="margin-top:20pt; padding-top:8pt; border-top:1px solid ${BORDER};
-                    font-size:8pt; color:#aaa; display:flex; justify-content:space-between;">
-            <span>Factoría F5 – Bootcamp Manager</span>
-            <span>Generado el ${new Date().toLocaleDateString('es-ES', {day:'2-digit',month:'long',year:'numeric'})}</span>
-        </div>`;
+        return '';
     }
 
     // ─── html2pdf options ────────────────────────────────────────────────────
@@ -741,20 +722,9 @@
     // ─── Reason block HTML (injected right after the header) ─────────────────
     function _razonBlock(razonInforme) {
         if (!razonInforme) return '';
-        return `<div style="
-            margin-bottom: 14pt;
-            padding: 8pt 12pt;
-            background: #f8f9fa;
-            border-left: 4px solid ${PRIMARY};
-            border-radius: 0 6pt 6pt 0;
-            font-size: 9.5pt;
-            line-height: 1.6;
-        ">
-            <div>
-                <span style="color:${SECONDARY}; font-weight:600;">Motivo del informe:&nbsp;</span>
-                <span style="color:#222;">${_esc(razonInforme)}</span>
-            </div>
-        </div>`;
+        return `<p style="margin-bottom:12pt; font-size:9.5pt; color:#000;">
+            <strong>Motivo del informe:</strong> ${_esc(razonInforme)}
+        </p>`;
     }
 
     // ════════════════════════════════════════════════════════════════════════
@@ -792,16 +762,14 @@
             html += _razonBlock(razonInforme);
 
             // ── Datos personales ──
-            html += `<div class="section-box accent">
-                <div class="kv"><strong>Coder:</strong> ${fullName}</div>
+            html += `<div class="kv"><strong>Coder:</strong> ${fullName}</div>
                 <div class="kv"><strong>Promoción:</strong> ${promo.name || '—'}</div>
-                <div class="kv"><strong>Fecha de generación:</strong> ${_today()}</div>
-            </div>`;
+                <div class="kv"><strong>Fecha de generación:</strong> ${_today()}</div>`;
 
             // ── Notas del profesor ── (omitir si vacío)
             const notes = tt.teacherNotes || [];
             if (notes.length) {
-                html += `<h3><span style="color:${PRIMARY}">✦</span> Notas del Profesor</h3>`;
+                html += `<h3>Notas del Profesor</h3>`;
                 html += `<table><thead><tr><th>Fecha</th><th>Nota</th></tr></thead><tbody>`;
                 notes.forEach(n => {
                     html += `<tr><td style="white-space:nowrap;">${_fmtDate(n.createdAt || n.date)}</td><td>${_esc(n.note || n.text || '')}</td></tr>`;
@@ -810,30 +778,26 @@
             }
 
             // ── Proyectos realizados ──
-            html += `<h3><span style="color:${PRIMARY}">✦</span> Proyectos Realizados</h3>`;
+            html += `<h3>Proyectos Realizados</h3>`;
             const teams = tt.teams || [];
             if (teams.length) {
                 teams.forEach(t => {
-                    const typeBadge = t.projectType === 'individual'
-                        ? `<span class="badge badge-info">Individual</span>`
-                        : `<span class="badge badge-green">Grupal</span>`;
+                    const typeLabel = t.projectType === 'individual' ? 'Individual' : 'Grupal';
                     const members = (t.members || []).map(m => _esc(m.name)).join(', ');
                     const comps   = t.competences || [];
-                    html += `<div class="section-box green no-break">
-                        <div style="display:flex; align-items:center; gap:8pt; margin-bottom:5pt;">
-                            <strong style="font-size:11pt;">${_esc(t.teamName || 'Proyecto')}</strong>
-                            ${typeBadge}
-                        </div>
+                    html += `<div class="no-break" style="margin-bottom:10pt;">
+                        <div style="margin-bottom:3pt;"><strong>${_esc(t.teamName || 'Proyecto')}</strong> — ${typeLabel}</div>
                         <div class="kv"><strong>Módulo:</strong> ${_esc(t.moduleName || '—')}</div>
                         ${members ? `<div class="kv"><strong>Compañeros:</strong> ${members}</div>` : ''}
                         ${comps.length ? `
-                        <div style="margin-top:6pt;">
-                            <strong style="font-size:9pt; color:${SECONDARY};">Competencias trabajadas:</strong>
+                        <div style="margin-top:4pt;">
+                            <strong>Competencias trabajadas:</strong>
+                            <ul style="margin-top:2pt;">
                             ${comps.map(c => {
-                                const tools = (c.toolsUsed || []).map(tl => `<span class="badge badge-light">${_esc(tl)}</span>`).join(' ');
-                                return `<div style="margin-top:4pt;">${_levelBadge(c.level)} <strong>${_esc(c.competenceName)}</strong>
-                                    ${tools ? `<span style="margin-left:4pt;">${tools}</span>` : ''}</div>`;
+                                const tools = (c.toolsUsed || []).join(', ');
+                                return `<li>${_esc(c.competenceName)} (Nivel ${c.level || '—'})${tools ? ' — ' + _esc(tools) : ''}</li>`;
                             }).join('')}
+                            </ul>
                         </div>` : ''}
                     </div>`;
                 });
@@ -856,7 +820,7 @@
                 });
             });
             if (pendingProjects.length) {
-                html += `<h3><span style="color:${PRIMARY}">✦</span> Proyectos Pendientes de Entrega</h3>`;
+                html += `<h3>Proyectos Pendientes de Entrega</h3>`;
                 html += `<table><thead><tr><th>Proyecto</th><th>Módulo</th></tr></thead><tbody>`;
                 pendingProjects.forEach(p => {
                     html += `<tr><td>${_esc(p.projectName)}</td><td>${_esc(p.moduleName)}</td></tr>`;
@@ -865,7 +829,7 @@
             }
 
             // ── Módulos completados ──
-            html += `<h3><span style="color:${PRIMARY}">✦</span> Módulos Completados</h3>`;
+            html += `<h3>Módulos Completados</h3>`;
             const mods = tt.completedModules || [];
             if (mods.length) {
                 html += `<table><thead><tr><th>Módulo</th><th>Fecha</th><th>Nota</th><th>Observaciones</th></tr></thead><tbody>`;
@@ -905,7 +869,7 @@
 
             // ── Píldoras Presentadas (omitir si vacío) ──
             if (_pilPresentadas.length) {
-                html += `<h3><span style="color:${PRIMARY}">✦</span> Píldoras Presentadas</h3>`;
+                html += `<h3>Píldoras Presentadas</h3>`;
                 html += `<table><thead><tr><th>Título</th><th>Módulo</th><th>Fecha</th><th>Modalidad</th></tr></thead><tbody>`;
                 _pilPresentadas.forEach(p => {
                     html += `<tr>
@@ -920,14 +884,14 @@
 
             // ── Píldoras No Presentadas / Pendientes (omitir si vacío) ──
             if (_pilPendientes.length) {
-                html += `<h3><span style="color:${PRIMARY}">✦</span> Píldoras No Presentadas / Pendientes</h3>`;
+                html += `<h3>Píldoras No Presentadas / Pendientes</h3>`;
                 html += `<table><thead><tr><th>Título</th><th>Módulo</th><th>Fecha prevista</th><th>Estado</th></tr></thead><tbody>`;
                 _pilPendientes.forEach(p => {
                     html += `<tr>
                         <td>${_esc(p.pildoraTitle)}</td>
                         <td>${_esc(p.moduleName)}</td>
                         <td>${_fmtDate(p.date)}</td>
-                        <td><span style="color:#dc3545; font-weight:600;">${_esc(p.status || 'Pendiente')}</span></td>
+                        <td>${_esc(p.status || 'Pendiente')}</td>
                     </tr>`;
                 });
                 html += `</tbody></table>`;
@@ -1442,15 +1406,13 @@ async function printActaInicio(promotionId) {
 
             // ── 1. Presentación ──
             html += `<h3>1. Presentación del Programa</h3>
-            <div class="section-box accent row3">
-                <div class="kv"><strong>Nombre:</strong><br>${_esc(promo.name)}</div>
-                <div class="kv"><strong>Inicio:</strong><br>${_esc(promo.startDate || '—')}</div>
-                <div class="kv"><strong>Fin:</strong><br>${_esc(promo.endDate || '—')}</div>
-                <div class="kv"><strong>Duración:</strong><br>${_esc(promo.weeks || '—')} semanas</div>
-                <div class="kv"><strong>Nº módulos:</strong><br>${modules.length}</div>
-                <div class="kv"><strong>Equipo:</strong><br>${team.length} persona(s)</div>
-            </div>
-            ${promo.description ? `<p>${_esc(promo.description)}</p>` : ''}`;
+            <div class="kv"><strong>Nombre:</strong> ${_esc(promo.name)}</div>
+            <div class="kv"><strong>Inicio:</strong> ${_esc(promo.startDate || '—')}</div>
+            <div class="kv"><strong>Fin:</strong> ${_esc(promo.endDate || '—')}</div>
+            <div class="kv"><strong>Duración:</strong> ${_esc(promo.weeks || '—')} semanas</div>
+            <div class="kv"><strong>Nº módulos:</strong> ${modules.length}</div>
+            <div class="kv"><strong>Equipo:</strong> ${team.length} persona(s)</div>
+            ${promo.description ? `<p style="margin-top:6pt;">${_esc(promo.description)}</p>` : ''}`;
 
             // ── 2. Equipo formativo ──
             html += `<h3>2. Equipo Formativo</h3>`;
@@ -1464,20 +1426,14 @@ async function printActaInicio(promotionId) {
 
             // ── 3. Horario ──
             html += `<h3>3. Horario del Programa</h3>
-            <div class="row2">
-                <div class="section-box blue">
-                    <h4>Online</h4>
-                    ${['entry','start','break','lunch','finish'].map(k =>
-                        sched.online?.[k] ? `<div class="kv"><strong>${_schedLabel(k)}:</strong> ${_esc(sched.online[k])}</div>` : ''
-                    ).join('')}
-                </div>
-                <div class="section-box green">
-                    <h4>Presencial</h4>
-                    ${['entry','start','break','lunch','finish'].map(k =>
-                        sched.presential?.[k] ? `<div class="kv"><strong>${_schedLabel(k)}:</strong> ${_esc(sched.presential[k])}</div>` : ''
-                    ).join('')}
-                </div>
-            </div>`;
+            <h4>Online</h4>
+            ${['entry','start','break','lunch','finish'].map(k =>
+                sched.online?.[k] ? `<div class="kv"><strong>${_schedLabel(k)}:</strong> ${_esc(sched.online[k])}</div>` : ''
+            ).join('')}
+            <h4>Presencial</h4>
+            ${['entry','start','break','lunch','finish'].map(k =>
+                sched.presential?.[k] ? `<div class="kv"><strong>${_schedLabel(k)}:</strong> ${_esc(sched.presential[k])}</div>` : ''
+            ).join('')}`;
 
             // ── 4. Roadmap – módulos ──
             html += `<h3>4. Roadmap – Módulos y Contenidos</h3>`;
@@ -1486,30 +1442,26 @@ async function printActaInicio(promotionId) {
                     const courses  = mod.courses  || [];
                     const projects = mod.projects || [];
                     const pildoras = mod.pildoras || [];
-                    html += `<div class="section-box no-break" style="margin-bottom:8pt;">
-                        <div style="display:flex; align-items:baseline; gap:8pt; margin-bottom:6pt;">
-                            <span class="badge badge-orange">Módulo ${idx + 1}</span>
-                            <strong style="font-size:11pt;">${_esc(mod.name)}</strong>
-                            <span style="color:#888; font-size:9pt;">${mod.duration || '?'} semana(s)</span>
+                    html += `<div class="no-break" style="margin-bottom:10pt;">
+                        <div style="margin-bottom:4pt;">
+                            <strong>Módulo ${idx + 1}: ${_esc(mod.name)}</strong>
+                            <span style="font-size:9pt; margin-left:6pt;">(${mod.duration || '?'} semanas)</span>
                         </div>`;
 
                     if (courses.length) {
-                        html += `<div style="margin-bottom:5pt;"><strong style="font-size:9pt; color:${SECONDARY};">Cursos / Contenidos:</strong>
-                            <ul style="margin:3pt 0 0 14pt; padding:0;">
-                                ${courses.map(c => `<li>${_esc(c.name || '?')}${c.duration ? ` <span style="color:#aaa;">(${c.duration}d)</span>` : ''}</li>`).join('')}
+                        html += `<div style="margin-bottom:4pt;"><strong>Cursos / Contenidos:</strong>
+                            <ul style="margin:2pt 0 0 14pt; padding:0;">
+                                ${courses.map(c => `<li>${_esc(c.name || '?')}${c.duration ? ` (${c.duration}d)` : ''}</li>`).join('')}
                             </ul></div>`;
                     }
                     if (projects.length) {
-                        html += `<div style="margin-bottom:5pt;"><strong style="font-size:9pt; color:${SECONDARY};">Proyectos:</strong>
-                            <ul style="margin:3pt 0 0 14pt; padding:0;">
+                        html += `<div style="margin-bottom:4pt;"><strong>Proyectos:</strong>
+                            <ul style="margin:2pt 0 0 14pt; padding:0;">
                                 ${projects.map(p => `<li>${_esc(p.name || '?')}</li>`).join('')}
                             </ul></div>`;
                     }
                     if (pildoras.length) {
-                        html += `<div><strong style="font-size:9pt; color:${SECONDARY};">Píldoras asignadas:</strong>
-                            <span style="margin-left:6pt;">
-                                ${pildoras.map(p => `<span class="badge badge-dark">${_esc(p.title || '?')}</span>`).join(' ')}
-                            </span></div>`;
+                        html += `<div><strong>Píldoras asignadas:</strong> ${pildoras.map(p => _esc(p.title || '?')).join(', ')}</div>`;
                     }
                     html += `</div>`;
                 });
@@ -1524,19 +1476,19 @@ async function printActaInicio(promotionId) {
                     const levels = c.levels || [];
                     const tools  = c.selectedTools || c.allTools || (c.tools || []).map(t => t.name || t) || [];
                     const startMod = c.startModule?.name || '';
-                    html += `<div class="section-box no-break" style="margin-bottom:8pt;">
-                        <div style="display:flex; align-items:baseline; gap:8pt; margin-bottom:4pt;">
-                            ${areaLabel ? `<span class="badge badge-dark">${_esc(areaLabel)}</span>` : ''}
+                    html += `<div class="no-break" style="margin-bottom:10pt;">
+                        <div style="margin-bottom:3pt;">
                             <strong>${_esc(c.name)}</strong>
-                            ${startMod ? `<span style="color:#888; font-size:9pt;">desde: ${_esc(startMod)}</span>` : ''}
+                            ${areaLabel ? ` — ${_esc(areaLabel)}` : ''}
+                            ${startMod ? ` (desde: ${_esc(startMod)})` : ''}
                         </div>
-                        ${c.description ? `<p style="font-size:9pt; color:${SECONDARY}; margin-bottom:4pt;">${_esc(c.description)}</p>` : ''}
+                        ${c.description ? `<p style="font-size:9pt; margin-bottom:4pt;">${_esc(c.description)}</p>` : ''}
                         ${levels.length ? `
                         <table style="margin-bottom:0; font-size:8.5pt;">
                             <thead><tr><th style="width:60pt;">Nivel</th><th>Descripción</th><th>Indicadores</th></tr></thead>
                             <tbody>
                             ${levels.map(lv => `<tr>
-                                <td><span class="badge badge-grey">Nv.${lv.level ?? lv.levelId ?? '?'}</span></td>
+                                <td>Nv.${lv.level ?? lv.levelId ?? '?'}</td>
                                 <td>${_esc(lv.description || lv.levelDescription || '')}</td>
                                 <td>${(lv.indicators || []).map(ind =>
                                     `<div>• ${_esc(typeof ind === 'string' ? ind : ind.name || '')}</div>`
@@ -1544,10 +1496,7 @@ async function printActaInicio(promotionId) {
                             </tr>`).join('')}
                             </tbody>
                         </table>` : ''}
-                        ${tools.length ? `<div class="pill-row" style="margin-top:5pt;">
-                            <strong style="font-size:8.5pt; color:${SECONDARY};">Herramientas:</strong>
-                            ${tools.map(t => `<span class="badge badge-light">${_esc(t)}</span>`).join('')}
-                        </div>` : ''}
+                        ${tools.length ? `<div style="margin-top:4pt;"><strong>Herramientas:</strong> ${tools.map(t => _esc(t)).join(', ')}</div>` : ''}
                     </div>`;
                 });
             } else { html += `<p class="empty-note">Sin competencias definidas en el programa.</p>`; }
@@ -1655,24 +1604,17 @@ async function printActaInicio(promotionId) {
             ? `<span class="badge badge-info">Individual</span>`
             : `<span class="badge badge-green">Grupal</span>`;
 
-        html += `<div class="section-box accent row2">
-            <div>
-                <div class="kv"><strong>Proyecto:</strong> ${_esc(t.teamName || '—')}</div>
-                <div class="kv"><strong>Tipo:</strong> ${typeBadge}</div>
-                <div class="kv"><strong>Módulo:</strong> ${_esc(t.moduleName || '—')}</div>
-            </div>
-            <div>
-                <div class="kv"><strong>Coder:</strong> ${_esc(fullName)}</div>
-                <div class="kv"><strong>Email:</strong> ${_esc(s.email || '—')}</div>
-            </div>
-        </div>
+        const typeLabel = t.projectType === 'individual' ? 'Individual' : 'Grupal';
+
+        html += `<div class="kv"><strong>Proyecto:</strong> ${_esc(t.teamName || '—')}</div>
+            <div class="kv"><strong>Tipo:</strong> ${typeLabel}</div>
+            <div class="kv"><strong>Módulo:</strong> ${_esc(t.moduleName || '—')}</div>
+            <div class="kv"><strong>Coder:</strong> ${_esc(fullName)}</div>
+            <div class="kv"><strong>Email:</strong> ${_esc(s.email || '—')}</div>
         ${(t.members && t.members.length && t.projectType === 'grupal')
-            ? `<div class="section-box" style="margin-top:8pt;">
-                <div style="font-size:10pt; font-weight:700; color:${DARK}; margin-bottom:8pt; border-bottom:1px solid #e0e0e0; padding-bottom:4pt;">
-                    Integrantes del equipo
-                </div>
-                <ul style="margin:0; padding-left:16pt; list-style:disc;">
-                    ${t.members.map(m => `<li style="padding:2pt 0; font-size:10pt;">${_esc(m.name)}</li>`).join('')}
+            ? `<div style="margin-top:6pt;"><strong>Integrantes del equipo:</strong>
+                <ul style="margin:2pt 0 0 14pt;">
+                    ${t.members.map(m => `<li>${_esc(m.name)}</li>`).join('')}
                 </ul>
             </div>`
             : ''
@@ -1681,9 +1623,7 @@ async function printActaInicio(promotionId) {
         // ── Nota del profesor ──
         if (t.teacherNote) {
             html += `<h3>Nota del Profesor</h3>
-            <div class="section-box" style="border-left:4px solid #0dcaf0;">
-                <p style="white-space:pre-wrap; font-style:italic;">${_esc(t.teacherNote)}</p>
-            </div>`;
+            <p style="font-style:italic; white-space:pre-wrap;">${_esc(t.teacherNote)}</p>`;
         }
 
         // ── Competencias trabajadas ──
@@ -1732,12 +1672,10 @@ async function printActaInicio(promotionId) {
         }
 
         // ── Firmas ──
-        html += `<div style="margin-top:28pt;">
-            <div class="section-box no-break" style="max-width:260pt;">
-                <div style="font-size:9pt; color:${SECONDARY}; font-weight:600; margin-bottom:4pt;">Firma del/la docente</div>
-                <div style="border-bottom:1.5px solid #999; height:36pt;"></div>
-                <div style="font-size:8pt; color:#aaa; margin-top:4pt;">Docente responsable</div>
-            </div>
+        html += `<div style="margin-top:28pt; max-width:260pt;">
+            <div style="font-size:9pt; font-weight:600; margin-bottom:4pt;">Firma del/la docente</div>
+            <div style="border-bottom:1.5px solid #999; height:36pt;"></div>
+            <div style="font-size:8pt; margin-top:4pt;">Docente responsable</div>
         </div>`;
 
         const filename = `proyecto_${(t.teamName||'proyecto').replace(/\s+/g,'-')}_${(fullName).replace(/\s+/g,'-')}.pdf`;
@@ -1772,21 +1710,15 @@ async function printActaInicio(promotionId) {
         // ── Motivo del informe ──
         html += _razonBlock(razonInforme || '');
 
-        html += `<div class="section-box accent row2">
-            <div>
-                <div class="kv"><strong>Email:</strong> ${_esc(s.email || '—')}</div>
-                <div class="kv"><strong>Nacionalidad:</strong> ${_esc(s.nationality || '—')}</div>
-            </div>
-            <div>
-                <div class="kv"><strong>Edad:</strong> ${_esc(s.age || '—')}</div>
-                <div class="kv"><strong>Profesión:</strong> ${_esc(s.profession || '—')}</div>
-            </div>
-        </div>`;
+        html += `<div class="kv"><strong>Email:</strong> ${_esc(s.email || '—')}</div>
+            <div class="kv"><strong>Nacionalidad:</strong> ${_esc(s.nationality || '—')}</div>
+            <div class="kv"><strong>Edad:</strong> ${_esc(s.age || '—')}</div>
+            <div class="kv"><strong>Profesión:</strong> ${_esc(s.profession || '—')}</div>`;
 
         // ── Notas del Profesor (omitir si vacío) ──
         const notes = tt.teacherNotes || [];
         if (notes.length) {
-            html += `<h3>✦ Notas del Profesor</h3>`;
+            html += `<h3>Notas del Profesor</h3>`;
             html += `<table><thead><tr><th>Fecha</th><th>Nota</th></tr></thead><tbody>`;
             notes.forEach(n => {
                 html += `<tr><td style="white-space:nowrap;">${_fmtDate(n.createdAt || n.date)}</td><td>${_esc(n.note || n.text || '')}</td></tr>`;
@@ -1795,30 +1727,27 @@ async function printActaInicio(promotionId) {
         }
 
         // ── Proyectos Realizados ──
-        html += `<h3>✦ Proyectos Realizados</h3>`;
+        html += `<h3>Proyectos Realizados</h3>`;
         const teams = tt.teams || [];
         if (teams.length) {
             teams.forEach(t => {
-                const typeBadge = t.projectType === 'individual'
-                    ? `<span class="badge badge-info">Individual</span>`
-                    : `<span class="badge badge-green">Grupal</span>`;
+                const typeLabel = t.projectType === 'individual' ? 'Individual' : 'Grupal';
                 const members = (t.members || []).map(m => _esc(m.name)).join(', ');
                 const comps   = t.competences || [];
-                html += `<div class="section-box green no-break">
-                    <div style="display:flex; align-items:center; gap:8pt; margin-bottom:5pt;">
-                        <strong style="font-size:11pt;">${_esc(t.teamName || 'Proyecto')}</strong>
-                        ${typeBadge}
-                    </div>
+                html += `<div class="no-break" style="margin-bottom:10pt;">
+                    <div style="margin-bottom:3pt;"><strong>${_esc(t.teamName || 'Proyecto')}</strong> — ${typeLabel}</div>
                     <div class="kv"><strong>Módulo:</strong> ${_esc(t.moduleName || '—')}</div>
                     ${members ? `<div class="kv"><strong>Compañeros:</strong> ${members}</div>` : ''}
-                    ${t.teacherNote ? `<div class="kv" style="margin-top:4pt; font-style:italic; color:#555;">"${_esc(t.teacherNote)}"</div>` : ''}
+                    ${t.teacherNote ? `<div class="kv"><em>"${_esc(t.teacherNote)}"</em></div>` : ''}
                     ${comps.length ? `
-                    <div style="margin-top:6pt;">
-                        <strong style="font-size:9pt; color:${SECONDARY};">Competencias:</strong>
+                    <div style="margin-top:4pt;">
+                        <strong>Competencias:</strong>
+                        <ul style="margin-top:2pt;">
                         ${comps.map(c => {
-                            const tools = (c.toolsUsed || []).map(tl => `<span class="badge badge-light">${_esc(tl)}</span>`).join(' ');
-                            return `<div style="margin-top:3pt;">${_levelBadge(c.level)} <strong>${_esc(c.competenceName)}</strong> ${tools}</div>`;
+                            const tools = (c.toolsUsed || []).join(', ');
+                            return `<li>${_esc(c.competenceName)} (Nivel ${c.level || '—'})${tools ? ' — ' + _esc(tools) : ''}</li>`;
                         }).join('')}
+                        </ul>
                     </div>` : ''}
                 </div>`;
             });
@@ -1839,7 +1768,7 @@ async function printActaInicio(promotionId) {
             });
         });
         if (_pendingProjects.length) {
-            html += `<h3>✦ Proyectos Pendientes de Entrega</h3>`;
+            html += `<h3>Proyectos Pendientes de Entrega</h3>`;
             html += `<table><thead><tr><th>Proyecto</th><th>Módulo</th></tr></thead><tbody>`;
             _pendingProjects.forEach(p => {
                 html += `<tr><td>${_esc(p.projectName)}</td><td>${_esc(p.moduleName)}</td></tr>`;
@@ -1848,7 +1777,7 @@ async function printActaInicio(promotionId) {
         }
 
         // ── Módulos Completados ──
-        html += `<h3>✦ Módulos Completados</h3>`;
+        html += `<h3>Módulos Completados</h3>`;
         const mods = tt.completedModules || [];
         if (mods.length) {
             html += `<table><thead><tr><th>Módulo</th><th>Fecha</th><th>Nota</th></tr></thead><tbody>`;
@@ -1880,7 +1809,7 @@ async function printActaInicio(promotionId) {
             });
 
             if (_pilPresentadas.length) {
-                html += `<h3>✦ Píldoras Presentadas</h3>`;
+                html += `<h3>Píldoras Presentadas</h3>`;
                 html += `<table><thead><tr><th>Título</th><th>Módulo</th><th>Fecha</th><th>Modalidad</th></tr></thead><tbody>`;
                 _pilPresentadas.forEach(p => {
                     html += `<tr>
@@ -1894,14 +1823,14 @@ async function printActaInicio(promotionId) {
             }
 
             if (_pilPendientes.length) {
-                html += `<h3>✦ Píldoras No Presentadas / Pendientes</h3>`;
+                html += `<h3>Píldoras No Presentadas / Pendientes</h3>`;
                 html += `<table><thead><tr><th>Título</th><th>Módulo</th><th>Fecha prevista</th><th>Estado</th></tr></thead><tbody>`;
                 _pilPendientes.forEach(p => {
                     html += `<tr>
                         <td>${_esc(p.pildoraTitle)}</td>
                         <td>${_esc(p.moduleName)}</td>
                         <td>${_fmtDate(p.date)}</td>
-                        <td><span style="color:#dc3545; font-weight:600;">${_esc(p.status || 'Pendiente')}</span></td>
+                        <td>${_esc(p.status || 'Pendiente')}</td>
                     </tr>`;
                 });
                 html += `</tbody></table>`;
@@ -1916,18 +1845,12 @@ async function printActaInicio(promotionId) {
         const fullName = `${s.name || ''} ${s.lastname || ''}`.trim();
         let html = _header('Ficha de Seguimiento Transversal', fullName, promo.name, _today(), promo);
 
-        html += `<div class="section-box accent row2">
-            <div>
-                <div class="kv"><strong>Email:</strong> ${_esc(s.email || '—')}</div>
-                <div class="kv"><strong>Nacionalidad:</strong> ${_esc(s.nationality || '—')}</div>
-            </div>
-            <div>
-                <div class="kv"><strong>Edad:</strong> ${_esc(s.age || '—')}</div>
-                <div class="kv"><strong>Profesión:</strong> ${_esc(s.profession || '—')}</div>
-            </div>
-        </div>`;
+        html += `<div class="kv"><strong>Email:</strong> ${_esc(s.email || '—')}</div>
+            <div class="kv"><strong>Nacionalidad:</strong> ${_esc(s.nationality || '—')}</div>
+            <div class="kv"><strong>Edad:</strong> ${_esc(s.age || '—')}</div>
+            <div class="kv"><strong>Profesión:</strong> ${_esc(s.profession || '—')}</div>`;
 
-        html += `<h3>✦ Sesiones de Empleabilidad</h3>`;
+        html += `<h3>Sesiones de Empleabilidad</h3>`;
         const emp = tr2.employabilitySessions || [];
         if (emp.length) {
             html += `<table><thead><tr><th>Fecha</th><th>Tema</th><th>Notas</th></tr></thead><tbody>`;
@@ -1935,7 +1858,7 @@ async function printActaInicio(promotionId) {
             html += `</tbody></table>`;
         } else { html += `<p class="empty-note">Sin sesiones de empleabilidad.</p>`; }
 
-        html += `<h3>✦ Sesiones Individuales</h3>`;
+        html += `<h3>Sesiones Individuales</h3>`;
         const ind = tr2.individualSessions || [];
         if (ind.length) {
             html += `<table><thead><tr><th>Fecha</th><th>Tema</th><th>Notas</th></tr></thead><tbody>`;
@@ -1943,7 +1866,7 @@ async function printActaInicio(promotionId) {
             html += `</tbody></table>`;
         } else { html += `<p class="empty-note">Sin sesiones individuales.</p>`; }
 
-        html += `<h3>✦ Incidencias</h3>`;
+        html += `<h3>Incidencias</h3>`;
         const incs = tr2.incidents || [];
         if (incs.length) {
             html += `<table><thead><tr><th>Fecha</th><th>Tipo</th><th>Descripción</th><th>Estado</th></tr></thead><tbody>`;
@@ -2063,47 +1986,36 @@ async function printActaInicio(promotionId) {
                     (t.teamName || '').toLowerCase() === projectName.toLowerCase()
                 );
                 projectTeams.forEach(t => {
-                    const typeBadge = t.projectType === 'individual'
-                        ? `<span class="badge badge-info">Individual</span>`
-                        : `<span class="badge badge-green">Grupal</span>`;
+                    const typeLabel = t.projectType === 'individual' ? 'Individual' : 'Grupal';
                     const comps = t.competences || [];
-                    sHtml += `<div class="section-box accent row2" style="margin-bottom:8pt;">
-                        <div>
-                            <div class="kv"><strong>Tipo:</strong> ${typeBadge}</div>
-                            <div class="kv"><strong>Módulo:</strong> ${_esc(t.moduleName||'—')}</div>
-                        </div>
-                        <div>
-                            <div class="kv"><strong>Coder:</strong> ${_esc(fullName)}</div>
-                            <div class="kv"><strong>Email:</strong> ${_esc(s.email||'—')}</div>
-                        </div>
-                    </div>`;
+                    sHtml += `<div class="kv"><strong>Tipo:</strong> ${typeLabel}</div>
+                        <div class="kv"><strong>Módulo:</strong> ${_esc(t.moduleName||'—')}</div>
+                        <div class="kv"><strong>Coder:</strong> ${_esc(fullName)}</div>
+                        <div class="kv"><strong>Email:</strong> ${_esc(s.email||'—')}</div>`;
                     if (t.members?.length && t.projectType === 'grupal') {
-                        sHtml += `<div class="section-box" style="margin-bottom:8pt;">
-                            <strong style="font-size:10pt;">Integrantes del equipo</strong>
-                            <ul style="margin:5pt 0 0 14pt; padding:0;">${t.members.map(m=>`<li>${_esc(m.name)}</li>`).join('')}</ul>
+                        sHtml += `<div style="margin-top:5pt;"><strong>Integrantes del equipo:</strong>
+                            <ul style="margin:2pt 0 0 14pt;">${t.members.map(m=>`<li>${_esc(m.name)}</li>`).join('')}</ul>
                         </div>`;
                     }
                     if (t.teacherNote) {
                         sHtml += `<h3>Nota del Profesor</h3>
-                        <div class="section-box" style="border-left:4px solid #0dcaf0;">
-                            <p style="white-space:pre-wrap; font-style:italic;">${_esc(t.teacherNote)}</p>
-                        </div>`;
+                        <p style="font-style:italic; white-space:pre-wrap;">${_esc(t.teacherNote)}</p>`;
                     }
                     sHtml += `<h3>Competencias Trabajadas</h3>`;
                     if (comps.length) {
                         sHtml += `<table><thead><tr><th>Competencia</th><th>Nivel</th><th>Herramientas</th></tr></thead><tbody>`;
                         comps.forEach(c => {
-                            const tools = (c.toolsUsed||[]).map(tl=>`<span class="badge badge-light">${_esc(tl)}</span>`).join(' ');
-                            sHtml += `<tr><td><strong>${_esc(c.competenceName)}</strong></td><td>${_levelBadge(c.level)}</td><td>${tools||'—'}</td></tr>`;
+                            const tools = (c.toolsUsed||[]).join(', ');
+                            sHtml += `<tr><td><strong>${_esc(c.competenceName)}</strong></td><td>Nv.${c.level || '—'}</td><td>${tools||'—'}</td></tr>`;
                         });
                         sHtml += `</tbody></table>`;
                     } else { sHtml += `<p class="empty-note">Sin competencias evaluadas.</p>`; }
                 });
-                sHtml += `<div style="margin-top:28pt;"><div class="section-box no-break" style="max-width:260pt;">
-                    <div style="font-size:9pt; color:${SECONDARY}; font-weight:600; margin-bottom:4pt;">Firma del/la docente</div>
+                sHtml += `<div style="margin-top:28pt; max-width:260pt;">
+                    <div style="font-size:9pt; font-weight:600; margin-bottom:4pt;">Firma del/la docente</div>
                     <div style="border-bottom:1.5px solid #999; height:36pt;"></div>
-                    <div style="font-size:8pt; color:#aaa; margin-top:4pt;">Docente responsable</div>
-                </div></div>`;
+                    <div style="font-size:8pt; margin-top:4pt;">Docente responsable</div>
+                </div>`;
                 return sHtml;
             };
 
@@ -2288,69 +2200,49 @@ async function printActaInicio(promotionId) {
 
             // ── Alert banner ──
             html += `
-            <div style="background:#fff1f0; border:1.5px solid #dc3545; border-left:5px solid #dc3545;
-                        border-radius:6pt; padding:10pt 14pt; margin-bottom:16pt; display:flex; align-items:center; gap:12pt;">
-                <div style="font-size:20pt; flex-shrink:0;">🚫</div>
-                <div>
-                    <div style="font-size:11pt; font-weight:700; color:#a31515;">Baja oficial del programa</div>
-                    <div style="font-size:9pt; color:#6b2b33; margin-top:2pt;">
-                        Este documento certifica que el/la participante ha causado baja oficial del bootcamp
-                        con fecha <strong>${bajaDate}</strong>.
-                    </div>
+            <div style="border:1px solid #ccc; border-radius:4pt; padding:10pt 14pt; margin-bottom:16pt;">
+                <div style="font-size:11pt; font-weight:700;">🚫 Baja oficial del programa</div>
+                <div style="font-size:9pt; color:#333; margin-top:2pt;">
+                    Este documento certifica que el/la participante ha causado baja oficial del bootcamp
+                    con fecha <strong>${bajaDate}</strong>.
                 </div>
             </div>`;
 
             // ── Datos del participante ──
-            html += `<h3><span style="color:${PRIMARY}">✦</span> Datos del/la Participante</h3>
-            <div class="section-box accent row2">
-                <div>
-                    <div class="kv"><strong>Nombre completo:</strong> ${_esc(fullName)}</div>
-                    <div class="kv"><strong>Email:</strong> ${_esc(s.email || '—')}</div>
-                    <div class="kv"><strong>Nacionalidad:</strong> ${_esc(s.nationality || '—')}</div>
-                    <div class="kv"><strong>Sit. Administrativa:</strong> ${_esc(s.administrativeSituation || '—')}</div>
-                </div>
-                <div>
-                    <div class="kv"><strong>Documento (DNI/NIE):</strong> ${_esc(s.identificationDocument || '—')}</div>
-                    <div class="kv"><strong>Nivel educativo:</strong> ${_esc(s.educationLevel || '—')}</div>
-                    <div class="kv"><strong>Género:</strong> ${_esc(s.gender || '—')}</div>
-                    <div class="kv"><strong>Profesión:</strong> ${_esc(s.profession || '—')}</div>
-                </div>
-            </div>`;
+            html += `<h3>Datos del/la Participante</h3>
+            <div class="kv"><strong>Nombre completo:</strong> ${_esc(fullName)}</div>
+            <div class="kv"><strong>Email:</strong> ${_esc(s.email || '—')}</div>
+            <div class="kv"><strong>Nacionalidad:</strong> ${_esc(s.nationality || '—')}</div>
+            <div class="kv"><strong>Sit. Administrativa:</strong> ${_esc(s.administrativeSituation || '—')}</div>
+            <div class="kv"><strong>Documento (DNI/NIE):</strong> ${_esc(s.identificationDocument || '—')}</div>
+            <div class="kv"><strong>Nivel educativo:</strong> ${_esc(s.educationLevel || '—')}</div>
+            <div class="kv"><strong>Género:</strong> ${_esc(s.gender || '—')}</div>
+            <div class="kv"><strong>Profesión:</strong> ${_esc(s.profession || '—')}</div>`;
 
             // ── Datos del programa ──
-            html += `<h3><span style="color:${PRIMARY}">✦</span> Datos del Programa</h3>
-            <div class="section-box blue row2">
-                <div>
-                    <div class="kv"><strong>Promoción:</strong> ${_esc(promo.name || '—')}</div>
-                    <div class="kv"><strong>Inicio del programa:</strong> ${promoStart}</div>
-                    <div class="kv"><strong>Fin previsto:</strong> ${promoEnd}</div>
-                </div>
-                <div>
-                    <div class="kv"><strong>Fecha oficial de baja:</strong>
-                        <span style="color:#dc3545; font-weight:700;">${bajaDate}</span>
-                    </div>
-                    <div class="kv"><strong>Representante Factoría F5:</strong> ${_esc(w.representative || '—')}</div>
-                    <div class="kv"><strong>Acta generada el:</strong> ${processedDate}</div>
-                </div>
-            </div>`;
+            html += `<h3>Datos del Programa</h3>
+            <div class="kv"><strong>Promoción:</strong> ${_esc(promo.name || '—')}</div>
+            <div class="kv"><strong>Inicio del programa:</strong> ${promoStart}</div>
+            <div class="kv"><strong>Fin previsto:</strong> ${promoEnd}</div>
+            <div class="kv"><strong>Fecha oficial de baja:</strong> ${bajaDate}</div>
+            <div class="kv"><strong>Representante Factoría F5:</strong> ${_esc(w.representative || '—')}</div>
+            <div class="kv"><strong>Acta generada el:</strong> ${processedDate}</div>`;
 
             // ── Motivo de la baja ──
-            html += `<h3><span style="color:${PRIMARY}">✦</span> Motivo de la Baja</h3>
-            <div class="section-box red">
-                <p style="white-space:pre-wrap; font-size:10pt; color:#333;">${_esc(w.reason || 'No especificado.')}</p>
-            </div>`;
+            html += `<h3>Motivo de la Baja</h3>
+            <p style="white-space:pre-wrap; font-size:10pt; color:#333;">${_esc(w.reason || 'No especificado.')}</p>`;
 
             // ── Bloque de firmas ──
             html += `
             <div style="margin-top:40pt;">
-                <h3><span style="color:${PRIMARY}">✦</span> Firmas</h3>
+                <h3>Firmas</h3>
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:30pt; margin-top:16pt;">
                     <div style="border-top:1.5px solid #333; padding-top:8pt; text-align:center;">
-                        <div style="font-size:9pt; color:${SECONDARY}; font-weight:600;">PARTICIPANTE</div>
+                        <div style="font-size:9pt; font-weight:600;">PARTICIPANTE</div>
                         <div style="font-size:9pt; margin-top:4pt;">${_esc(fullName)}</div>
                     </div>
                     <div style="border-top:1.5px solid #333; padding-top:8pt; text-align:center;">
-                        <div style="font-size:9pt; color:${SECONDARY}; font-weight:600;">REPRESENTANTE FACTORÍA F5</div>
+                        <div style="font-size:9pt; font-weight:600;">REPRESENTANTE FACTORÍA F5</div>
                         <div style="font-size:9pt; margin-top:4pt;">${_esc(w.representative || '—')}</div>
                     </div>
                 </div>
@@ -2477,7 +2369,7 @@ async function printActaInicio(promotionId) {
             
             html += `
             <div class="no-break" style="margin-top:20px;">
-                <h3 style="background:#f1f3f5; padding:6px 10px; border-left:4px solid ${PRIMARY}; margin-bottom:10px;">
+                <h3>
                     Semana ${selectedWeek.wIdx + 1} (${_fmtDateEs(formatLocal(workDays[0]))} al ${_fmtDateEs(formatLocal(workDays[4]))})
                 </h3>
                 <table style="font-size:8.5pt;">
