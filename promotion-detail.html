@@ -920,10 +920,16 @@
                                 onclick="downloadPromotionSyllabus()" title="Descargar Syllabus (PDF o Word)">
                                 <i class="bi bi-file-earmark-text me-2"></i>Syllabus
                             </button>
-                            <button id="save-program-details-btn" class="btn btn-primary" onclick="saveExtendedInfo()"
-                                title="Save all changes to Program Details">
-                                <i class="bi bi-save me-2"></i>Guardar Todos los Cambios
-                            </button>
+                            <div class="d-inline-block position-relative">
+                                <button id="save-program-details-btn" class="btn btn-primary" onclick="saveExtendedInfo()"
+                                    title="Save all changes to Program Details">
+                                    <i class="bi bi-save me-2"></i>Guardar Todos los Cambios
+                                </button>
+                                <span id="unsaved-changes-badge" class="badge bg-warning position-absolute top-0 start-100 translate-middle d-none" 
+                                    title="Hay cambios sin guardar">
+                                    <i class="bi bi-exclamation-circle"></i>
+                                </span>
+                            </div>
                         </div>
                     </div>
 

@@ -1751,8 +1751,13 @@ function createProgramInfoSections(info) {
             // Assignment UI for Legacy
             let assignmentCell = '';
             if (info.pildorasAssignmentOpen) {
+                const firstAssignedStudentId = students.length > 0 ? students[0].id : '';
+                
                 const studentOptions = (window.publicStudents || [])
-                    .map(s => `<option value="${s.id}">${s.name} ${s.lastname}</option>`)
+                    .map(s => {
+                        const isSelected = s.id === firstAssignedStudentId ? 'selected' : '';
+                        return `<option value="${s.id}" ${isSelected}>${s.name} ${s.lastname}</option>`;
+                    })
                     .join('');
 
                 assignmentCell = `
@@ -1920,8 +1925,13 @@ function createProgramInfoSections(info) {
                     // Assignment UI
                     let assignmentCell = '';
                     if (info.pildorasAssignmentOpen) {
+                        const firstAssignedStudentId = students.length > 0 ? students[0].id : '';
+                        
                         const studentOptions = (window.publicStudents || [])
-                            .map(s => `<option value="${s.id}">${s.name} ${s.lastname}</option>`)
+                            .map(s => {
+                                const isSelected = s.id === firstAssignedStudentId ? 'selected' : '';
+                                return `<option value="${s.id}" ${isSelected}>${s.name} ${s.lastname}</option>`;
+                            })
                             .join('');
 
                         assignmentCell = `
@@ -2093,6 +2103,12 @@ function createProgramInfoSections(info) {
 
             window.selfAssignPildora = async function (mId, pIdx) {
                 const selectEl = document.querySelector(`.coder-select-${pIdx}`);
+                if (!selectEl) {
+                    console.error(`[selfAssignPildora] No se encontró select: .coder-select-${pIdx}`);
+                    alert('Error: No se pudo encontrar el selector');
+                    return;
+                }
+
                 const sId = selectEl.value;
                 if (!sId) {
                     alert('Por favor selecciona un Coder');
@@ -2102,33 +2118,43 @@ function createProgramInfoSections(info) {
                 try {
                     const response = await fetch(`${API_URL}/api/promotions/${promotionId}/pildoras-self-assign`, {
                         method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ moduleId: mId, pildoraIndex: pIdx, studentId: sId, action: 'add' })
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${localStorage.getItem('token')}`
+                        },
+                        body: JSON.stringify({ 
+                            moduleId: mId, 
+                            pildoraIndex: pIdx, 
+                            studentId: sId, 
+                            action: 'add',
+                            isLegacy: false
+                        })
                     });
 
                     if (response.ok) {
-                        // Refresh data
-                        const infoResponse = await fetch(`${API_URL}/api/promotions/${promotionId}/extended-info`);
-                        if (infoResponse.ok) {
-                            const newInfo = await infoResponse.json();
-                            window.publicPromotionExtendedInfo = newInfo;
-
-                            // Re-calculate modulesWithPildoras and update table
-                            // (Actually it's better to just call loadExtendedInfo again to keep everything in sync)
-                            loadExtendedInfo();
-                        }
+                        // Show success message
+                        alert('¡Te has apuntado correctamente a la píldora!');
+                        // Reload extended info to reflect changes
+                        await loadExtendedInfo();
                     } else {
                         const error = await response.json();
-                        alert(`Error: ${error.error}`);
+                        console.error('[selfAssignPildora] Error response:', error);
+                        alert(`Error: ${error.error || 'No se pudo completar la inscripción'}`);
                     }
                 } catch (error) {
-                    console.error('Error assigning píldora:', error);
-                    alert('Error de conexión');
+                    console.error('[selfAssignPildora] Network error:', error);
+                    alert('Error de conexión. Por favor intenta de nuevo.');
                 }
             };
 
             window.selfAssignPildoraLegacy = async function (pIdx) {
                 const selectEl = document.querySelector(`.coder-select-legacy-${pIdx}`);
+                if (!selectEl) {
+                    console.error(`[selfAssignPildoraLegacy] No se encontró select: .coder-select-legacy-${pIdx}`);
+                    alert('Error: No se pudo encontrar el selector');
+                    return;
+                }
+
                 const sId = selectEl.value;
                 if (!sId) {
                     alert('Por favor selecciona un Coder');
@@ -2138,19 +2164,31 @@ function createProgramInfoSections(info) {
                 try {
                     const response = await fetch(`${API_URL}/api/promotions/${promotionId}/pildoras-self-assign`, {
                         method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ pildoraIndex: pIdx, studentId: sId, action: 'add', isLegacy: true })
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${localStorage.getItem('token')}`
+                        },
+                        body: JSON.stringify({ 
+                            pildoraIndex: pIdx, 
+                            studentId: sId, 
+                            action: 'add', 
+                            isLegacy: true 
+                        })
                     });
 
                     if (response.ok) {
-                        loadExtendedInfo();
+                        // Show success message
+                        alert('¡Te has apuntado correctamente a la píldora!');
+                        // Reload extended info to reflect changes
+                        await loadExtendedInfo();
                     } else {
                         const error = await response.json();
-                        alert(`Error: ${error.error}`);
+                        console.error('[selfAssignPildoraLegacy] Error response:', error);
+                        alert(`Error: ${error.error || 'No se pudo completar la inscripción'}`);
                     }
                 } catch (error) {
-                    console.error('Error assigning píldora (legacy):', error);
-                    alert('Error de conexión');
+                    console.error('[selfAssignPildoraLegacy] Network error:', error);
+                    alert('Error de conexión. Por favor intenta de nuevo.');
                 }
             };
 

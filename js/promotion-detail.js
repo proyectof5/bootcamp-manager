@@ -285,6 +285,31 @@ let extendedInfoData = {
     pildorasAssignmentOpen: false
 };
 
+// ── TRACK UNSAVED CHANGES STATE ────────────────────────────────────────────────
+let hasUnsavedChanges = false;
+
+/**
+ * Mark that there are unsaved changes and update UI badge
+ */
+function markUnsavedChanges() {
+    hasUnsavedChanges = true;
+    const badge = document.getElementById('unsaved-changes-badge');
+    if (badge) {
+        badge.classList.remove('d-none');
+    }
+}
+
+/**
+ * Clear unsaved changes marker
+ */
+function clearUnsavedChanges() {
+    hasUnsavedChanges = false;
+    const badge = document.getElementById('unsaved-changes-badge');
+    if (badge) {
+        badge.classList.add('d-none');
+    }
+}
+
 // Global calendar ID for use across the application
 let currentCalendarId = '';
 
@@ -944,6 +969,11 @@ function displayPildoras() {
     document.querySelectorAll('.pildora-student-checkbox').forEach(checkbox => {
         checkbox.addEventListener('change', function () {
             updatePildoraStudentSelection(parseInt(this.dataset.pildoraIndex), this.value, this.checked);
+            // Persist changes to server
+            const currentModule = promotionModules[currentModuleIndex];
+            if (currentModule) {
+                savePildorasToServer(currentModule);
+            }
         });
     });
 
@@ -953,6 +983,11 @@ function displayPildoras() {
             const index = parseInt(this.closest('tr').dataset.index);
             updatePildoraField(index, 'mode', this.value);
             applyPildorasColorCoding();
+            // Persist changes to server
+            const currentModule = promotionModules[currentModuleIndex];
+            if (currentModule) {
+                savePildorasToServer(currentModule);
+            }
         });
     });
 
@@ -960,11 +995,21 @@ function displayPildoras() {
         input.addEventListener('change', function () {
             const index = parseInt(this.closest('tr').dataset.index);
             updatePildoraField(index, 'date', this.value);
+            // Persist changes to server
+            const currentModule = promotionModules[currentModuleIndex];
+            if (currentModule) {
+                savePildorasToServer(currentModule);
+            }
         });
         // Also sync on blur/input to be safe
         input.addEventListener('blur', function () {
             const index = parseInt(this.closest('tr').dataset.index);
             updatePildoraField(index, 'date', this.value);
+            // Persist changes to server
+            const currentModule = promotionModules[currentModuleIndex];
+            if (currentModule) {
+                savePildorasToServer(currentModule);
+            }
         });
     });
 
@@ -972,6 +1017,11 @@ function displayPildoras() {
         input.addEventListener('blur', function () {
             const index = parseInt(this.closest('tr').dataset.index);
             updatePildoraField(index, 'title', this.value);
+            // Persist changes to server
+            const currentModule = promotionModules[currentModuleIndex];
+            if (currentModule) {
+                savePildorasToServer(currentModule);
+            }
         });
         input.addEventListener('input', function () {
             const index = parseInt(this.closest('tr').dataset.index);
@@ -984,6 +1034,11 @@ function displayPildoras() {
             const index = parseInt(this.closest('tr').dataset.index);
             updatePildoraField(index, 'status', this.value);
             applyPildorasColorCoding();
+            // Persist changes to server
+            const currentModule = promotionModules[currentModuleIndex];
+            if (currentModule) {
+                savePildorasToServer(currentModule);
+            }
         });
     });
 }
@@ -1155,6 +1210,12 @@ function updateModuleNavigation() {
 // Navigation functions
 function navigateToPreviousModule() {
     if (currentModuleIndex > 0) {
+        // ── Sync current module píldoras before navigating ────────────────────
+        const currentModule = promotionModules[currentModuleIndex];
+        if (currentModule && document.getElementById('pildoras-list-body')) {
+            syncPildorasFromUIToState();
+        }
+        
         currentModuleIndex--;
         displayPildoras();
     }
@@ -1162,9 +1223,84 @@ function navigateToPreviousModule() {
 
 function navigateToNextModule() {
     if (currentModuleIndex < promotionModules.length - 1) {
+        // ── Sync current module píldoras before navigating ────────────────────
+        const currentModule = promotionModules[currentModuleIndex];
+        if (currentModule && document.getElementById('pildoras-list-body')) {
+            syncPildorasFromUIToState();
+        }
+        
         currentModuleIndex++;
         displayPildoras();
     }
+}
+
+/**
+ * Sync píldoras from UI table to extendedInfoData state
+ * Called before navigating between modules to preserve changes
+ */
+function syncPildorasFromUIToState() {
+    const pildorasRows = document.querySelectorAll('#pildoras-list-body tr');
+    if (pildorasRows.length === 0) return;
+    
+    const currentModule = promotionModules[currentModuleIndex];
+    if (!currentModule) return;
+    
+    const currentModulePildoras = [];
+    const students = window.currentStudents || [];
+
+    pildorasRows.forEach(row => {
+        const modeEl = row.querySelector('.pildora-mode');
+        const dateEl = row.querySelector('.pildora-date');
+        const titleEl = row.querySelector('.pildora-title');
+        const statusEl = row.querySelector('.pildora-status');
+        const dropdown = row.querySelector('.pildora-students-dropdown');
+
+        if (!modeEl || !dateEl || !titleEl || !statusEl || !dropdown) return;
+
+        const mode = modeEl.value || '';
+        const date = dateEl.value || '';
+        const title = titleEl.value || '';
+        const status = statusEl.value || '';
+
+        const selectedIds = Array.from(dropdown.querySelectorAll('input[type="checkbox"]:checked'))
+            .map(input => input.value)
+            .filter(Boolean);
+        const studentsForPildora = selectedIds.map(id => {
+            const s = students.find(st => st.id === id);
+            return {
+                id,
+                name: s ? (s.name || '') : '',
+                lastname: s ? (s.lastname || '') : ''
+            };
+        });
+
+        if (mode || date || title || status || studentsForPildora.length > 0) {
+            currentModulePildoras.push({
+                mode,
+                date,
+                title,
+                students: studentsForPildora,
+                status
+            });
+        }
+    });
+
+    // Update the module's píldoras in state
+    let modulePildoras = extendedInfoData.modulesPildoras?.find(mp => mp.moduleId === currentModule.id);
+    if (!modulePildoras) {
+        if (!extendedInfoData.modulesPildoras) {
+            extendedInfoData.modulesPildoras = [];
+        }
+        modulePildoras = {
+            moduleId: currentModule.id,
+            moduleName: currentModule.name,
+            pildoras: []
+        };
+        extendedInfoData.modulesPildoras.push(modulePildoras);
+    }
+    modulePildoras.pildoras = currentModulePildoras;
+    
+    console.log('[Navigation] Píldoras synced for module', currentModule.name);
 }
 
 // Helper function to update student selection for píldoras
@@ -1904,6 +2040,13 @@ async function deleteEmployabilityItem(index) {
 async function saveExtendedInfo() {
     const token = localStorage.getItem('token');
 
+    // ── Sync pildorasAssignmentOpen from DOM to ensure it's not stale ────────────
+    // FIX: Sincronizar explícitamente desde el toggle para evitar race conditions
+    const assignmentToggle = document.getElementById('pildoras-assignment-toggle');
+    if (assignmentToggle) {
+        extendedInfoData.pildorasAssignmentOpen = assignmentToggle.checked;
+    }
+
     // Gather Schedule Data
     const schedule = {
         online: {
@@ -1926,64 +2069,9 @@ async function saveExtendedInfo() {
     const pildorasRows = document.querySelectorAll('#pildoras-list-body tr');
 
     // Collect current module píldoras from the displayed rows
-    const currentModule = promotionModules[currentModuleIndex];
-    if (currentModule && pildorasRows.length > 0) {
-        const currentModulePildoras = [];
-        const students = window.currentStudents || [];
-
-        pildorasRows.forEach(row => {
-            const modeEl = row.querySelector('.pildora-mode');
-            const dateEl = row.querySelector('.pildora-date');
-            const titleEl = row.querySelector('.pildora-title');
-            const statusEl = row.querySelector('.pildora-status');
-            const dropdown = row.querySelector('.pildora-students-dropdown');
-
-            if (!modeEl || !dateEl || !titleEl || !statusEl || !dropdown) return;
-
-            const mode = modeEl.value || '';
-            const date = dateEl.value || '';
-            const title = titleEl.value || '';
-            const status = statusEl.value || '';
-
-            // Get selected students from checkboxes in dropdown
-            const selectedIds = Array.from(dropdown.querySelectorAll('input[type="checkbox"]:checked'))
-                .map(input => input.value)
-                .filter(Boolean);
-            const studentsForPildora = selectedIds.map(id => {
-                const s = students.find(st => st.id === id);
-                return {
-                    id,
-                    name: s ? (s.name || '') : '',
-                    lastname: s ? (s.lastname || '') : ''
-                };
-            });
-
-            // Only add if there's actual content
-            if (mode || date || title || status || studentsForPildora.length > 0) {
-                currentModulePildoras.push({
-                    mode,
-                    date,
-                    title,
-                    students: studentsForPildora,
-                    status
-                });
-            }
-        });
-
-        // Update the current module's píldoras in the data structure
-        let modulePildoras = extendedInfoData.modulesPildoras?.find(mp => mp.moduleId === currentModule.id);
-        if (!modulePildoras) {
-            if (!extendedInfoData.modulesPildoras) {
-                extendedInfoData.modulesPildoras = [];
-            }
-            modulePildoras = {
-                moduleId: currentModule.id,
-                moduleName: currentModule.name,
-                pildoras: []
-            };
-            extendedInfoData.modulesPildoras.push(modulePildoras);
-        }
-        modulePildoras.pildoras = currentModulePildoras;
+    if (pildorasRows.length > 0) {
+        // ── Use shared sync function to avoid duplication ────────────────────
+        syncPildorasFromUIToState();
     }
 
     // Gather Evaluation (rich-text contenteditable div → innerHTML)
@@ -2088,6 +2176,9 @@ async function saveExtendedInfo() {
         if (response.ok) {
             const savedData = await response.json();
             //console.log('Data saved successfully:', savedData);
+
+            // ── Clear unsaved changes marker ───────────────────────────────────
+            clearUnsavedChanges();
 
             // ── Auto-sync competences → roadmap module projects ───────────────
             if (window.ProgramCompetences && window.ProgramCompetences.getEvalModulesSyncData) {
@@ -2501,6 +2592,15 @@ async function toggleShowEmployability(show) {
 async function togglePildorasAssignment(isOpen) {
     //console.log('Toggling píldoras self-assignment:', isOpen);
 
+    const toggle = document.getElementById('pildoras-assignment-toggle');
+    
+    // ── OPCIÓN 4: Actualizar estado local INMEDIATAMENTE para feedback visual ────
+    // El usuario ve el cambio al instante, luego sincronizamos con servidor
+    extendedInfoData.pildorasAssignmentOpen = isOpen;
+    
+    // Marcar como "cambios sin guardar" 
+    markUnsavedChanges();
+
     const token = localStorage.getItem('token');
     try {
         // Send ONLY the field being toggled — avoids overwriting unrelated data
@@ -2514,17 +2614,14 @@ async function togglePildorasAssignment(isOpen) {
         });
 
         if (!response.ok) {
-            alert('Failed to update assignment status');
-            // Revert UI
-            document.getElementById('pildoras-assignment-toggle').checked = !isOpen;
-            extendedInfoData.pildorasAssignmentOpen = !isOpen;
+            console.warn('Failed to sync assignment status to server, will retry on next save');
+            // El siguiente saveExtendedInfo() reintentar sincronizar
+        } else {
+            console.log('Assignment status synced to server');
         }
     } catch (error) {
-        console.error('Error updating assignment status:', error);
-        alert('Error updating assignment status');
-        // Revert UI
-        document.getElementById('pildoras-assignment-toggle').checked = !isOpen;
-        extendedInfoData.pildorasAssignmentOpen = !isOpen;
+        console.warn('Error syncing assignment status to server:', error);
+        // El siguiente saveExtendedInfo() reintentar sincronizar
     }
 }
 
