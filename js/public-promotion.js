@@ -2102,12 +2102,9 @@ function createProgramInfoSections(info) {
             };
 
             window.selfAssignPildora = async function (mId, pIdx) {
-                console.log('[selfAssignPildora] Button clicked - START');
-                
                 // ── Validate select element exists
                 const selectEl = document.querySelector(`.coder-select-${pIdx}`);
                 if (!selectEl) {
-                    console.error(`[selfAssignPildora] Select not found: .coder-select-${pIdx}`);
                     alert('Error: No se pudo encontrar el selector. Por favor recarga la página.');
                     return;
                 }
@@ -2115,7 +2112,6 @@ function createProgramInfoSections(info) {
                 // ── Validate student selection
                 const sId = selectEl.value;
                 if (!sId) {
-                    console.warn('[selfAssignPildora] No student selected');
                     alert('Por favor selecciona un Coder antes de apuntarte');
                     return;
                 }
@@ -2130,10 +2126,6 @@ function createProgramInfoSections(info) {
                         isLegacy: false
                     };
                     
-                    console.log(`[selfAssignPildora] URL: ${url}`);
-                    console.log(`[selfAssignPildora] Payload:`, payload);
-                    console.log(`[selfAssignPildora] API_URL=${API_URL}, promotionId=${promotionId}`);
-                    
                     const fetchOptions = {
                         method: 'PUT',
                         headers: { 
@@ -2143,10 +2135,7 @@ function createProgramInfoSections(info) {
                         body: JSON.stringify(payload)
                     };
                     
-                    console.log('[selfAssignPildora] Initiating fetch...');
                     const response = await fetch(url, fetchOptions);
-                    
-                    console.log(`[selfAssignPildora] Response received: status=${response.status}, ok=${response.ok}`);
 
                     // ── Parse response
                     let responseData;
@@ -2156,23 +2145,16 @@ function createProgramInfoSections(info) {
                             ? await response.json() 
                             : {};
                     } catch (parseErr) {
-                        console.error('[selfAssignPildora] Failed to parse response:', parseErr);
                         responseData = {};
                     }
 
-                    console.log('[selfAssignPildora] Response data:', responseData);
-
                     if (response.ok) {
-                        console.log('[selfAssignPildora] Assignment successful');
                         alert('¡Te has apuntado correctamente a la píldora!');
-                        console.log('[selfAssignPildora] About to reload extended info...');
                         // Reload extended info to reflect changes
                         await loadExtendedInfo();
-                        console.log('[selfAssignPildora] Extended info reloaded');
                     } else {
                         // ── Handle error responses with specific messages
                         const errorMessage = responseData.error || `Error ${response.status}`;
-                        console.error(`[selfAssignPildora] Server error (${response.status}):`, errorMessage, responseData);
                         
                         if (response.status === 403) {
                             alert('La autoasignación está cerrada. El profesor ha deshabilitado esta funcionalidad.');
@@ -2185,19 +2167,14 @@ function createProgramInfoSections(info) {
                         }
                     }
                 } catch (error) {
-                    console.error('[selfAssignPildora] Network/Exception error:', error);
-                    console.error('[selfAssignPildora] Error stack:', error.stack);
                     alert('Error de conexión. Por favor intenta de nuevo. Si el problema persiste, contacta con soporte.');
                 }
             };
 
             window.selfAssignPildoraLegacy = async function (pIdx) {
-                console.log('[selfAssignPildoraLegacy] Button clicked - START');
-                
                 // ── Validate select element exists
                 const selectEl = document.querySelector(`.coder-select-legacy-${pIdx}`);
                 if (!selectEl) {
-                    console.error(`[selfAssignPildoraLegacy] Select not found: .coder-select-legacy-${pIdx}`);
                     alert('Error: No se pudo encontrar el selector. Por favor recarga la página.');
                     return;
                 }
@@ -2205,7 +2182,6 @@ function createProgramInfoSections(info) {
                 // ── Validate student selection
                 const sId = selectEl.value;
                 if (!sId) {
-                    console.warn('[selfAssignPildoraLegacy] No student selected');
                     alert('Por favor selecciona un Coder antes de apuntarte');
                     return;
                 }
@@ -2219,10 +2195,6 @@ function createProgramInfoSections(info) {
                         isLegacy: true 
                     };
                     
-                    console.log(`[selfAssignPildoraLegacy] URL: ${url}`);
-                    console.log(`[selfAssignPildoraLegacy] Payload:`, payload);
-                    console.log(`[selfAssignPildoraLegacy] API_URL=${API_URL}, promotionId=${promotionId}`);
-                    
                     const fetchOptions = {
                         method: 'PUT',
                         headers: { 
@@ -2232,10 +2204,7 @@ function createProgramInfoSections(info) {
                         body: JSON.stringify(payload)
                     };
                     
-                    console.log('[selfAssignPildoraLegacy] Initiating fetch...');
                     const response = await fetch(url, fetchOptions);
-                    
-                    console.log(`[selfAssignPildoraLegacy] Response received: status=${response.status}, ok=${response.ok}`);
 
                     // ── Parse response
                     let responseData;
@@ -2245,23 +2214,16 @@ function createProgramInfoSections(info) {
                             ? await response.json() 
                             : {};
                     } catch (parseErr) {
-                        console.error('[selfAssignPildoraLegacy] Failed to parse response:', parseErr);
                         responseData = {};
                     }
 
-                    console.log('[selfAssignPildoraLegacy] Response data:', responseData);
-
                     if (response.ok) {
-                        console.log('[selfAssignPildoraLegacy] Assignment successful');
                         alert('¡Te has apuntado correctamente a la píldora!');
-                        console.log('[selfAssignPildoraLegacy] About to reload extended info...');
                         // Reload extended info to reflect changes
                         await loadExtendedInfo();
-                        console.log('[selfAssignPildoraLegacy] Extended info reloaded');
                     } else {
                         // ── Handle error responses with specific messages
                         const errorMessage = responseData.error || `Error ${response.status}`;
-                        console.error(`[selfAssignPildoraLegacy] Server error (${response.status}):`, errorMessage, responseData);
                         
                         if (response.status === 403) {
                             alert('La autoasignación está cerrada. El profesor ha deshabilitado esta funcionalidad.');
@@ -2274,8 +2236,6 @@ function createProgramInfoSections(info) {
                         }
                     }
                 } catch (error) {
-                    console.error('[selfAssignPildoraLegacy] Network/Exception error:', error);
-                    console.error('[selfAssignPildoraLegacy] Error stack:', error.stack);
                     alert('Error de conexión. Por favor intenta de nuevo. Si el problema persiste, contacta con soporte.');
                 }
             };
