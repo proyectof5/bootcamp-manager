@@ -2102,93 +2102,181 @@ function createProgramInfoSections(info) {
             };
 
             window.selfAssignPildora = async function (mId, pIdx) {
+                console.log('[selfAssignPildora] Button clicked - START');
+                
+                // ── Validate select element exists
                 const selectEl = document.querySelector(`.coder-select-${pIdx}`);
                 if (!selectEl) {
-                    console.error(`[selfAssignPildora] No se encontró select: .coder-select-${pIdx}`);
-                    alert('Error: No se pudo encontrar el selector');
+                    console.error(`[selfAssignPildora] Select not found: .coder-select-${pIdx}`);
+                    alert('Error: No se pudo encontrar el selector. Por favor recarga la página.');
                     return;
                 }
 
+                // ── Validate student selection
                 const sId = selectEl.value;
                 if (!sId) {
-                    alert('Por favor selecciona un Coder');
+                    console.warn('[selfAssignPildora] No student selected');
+                    alert('Por favor selecciona un Coder antes de apuntarte');
                     return;
                 }
 
                 try {
-                    const response = await fetch(`${API_URL}/api/promotions/${promotionId}/pildoras-self-assign`, {
+                    const url = `${API_URL}/api/promotions/${promotionId}/pildoras-self-assign`;
+                    const payload = { 
+                        moduleId: mId, 
+                        pildoraIndex: pIdx, 
+                        studentId: sId, 
+                        action: 'add',
+                        isLegacy: false
+                    };
+                    
+                    console.log(`[selfAssignPildora] URL: ${url}`);
+                    console.log(`[selfAssignPildora] Payload:`, payload);
+                    console.log(`[selfAssignPildora] API_URL=${API_URL}, promotionId=${promotionId}`);
+                    
+                    const fetchOptions = {
                         method: 'PUT',
                         headers: { 
                             'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${localStorage.getItem('token')}`
+                            'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
                         },
-                        body: JSON.stringify({ 
-                            moduleId: mId, 
-                            pildoraIndex: pIdx, 
-                            studentId: sId, 
-                            action: 'add',
-                            isLegacy: false
-                        })
-                    });
+                        body: JSON.stringify(payload)
+                    };
+                    
+                    console.log('[selfAssignPildora] Initiating fetch...');
+                    const response = await fetch(url, fetchOptions);
+                    
+                    console.log(`[selfAssignPildora] Response received: status=${response.status}, ok=${response.ok}`);
+
+                    // ── Parse response
+                    let responseData;
+                    const contentType = response.headers.get('content-type');
+                    try {
+                        responseData = contentType && contentType.includes('application/json') 
+                            ? await response.json() 
+                            : {};
+                    } catch (parseErr) {
+                        console.error('[selfAssignPildora] Failed to parse response:', parseErr);
+                        responseData = {};
+                    }
+
+                    console.log('[selfAssignPildora] Response data:', responseData);
 
                     if (response.ok) {
-                        // Show success message
+                        console.log('[selfAssignPildora] Assignment successful');
                         alert('¡Te has apuntado correctamente a la píldora!');
+                        console.log('[selfAssignPildora] About to reload extended info...');
                         // Reload extended info to reflect changes
                         await loadExtendedInfo();
+                        console.log('[selfAssignPildora] Extended info reloaded');
                     } else {
-                        const error = await response.json();
-                        console.error('[selfAssignPildora] Error response:', error);
-                        alert(`Error: ${error.error || 'No se pudo completar la inscripción'}`);
+                        // ── Handle error responses with specific messages
+                        const errorMessage = responseData.error || `Error ${response.status}`;
+                        console.error(`[selfAssignPildora] Server error (${response.status}):`, errorMessage, responseData);
+                        
+                        if (response.status === 403) {
+                            alert('La autoasignación está cerrada. El profesor ha deshabilitado esta funcionalidad.');
+                        } else if (response.status === 404) {
+                            alert('No se encontró la píldora o el estudiante. Por favor recarga la página e intenta de nuevo.');
+                        } else if (response.status === 400) {
+                            alert(`Solicitud inválida: ${errorMessage}`);
+                        } else {
+                            alert(`Error: ${errorMessage}`);
+                        }
                     }
                 } catch (error) {
-                    console.error('[selfAssignPildora] Network error:', error);
-                    alert('Error de conexión. Por favor intenta de nuevo.');
+                    console.error('[selfAssignPildora] Network/Exception error:', error);
+                    console.error('[selfAssignPildora] Error stack:', error.stack);
+                    alert('Error de conexión. Por favor intenta de nuevo. Si el problema persiste, contacta con soporte.');
                 }
             };
 
             window.selfAssignPildoraLegacy = async function (pIdx) {
+                console.log('[selfAssignPildoraLegacy] Button clicked - START');
+                
+                // ── Validate select element exists
                 const selectEl = document.querySelector(`.coder-select-legacy-${pIdx}`);
                 if (!selectEl) {
-                    console.error(`[selfAssignPildoraLegacy] No se encontró select: .coder-select-legacy-${pIdx}`);
-                    alert('Error: No se pudo encontrar el selector');
+                    console.error(`[selfAssignPildoraLegacy] Select not found: .coder-select-legacy-${pIdx}`);
+                    alert('Error: No se pudo encontrar el selector. Por favor recarga la página.');
                     return;
                 }
 
+                // ── Validate student selection
                 const sId = selectEl.value;
                 if (!sId) {
-                    alert('Por favor selecciona un Coder');
+                    console.warn('[selfAssignPildoraLegacy] No student selected');
+                    alert('Por favor selecciona un Coder antes de apuntarte');
                     return;
                 }
 
                 try {
-                    const response = await fetch(`${API_URL}/api/promotions/${promotionId}/pildoras-self-assign`, {
+                    const url = `${API_URL}/api/promotions/${promotionId}/pildoras-self-assign`;
+                    const payload = { 
+                        pildoraIndex: pIdx, 
+                        studentId: sId, 
+                        action: 'add', 
+                        isLegacy: true 
+                    };
+                    
+                    console.log(`[selfAssignPildoraLegacy] URL: ${url}`);
+                    console.log(`[selfAssignPildoraLegacy] Payload:`, payload);
+                    console.log(`[selfAssignPildoraLegacy] API_URL=${API_URL}, promotionId=${promotionId}`);
+                    
+                    const fetchOptions = {
                         method: 'PUT',
                         headers: { 
                             'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${localStorage.getItem('token')}`
+                            'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
                         },
-                        body: JSON.stringify({ 
-                            pildoraIndex: pIdx, 
-                            studentId: sId, 
-                            action: 'add', 
-                            isLegacy: true 
-                        })
-                    });
+                        body: JSON.stringify(payload)
+                    };
+                    
+                    console.log('[selfAssignPildoraLegacy] Initiating fetch...');
+                    const response = await fetch(url, fetchOptions);
+                    
+                    console.log(`[selfAssignPildoraLegacy] Response received: status=${response.status}, ok=${response.ok}`);
+
+                    // ── Parse response
+                    let responseData;
+                    const contentType = response.headers.get('content-type');
+                    try {
+                        responseData = contentType && contentType.includes('application/json') 
+                            ? await response.json() 
+                            : {};
+                    } catch (parseErr) {
+                        console.error('[selfAssignPildoraLegacy] Failed to parse response:', parseErr);
+                        responseData = {};
+                    }
+
+                    console.log('[selfAssignPildoraLegacy] Response data:', responseData);
 
                     if (response.ok) {
-                        // Show success message
+                        console.log('[selfAssignPildoraLegacy] Assignment successful');
                         alert('¡Te has apuntado correctamente a la píldora!');
+                        console.log('[selfAssignPildoraLegacy] About to reload extended info...');
                         // Reload extended info to reflect changes
                         await loadExtendedInfo();
+                        console.log('[selfAssignPildoraLegacy] Extended info reloaded');
                     } else {
-                        const error = await response.json();
-                        console.error('[selfAssignPildoraLegacy] Error response:', error);
-                        alert(`Error: ${error.error || 'No se pudo completar la inscripción'}`);
+                        // ── Handle error responses with specific messages
+                        const errorMessage = responseData.error || `Error ${response.status}`;
+                        console.error(`[selfAssignPildoraLegacy] Server error (${response.status}):`, errorMessage, responseData);
+                        
+                        if (response.status === 403) {
+                            alert('La autoasignación está cerrada. El profesor ha deshabilitado esta funcionalidad.');
+                        } else if (response.status === 404) {
+                            alert('No se encontró la píldora o el estudiante. Por favor recarga la página e intenta de nuevo.');
+                        } else if (response.status === 400) {
+                            alert(`Solicitud inválida: ${errorMessage}`);
+                        } else {
+                            alert(`Error: ${errorMessage}`);
+                        }
                     }
                 } catch (error) {
-                    console.error('[selfAssignPildoraLegacy] Network error:', error);
-                    alert('Error de conexión. Por favor intenta de nuevo.');
+                    console.error('[selfAssignPildoraLegacy] Network/Exception error:', error);
+                    console.error('[selfAssignPildoraLegacy] Error stack:', error.stack);
+                    alert('Error de conexión. Por favor intenta de nuevo. Si el problema persiste, contacta con soporte.');
                 }
             };
 
