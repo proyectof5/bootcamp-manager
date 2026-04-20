@@ -354,11 +354,11 @@ body {
     box-shadow: none;
 }
 
-/* Quick Actions / Quick Links Dashboard Style */
-#quick-links-list {
-    display: grid !important;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-    gap: 12px;
+/* Quick Actions / Quick Links Dashboard Style (mismo patrón que .pp-stat-box: flex + wrap) */
+#quick-links-list .quick-action-card {
+    flex: 1;
+    min-width: 90px;
+    height: auto;
 }
 
 .quick-action-card {
@@ -387,10 +387,9 @@ body {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 16px 12px;
+    padding: 10px;
     text-decoration: none;
     color: #333;
-    gap: 8px;
     height: 100%;
     transition: all 0.2s ease;
     width: 100%;
@@ -425,10 +424,4 @@ body {
 
 .quick-action-card:hover:not(.disabled) .quick-action-label {
     color: #ff4700;
-}
-
-@media (max-width: 576px) {
-    #quick-links-list {
-        grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)) !important;
-    }
 }

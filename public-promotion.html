@@ -17,8 +17,9 @@
             color: #fff;
             border-radius: 12px;
             overflow: hidden;
-            box-shadow: 0 4px 18px rgba(255,71,0,.18);
+            box-shadow: 0 4px 18px rgba(255, 71, 0, .18);
         }
+
         .pp-banner-img {
             width: 100%;
             height: 80px;
@@ -26,17 +27,30 @@
             opacity: .72;
             display: block;
         }
-        .pp-banner-body { padding: 1rem 1.5rem 1.25rem; }
+
+        .pp-banner-body {
+            padding: 1rem 1.5rem 1.25rem;
+        }
+
         .pp-banner-title {
             font-size: 1.45rem;
             font-weight: 700;
             margin: 0;
             letter-spacing: -.01em;
         }
-        .pp-banner-sub { font-size: .85rem; opacity: .85; margin: .15rem 0 0; }
+
+        .pp-banner-sub {
+            font-size: .85rem;
+            opacity: .85;
+            margin: .15rem 0 0;
+        }
 
         /* ── Tabs ────────────────────────────────────────────── */
-        .pp-tabs { border-bottom: 2px solid var(--principal-1); gap: .25rem; }
+        .pp-tabs {
+            border-bottom: 2px solid var(--principal-1);
+            gap: .25rem;
+        }
+
         .pp-tabs .nav-link {
             color: var(--principal-1);
             border-radius: 8px 8px 0 0;
@@ -47,7 +61,11 @@
             background: transparent;
             cursor: pointer;
         }
-        .pp-tabs .nav-link:hover { background: #fff3ee; }
+
+        .pp-tabs .nav-link:hover {
+            background: #fff3ee;
+        }
+
         .pp-tabs .nav-link.active {
             background: #fff;
             border-color: var(--principal-1) var(--principal-1) #fff;
@@ -63,30 +81,48 @@
             font-weight: 700;
             font-size: 1rem;
             padding: .75rem 2rem;
-            box-shadow: 0 4px 14px rgba(255,71,0,.25);
+            box-shadow: 0 4px 14px rgba(255, 71, 0, .25);
             transition: opacity .2s, transform .2s;
             display: inline-flex;
             align-items: center;
             gap: .6rem;
             text-decoration: none;
         }
-        .pp-cta-btn:hover { opacity: .9; transform: translateY(-2px); color: #fff; }
+
+        .pp-cta-btn:hover {
+            opacity: .9;
+            transform: translateY(-2px);
+            color: #fff;
+        }
 
         /* ── Progress card ───────────────────────────────────── */
         .pp-progress-card {
             background: #fff;
             border-radius: 12px;
             padding: 1.25rem 1.5rem;
-            box-shadow: 0 2px 10px rgba(0,0,0,.06);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, .06);
         }
-        .pp-progress-label {
+
+        /* Misma tipografía que la etiqueta del bloque de progreso */
+        .pp-progress-label,
+        .pp-section-header h5,
+        main .card-title.section-title {
             font-size: .78rem;
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: .04em;
             color: #666;
+        }
+
+        .pp-progress-label {
             margin-bottom: .5rem;
         }
+
+        .pp-progress-label i,
+        main .card-title.section-title i {
+            color: var(--principal-1);
+        }
+
         .pp-stat-box {
             background: #f8f9fa;
             border-radius: 8px;
@@ -95,13 +131,19 @@
             flex: 1;
             min-width: 90px;
         }
+
         .pp-stat-val {
             font-size: 1.5rem;
             font-weight: 700;
             color: var(--principal-1);
             line-height: 1.1;
         }
-        .pp-stat-lbl { font-size: .72rem; color: #888; margin-top: .15rem; }
+
+        .pp-stat-lbl {
+            font-size: .72rem;
+            color: #888;
+            margin-top: .15rem;
+        }
 
         /* ── Próxima Píldora notice ───────────────────────────── */
         .pp-notice-card {
@@ -116,28 +158,75 @@
         .pp-section-card {
             background: #fff;
             border-radius: 12px;
-            box-shadow: 0 2px 10px rgba(0,0,0,.06);
+            box-shadow: 0 2px 10px rgba(0, 0, 0, .06);
             overflow: hidden;
         }
+
         .pp-section-header {
-            background: linear-gradient(135deg, #fff8f5, #fff3ee);
-            border-bottom: 2px solid var(--principal-1);
-            padding: .85rem 1.25rem;
+            background: #fff;
+            border-bottom: 1px solid rgba(0, 0, 0, .08);
+            padding: 1.25rem 1.5rem;
             display: flex;
             align-items: center;
             gap: .6rem;
         }
-        .pp-section-header-icon { color: var(--principal-1); font-size: 1.1rem; }
-        .pp-section-header h5 { margin: 0; font-size: 1rem; font-weight: 700; color: #222; }
-        .pp-section-body { padding: 1.25rem; }
 
-        @media (max-width: 767px) {
-            .pp-banner-title { font-size: 1.1rem; }
-            .pp-cta-btn { width: 100%; justify-content: center; }
+        .pp-section-header-icon {
+            color: var(--principal-1);
+            font-size: 1.15em;
+            flex-shrink: 0;
+            line-height: 1;
+        }
+
+        .pp-section-header h5 {
+            margin: 0;
+        }
+
+        #quick-links .pp-section-header {
+            border-bottom: none;
+            padding-bottom: 0;
+        }
+
+        .pp-section-body {
+            padding: 1.25rem;
+        }
+
+        /* Próxima píldora + calendario: mismo ancho que el resto de cards (evita .row sin .container) */
+        .pp-pildora-calendar-row {
+            display: grid;
+            gap: 1rem;
+            grid-template-columns: minmax(0, 1fr);
+            width: 100%;
+            box-sizing: border-box;
         }
 
         @media (min-width: 768px) {
-            .container-fluid > .row {
+            .pp-pildora-calendar-row {
+                grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+            }
+        }
+
+        #pp-resources-info-toggle .bi-chevron-down {
+            transition: transform .2s ease;
+        }
+
+        #pp-resources-info-toggle:not(.collapsed) .bi-chevron-down {
+            transform: rotate(180deg);
+        }
+
+        @media (max-width: 767px) {
+            .pp-banner-title {
+                font-size: 1.1rem;
+            }
+
+            .pp-cta-btn {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+
+        @media (min-width: 768px) {
+            .container-fluid>.row {
                 flex-wrap: nowrap;
             }
 
@@ -157,7 +246,7 @@
                 margin-right: 10px;
             }
 
-            main > * {
+            main>* {
                 max-width: 1000px;
                 margin-left: auto;
                 margin-right: auto;
@@ -175,22 +264,28 @@
                     <h5 class="modal-title">Acceso a la formación</h5>
                 </div>
                 <div class="modal-body">
-                    <p class="text-muted mb-4">Esta formación requiere contraseña. Introduce la contraseña que te han facilitado.</p>
+                    <p class="text-muted mb-4">Esta formación requiere contraseña. Introduce la contraseña que te han
+                        facilitado.</p>
                     <div id="password-alert" class="alert alert-danger hidden" role="alert"></div>
                     <div class="mb-3">
                         <label for="access-password" class="form-label">Contraseña</label>
                         <div class="input-group">
-                            <input type="password" class="form-control" id="access-password" placeholder="Introduce la contraseña">
-                            <button type="button" class="btn btn-outline-secondary" onclick="togglePasswordVisibility()">
+                            <input type="password" class="form-control" id="access-password"
+                                placeholder="Introduce la contraseña">
+                            <button type="button" class="btn btn-outline-secondary"
+                                onclick="togglePasswordVisibility()">
                                 <i class="bi bi-eye" id="togglePasswordIcon"></i>
                             </button>
                         </div>
                     </div>
                 </div>
                 <div class="modal-footer border-0">
-                    <button type="button" class="btn btn-primary" style="background:var(--principal-1);border-color:var(--principal-1);" onclick="verifyPromotionPassword()">
+                    <button type="button" class="btn btn-primary"
+                        style="background:var(--principal-1);border-color:var(--principal-1);"
+                        onclick="verifyPromotionPassword()">
                         <span class="btn-text">Verificar</span>
-                        <span class="spinner-border spinner-border-sm ms-2 hidden" role="status" aria-hidden="true"></span>
+                        <span class="spinner-border spinner-border-sm ms-2 hidden" role="status"
+                            aria-hidden="true"></span>
                     </button>
                 </div>
             </div>
@@ -220,15 +315,81 @@
 
                 <!-- ══ BANNER ══════════════════════════════════════════ -->
                 <div class="pp-banner mb-4">
-                    <img id="pp-banner-img" src="./img/f5_banner_roadmpa_manager.PNG"
-                         alt="Banner formación" class="pp-banner-img"
-                         onerror="this.style.display='none'">
+                    <img id="pp-banner-img" src="./img/f5_banner_roadmpa_manager.PNG" alt="Banner formación"
+                        class="pp-banner-img" onerror="this.style.display='none'">
                     <div class="pp-banner-body">
                         <h2 class="pp-banner-title" id="promotion-title">Cargando…</h2>
                         <p class="pp-banner-sub" id="pp-banner-sub"></p>
                     </div>
                 </div>
 
+                <!-- 2. Progreso -->
+                <div class="pp-progress-card mb-4">
+                    <div class="pp-progress-label">
+                        <i class="bi bi-bar-chart-fill me-2"></i>Progreso del bootcamp
+                    </div>
+                    <div class="progress mb-3" style="height:14px;border-radius:8px;">
+                        <div id="pp-progress-bar" class="progress-bar" role="progressbar"
+                            style="width:0%;background:linear-gradient(90deg,var(--principal-1),#ff8c42);border-radius:8px;"
+                            aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
+                    </div>
+                    <div class="d-flex gap-3 flex-wrap">
+                        <div class="pp-stat-box">
+                            <div class="pp-stat-val" id="pp-stat-total">—</div>
+                            <div class="pp-stat-lbl">Estudiantes activos</div>
+                        </div>
+                        <div class="pp-stat-box">
+                            <div class="pp-stat-val" id="pp-stat-weeks-done" style="color:#198754;">—</div>
+                            <div class="pp-stat-lbl">Semanas transcurridas</div>
+                        </div>
+                        <div class="pp-stat-box">
+                            <div class="pp-stat-val" id="pp-stat-weeks-left">—</div>
+                            <div class="pp-stat-lbl">Semanas restantes</div>
+                        </div>
+                        <div class="pp-stat-box">
+                            <div class="pp-stat-val" id="pp-stat-weeks-total">—</div>
+                            <div class="pp-stat-lbl">Semanas totales</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. Acciones Rápidas -->
+                <div class="pp-section-card mb-4" id="quick-links">
+                    <div class="pp-section-header">
+                        <i class="bi bi-lightning-charge pp-section-header-icon"></i>
+                        <h5>Acciones Rápidas</h5>
+                    </div>
+                    <div class="pp-section-body">
+                        <div id="quick-links-list" class="d-flex flex-wrap gap-3"></div>
+                    </div>
+                </div>
+
+                <!-- 5. Próxima Píldora + Calendario: móvil apilado; tablet+ 1/3 y 2/3 (grid, alineado con el resto de cards) -->
+                <div class="pp-pildora-calendar-row mb-4">
+                    <div class="d-flex min-w-0">
+                        <div class="pp-notice-card flex-fill w-100" id="pp-next-pildora-notice">
+                            <div class="d-flex align-items-center gap-2 mb-2">
+                                <i class="bi bi-lightbulb-fill text-warning fs-4"></i>
+                                <span class="fw-bold" style="color:var(--principal-1);">Próxima Píldora</span>
+                            </div>
+                            <div id="pp-next-pildora-body" class="text-muted small">
+                                <em>Sin píldoras próximas.</em>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="min-w-0" id="calendar">
+                        <div class="pp-section-card mb-0 hidden" id="calendar-card">
+                            <div class="pp-section-header">
+                                <i class="bi bi-calendar pp-section-header-icon"></i>
+                                <h5>Calendario</h5>
+                            </div>
+                            <div class="pp-section-body p-0">
+                                <iframe id="calendar-iframe" style="width:100%;height:320px;border:none;"
+                                    allowfullscreen></iframe>
+                            </div>
+                        </div>
+                    </div>
+                </div>
                 <!-- ══ TABS NAV ═════════════════════════════════════════ -->
                 <ul class="nav pp-tabs mb-4" id="pp-main-tabs">
                     <li class="nav-item">
@@ -249,50 +410,9 @@
                     <!-- 1. CTA — Aula Virtual (hidden until an active project is confirmed) -->
                     <div class="mb-4 text-center text-md-start d-none" id="pp-cta-aula-virtual">
                         <a href="#" id="pp-cta-link" class="pp-cta-btn"
-                           onclick="openAulaVirtualPage(event); return false;">
+                            onclick="openAulaVirtualPage(event); return false;">
                             <i class="bi bi-laptop"></i>Ir al Aula Virtual
                         </a>
-                    </div>
-
-                    <!-- 2. Progreso -->
-                    <div class="pp-progress-card mb-4">
-                        <div class="pp-progress-label">
-                            <i class="bi bi-bar-chart-fill me-2" style="color:var(--principal-1);"></i>Progreso del bootcamp
-                        </div>
-                        <div class="progress mb-3" style="height:14px;border-radius:8px;">
-                            <div id="pp-progress-bar" class="progress-bar" role="progressbar"
-                                 style="width:0%;background:linear-gradient(90deg,var(--principal-1),#ff8c42);border-radius:8px;"
-                                 aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
-                        </div>
-                        <div class="d-flex gap-3 flex-wrap">
-                            <div class="pp-stat-box">
-                                <div class="pp-stat-val" id="pp-stat-total">—</div>
-                                <div class="pp-stat-lbl">Estudiantes activos</div>
-                            </div>
-                            <div class="pp-stat-box">
-                                <div class="pp-stat-val" id="pp-stat-weeks-done" style="color:#198754;">—</div>
-                                <div class="pp-stat-lbl">Semanas transcurridas</div>
-                            </div>
-                            <div class="pp-stat-box">
-                                <div class="pp-stat-val" id="pp-stat-weeks-left">—</div>
-                                <div class="pp-stat-lbl">Semanas restantes</div>
-                            </div>
-                            <div class="pp-stat-box">
-                                <div class="pp-stat-val" id="pp-stat-weeks-total">—</div>
-                                <div class="pp-stat-lbl">Semanas totales</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- 3. Acciones Rápidas -->
-                    <div class="pp-section-card mb-4" id="quick-links">
-                        <div class="pp-section-header">
-                            <i class="bi bi-lightning-charge pp-section-header-icon"></i>
-                            <h5>Acciones Rápidas</h5>
-                        </div>
-                        <div class="pp-section-body">
-                            <div id="quick-links-list"></div>
-                        </div>
                     </div>
 
                     <!-- 4. Roadmap -->
@@ -308,33 +428,7 @@
                         </div>
                     </div>
 
-                    <!-- 5. Calendario + Próxima Píldora (2 columnas) -->
-                    <div class="row g-3 mb-4">
-                        <!-- Próxima píldora -->
-                        <div class="col-12 col-lg-5 d-flex">
-                            <div class="pp-notice-card flex-fill" id="pp-next-pildora-notice">
-                                <div class="d-flex align-items-center gap-2 mb-2">
-                                    <i class="bi bi-lightbulb-fill text-warning fs-4"></i>
-                                    <span class="fw-bold" style="color:var(--principal-1);">Próxima Píldora</span>
-                                </div>
-                                <div id="pp-next-pildora-body" class="text-muted small">
-                                    <em>Sin píldoras próximas.</em>
-                                </div>
-                            </div>
-                        </div>
-                        <!-- Calendario mini -->
-                        <div class="col-12 col-lg-7" id="calendar">
-                            <div class="pp-section-card mb-0 hidden" id="calendar-card">
-                                <div class="pp-section-header">
-                                    <i class="bi bi-calendar pp-section-header-icon"></i>
-                                    <h5>Calendario</h5>
-                                </div>
-                                <div class="pp-section-body p-0">
-                                    <iframe id="calendar-iframe" style="width:100%;height:320px;border:none;" allowfullscreen></iframe>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+
 
                     <!-- 6. Píldoras (inyectado por JS) -->
                     <div id="pildoras-wrapper"></div>
@@ -350,44 +444,6 @@
                 <!-- ══ TAB: INFORMACIÓN GENERAL ════════════════════════ -->
                 <div id="tab-info" class="d-none">
 
-                    <!-- 1. Banner informativo -->
-                    <div class="pp-banner mb-4" style="background:linear-gradient(135deg,#2b2b2b 0%,#444 100%);">
-                        <div class="pp-banner-body">
-                            <h2 class="pp-banner-title" id="pp-info-title">—</h2>
-                            <p class="pp-banner-sub" id="pp-info-sub"></p>
-                        </div>
-                    </div>
-
-                    <!-- 2. Progreso (mismo componente) -->
-                    <div class="pp-progress-card mb-4">
-                        <div class="pp-progress-label">
-                            <i class="bi bi-bar-chart-fill me-2" style="color:var(--principal-1);"></i>Progreso del bootcamp
-                        </div>
-                        <div class="progress mb-3" style="height:14px;border-radius:8px;">
-                            <div id="pp-progress-bar-info" class="progress-bar" role="progressbar"
-                                 style="width:0%;background:linear-gradient(90deg,var(--principal-1),#ff8c42);border-radius:8px;"
-                                 aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
-                        </div>
-                        <div class="d-flex gap-3 flex-wrap">
-                            <div class="pp-stat-box">
-                                <div class="pp-stat-val" id="pp-info-stat-total">—</div>
-                                <div class="pp-stat-lbl">Estudiantes activos</div>
-                            </div>
-                            <div class="pp-stat-box">
-                                <div class="pp-stat-val" id="pp-info-stat-weeks-done" style="color:#198754;">—</div>
-                                <div class="pp-stat-lbl">Semanas transcurridas</div>
-                            </div>
-                            <div class="pp-stat-box">
-                                <div class="pp-stat-val" id="pp-info-stat-weeks-left">—</div>
-                                <div class="pp-stat-lbl">Semanas restantes</div>
-                            </div>
-                            <div class="pp-stat-box">
-                                <div class="pp-stat-val" id="pp-info-stat-weeks-total">—</div>
-                                <div class="pp-stat-lbl">Semanas totales</div>
-                            </div>
-                        </div>
-                    </div>
-
                     <!-- 3. Horario (inyectado por JS) -->
                     <div id="horario-wrapper"></div>
 
@@ -396,16 +452,16 @@
 
                     <!-- 5. Competencias -->
                     <div class="pp-section-card mb-4 d-none" id="competences-section">
-                        <div class="pp-section-header d-flex justify-content-between align-items-center flex-wrap gap-2">
+                        <div
+                            class="pp-section-header d-flex justify-content-between align-items-center flex-wrap gap-2">
                             <div class="d-flex align-items-center gap-2">
                                 <i class="bi bi-award pp-section-header-icon"></i>
                                 <h5 class="mb-0">Competencias</h5>
                             </div>
                             <div class="d-flex align-items-center gap-2">
                                 <label class="form-label mb-0 small fw-semibold text-muted">Área:</label>
-                                <select class="form-select form-select-sm w-auto"
-                                        id="public-competences-area-filter"
-                                        onchange="filterPublicCompetences()">
+                                <select class="form-select form-select-sm w-auto" id="public-competences-area-filter"
+                                    onchange="filterPublicCompetences()">
                                     <option value="">Todas</option>
                                 </select>
                             </div>
@@ -456,7 +512,9 @@
                                     </h6>
                                     <div class="row g-3 align-items-end">
                                         <div class="col-md-5">
-                                            <label for="aula-virtual-target-select" class="form-label small fw-semibold text-muted" id="aula-virtual-target-label">
+                                            <label for="aula-virtual-target-select"
+                                                class="form-label small fw-semibold text-muted"
+                                                id="aula-virtual-target-label">
                                                 Identificación
                                             </label>
                                             <select id="aula-virtual-target-select" class="form-select form-select-sm">
@@ -464,22 +522,27 @@
                                             </select>
                                         </div>
                                         <div class="col-md-7">
-                                            <label class="form-label small fw-semibold text-muted">URL del repositorio</label>
+                                            <label class="form-label small fw-semibold text-muted">URL del
+                                                repositorio</label>
                                             <div class="input-group input-group-sm">
-                                                <span class="input-group-text bg-light text-muted" id="aula-virtual-repo-prefix"
-                                                      style="max-width:60%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
+                                                <span class="input-group-text bg-light text-muted"
+                                                    id="aula-virtual-repo-prefix"
+                                                    style="max-width:60%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
                                                     https://github.com/proyectof5/
                                                 </span>
                                                 <input type="text" class="form-control" id="aula-virtual-repo-suffix"
-                                                       placeholder="nombre-repo-estudiante">
+                                                    placeholder="nombre-repo-estudiante">
                                             </div>
-                                            <div class="form-text small">Solo escribe el nombre de tu repositorio. El prefijo es fijo.</div>
+                                            <div class="form-text small">Solo escribe el nombre de tu repositorio. El
+                                                prefijo es fijo.</div>
                                         </div>
                                     </div>
                                     <div class="d-flex align-items-center gap-2 mt-3">
-                                        <button type="button" class="btn btn-sm btn-primary" onclick="submitVirtualClassroomDelivery()">
+                                        <button type="button" class="btn btn-sm btn-primary"
+                                            onclick="submitVirtualClassroomDelivery()">
                                             <span class="btn-label"><i class="bi bi-send me-1"></i>Enviar entrega</span>
-                                            <span class="spinner-border spinner-border-sm d-none" role="status" aria-hidden="true"></span>
+                                            <span class="spinner-border spinner-border-sm d-none" role="status"
+                                                aria-hidden="true"></span>
                                         </button>
                                         <span id="aula-virtual-feedback" class="small text-muted"></span>
                                     </div>

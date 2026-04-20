@@ -198,6 +198,14 @@ function switchPublicTab(tab) {
     }
 }
 
+/** Abre el toggle de la lista de recursos (program info) si existe (p. ej. al usar el menú lateral). */
+function expandProgramInfoResourcesIfPresent() {
+    const el = document.getElementById('pp-resources-info-collapse');
+    if (el && typeof bootstrap !== 'undefined' && bootstrap.Collapse) {
+        bootstrap.Collapse.getOrCreateInstance(el).show();
+    }
+}
+
 // ── Progress bar ───────────────────────────────────────────────────────────
 function renderProgressBar() {
     const promotion = window.publicPromotionData;
@@ -933,7 +941,7 @@ function updateSidebarWithExtendedInfo(info) {
         //console.log('Adding resources section to sidebar');
         const li = document.createElement('li');
         li.className = 'nav-item';
-        li.innerHTML = '<a class="nav-link" href="#recursos-wrapper" onclick="switchPublicTab(\'progreso\')"><i class="bi bi-tools me-2"></i>Recursos</a>';
+        li.innerHTML = '<a class="nav-link" href="#recursos-wrapper" onclick="switchPublicTab(\'progreso\'); expandProgramInfoResourcesIfPresent();"><i class="bi bi-tools me-2"></i>Recursos</a>';
 
         if (quickLinksItem) {
             nav.insertBefore(li, quickLinksItem);
@@ -1079,7 +1087,7 @@ function renderPublicPromoResources(resources) {
     section.innerHTML = `
         <div class="pp-section-header">
             <i class="bi bi-collection-play pp-section-header-icon"></i>
-            <h5>Recursos de la Promoción</h5>
+            <h5>Recursos Internos</h5>
         </div>
         <div class="pp-section-body">
             <div class="accordion" id="${outerAccId}">
@@ -1093,7 +1101,7 @@ function renderPublicPromoResources(resources) {
     if (nav && !nav.querySelector('a[href="#recursos-wrapper"]') && !nav.querySelector('a[href="#recursos"]')) {
         const li = document.createElement('li');
         li.className = 'nav-item';
-        li.innerHTML = `<a class="nav-link" href="#recursos-wrapper" onclick="switchPublicTab('progreso')"><i class="bi bi-collection-play me-2"></i>Recursos</a>`;
+        li.innerHTML = `<a class="nav-link" href="#recursos-wrapper" onclick="switchPublicTab('progreso'); expandProgramInfoResourcesIfPresent();"><i class="bi bi-collection-play me-2"></i>Recursos</a>`;
         nav.appendChild(li);
     }
 }
@@ -2416,10 +2424,23 @@ function createProgramInfoSections(info) {
         resourcesSection.innerHTML = `
             <div class="card">
                 <div class="card-body">
-                    <h5 class="card-title section-title">
-                        <i class="bi bi-tools me-2"></i>Recursos
-                    </h5>
-                    ${generateResourcesHTML(info.resources)}
+                    <button class="btn w-100 d-flex align-items-center justify-content-between text-start border-0 bg-transparent p-0 mb-0"
+                            type="button"
+                            data-bs-toggle="collapse"
+                            data-bs-target="#pp-resources-info-collapse"
+                            aria-expanded="false"
+                            aria-controls="pp-resources-info-collapse"
+                            id="pp-resources-info-toggle">
+                        <span class="card-title section-title mb-0">
+                            <i class="bi bi-tools me-2"></i>Recursos Externos
+                        </span>
+                        <i class="bi bi-chevron-down ms-2 flex-shrink-0 text-muted" aria-hidden="true"></i>
+                    </button>
+                    <div id="pp-resources-info-collapse" class="collapse">
+                        <div class="mt-3">
+                            ${generateResourcesHTML(info.resources)}
+                        </div>
+                    </div>
                 </div>
             </div>
         `;
@@ -2442,13 +2463,17 @@ function hasScheduleData(schedule) {
 
 // Generate Schedule HTML
 function generateScheduleHTML(schedule) {
-    let html = '';
+    const hasOnline = schedule.online && Object.values(schedule.online).some(v => v && v.trim());
+    const hasPresential = schedule.presential && Object.values(schedule.presential).some(v => v && v.trim());
+    const colClass = hasOnline && hasPresential ? 'col-12 col-md-6' : 'col-12';
 
-    if (schedule.online && Object.values(schedule.online).some(v => v && v.trim())) {
-        html += `
-            <div class="mb-3">
-                <h6 >Horario Clases Online:</h6>
-                <ul>
+    const cols = [];
+
+    if (hasOnline) {
+        cols.push(`
+            <div class="${colClass}">
+                <h6 class="mb-2">Horario de clases Online</h6>
+                <ul class="mb-0 ps-3">
                     ${schedule.online.entry ? `<li><strong>Inicio:</strong> ${escapeHtml(schedule.online.entry)}</li>` : ''}
                     ${schedule.online.start ? `<li><strong>Píldora:</strong> ${escapeHtml(schedule.online.start)}</li>` : ''}
                     ${schedule.online.break ? `<li><strong>Break:</strong> ${escapeHtml(schedule.online.break)}</li>` : ''}
@@ -2456,14 +2481,14 @@ function generateScheduleHTML(schedule) {
                     ${schedule.online.finish ? `<li><strong>Cierre:</strong> ${escapeHtml(schedule.online.finish)}</li>` : ''}
                 </ul>
             </div>
-        `;
+        `);
     }
 
-    if (schedule.presential && Object.values(schedule.presential).some(v => v && v.trim())) {
-        html += `
-            <div class="mb-3">
-                <h6 >Horario Clases Presenciales:</h6>
-                <ul>
+    if (hasPresential) {
+        cols.push(`
+            <div class="${colClass}">
+                <h6 class="mb-2">Horario de clases presenciales</h6>
+                <ul class="mb-0 ps-3">
                     ${schedule.presential.entry ? `<li><strong>Inicio:</strong> ${escapeHtml(schedule.presential.entry)}</li>` : ''}
                     ${schedule.presential.start ? `<li><strong>Píldora:</strong> ${escapeHtml(schedule.presential.start)}</li>` : ''}
                     ${schedule.presential.break ? `<li><strong>Break:</strong> ${escapeHtml(schedule.presential.break)}</li>` : ''}
@@ -2471,11 +2496,16 @@ function generateScheduleHTML(schedule) {
                     ${schedule.presential.finish ? `<li><strong>Cierre:</strong> ${escapeHtml(schedule.presential.finish)}</li>` : ''}
                 </ul>
             </div>
-        `;
+        `);
+    }
+
+    let html = '';
+    if (cols.length) {
+        html += `<div class="row g-3 align-items-start">${cols.join('')}</div>`;
     }
 
     if (schedule.notes && schedule.notes.trim()) {
-        html += `<div class="alert alert-info"><strong>Notes:</strong> ${escapeHtml(schedule.notes)}</div>`;
+        html += `<div class="alert alert-info mt-3 mb-0"><strong>Notas:</strong> ${escapeHtml(schedule.notes)}</div>`;
     }
 
     return html;
