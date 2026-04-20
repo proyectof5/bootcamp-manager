@@ -43,7 +43,9 @@
 
             //console.log('[ProgramCompetences] /api/competences → recibidas:', data.length, 'competencias');
             //console.log('[ProgramCompetences] /api/areas → recibidas:', allAreasFromDB.length, 'áreas:', allAreasFromDB.map(a => `${a.id}:${a.name}`));
-            //console.log('[ProgramCompetences] Detalle primera competencia:', data[0]);
+            console.table(data.map(c => ({ id: c.id, name: c.name, description:c.description, areas: (c.areas||[]).map(a=>a.name||a).join(', '), tools: (c.tools||[]).length, levels: (c.levels||[]) })));
+            console.log('[ProgramCompetences] Catálogo completo de la API:', data);
+            console.log('[ProgramCompetences] Detalle primera competencia:', data[0]);
 
             // Normalize DB shape → internal shape
             COMPETENCES_CATALOG = data.map(comp => {
@@ -76,6 +78,18 @@
 
             //console.log('[ProgramCompetences] Filtro de área rellenado con:', AREAS);
             _catalogLoaded = true;
+
+            // Refresh levels and allTools on already-loaded program competences
+            // (in case they were saved with stale/wrong data from a previous version)
+            _programCompetences.forEach(pc => {
+                const fresh = COMPETENCES_CATALOG.find(c => c.id === pc.id);
+                if (fresh) {
+                    pc.levels    = JSON.parse(JSON.stringify(fresh.levels));
+                    pc.allTools  = [...(fresh.allTools || [])];
+                    // Keep selectedTools that still exist in allTools; drop obsolete ones
+                    pc.selectedTools = (pc.selectedTools || []).filter(t => pc.allTools.includes(t));
+                }
+            });
         } catch (e) {
             console.error('[ProgramCompetences] Excepción al cargar catálogo:', e);
         }
@@ -190,50 +204,59 @@
         const areaColor = _areaColor(comp.area);
         const selectedToolsCount = (comp.selectedTools || []).length;
         const allToolsCount      = (comp.allTools || []).length;
-        const toolBadges = (comp.selectedTools || []).map(t =>
-            `<span class="badge bg-light text-dark border me-1 mb-1"><i class="bi bi-tools me-1 opacity-50"></i>${_esc(t)}</span>`
-        ).join('');
 
         const LEVEL_COLORS = { 1: '#ffc107', 2: '#0d6efd', 3: '#198754' };
         const LEVEL_BG     = { 1: '#fff3cd', 2: '#cfe2ff', 3: '#d1e7dd' };
         const LEVEL_NAMES  = { 1: 'Básico',  2: 'Medio',   3: 'Avanzado' };
 
+        const levelDescs = (comp.levels || []).reduce((acc, l) => { acc[l.level] = l.description; return acc; }, {});
+
         const levelCols = [1, 2, 3].map(lvl => {
-            const l = (comp.levels || []).find(x => (x.level ?? x.levelId) === lvl);
-            const desc = l ? (l.description || l.levelName || LEVEL_NAMES[lvl]) : LEVEL_NAMES[lvl];
-            const inds = l ? (l.indicators || []) : [];
+            const levelObj  = (comp.levels || []).find(l => l.level === lvl);
+            const indNames  = levelObj ? (levelObj.indicators || []) : [];
+            const desc      = levelDescs[lvl] || LEVEL_NAMES[lvl];
             return `
-            <div class="col-md-4">
+            <div class="col-md-4 mb-2">
                 <div class="p-2 h-100 rounded border" style="background:${LEVEL_BG[lvl]};border-color:${LEVEL_COLORS[lvl]} !important;">
-                    <div class="fw-bold mb-1 text-uppercase" style="color:${LEVEL_COLORS[lvl]};font-size:0.6rem;letter-spacing:0.05em;">
+                    <div class="fw-bold text-uppercase mb-1" style="color:${LEVEL_COLORS[lvl]};font-size:0.6rem;letter-spacing:0.05em;">
                         <i class="bi bi-award-fill me-1"></i>Nivel ${lvl}
                     </div>
                     <div class="fw-semibold mb-1" style="font-size:0.75rem;line-height:1.2;">${_esc(desc)}</div>
-                    ${inds.length ? `<ul class="mb-0 ps-3 text-muted" style="font-size:0.7rem;line-height:1.2;">
-                        ${inds.map(i => `<li>${_esc(typeof i === 'string' ? i : (i.name || ''))}</li>`).join('')}
-                    </ul>` : '<div class="text-muted fst-italic" style="font-size:0.7rem;">Sin indicadores.</div>'}
+                    ${indNames.length ? `<ul class="mb-0 ps-3 text-muted" style="font-size:0.7rem;line-height:1.2;">${indNames.map(n => `<li>${_esc(n)}</li>`).join('')}</ul>` : '<div class="text-muted fst-italic" style="font-size:0.7rem;">Sin indicadores.</div>'}
                 </div>
             </div>`;
         }).join('');
+
+        const toolBadges = (comp.selectedTools || []).map(t =>
+            `<span class="badge bg-light text-dark border me-1 mb-1"><i class="bi bi-tools me-1 opacity-50"></i>${_esc(t)}</span>`
+        ).join('');
 
         const collapseId = `vo-comp-${idx}`;
         return `
         <div class="accordion-item mb-2 shadow-sm border rounded overflow-hidden">
             <h2 class="accordion-header">
-                <button class="accordion-button collapsed py-2" type="button"
+                <button class="accordion-button collapsed py-2 px-3" type="button"
                     data-bs-toggle="collapse" data-bs-target="#${collapseId}" aria-expanded="false">
-                    <span class="badge bg-${areaColor} me-2" style="font-size:.7rem;">${_esc(comp.area || 'Sin área')}</span>
-                    <span class="fw-semibold me-2">${_esc(comp.name)}</span>
-                    <span class="badge bg-light text-muted border ms-auto me-3" style="font-size:.7rem;">
-                        <i class="bi bi-tools me-1"></i>${selectedToolsCount}/${allToolsCount} herramientas
-                    </span>
+                    <div class="d-flex align-items-center gap-2 w-100 me-3">
+                        <span class="badge bg-${areaColor}" style="font-size:.65rem;">${_esc(comp.area || 'Sin área')}</span>
+                        <strong class="small">${_esc(comp.name)}</strong>
+                        <span class="ms-auto badge bg-light text-muted border" style="font-size:.65rem;">
+                            <i class="bi bi-tools me-1"></i>${selectedToolsCount}/${allToolsCount}
+                        </span>
+                    </div>
                 </button>
             </h2>
             <div id="${collapseId}" class="accordion-collapse collapse">
-                <div class="accordion-body pt-3">
-                    ${comp.description ? `<p class="small text-muted mb-3">${_esc(comp.description)}</p>` : ''}
+                <div class="accordion-body p-3">
+                    ${comp.description ? `<p class="text-muted mb-3" style="font-size:0.8rem;line-height:1.3;">${_esc(comp.description)}</p>` : ''}
                     <div class="row g-2 mb-3">${levelCols}</div>
-                    ${toolBadges ? `<div class="mt-2"><strong class="small text-muted d-block mb-1"><i class="bi bi-tools me-1"></i>Herramientas seleccionadas:</strong>${toolBadges}</div>` : ''}
+                    ${toolBadges ? `
+                    <div>
+                        <div class="fw-bold text-uppercase text-muted mb-2" style="font-size:0.6rem;letter-spacing:0.05em;">
+                            <i class="bi bi-tools me-1"></i>Herramientas seleccionadas
+                        </div>
+                        <div>${toolBadges}</div>
+                    </div>` : ''}
                 </div>
             </div>
         </div>`;
@@ -283,25 +306,24 @@
             `<span class="badge bg-light text-dark border me-1 mb-1"><i class="bi bi-tools me-1 opacity-50"></i>${_esc(t)}</span>`
         ).join('');
 
-        // Level columns — 3-column colored layout
+        // Level columns — 3-column coloured style matching the evaluation tab
         const LEVEL_COLORS = { 1: '#ffc107', 2: '#0d6efd', 3: '#198754' };
         const LEVEL_BG     = { 1: '#fff3cd', 2: '#cfe2ff', 3: '#d1e7dd' };
         const LEVEL_NAMES  = { 1: 'Básico',  2: 'Medio',   3: 'Avanzado' };
+        const levelDescs   = (comp.levels || []).reduce((acc, l) => { acc[l.level] = l.description; return acc; }, {});
 
         const levelCols = [1, 2, 3].map(lvl => {
-            const l = (comp.levels || []).find(x => (x.level ?? x.levelId) === lvl);
-            const desc = l ? (l.description || l.levelName || LEVEL_NAMES[lvl]) : LEVEL_NAMES[lvl];
-            const inds = l ? (l.indicators || []) : [];
+            const levelObj = (comp.levels || []).find(l => l.level === lvl);
+            const indNames = levelObj ? (levelObj.indicators || []) : [];
+            const desc     = levelDescs[lvl] || LEVEL_NAMES[lvl];
             return `
-            <div class="col-md-4">
+            <div class="col-md-4 mb-2">
                 <div class="p-2 h-100 rounded border" style="background:${LEVEL_BG[lvl]};border-color:${LEVEL_COLORS[lvl]} !important;">
-                    <div class="fw-bold mb-1 text-uppercase" style="color:${LEVEL_COLORS[lvl]};font-size:0.6rem;letter-spacing:0.05em;">
+                    <div class="fw-bold text-uppercase mb-1" style="color:${LEVEL_COLORS[lvl]};font-size:0.6rem;letter-spacing:0.05em;">
                         <i class="bi bi-award-fill me-1"></i>Nivel ${lvl}
                     </div>
                     <div class="fw-semibold mb-1" style="font-size:0.75rem;line-height:1.2;">${_esc(desc)}</div>
-                    ${inds.length ? `<ul class="mb-0 ps-3 text-muted" style="font-size:0.7rem;line-height:1.2;">
-                        ${inds.map(i => `<li>${_esc(typeof i === 'string' ? i : (i.name || ''))}</li>`).join('')}
-                    </ul>` : '<div class="text-muted fst-italic" style="font-size:0.7rem;">Sin indicadores.</div>'}
+                    ${indNames.length ? `<ul class="mb-0 ps-3 text-muted" style="font-size:0.7rem;line-height:1.2;">${indNames.map(n => `<li>${_esc(n)}</li>`).join('')}</ul>` : '<div class="text-muted fst-italic" style="font-size:0.7rem;">Sin indicadores.</div>'}
                 </div>
             </div>`;
         }).join('');

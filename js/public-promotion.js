@@ -1597,58 +1597,66 @@ function _renderPublicCompetences(filterArea) {
         'web': 'primary', 'ai': 'dark', 'accessibility': 'info',
         'green': 'success', 'inmersivo': 'warning'
     };
+    
+    const LEVEL_COLORS = { 1: '#ffc107', 2: '#0d6efd', 3: '#198754' };
+    const LEVEL_BG     = { 1: '#fff3cd', 2: '#cfe2ff', 3: '#d1e7dd' };
+    const LEVEL_NAMES  = { 1: 'Básico',  2: 'Medio',   3: 'Avanzado' };
 
     const items = filtered.map((comp, i) => {
-        const areaColor = areaColorMap[comp.area] || 'secondary';
+        const areaColor    = areaColorMap[comp.area] || 'secondary';
         const selectedCount = (comp.selectedTools || []).length;
+        const allCount      = (comp.allTools || comp.selectedTools || []).length;
+        const levelsCount   = (comp.levels || []).length;
 
         const toolBadges = (comp.selectedTools || []).map(t =>
             `<span class="badge bg-light text-dark border me-1 mb-1"><i class="bi bi-tools me-1 opacity-50"></i>${escapeHtml(t)}</span>`
         ).join('');
 
-        const LEVEL_COLORS = { 1: '#ffc107', 2: '#0d6efd', 3: '#198754' };
-        const LEVEL_BG     = { 1: '#fff3cd', 2: '#cfe2ff', 3: '#d1e7dd' };
-        const LEVEL_NAMES  = { 1: 'Básico',  2: 'Medio',   3: 'Avanzado' };
-
+        const levelDescs = (comp.levels || []).reduce((acc, l) => { acc[l.level] = l.description; return acc; }, {});
         const levelCols = [1, 2, 3].map(lvl => {
-            const l = (comp.levels || []).find(x => (x.level ?? x.levelId) === lvl);
-            const desc = l ? (l.description || l.levelName || LEVEL_NAMES[lvl]) : LEVEL_NAMES[lvl];
-            const inds = l ? (l.indicators || []) : [];
+            const levelObj = (comp.levels || []).find(l => l.level === lvl);
+            const indNames = levelObj ? (levelObj.indicators || []) : [];
+            const desc     = levelDescs[lvl] || LEVEL_NAMES[lvl];
             return `
-            <div class="col-md-4">
+            <div class="col-md-4 mb-2">
                 <div class="p-2 h-100 rounded border" style="background:${LEVEL_BG[lvl]};border-color:${LEVEL_COLORS[lvl]} !important;">
-                    <div class="fw-bold mb-1 text-uppercase" style="color:${LEVEL_COLORS[lvl]};font-size:0.6rem;letter-spacing:0.05em;">
+                    <div class="fw-bold text-uppercase mb-1" style="color:${LEVEL_COLORS[lvl]};font-size:0.6rem;letter-spacing:0.05em;">
                         <i class="bi bi-award-fill me-1"></i>Nivel ${lvl}
                     </div>
                     <div class="fw-semibold mb-1" style="font-size:0.75rem;line-height:1.2;">${escapeHtml(desc)}</div>
-                    ${inds.length ? `<ul class="mb-0 ps-3 text-muted" style="font-size:0.7rem;line-height:1.2;">
-                        ${inds.map(ind => `<li>${escapeHtml(typeof ind === 'string' ? ind : (ind.name || ''))}</li>`).join('')}
-                    </ul>` : '<div class="text-muted fst-italic" style="font-size:0.7rem;">Sin indicadores.</div>'}
+                    ${indNames.length ? `<ul class="mb-0 ps-3 text-muted" style="font-size:0.7rem;line-height:1.2;">${indNames.map(n => `<li>${escapeHtml(n)}</li>`).join('')}</ul>` : '<div class="text-muted fst-italic" style="font-size:0.7rem;">Sin indicadores.</div>'}
                 </div>
             </div>`;
         }).join('');
 
         return `
-        <div class="accordion-item mb-2 shadow-sm border rounded overflow-hidden">
+        <div class="accordion-item shadow-sm mb-2 border rounded overflow-hidden">
             <h2 class="accordion-header" id="pub-comp-header-${i}">
-                <button class="accordion-button collapsed py-2" type="button"
+                <button class="accordion-button collapsed py-2 px-3" type="button"
                     data-bs-toggle="collapse" data-bs-target="#pub-comp-body-${i}"
                     aria-expanded="false" aria-controls="pub-comp-body-${i}">
                     <div class="d-flex align-items-center flex-wrap gap-2 w-100 me-3">
-                        <span class="badge bg-${areaColor}">${escapeHtml(comp.area)}</span>
-                        <strong>${escapeHtml(comp.name)}</strong>
-                        <span class="ms-auto small text-muted">
-                            <i class="bi bi-tools me-1"></i>${selectedCount}
+                        <span class="badge bg-${areaColor}" style="font-size:.65rem;">${escapeHtml(comp.area)}</span>
+                        <strong class="small">${escapeHtml(comp.name)}</strong>
+                        <span class="ms-auto d-flex gap-2 small text-muted">
+                            <span title="Herramientas"><i class="bi bi-tools me-1"></i>${selectedCount}/${allCount}</span>
+                            <span title="Niveles"><i class="bi bi-bar-chart-steps me-1"></i>${levelsCount}</span>
                         </span>
                     </div>
                 </button>
             </h2>
             <div id="pub-comp-body-${i}" class="accordion-collapse collapse"
                 aria-labelledby="pub-comp-header-${i}" data-bs-parent="#public-competences-accordion">
-                <div class="accordion-body pt-3 pb-3">
-                    ${comp.description ? `<p class="text-muted small mb-3">${escapeHtml(comp.description)}</p>` : ''}
+                <div class="accordion-body p-3">
+                    ${comp.description ? `<p class="text-muted mb-3" style="font-size:0.8rem;line-height:1.3;">${escapeHtml(comp.description)}</p>` : ''}
                     <div class="row g-2 mb-3">${levelCols}</div>
-                    ${toolBadges ? `<div class="mt-2"><strong class="small text-muted d-block mb-1"><i class="bi bi-tools me-1"></i>Herramientas</strong>${toolBadges}</div>` : ''}
+                    ${toolBadges ? `
+                    <div>
+                        <div class="fw-bold text-uppercase text-muted mb-2" style="font-size:0.6rem;letter-spacing:0.05em;">
+                            <i class="bi bi-tools me-1"></i>Herramientas
+                        </div>
+                        <div>${toolBadges}</div>
+                    </div>` : ''}
                 </div>
             </div>
         </div>`;
