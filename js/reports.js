@@ -746,7 +746,7 @@
             const s   = await stuRes.json();
             const promo = promoRes.ok ? await promoRes.json() : {};
             const pildarasData = pildarasRes.ok ? await pildarasRes.json() : {};
-            const modulesPildarasExtended = pildarasData.modulesPildoras || [];
+            const modulesPildorasExtended = pildarasData.modulesPildoras || [];
             const tt  = s.technicalTracking || {};
             const fullName = `${s.name || ''} ${s.lastname || ''}`.trim();
 
@@ -851,7 +851,7 @@
             // Compute both groups from live ExtendedInfo data
             const _pilPresentadas = [];
             const _pilPendientes  = [];
-            modulesPildarasExtended.forEach(mp => {
+            modulesPildorasExtended.forEach(mp => {
                 (mp.pildoras || []).forEach(p => {
                     const studentIds = (p.students || []).map(s2 => String(s2.id));
                     if (!studentIds.includes(String(studentId))) return;
@@ -986,322 +986,74 @@ async function printActaInicio(promotionId) {
         const sched = ext.schedule || {};
         const team  = ext.team || [];
 
-        const ORANGE = '#E85D26';
-        const BLUE   = '#4472C4';  // azul usado en los valores del documento real
-
-        const style = `
-            <style>
-                * { box-sizing: border-box; margin: 0; padding: 0; }
-                body {
-                    font-family: 'Poppins', Arial, sans-serif;
-                    font-size: 10pt;
-                    color: #1a1a1a;
-                    padding: 40pt 50pt 80pt 50pt;
-                    line-height: 1.5;
-                }
-
-                /* ── Título principal ── */
-                .doc-title {
-                    font-size: 22pt;
-                    font-weight: bold;
-                    color: ${ORANGE};
-                    text-align: center;
-                    margin-bottom: 22pt;
-                    margin-top: 10pt;
-                }
-
-                /* ── Subtítulo: nombre proyecto y fecha ── */
-                .doc-meta {
-                    margin-bottom: 20pt;
-                }
-                .doc-meta .label {
-                    font-weight: bold;
-                    color: ${ORANGE};
-                    font-size: 11pt;
-                }
-                .doc-meta .value {
-                    color: #1a1a1a;
-                    font-size: 11pt;
-                    font-style: italic;
-                }
-                .doc-meta .promo-name {
-                    display: block;
-                    font-size: 13pt;
-                    font-weight: bold;
-                    color: ${BLUE};
-                    text-align: center;
-                    margin-top: 4pt;
-                    margin-bottom: 2pt;
-                }
-                .doc-meta .promo-sub {
-                    display: block;
-                    font-size: 11pt;
-                    font-weight: bold;
-                    color: ${BLUE};
-                    text-align: center;
-                    margin-bottom: 14pt;
-                }
-                .doc-meta .fecha-label {
-                    font-weight: bold;
-                    color: ${ORANGE};
-                    font-size: 10.5pt;
-                }
-                .doc-meta .fecha-value {
-                    font-style: italic;
-                    color: #1a1a1a;
-                    font-size: 10.5pt;
-                }
-
-                /* ── Tabla principal ── */
-                .main-table {
-                    width: 100%;
-                    border-collapse: collapse;
-                    margin-bottom: 20pt;
-                }
-                .main-table td {
-                    border: 1px solid #b0b0b0;
-                    padding: 10pt 12pt;
-                    vertical-align: top;
-                    line-height: 1.55;
-                }
-                /* columna izquierda: negrita, color oscuro */
-                .main-table td.label {
-                    width: 35%;
-                    font-weight: bold;
-                    color: #1a1a1a;
-                    font-size: 10pt;
-                }
-                /* columna derecha: color naranja/azul según doc */
-                .main-table td.value {
-                    width: 65%;
-                    color: ${BLUE};
-                    font-size: 10pt;
-                }
-                /* filas donde el valor va en naranja (horario, responsable, formadores...) */
-                .main-table td.value.orange {
-                    color: ${ORANGE};
-                }
-
-                /* ── Sección aprobación ── */
-                .approval {
-                    margin-top: 18pt;
-                    font-size: 10pt;
-                }
-                .approval p {
-                    margin-bottom: 5pt;
-                }
-                .approval .al {
-                    font-weight: bold;
-                }
-                .approval .sign-area {
-                    margin-top: 30pt;
-                    height: 50pt;
-                    border-bottom: 1px solid #999;
-                    width: 200pt;
-                }
-
-                /* ── Pie de página ── */
-                .footer {
-                    position: fixed;
-                    bottom: 16pt;
-                    right: 40pt;
-                    display: flex;
-                    align-items: center;
-                    gap: 6pt;
-                }
-                .footer-badge {
-                    background: ${ORANGE};
-                    color: white;
-                    font-size: 9pt;
-                    font-weight: bold;
-                    padding: 2pt 4pt;
-                    border-radius: 2pt;
-                }
-                .footer-text {
-                    font-size: 14pt;
-                    font-weight: bold;
-                    color: ${ORANGE};
-                }
-                .footer-sub {
-                    font-size: 6.5pt;
-                    color: #999;
-                    letter-spacing: 1.2pt;
-                    text-transform: uppercase;
-                    display: block;
-                    margin-top: -2pt;
-                }
-                .page-num {
-                    position: fixed;
-                    bottom: 16pt;
-                    left: 50pt;
-                    font-size: 8pt;
-                    color: #aaa;
-                }
-
-                @media print {
-                    body { padding: 20pt 30pt 60pt 30pt; }
-                    .no-break { page-break-inside: avoid; }
-                }
-            </style>
-        `;
-
-        // ── Helpers para construir celdas ──
-        const row = (labelHtml, valueHtml, colorClass = '') =>
-            `<tr>
-                <td class="label">${labelHtml}</td>
-                <td class="value ${colorClass}">${valueHtml}</td>
-            </tr>`;
-
+        // ── Helpers ──
+        const row = (labelHtml, valueHtml) =>
+            `<tr><td class="label">${labelHtml}</td><td class="value">${valueHtml}</td></tr>`;
         const esc = (v) => _esc(v);
         const val = (v) => esc(v || '—');
 
         // ── Horario ──
         let horarioHtml = '';
-        if (sched.online)      horarioHtml += `Virtual: de ${esc(sched.online.entry||'—')} a ${esc(sched.online.finish||'—')}<br>`;
-        if (sched.presential)  horarioHtml += `Presencial: de ${esc(sched.presential.entry||'—')} a ${esc(sched.presential.finish||'—')}`;
-        if (!horarioHtml)      horarioHtml = '—';
-        if (sched.notes)       horarioHtml += `<br><em>${esc(sched.notes)}</em>`;
+        if (sched.online)     horarioHtml += `Virtual: de ${esc(sched.online.entry||'—')} a ${esc(sched.online.finish||'—')}<br>`;
+        if (sched.presential) horarioHtml += `Presencial: de ${esc(sched.presential.entry||'—')} a ${esc(sched.presential.finish||'—')}`;
+        if (!horarioHtml)     horarioHtml = '—';
+        if (sched.notes)      horarioHtml += `<br><em>${esc(sched.notes)}</em>`;
 
         // ── Equipo por rol ──
         const byRole = (keywords) => {
-            const found = team.filter(m =>
-                keywords.some(k => (m.role||'').toLowerCase().includes(k))
-            );
+            const found = team.filter(m => keywords.some(k => (m.role||'').toLowerCase().includes(k)));
             if (!found.length) return '—';
             return found.map(m => esc(m.name + (m.period ? ` | ${m.period}` : ''))).join('<br>');
         };
         const otrosRoles = team
-            .filter(m => !['responsable','project','formador','coformador','co-formador',
-                           'coordinador','empleabilidad'].some(k => (m.role||'').toLowerCase().includes(k)))
+            .filter(m => !['responsable','project','formador','coformador','co-formador','coordinador','empleabilidad']
+                .some(k => (m.role||'').toLowerCase().includes(k)))
             .map(m => `- ${esc(m.role||'')}: ${esc(m.name||'')}`)
             .join('<br>') || '—';
 
-        // ── Responsable del proyecto (para sección aprobación) ──
         const responsable = team.find(m =>
             ['responsable','project'].some(k => (m.role||'').toLowerCase().includes(k))
         );
 
-        // ── HTML ──
-        let html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">${style}</head><body>`;
+        // ── HTML (body content only — _wrapHtml adds the outer document) ──
+        let html = `<style>
+            .main-table { width:100%; border-collapse:collapse; margin-bottom:20pt; }
+            .main-table td { border:1px solid #ccc; padding:8pt 10pt; vertical-align:top; line-height:1.55; font-size:10pt; color:#000; }
+            .main-table td.label { width:35%; font-weight:700; }
+            .main-table td.value { width:65%; }
+            .acta-approval { margin-top:18pt; font-size:10pt; }
+            .acta-approval .sign-area { margin-top:30pt; height:50pt; border-bottom:1px solid #999; width:200pt; }
+        </style>`;
 
-        // Título
-        html += `<div class="doc-title">Acta de inicio de proyecto formativo</div>`;
+        html += _header('Acta de Inicio de Proyecto Formativo', promo.name, null, _today(), promo);
 
-        // Meta: nombre proyecto + fecha
-        html += `<div class="doc-meta">
-            <span class="label">Nombre proyecto: </span>
-            <span class="promo-name">${val(promo.name)}</span>
-            ${promo.subtitle ? `<span class="promo-sub">${esc(promo.subtitle)}</span>` : ''}
-            <br>
-            <span class="fecha-label">Fecha de elaboración del acta: </span>
-            <span class="fecha-value">${_today()}</span>
-        </div>`;
-
-        // Tabla principal
         html += `<table class="main-table"><tbody>`;
-
-        html += row(
-            'Escuela y/o área<br>responsable del<br>proyecto formativo',
-            val(ext.school || promo.school)
-        );
-        html += row(
-            'Tipo proyecto formativo',
-            val(ext.projectType || ext.type || promo.type || 'Bootcamp')
-        );
-        html += row(
-            'Fecha de inicio de<br>proyecto formativo',
-            val(promo.startDate)
-        );
-        html += row(
-            'Fecha de fin de<br>proyecto formativo',
-            val(promo.endDate)
-        );
-        html += row(
-            'Fecha inicio formación:',
-            val(promo.startDate)
-        );
-        html += row(
-            'Fecha de fin de<br>formación:',
-            val(promo.endDate)
-        );
-        html += row(
-            'Fecha de inicio periodo<br>salida positiva:',
-            val(_fmtDateEs(ext.positiveExitStart))
-        );
-        html += row(
-            'Fecha de fin de periodo<br>de salida positiva:',
-            val(_fmtDateEs(ext.positiveExitEnd))
-        );
-        html += row(
-            'Horas totales de<br>formación',
-            val(ext.totalHours || promo.hours)
-        );
-        html += row(
-            'Modalidad',
-            val(ext.modality || promo.modality),
-            'orange'
-        );
-        html += row(
-            'Días presenciales y<br>lugar',
-            val(ext.presentialDays),
-            'orange'
-        );
-        html += row(
-            'Horario',
-            horarioHtml,
-            'orange'
-        );
-        html += row(
-            'Responsable del<br>proyecto',
-            byRole(['responsable','project']),
-            'orange'
-        );
-        html += row(
-            'Formador/a principal',
-            byRole(['formador']),
-            'orange'
-        );
-        html += row(
-            'Coformador/a',
-            byRole(['coformador','co-formador']),
-            'orange'
-        );
-        html += row(
-            'Coordinador/a de<br>Formación y<br>Empleabilidad IT',
-            byRole(['coordinador','empleabilidad']),
-            'orange'
-        );
-        // fila vacía como en el documento real
+        html += row('Escuela y/o área<br>responsable del<br>proyecto formativo', val(ext.school || promo.school));
+        html += row('Tipo proyecto formativo', val(ext.projectType || ext.type || promo.type || 'Bootcamp'));
+        html += row('Fecha de inicio de<br>proyecto formativo', val(promo.startDate));
+        html += row('Fecha de fin de<br>proyecto formativo', val(promo.endDate));
+        html += row('Fecha inicio formación:', val(promo.startDate));
+        html += row('Fecha de fin de<br>formación:', val(promo.endDate));
+        html += row('Fecha de inicio periodo<br>salida positiva:', val(_fmtDateEs(ext.positiveExitStart)));
+        html += row('Fecha de fin de periodo<br>de salida positiva:', val(_fmtDateEs(ext.positiveExitEnd)));
+        html += row('Horas totales de<br>formación', val(ext.totalHours || promo.hours));
+        html += row('Modalidad', val(ext.modality || promo.modality));
+        html += row('Días presenciales y<br>lugar', val(ext.presentialDays));
+        html += row('Horario', horarioHtml);
+        html += row('Responsable del<br>proyecto', byRole(['responsable','project']));
+        html += row('Formador/a principal', byRole(['formador']));
+        html += row('Coformador/a', byRole(['coformador','co-formador']));
+        html += row('Coordinador/a de<br>Formación y<br>Empleabilidad IT', byRole(['coordinador','empleabilidad']));
         html += `<tr><td class="label"></td><td class="value"></td></tr>`;
-        html += row('Otros roles:', otrosRoles, 'orange');
-        html += row(
-            'Materiales/recursos<br>necesarios',
-            val(ext.materials),
-            'orange'
-        );
-        html += row(
-            'Período prácticas<br>(sí/no)',
-            ext.internships != null ? (ext.internships ? 'Sí' : 'No') : '—',
-            'orange'
-        );
-        html += row(
-            'Financiadores',
-            (ext.funders||'').split('\n').map(f => f.trim()).filter(Boolean)
-                .map(f => esc(f)).join('<br>') || '—',
-            'orange'
-        );
-        html += row(
-            'Fecha de justificación a<br>cada financiador',
-            val(ext.funderDeadlines),
-            'orange'
-        );
-        html += row(
-            'OKR y KPIs de FF5 en<br>este proyecto formativo',
-            (ext.okrKpis||'').split('\n').map(l => l.trim()).filter(Boolean)
-                .map(l => `• ${esc(l)}`).join('<br>') || '—',
-            'orange'
-        );
-        // KPIs por financiador (format: "Funder: kpi\n---\nFunder2: kpi2")
+        html += row('Otros roles:', otrosRoles);
+        html += row('Materiales/recursos<br>necesarios', val(ext.materials));
+        html += row('Período prácticas<br>(sí/no)', ext.internships != null ? (ext.internships ? 'Sí' : 'No') : '—');
+        html += row('Financiadores',
+            (ext.funders||'').split('\n').map(f => f.trim()).filter(Boolean).map(f => esc(f)).join('<br>') || '—');
+        html += row('Fecha de justificación a<br>cada financiador', val(ext.funderDeadlines));
+        html += row('OKR y KPIs de FF5 en<br>este proyecto formativo',
+            (ext.okrKpis||'').split('\n').map(l => l.trim()).filter(Boolean).map(l => `• ${esc(l)}`).join('<br>') || '—');
+
         const kpiLines = (ext.funderKpis||'').split(/\n---\n/).map(b => {
             const m = b.match(/^([^:]+):\s*([\s\S]*)$/);
             if (!m) return esc(b.trim());
@@ -1309,59 +1061,26 @@ async function printActaInicio(promotionId) {
                 .map(l => `&nbsp;&nbsp;• ${esc(l)}`).join('<br>');
             return `<strong>${esc(m[1].trim())}:</strong><br>${kpiItems || '—'}`;
         }).filter(Boolean);
-        html += row(
-            'KPIs financiadores',
-            kpiLines.length ? kpiLines.join('<br><br>') : '—',
-            'orange'
-        );
-        html += row(
-            'Día off Formador/a',
-            (ext.trainerDayOff||'').split(/\.\s+/).map(e => e.trim().replace(/\.$/, '')).filter(Boolean)
-                .map(e => esc(e)).join('<br>') || '—',
-            'orange'
-        );
-        html += row(
-            'Día off coFormador/a',
-            (ext.cotrainerDayOff||'').split(/\.\s+/).map(e => e.trim().replace(/\.$/, '')).filter(Boolean)
-                .map(e => esc(e)).join('<br>') || '—',
-            'orange'
-        );
-        html += row(
-            'Planificación de<br>reuniones de proyecto',
-            val(ext.projectMeetings),
-            'orange'
-        );
-        html += row(
-            'Planificación de<br>reuniones de equipo<br>(formador/a-coformad<br>or/a-responsable de<br>promoción)',
-            val(ext.teamMeetings),
-            'orange'
-        );
-
+        html += row('KPIs financiadores', kpiLines.length ? kpiLines.join('<br><br>') : '—');
+        html += row('Día off Formador/a',
+            (ext.trainerDayOff||'').split(/\.\s+/).map(e => e.trim().replace(/\.$/, '')).filter(Boolean).map(e => esc(e)).join('<br>') || '—');
+        html += row('Día off coFormador/a',
+            (ext.cotrainerDayOff||'').split(/\.\s+/).map(e => e.trim().replace(/\.$/, '')).filter(Boolean).map(e => esc(e)).join('<br>') || '—');
+        html += row('Planificación de<br>reuniones de proyecto', val(ext.projectMeetings));
+        html += row('Planificación de<br>reuniones de equipo<br>(formador/a-coformador/a-<br>responsable de promoción)', val(ext.teamMeetings));
         html += `</tbody></table>`;
 
-        // ── Sección aprobación (igual que en la última página del acta real) ──
+        // ── Sección aprobación ──
         const approvalName = ext.approvalName || (responsable ? responsable.name : '');
         const approvalRole = ext.approvalRole || (responsable ? responsable.role : '');
-        html += `<div class="approval">
-            <p><span class="al">Aprobación y difusión del documento:</span></p>
+        html += `<div class="acta-approval">
+            <p><strong>Aprobación y difusión del documento:</strong></p>
             <br>
-            <p><span class="al">Nombre:</span> ${approvalName ? esc(approvalName) : '—'}</p>
-            <p><span class="al">Cargo:</span> ${approvalRole ? esc(approvalRole) : '—'}</p>
-            <p><span class="al">Firma y fecha:</span> ${_today()}</p>
+            <p><strong>Nombre:</strong> ${approvalName ? esc(approvalName) : '—'}</p>
+            <p><strong>Cargo:</strong> ${approvalRole ? esc(approvalRole) : '—'}</p>
+            <p><strong>Firma y fecha:</strong> ${_today()}</p>
             <div class="sign-area"></div>
         </div>`;
-
-        // ── Pie con logo Factoría F5 ──
-        html += `
-        <div class="footer">
-            <div>
-                <span class="footer-badge">F5</span>
-                <span class="footer-text">factoría</span>
-                <span class="footer-sub">powered by simplon</span>
-            </div>
-        </div>`;
-
-        html += `</body></html>`;
 
         const filename = `acta-inicio_${(promo.name||'promo').replace(/\s+/g,'-')}.pdf`;
         _showSaving('Generando PDF…');
@@ -1753,88 +1472,96 @@ async function printActaInicio(promotionId) {
             });
         } else { html += `<p class="empty-note">Sin proyectos registrados.</p>`; }
 
-        // ── Proyectos Pendientes de Entrega (omitir si vacío) ──
-        // Compara proyectos del roadmap con los teams ya evaluados del alumno
-        const _evaluatedNames = new Set(
+        // ── Proyectos Pendientes de Entrega ──
+        // Compara los proyectos del roadmap con los teams ya evaluados del alumno
+        const evaluatedProjectNames = new Set(
             (tt.teams || []).map(t => (t.teamName || '').trim().toLowerCase())
         );
-        const _pendingProjects = [];
+        const pendingProjects = [];
         (promo.modules || []).forEach(mod => {
             (mod.projects || []).forEach(proj => {
                 const projName = typeof proj === 'string' ? proj : (proj.name || '');
-                if (projName && !_evaluatedNames.has(projName.trim().toLowerCase())) {
-                    _pendingProjects.push({ projectName: projName, moduleName: mod.name || '—' });
+                if (projName && !evaluatedProjectNames.has(projName.trim().toLowerCase())) {
+                    pendingProjects.push({ projectName: projName, moduleName: mod.name || '—' });
                 }
             });
         });
-        if (_pendingProjects.length) {
+        if (pendingProjects.length) {
             html += `<h3>Proyectos Pendientes de Entrega</h3>`;
             html += `<table><thead><tr><th>Proyecto</th><th>Módulo</th></tr></thead><tbody>`;
-            _pendingProjects.forEach(p => {
+            pendingProjects.forEach(p => {
                 html += `<tr><td>${_esc(p.projectName)}</td><td>${_esc(p.moduleName)}</td></tr>`;
             });
             html += `</tbody></table>`;
         }
 
-        // ── Módulos Completados ──
+        // ── Módulos completados ──
         html += `<h3>Módulos Completados</h3>`;
         const mods = tt.completedModules || [];
         if (mods.length) {
-            html += `<table><thead><tr><th>Módulo</th><th>Fecha</th><th>Nota</th></tr></thead><tbody>`;
+            html += `<table><thead><tr><th>Módulo</th><th>Fecha</th><th>Nota</th><th>Observaciones</th></tr></thead><tbody>`;
             mods.forEach(m => {
-                const gradeMap = { 1:'Insuficiente', 2:'Básico', 3:'Competente', 4:'Excelente' };
-                html += `<tr><td>${_esc(m.moduleName||'—')}</td><td>${_fmtDate(m.completionDate)}</td><td>${gradeMap[m.finalGrade]||m.finalGrade||'—'}</td></tr>`;
+                const gradeMap = { 1: 'Insuficiente', 2: 'Básico', 3: 'Competente', 4: 'Excelente' };
+                html += `<tr>
+                    <td>${_esc(m.moduleName || '—')}</td>
+                    <td>${_fmtDate(m.completionDate)}</td>
+                    <td>${gradeMap[m.finalGrade] || m.finalGrade || '—'}</td>
+                    <td>${_esc(m.notes || '')}</td>
+                </tr>`;
             });
             html += `</tbody></table>`;
-        } else { html += `<p class="empty-note">Sin módulos completados.</p>`; }
+        } else {
+            html += `<p class="empty-note">Sin módulos completados.</p>`;
+        }
 
-        // ── Píldoras (calculadas desde modulesPildoras si disponible) ──
-        if (modulesPildoras.length) {
-            const _pilPresentadas = [];
-            const _pilPendientes  = [];
-            modulesPildoras.forEach(mp => {
-                (mp.pildoras || []).forEach(p => {
-                    const sIds = (p.students || []).map(s2 => String(s2.id));
-                    if (!sIds.includes(String(s.id))) return;
-                    const entry = {
-                        pildoraTitle: p.title || '—',
-                        moduleName:   mp.moduleName || '—',
-                        date:         p.date || null,
-                        mode:         p.mode || null,
-                        status:       p.status || ''
-                    };
-                    if (p.status === 'Presentada') _pilPresentadas.push(entry);
-                    else                            _pilPendientes.push(entry);
-                });
+        // ── Píldoras: presentadas y no presentadas ──
+        // Compute both groups from live ExtendedInfo data
+        const _pilPresentadas = [];
+        const _pilPendientes  = [];
+        modulesPildorasExtended.forEach(mp => {
+            (mp.pildoras || []).forEach(p => {
+                const studentIds = (p.students || []).map(s2 => String(s2.id));
+                if (!studentIds.includes(String(studentId))) return;
+                const entry = {
+                    pildoraTitle: p.title || '—',
+                    moduleName:   mp.moduleName || '—',
+                    date:         p.date || null,
+                    mode:         p.mode || null,
+                    status:       p.status || ''
+                };
+                if (p.status === 'Presentada') _pilPresentadas.push(entry);
+                else                            _pilPendientes.push(entry);
             });
+        });
 
-            if (_pilPresentadas.length) {
-                html += `<h3>Píldoras Presentadas</h3>`;
-                html += `<table><thead><tr><th>Título</th><th>Módulo</th><th>Fecha</th><th>Modalidad</th></tr></thead><tbody>`;
-                _pilPresentadas.forEach(p => {
-                    html += `<tr>
-                        <td>${_esc(p.pildoraTitle)}</td>
-                        <td>${_esc(p.moduleName)}</td>
-                        <td>${_fmtDate(p.date)}</td>
-                        <td>${_esc(p.mode || '—')}</td>
-                    </tr>`;
-                });
-                html += `</tbody></table>`;
-            }
+        // ── Píldoras Presentadas (omitir si vacío) ──
+        if (_pilPresentadas.length) {
+            html += `<h3>Píldoras Presentadas</h3>`;
+            html += `<table><thead><tr><th>Título</th><th>Módulo</th><th>Fecha</th><th>Modalidad</th></tr></thead><tbody>`;
+            _pilPresentadas.forEach(p => {
+                html += `<tr>
+                    <td>${_esc(p.pildoraTitle)}</td>
+                    <td>${_esc(p.moduleName)}</td>
+                    <td>${_fmtDate(p.date)}</td>
+                    <td>${_esc(p.mode || '—')}</td>
+                </tr>`;
+            });
+            html += `</tbody></table>`;
+        }
 
-            if (_pilPendientes.length) {
-                html += `<h3>Píldoras No Presentadas / Pendientes</h3>`;
-                html += `<table><thead><tr><th>Título</th><th>Módulo</th><th>Fecha prevista</th><th>Estado</th></tr></thead><tbody>`;
-                _pilPendientes.forEach(p => {
-                    html += `<tr>
-                        <td>${_esc(p.pildoraTitle)}</td>
-                        <td>${_esc(p.moduleName)}</td>
-                        <td>${_fmtDate(p.date)}</td>
-                        <td>${_esc(p.status || 'Pendiente')}</td>
-                    </tr>`;
-                });
-                html += `</tbody></table>`;
-            }
+        // ── Píldoras No Presentadas / Pendientes (omitir si vacío) ──
+        if (_pilPendientes.length) {
+            html += `<h3>Píldoras No Presentadas / Pendientes</h3>`;
+            html += `<table><thead><tr><th>Título</th><th>Módulo</th><th>Fecha prevista</th><th>Estado</th></tr></thead><tbody>`;
+            _pilPendientes.forEach(p => {
+                html += `<tr>
+                    <td>${_esc(p.pildoraTitle)}</td>
+                    <td>${_esc(p.moduleName)}</td>
+                    <td>${_fmtDate(p.date)}</td>
+                    <td>${_esc(p.status || 'Pendiente')}</td>
+                </tr>`;
+            });
+            html += `</tbody></table>`;
         }
 
         return html;
@@ -2107,7 +1834,7 @@ async function printActaInicio(promotionId) {
             // Detail section per project
             let projectIndex = 0;
             projectMap.forEach((entries, name) => {
-                if (projectIndex > 0) html += `<div style="margin-top:18pt; padding-top:12pt; border-top:2px solid ${PRIMARY};"></div>`;
+                if (projectIndex > 0) html += `<div style="margin-top:18pt; padding-top:12pt; border-top:1px solid #ccc;"></div>`;
                 html += `<h2 style="margin-top:14pt;">${_esc(name)}</h2>`;
 
                 // Aggregate all competences across all students for this project
@@ -2259,7 +1986,7 @@ async function printActaInicio(promotionId) {
         }
     }
 
-    // ════════════════════════════════════════════════════════════════════════
+    // ─══════════════════════════════════════════════════════════════════════
     // ASISTENCIA SEMANAL (PDF)
     // ════════════════════════════════════════════════════════════════════════
     async function printWeeklyAttendance(promotionId, monthFilter = null) {
