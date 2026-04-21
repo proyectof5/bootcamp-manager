@@ -7568,17 +7568,31 @@ function renderAttendanceTable() {
             else if (status === 'Sale antes') td.innerHTML = '<i class="bi bi-box-arrow-left"></i>';
             else td.innerHTML = '';
 
+            // ── New UX: Click opens dropdown, Shift+Click cycles, Right-Click opens modal
             td.onclick = (e) => {
                 if (e.shiftKey) {
-                    openAttendanceModal(student.id, dateKey);
-                } else {
+                    // Shift+Click: cycle through states (old behavior, for power users)
                     cycleAttendanceStatus(td);
+                } else {
+                    // Regular click: show dropdown menu
+                    e.stopPropagation();
+                    showAttendanceDropdown(td, student.id, dateKey, student);
                 }
             };
             td.oncontextmenu = (e) => {
                 e.preventDefault();
+                // Right-click: open full modal with notes
                 openAttendanceModal(student.id, dateKey);
             };
+
+            // ── Highlight feedback: hover highlights the row
+            td.addEventListener('mouseenter', () => {
+                tr.classList.add('attendance-row-highlight');
+            });
+            td.addEventListener('mouseleave', () => {
+                tr.classList.remove('attendance-row-highlight');
+            });
+            
             tr.appendChild(td);
         }
 
@@ -7633,6 +7647,28 @@ function updateAttendanceStats() {
     const avg = totalMarked > 0 ? Math.round(((present + late + justified + earlyLeave) / totalMarked) * 100) : 0;
     document.getElementById('stat-attendance-avg').textContent = `${avg}%`;
 }
+
+// ════════════════════════════════════════════════════════════════════════════
+// 🎯 UX IMPROVEMENTS FOR ATTENDANCE MODULE (Frontend-Only)
+// ════════════════════════════════════════════════════════════════════════════
+// 
+// Improvement 1: Visual Feedback (Row Highlight)
+// ├─ When hovering over an attendance cell, the corresponding student row
+// │  is highlighted with a subtle background color change
+// ├─ CSS classes: .attendance-row-highlight, .attendance-row-highlight-active
+// ├─ Implemented in: renderAttendanceTable() > addEventListener('mouseenter')
+// └─ Effect: Easier visual tracking of which student row you're marking
+//
+// Improvement 2: Dropdown Status Selection (1-click selection)
+// ├─ Click on a cell → Shows floating dropdown with 6 status options
+// ├─ Replaces the old "cycle through 5 states" behavior
+// ├─ Old behavior preserved: Shift+Click still cycles (for power users)
+// ├─ Right-Click still opens modal (for adding notes)
+// ├─ Implemented in: showAttendanceDropdown(), closeAttendanceDropdown()
+// ├─ CSS classes: .attendance-dropdown, .attendance-dropdown-item
+// └─ Effect: Direct 1-click access to any status (no more 4+ clicks to reach Justificado)
+//
+// ════════════════════════════════════════════════════════════════════════════
 
 // ── Per-cell debounce map: cellKey -> { timer, pendingStatus } ───────────────
 // This allows rapid clicks on the same cell to accumulate (cycling the status
@@ -7700,6 +7736,156 @@ function _applyAttendanceCellStyle(cell, status, hasNote) {
     } else {
         cell.innerHTML = '';
     }
+}
+
+// ── Show Attendance Dropdown (New UX Feature) ────────────────────────────────
+/**
+ * Shows a floating dropdown menu to quickly set attendance status for a cell.
+ * Replaces the old cycle-on-click behavior with a direct selection interface.
+ * @param {HTMLTableCellElement} cell - The attendance cell being clicked
+ * @param {string} studentId - Student ID
+ * @param {string} date - Date in YYYY-MM-DD format
+ * @param {Object} student - Student object (for context)
+ */
+function showAttendanceDropdown(cell, studentId, date, student) {
+    // Close any existing dropdown
+    closeAttendanceDropdown();
+
+    const container = document.getElementById('attendance-dropdown-container');
+    const dropdown = document.createElement('div');
+    dropdown.className = 'attendance-dropdown';
+    dropdown.id = 'attendance-dropdown-current';
+
+    // Get current status
+    const currentStatus = cell.dataset.status || '';
+
+    // Define status options with icons
+    const statusOptions = [
+        { value: '', label: 'Vacío', icon: '◯' },
+        { value: 'Presente', label: 'Presente', icon: '✓' },
+        { value: 'Ausente', label: 'Ausente', icon: '✗' },
+        { value: 'Con retraso', label: 'Con retraso', icon: '⏱' },
+        { value: 'Justificado', label: 'Justificado', icon: 'ℹ' },
+        { value: 'Sale antes', label: 'Sale antes', icon: '→' }
+    ];
+
+    // Create dropdown items
+    statusOptions.forEach(option => {
+        const item = document.createElement('div');
+        item.className = 'attendance-dropdown-item';
+        if (option.value === currentStatus) {
+            item.classList.add('active');
+        }
+
+        item.innerHTML = `
+            <span class="attendance-dropdown-item-icon">${option.icon}</span>
+            <span>${option.label}</span>
+        `;
+
+        item.onclick = async (e) => {
+            e.stopPropagation();
+            // Apply the status directly
+            cell.dataset.status = option.value;
+            _applyAttendanceCellStyle(cell, option.value, cell.classList.contains('attendance-has-note'));
+            
+            // Show saving indicator
+            cell.style.opacity = '0.6';
+            
+            // Send to server
+            await _flushAttendanceSave(studentId, date, option.value, null, cell);
+            
+            // Close dropdown
+            closeAttendanceDropdown();
+        };
+
+        dropdown.appendChild(item);
+    });
+
+    container.appendChild(dropdown);
+
+    // ── Intelligent Positioning: Open down or up depending on available space
+    const rect = cell.getBoundingClientRect();
+    
+    // Dimensions
+    const dropdownWidth = 220;
+    const dropdownHeight = 268; // 6 items × 40px + padding (more accurate)
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const spacing = 8; // gap between cell and dropdown
+    const minMargin = 10; // minimum margin from viewport edge
+
+    // ── Horizontal Positioning
+    let left = rect.right + spacing;
+    
+    // If dropdown goes off-screen to the right, try left side
+    if (left + dropdownWidth > viewportWidth - minMargin) {
+        left = rect.left - dropdownWidth - spacing;
+    }
+    
+    // If still off-screen to the left, center it and clamp
+    if (left < minMargin) {
+        left = Math.max(minMargin, (viewportWidth - dropdownWidth) / 2);
+    }
+
+    // ── Vertical Positioning (Smart: Down or Up)
+    let top;
+    let openDirection = 'down'; // track which direction we open for debugging
+    
+    // Calculate space below and above the cell
+    const spaceBelow = viewportHeight - rect.bottom;
+    const spaceAbove = rect.top;
+    
+    // If there's enough space below, open downward
+    if (spaceBelow >= dropdownHeight + spacing) {
+        top = rect.bottom + spacing;
+        openDirection = 'down';
+    }
+    // If there's more space above, open upward
+    else if (spaceAbove > spaceBelow) {
+        top = rect.top - dropdownHeight - spacing;
+        openDirection = 'up';
+    }
+    // Fallback: open down but allow scrolling
+    else {
+        top = rect.bottom + spacing;
+        openDirection = 'down (scrollable)';
+    }
+    
+    // Ensure top is within viewport with minimum margin
+    if (top < minMargin) {
+        top = minMargin;
+    }
+    
+    if (top + dropdownHeight > viewportHeight) {
+        top = Math.max(minMargin, viewportHeight - dropdownHeight - minMargin);
+    }
+
+    dropdown.style.left = left + 'px';
+    dropdown.style.top = top + 'px';
+    
+    // Debug: log positioning (can be removed later)
+    dropdown.dataset.openDirection = openDirection;
+
+    // Close dropdown when clicking outside
+    setTimeout(() => {
+        document.addEventListener('click', closeAttendanceDropdownListener, true);
+    }, 0);
+}
+
+// Global listener reference so we can remove it
+let closeAttendanceDropdownListener = (e) => {
+    const dropdown = document.getElementById('attendance-dropdown-current');
+    if (dropdown && !dropdown.contains(e.target)) {
+        closeAttendanceDropdown();
+    }
+};
+
+function closeAttendanceDropdown() {
+    const dropdown = document.getElementById('attendance-dropdown-current');
+    if (dropdown) {
+        dropdown.remove();
+    }
+    document.removeEventListener('click', closeAttendanceDropdownListener, true);
 }
 
 // Sends the actual network request for a single cell save (called after debounce)
