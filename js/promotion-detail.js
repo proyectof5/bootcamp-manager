@@ -7460,12 +7460,12 @@ function renderAttendanceTable() {
         } else {
             thDay.textContent = dateStr;
         }
-        // Right-click on weekday header (not on weekends) to toggle holiday
+        // Right-click on weekday header (not on weekends) to show context menu
         if (!isWeekend) {
             thDay.style.cursor = 'context-menu';
             thDay.addEventListener('contextmenu', (e) => {
                 e.preventDefault();
-                toggleHoliday(dateKey);
+                showDateContextMenu(dateKey, e);
             });
         }
         headerRow.appendChild(thDay);
@@ -7886,6 +7886,165 @@ function closeAttendanceDropdown() {
         dropdown.remove();
     }
     document.removeEventListener('click', closeAttendanceDropdownListener, true);
+}
+
+// ── Date Header Context Menu ────────────────────────────────────────────────
+/**
+ * Shows a context menu for date header with options to:
+ * 1. Toggle holiday status
+ * 2. Clear attendance for the entire day
+ */
+function showDateContextMenu(dateKey, event) {
+    closeAttendanceDropdown();
+    closeDateContextMenu();
+
+    const container = document.getElementById('attendance-dropdown-container');
+    const menu = document.createElement('div');
+    menu.className = 'date-context-menu';
+    menu.id = 'date-context-menu-current';
+
+    const isHoliday = promotionHolidays.has(dateKey);
+
+    // Option 1: Toggle Holiday
+    const toggleOption = document.createElement('div');
+    toggleOption.className = 'date-context-menu-item';
+    toggleOption.innerHTML = `
+        <span class="date-context-menu-item-icon">${isHoliday ? '➖' : '🎉'}</span>
+        <span>${isHoliday ? 'Quitar festivo' : 'Marcar como festivo'}</span>
+    `;
+    toggleOption.onclick = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        toggleHoliday(dateKey);
+        closeDateContextMenu();
+    };
+    menu.appendChild(toggleOption);
+
+    // Separator
+    const separator = document.createElement('div');
+    separator.style.height = '1px';
+    separator.style.backgroundColor = '#e0e0e0';
+    separator.style.margin = '4px 0';
+    menu.appendChild(separator);
+
+    // Option 2: Clear Attendance for Day
+    const clearOption = document.createElement('div');
+    clearOption.className = 'date-context-menu-item danger';
+    clearOption.innerHTML = `
+        <span class="date-context-menu-item-icon">🗑️</span>
+        <span>Limpiar asistencia del día</span>
+    `;
+    clearOption.onclick = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        clearDayAttendance(dateKey);
+        closeDateContextMenu();
+    };
+    menu.appendChild(clearOption);
+
+    container.appendChild(menu);
+
+    // Position menu near the header cell
+    const rect = event.target.getBoundingClientRect();
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const spacing = 4;
+    const minMargin = 10;
+
+    let left = rect.left;
+    let top = rect.bottom + spacing;
+
+    // Adjust horizontally if would overflow
+    const menuWidth = 240;
+    if (left + menuWidth > viewportWidth - minMargin) {
+        left = rect.right - menuWidth;
+    }
+
+    if (left < minMargin) {
+        left = minMargin;
+    }
+
+    // Adjust vertically if would overflow
+    if (top + 150 > viewportHeight) {
+        top = rect.top - 150 - spacing;
+    }
+
+    menu.style.left = left + 'px';
+    menu.style.top = top + 'px';
+
+    // Close menu when clicking outside (use bubble phase, not capture)
+    // Delay to prevent immediate closure from the triggering event
+    setTimeout(() => {
+        document.addEventListener('click', closeDateContextMenuListener, false);
+    }, 10);
+}
+
+// Global listener for context menu - IMPROVED: use bubbling phase and check properly
+let closeDateContextMenuListener = (e) => {
+    const menu = document.getElementById('date-context-menu-current');
+    if (!menu) {
+        document.removeEventListener('click', closeDateContextMenuListener, false);
+        return;
+    }
+    
+    // Close only if clicking completely outside the menu
+    if (!menu.contains(e.target)) {
+        closeDateContextMenu();
+    }
+};
+
+function closeDateContextMenu() {
+    const menu = document.getElementById('date-context-menu-current');
+    if (menu) {
+        menu.remove();
+    }
+    document.removeEventListener('click', closeDateContextMenuListener, false);
+}
+
+// ── Clear Day Attendance ────────────────────────────────────────────────────
+/**
+ * Clears all attendance records for a specific date across all students.
+ * Asks for confirmation before proceeding.
+ * @param {string} dateKey - Date in YYYY-MM-DD format
+ */
+async function clearDayAttendance(dateKey) {
+    // Confirmation dialog
+    const confirmMsg = `¿Estás seguro de que deseas limpiar la asistencia de todos los estudiantes para el día ${dateKey}? Esta acción no se puede deshacer.`;
+    if (!confirm(confirmMsg)) {
+        return;
+    }
+
+    // Find all cells for this date
+    const cells = document.querySelectorAll(`[data-date="${dateKey}"]`);
+    let clearCount = 0;
+
+    // For each cell, set status to empty and save
+    for (const cell of cells) {
+        const studentId = cell.dataset.studentId;
+        if (!studentId) continue;
+
+        // Update local data
+        const index = attendanceData.findIndex(a => a.studentId === studentId && a.date === dateKey);
+        if (index > -1) {
+            attendanceData.splice(index, 1);
+            clearCount++;
+        }
+
+        // Update cell visualization
+        cell.dataset.status = '';
+        _applyAttendanceCellStyle(cell, '', false);
+
+        // Send to server (debounced via _flushAttendanceSave)
+        await _flushAttendanceSave(studentId, dateKey, '', null, cell);
+    }
+
+    // Update stats
+    updateAttendanceStats();
+
+    // Show success message
+    if (clearCount > 0) {
+        console.log(`✓ Limpied ${clearCount} attendance records for ${dateKey}`);
+    }
 }
 
 // Sends the actual network request for a single cell save (called after debounce)
