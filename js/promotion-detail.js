@@ -2142,7 +2142,8 @@ async function saveExtendedInfo() {
         
         // Find project type for the selected project
         const savedEvaluations = window._evalState?.savedEvaluations || [];
-        const existingEval = savedEvaluations.find(e => e.moduleId === vMid && e.projectName === vPname);
+        // FIXED: Search by projectName ONLY to match backend storage of Aula Virtual submissions
+        const existingEval = savedEvaluations.find(e => e.projectName === vPname);
         const vType = existingEval ? (existingEval.type || 'individual') : 'individual';
 
         extendedInfoData.virtualClassroom = {
@@ -9254,7 +9255,8 @@ async function saveVirtualClassroom(isActive) {
 
     // Derive project type from saved evaluations if exists (fallback: individual)
     const savedEvaluations = window._evalState.savedEvaluations || [];
-    const existingEval = savedEvaluations.find(e => e.moduleId === moduleId && e.projectName === projectName);
+    // FIXED: Search by projectName ONLY to match backend storage of Aula Virtual submissions
+    const existingEval = savedEvaluations.find(e => e.projectName === projectName);
     const projectType = existingEval ? (existingEval.type || 'individual') : 'individual';
 
     // Prepare current enriched competences from _evalState to sync with DB
@@ -9404,7 +9406,8 @@ function renderEvaluationTab() {
 
         mod.projects.forEach((proj, pIdx) => {
             const projKey = _evalProjectKey(mod.id || String(mIdx), proj.name);
-            const saved = savedEvaluations.find(e => e.moduleId === (mod.id || String(mIdx)) && e.projectName === proj.name);
+            // FIXED: Search by projectName ONLY to match backend storage of Aula Virtual submissions
+            const saved = savedEvaluations.find(e => e.projectName === proj.name);
             const projType = saved ? saved.type : 'individual';
             const compCount = (proj.competenceIds || []).length;
             const evals = saved ? (saved.evaluations || []) : [];
@@ -9882,7 +9885,8 @@ function _computePairCount() {
     modules.forEach((mod, mIdx) => {
         (mod.projects || []).forEach((proj) => {
             const modId = mod.id || String(mIdx);
-            const saved = savedEvaluations.find(e => e.moduleId === modId && e.projectName === proj.name);
+            // FIXED: Search by projectName ONLY to match backend storage of Aula Virtual submissions
+            const saved = savedEvaluations.find(e => e.projectName === proj.name);
             if (!saved || saved.type !== 'grupal' || !saved.groups) return;
             saved.groups.forEach(grp => {
                 const ids = (grp.studentIds || []).map(String);
@@ -9931,7 +9935,8 @@ function openTeamHistoryView() {
     modules.forEach((mod, mIdx) => {
         (mod.projects || []).forEach((proj, pIdx) => {
             const modId = mod.id || String(mIdx);
-            const saved = savedEvaluations.find(e => e.moduleId === modId && e.projectName === proj.name);
+            // FIXED: Search by projectName ONLY to match backend storage of Aula Virtual submissions
+            const saved = savedEvaluations.find(e => e.projectName === proj.name);
             if (saved && saved.type === 'grupal' && saved.groups && saved.groups.length > 0) {
                 grupalProjects.push({ mIdx, pIdx, modId, modName: mod.name || `Módulo ${mIdx + 1}`, projName: proj.name, groups: saved.groups });
             }
@@ -9943,7 +9948,8 @@ function openTeamHistoryView() {
     modules.forEach((mod, mIdx) => {
         (mod.projects || []).forEach((proj, pIdx) => {
             const modId = mod.id || String(mIdx);
-            const saved = savedEvaluations.find(e => e.moduleId === modId && e.projectName === proj.name);
+            // FIXED: Search by projectName ONLY to match backend storage of Aula Virtual submissions
+            const saved = savedEvaluations.find(e => e.projectName === proj.name);
             if (saved && saved.type === 'grupal') {
                 allGrupalForSelect.push({ mIdx, pIdx, modName: mod.name, projName: proj.name });
             }
@@ -10188,7 +10194,8 @@ async function setEvalProjectType(mIdx, pIdx, type) {
     const proj = mod.projects[pIdx];
     const modId = mod.id || String(mIdx);
 
-    let saved = savedEvaluations.find(e => e.moduleId === modId && e.projectName === proj.name);
+    // FIXED: Search by projectName ONLY to match backend storage of Aula Virtual submissions
+    let saved = savedEvaluations.find(e => e.projectName === proj.name);
     if (!saved) {
         saved = {
             moduleId: modId,
@@ -10220,7 +10227,8 @@ function openGroupsModal(mIdx, pIdx) {
     window._evalState.currentProjectIdx = pIdx;
 
     // Ensure a saved entry exists
-    let saved = savedEvaluations.find(e => e.moduleId === modId && e.projectName === proj.name);
+    // FIXED: Search by projectName ONLY to match backend storage of Aula Virtual submissions
+    let saved = savedEvaluations.find(e => e.projectName === proj.name);
     if (!saved) {
         saved = { moduleId: modId, moduleName: mod.name, projectName: proj.name, type: 'grupal', groups: [], evaluations: [] };
         window._evalState.savedEvaluations.push(saved);
@@ -10598,7 +10606,8 @@ function openEvaluationView(mIdx, pIdx) {
     window._evalRemovedComps = {};
     window._evalRemovedTools = {};
 
-    const saved = savedEvaluations.find(e => e.moduleId === modId && e.projectName === proj.name) || {
+    // FIXED: Search by projectName ONLY to match backend storage of Aula Virtual submissions
+    const saved = savedEvaluations.find(e => e.projectName === proj.name) || {
         moduleId: modId, moduleName: mod.name, projectName: proj.name,
         type: 'individual', groups: [], evaluations: []
     };
@@ -11219,7 +11228,8 @@ function openEvaluationModal(mIdx, pIdx) {
     // Reset per-target removed-competence tracking each time the modal opens
     window._evalRemovedComps = {};
 
-    const saved = savedEvaluations.find(e => e.moduleId === modId && e.projectName === proj.name) || {
+    // FIXED: Search by projectName ONLY to match backend storage of Aula Virtual submissions
+    const saved = savedEvaluations.find(e => e.projectName === proj.name) || {
         moduleId: modId, moduleName: mod.name, projectName: proj.name,
         type: 'individual', groups: [], evaluations: []
     };
