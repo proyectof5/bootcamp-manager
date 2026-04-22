@@ -492,6 +492,15 @@ body {
 /* Attendance Table Styles */
 .attendance-table-wrapper {
     max-height: 700px;
+    /* Allow dropdown to overflow without being clipped */
+    overflow: visible;
+    position: relative;
+}
+
+/* Create scroll context only for the table itself */
+.attendance-table-wrapper > .table-responsive {
+    max-height: 700px;
+    overflow: auto;
 }
 
 .attendance-cell {
@@ -607,6 +616,161 @@ body {
     border-style: solid;
     border-width: 0 6px 6px 0;
     border-color: transparent var(--principal-1) transparent transparent;
+}
+
+/* ── Row Highlight for Attendance UX ─────────────────────────────────────── */
+.attendance-row-highlight {
+    background-color: rgba(255, 153, 0, 0.08) !important;
+    transition: background-color 0.15s ease;
+}
+
+.attendance-row-highlight .student-name-cell {
+    background-color: rgba(255, 153, 0, 0.15) !important;
+    color: var(--principal-1) !important;
+    font-weight: 600 !important;
+}
+
+.attendance-row-highlight-active {
+    background-color: rgba(255, 153, 0, 0.15) !important;
+}
+
+.attendance-row-highlight-active .student-name-cell {
+    background-color: rgba(255, 153, 0, 0.25) !important;
+    color: var(--principal-1) !important;
+    font-weight: 700 !important;
+}
+
+/* ── Attendance Status Dropdown ─────────────────────────────────────────── */
+.attendance-dropdown {
+    position: fixed;
+    background: white;
+    border: 2px solid var(--principal-1);
+    border-radius: 8px;
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
+    z-index: 99999; /* Extremely high to ensure visibility above modals and overlays */
+    min-width: 220px;
+    padding: 8px 0;
+    animation: slideDown 0.15s ease;
+    max-height: 70vh; /* Responsive max height */
+    overflow-y: auto;
+    max-width: 300px;
+    /* Prevent any parent overflow from clipping */
+    clip-path: none;
+}
+
+#attendance-dropdown-container {
+    pointer-events: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 99998;
+}
+
+/* Ensure both dropdown types are interactive */
+#attendance-dropdown-container .attendance-dropdown,
+#attendance-dropdown-container .date-context-menu {
+    pointer-events: auto;
+}
+
+/* Ensure all interactive items work */
+#attendance-dropdown-container .attendance-dropdown-item,
+#attendance-dropdown-container .date-context-menu-item {
+    pointer-events: auto;
+}
+
+#attendance-dropdown-container .attendance-dropdown {
+    pointer-events: auto;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.attendance-dropdown-item {
+    padding: 12px 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.95rem;
+    color: var(--principal-2);
+    transition: all 0.12s ease;
+    white-space: nowrap;
+    user-select: none;
+}
+
+.attendance-dropdown-item:hover {
+    background-color: var(--complementario-1-extra-light);
+    padding-left: 24px;
+}
+
+.attendance-dropdown-item.active {
+    background-color: rgba(255, 153, 0, 0.2);
+    color: var(--principal-1);
+    font-weight: 700;
+    border-left: 3px solid var(--principal-1);
+    padding-left: 13px;
+}
+
+/* ── Date Header Context Menu ─────────────────────────────────────────────── */
+.date-context-menu {
+    position: fixed;
+    background: white;
+    border: 2px solid var(--principal-1);
+    border-radius: 6px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+    z-index: 99999;
+    min-width: 240px;
+    padding: 6px 0;
+    animation: slideDown 0.15s ease;
+}
+
+.date-context-menu-item {
+    padding: 10px 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.95rem;
+    color: var(--principal-2);
+    transition: all 0.12s ease;
+    user-select: none;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.date-context-menu-item:last-child {
+    border-bottom: none;
+}
+
+.date-context-menu-item:hover {
+    background-color: var(--complementario-1-extra-light);
+    padding-left: 24px;
+}
+
+.date-context-menu-item.danger:hover {
+    background-color: rgba(220, 53, 69, 0.12);
+    color: #dc3545;
+}
+
+.date-context-menu-item-icon {
+    min-width: 20px;
+    text-align: center;
+    font-size: 1rem;
+}
+
+.attendance-dropdown-item-icon {
+    min-width: 24px;
+    text-align: center;
+    font-size: 1rem;
 }
 
 /* Disabled navigation buttons */

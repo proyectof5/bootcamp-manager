@@ -1409,11 +1409,17 @@ async function populateAulaVirtualTargets() {
     }
     const students = Array.isArray(window.publicStudents) ? window.publicStudents : [];
 
+    // Cargar entregas realizadas
+    const submissions = await loadVirtualClassroomSubmissions();
+    const submittedIds = new Set(submissions.map(s => s.targetId));
+
     let optionsHtml = '';
     if (type === 'individual') {
         label.textContent = 'Selecciona tu nombre';
         optionsHtml = '<option value="">Selecciona tu nombre…</option>' +
-            students.map(st => `
+            students
+                .filter(st => !submittedIds.has(String(st.id)))  // Filtrar ya entregados
+                .map(st => `
                 <option value="student:${escapeHtml(String(st.id))}">
                     ${escapeHtml(`${st.name || ''} ${st.lastname || ''}`.trim())}
                 </option>
@@ -1425,7 +1431,9 @@ async function populateAulaVirtualTargets() {
         students.forEach(s => { byId[String(s.id)] = s; });
 
         optionsHtml = '<option value="">Selecciona tu equipo…</option>' +
-            groups.map(g => {
+            groups
+                .filter(g => !submittedIds.has(g.groupName))  // Filtrar equipos ya entregados
+                .map(g => {
                 const members = (g.studentIds || []).map(id => {
                     const st = byId[String(id)];
                     return st ? `${st.name || ''} ${st.lastname || ''}`.trim() : id;
@@ -1440,6 +1448,88 @@ async function populateAulaVirtualTargets() {
     }
 
     select.innerHTML = optionsHtml;
+
+    // Mostrar entregas realizadas
+    renderVirtualClassroomSubmissions(submissions, students, type);
+}
+
+async function loadVirtualClassroomSubmissions() {
+    try {
+        if (!_virtualClassroomState || !_virtualClassroomState.active) return [];
+
+        const type = _virtualClassroomState.projectType === 'grupal' ? 'grupal' : 'individual';
+        const params = new URLSearchParams({ type });
+
+        // Nota: Sin identificación específica, cargamos todas las entregas del proyecto
+        // El frontend mostrará todas las realizadas
+        const res = await fetch(`${API_URL}/api/promotions/${promotionId}/virtual-classroom/submissions?${params}`, {
+            method: 'GET'
+        });
+
+        if (!res.ok) {
+            console.warn('[loadVirtualClassroomSubmissions] Error:', res.status);
+            return [];
+        }
+
+        const data = await res.json();
+        return data.submissions || [];
+    } catch (error) {
+        console.error('[loadVirtualClassroomSubmissions] Error:', error);
+        return [];
+    }
+}
+
+function renderVirtualClassroomSubmissions(submissions, students, type) {
+    const section = document.getElementById('aula-virtual-submissions-section');
+    const list = document.getElementById('aula-virtual-submissions-list');
+
+    if (!section || !list) return;
+
+    if (!submissions || submissions.length === 0) {
+        section.classList.add('d-none');
+        return;
+    }
+
+    section.classList.remove('d-none');
+
+    // Crear mapa de estudiantes por ID
+    const studentMap = {};
+    students.forEach(s => {
+        studentMap[String(s.id)] = `${s.name || ''} ${s.lastname || ''}`.trim();
+    });
+
+    const submissionsHtml = submissions.map(sub => {
+        const targetName = type === 'individual'
+            ? (studentMap[String(sub.targetId)] || sub.targetId)
+            : sub.targetId;
+
+        const submittedDate = sub.submittedAt
+            ? new Date(sub.submittedAt).toLocaleDateString('es-ES', {
+                year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+            })
+            : 'Desconocida';
+
+        return `
+            <div class="list-group-item px-3 py-2">
+                <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+                    <div class="flex-grow-1">
+                        <div class="small fw-semibold text-dark">${escapeHtml(targetName)}</div>
+                        <div class="small text-muted mb-1">
+                            <i class="bi bi-calendar me-1"></i>${escapeHtml(submittedDate)}
+                        </div>
+                        <div class="small">
+                            <a href="${escapeHtml(sub.submissionLink)}" target="_blank" rel="noopener noreferrer" class="text-primary text-decoration-none">
+                                <i class="bi bi-box-arrow-up-right me-1"></i>${escapeHtml(sub.submissionLink.substring(0, 50))}${sub.submissionLink.length > 50 ? '…' : ''}
+                            </a>
+                        </div>
+                    </div>
+                    <div class="badge bg-success align-self-start">${escapeHtml(sub.submissionStatus || 'Entregado')}</div>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    list.innerHTML = submissionsHtml;
 }
 
 async function submitVirtualClassroomDelivery() {
@@ -1510,6 +1600,9 @@ async function submitVirtualClassroomDelivery() {
         feedbackEl.textContent = 'Entrega registrada correctamente.';
         feedbackEl.className = 'small text-success';
         suffixEl.value = '';
+
+        // Recargar entregas y actualizar UI
+        await populateAulaVirtualTargets();
     } catch (error) {
         console.error('Error submitting virtual classroom delivery:', error);
         feedbackEl.textContent = 'Error de conexión al enviar la entrega.';
@@ -1784,8 +1877,13 @@ function createProgramInfoSections(info) {
             // Assignment UI for Legacy
             let assignmentCell = '';
             if (info.pildorasAssignmentOpen) {
+                const firstAssignedStudentId = students.length > 0 ? students[0].id : '';
+                
                 const studentOptions = (window.publicStudents || [])
-                    .map(s => `<option value="${s.id}">${s.name} ${s.lastname}</option>`)
+                    .map(s => {
+                        const isSelected = s.id === firstAssignedStudentId ? 'selected' : '';
+                        return `<option value="${s.id}" ${isSelected}>${s.name} ${s.lastname}</option>`;
+                    })
                     .join('');
 
                 assignmentCell = `
@@ -1953,8 +2051,13 @@ function createProgramInfoSections(info) {
                     // Assignment UI
                     let assignmentCell = '';
                     if (info.pildorasAssignmentOpen) {
+                        const firstAssignedStudentId = students.length > 0 ? students[0].id : '';
+                        
                         const studentOptions = (window.publicStudents || [])
-                            .map(s => `<option value="${s.id}">${s.name} ${s.lastname}</option>`)
+                            .map(s => {
+                                const isSelected = s.id === firstAssignedStudentId ? 'selected' : '';
+                                return `<option value="${s.id}" ${isSelected}>${s.name} ${s.lastname}</option>`;
+                            })
                             .join('');
 
                         assignmentCell = `
@@ -2125,65 +2228,141 @@ function createProgramInfoSections(info) {
             };
 
             window.selfAssignPildora = async function (mId, pIdx) {
+                // ── Validate select element exists
                 const selectEl = document.querySelector(`.coder-select-${pIdx}`);
+                if (!selectEl) {
+                    alert('Error: No se pudo encontrar el selector. Por favor recarga la página.');
+                    return;
+                }
+
+                // ── Validate student selection
                 const sId = selectEl.value;
                 if (!sId) {
-                    alert('Por favor selecciona un Coder');
+                    alert('Por favor selecciona un Coder antes de apuntarte');
                     return;
                 }
 
                 try {
-                    const response = await fetch(`${API_URL}/api/promotions/${promotionId}/pildoras-self-assign`, {
+                    const url = `${API_URL}/api/promotions/${promotionId}/pildoras-self-assign`;
+                    const payload = { 
+                        moduleId: mId, 
+                        pildoraIndex: pIdx, 
+                        studentId: sId, 
+                        action: 'add',
+                        isLegacy: false
+                    };
+                    
+                    const fetchOptions = {
                         method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ moduleId: mId, pildoraIndex: pIdx, studentId: sId, action: 'add' })
-                    });
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
+                        },
+                        body: JSON.stringify(payload)
+                    };
+                    
+                    const response = await fetch(url, fetchOptions);
+
+                    // ── Parse response
+                    let responseData;
+                    const contentType = response.headers.get('content-type');
+                    try {
+                        responseData = contentType && contentType.includes('application/json') 
+                            ? await response.json() 
+                            : {};
+                    } catch (parseErr) {
+                        responseData = {};
+                    }
 
                     if (response.ok) {
-                        // Refresh data
-                        const infoResponse = await fetch(`${API_URL}/api/promotions/${promotionId}/extended-info`);
-                        if (infoResponse.ok) {
-                            const newInfo = await infoResponse.json();
-                            window.publicPromotionExtendedInfo = newInfo;
-
-                            // Re-calculate modulesWithPildoras and update table
-                            // (Actually it's better to just call loadExtendedInfo again to keep everything in sync)
-                            loadExtendedInfo();
-                        }
+                        alert('¡Te has apuntado correctamente a la píldora!');
+                        // Reload extended info to reflect changes
+                        await loadExtendedInfo();
                     } else {
-                        const error = await response.json();
-                        alert(`Error: ${error.error}`);
+                        // ── Handle error responses with specific messages
+                        const errorMessage = responseData.error || `Error ${response.status}`;
+                        
+                        if (response.status === 403) {
+                            alert('La autoasignación está cerrada. El profesor ha deshabilitado esta funcionalidad.');
+                        } else if (response.status === 404) {
+                            alert('No se encontró la píldora o el estudiante. Por favor recarga la página e intenta de nuevo.');
+                        } else if (response.status === 400) {
+                            alert(`Solicitud inválida: ${errorMessage}`);
+                        } else {
+                            alert(`Error: ${errorMessage}`);
+                        }
                     }
                 } catch (error) {
-                    console.error('Error assigning píldora:', error);
-                    alert('Error de conexión');
+                    alert('Error de conexión. Por favor intenta de nuevo. Si el problema persiste, contacta con soporte.');
                 }
             };
 
             window.selfAssignPildoraLegacy = async function (pIdx) {
+                // ── Validate select element exists
                 const selectEl = document.querySelector(`.coder-select-legacy-${pIdx}`);
+                if (!selectEl) {
+                    alert('Error: No se pudo encontrar el selector. Por favor recarga la página.');
+                    return;
+                }
+
+                // ── Validate student selection
                 const sId = selectEl.value;
                 if (!sId) {
-                    alert('Por favor selecciona un Coder');
+                    alert('Por favor selecciona un Coder antes de apuntarte');
                     return;
                 }
 
                 try {
-                    const response = await fetch(`${API_URL}/api/promotions/${promotionId}/pildoras-self-assign`, {
+                    const url = `${API_URL}/api/promotions/${promotionId}/pildoras-self-assign`;
+                    const payload = { 
+                        pildoraIndex: pIdx, 
+                        studentId: sId, 
+                        action: 'add', 
+                        isLegacy: true 
+                    };
+                    
+                    const fetchOptions = {
                         method: 'PUT',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ pildoraIndex: pIdx, studentId: sId, action: 'add', isLegacy: true })
-                    });
+                        headers: { 
+                            'Content-Type': 'application/json',
+                            'Authorization': `Bearer ${localStorage.getItem('token') || ''}`
+                        },
+                        body: JSON.stringify(payload)
+                    };
+                    
+                    const response = await fetch(url, fetchOptions);
+
+                    // ── Parse response
+                    let responseData;
+                    const contentType = response.headers.get('content-type');
+                    try {
+                        responseData = contentType && contentType.includes('application/json') 
+                            ? await response.json() 
+                            : {};
+                    } catch (parseErr) {
+                        responseData = {};
+                    }
 
                     if (response.ok) {
-                        loadExtendedInfo();
+                        alert('¡Te has apuntado correctamente a la píldora!');
+                        // Reload extended info to reflect changes
+                        await loadExtendedInfo();
                     } else {
-                        const error = await response.json();
-                        alert(`Error: ${error.error}`);
+                        // ── Handle error responses with specific messages
+                        const errorMessage = responseData.error || `Error ${response.status}`;
+                        
+                        if (response.status === 403) {
+                            alert('La autoasignación está cerrada. El profesor ha deshabilitado esta funcionalidad.');
+                        } else if (response.status === 404) {
+                            alert('No se encontró la píldora o el estudiante. Por favor recarga la página e intenta de nuevo.');
+                        } else if (response.status === 400) {
+                            alert(`Solicitud inválida: ${errorMessage}`);
+                        } else {
+                            alert(`Error: ${errorMessage}`);
+                        }
                     }
                 } catch (error) {
-                    console.error('Error assigning píldora (legacy):', error);
-                    alert('Error de conexión');
+                    alert('Error de conexión. Por favor intenta de nuevo. Si el problema persiste, contacta con soporte.');
                 }
             };
 
