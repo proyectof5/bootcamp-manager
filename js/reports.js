@@ -18,29 +18,30 @@
     const LIGHT_BG  = '#F8F9FA';
     const BORDER    = '#DEE2E6';
 
-    // ─── Shared print CSS ────────────────────────────────────────────────────
     function _baseCss() {
         return `
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
         @page { margin: 18mm 16mm 18mm 16mm; size: A4; }
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Inter', Arial, sans-serif; font-size: 10pt; color: #222; line-height: 1.5; background:#fff; }
-        h1 { font-size: 18pt; font-weight: 700; color: ${DARK}; }
-        h2 { font-size: 14pt; font-weight: 600; color: ${DARK}; margin-top: 14pt; margin-bottom: 6pt; }
-        h3 { font-size: 11pt; font-weight: 600; color: ${PRIMARY}; margin-top: 10pt; margin-bottom: 4pt; border-bottom: 1.5px solid ${PRIMARY}; padding-bottom: 2pt; }
-        h4 { font-size: 10pt; font-weight: 600; color: ${SECONDARY}; margin-top: 8pt; margin-bottom: 3pt; }
-        p  { margin-bottom: 5pt; }
-        table { width: 100%; border-collapse: collapse; margin-bottom: 8pt; font-size: 9.5pt; break-inside: auto; }
-        th { background: ${DARK}; color: #fff; padding: 5pt 7pt; text-align: left; font-weight: 600; }
-        td { padding: 5pt 7pt; border-bottom: 1px solid ${BORDER}; vertical-align: top; }
+        body { font-family: 'Inter', Arial, sans-serif; font-size: 10pt; color: #000; line-height: 1.6; background: #fff; }
+        h1 { font-size: 17pt; font-weight: 700; color: #000; }
+        h2 { font-size: 13pt; font-weight: 600; color: #000; margin-top: 16pt; margin-bottom: 6pt; }
+        h3 { font-size: 11pt; font-weight: 700; color: #000; margin-top: 14pt; margin-bottom: 5pt; }
+        h4 { font-size: 10pt; font-weight: 600; color: #000; margin-top: 10pt; margin-bottom: 3pt; }
+        p  { margin-bottom: 5pt; color: #000; }
+        ul, ol { margin-left: 14pt; margin-bottom: 5pt; }
+        li { margin-bottom: 2pt; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 10pt; font-size: 9.5pt; break-inside: auto; }
+        th { background: #f0f0f0; color: #000; padding: 5pt 7pt; text-align: left; font-weight: 600; border: 1px solid #ccc; }
+        td { padding: 5pt 7pt; border: 1px solid #ddd; vertical-align: top; color: #000; }
         tr { break-inside: avoid; break-after: auto; }
-        tr:nth-child(even) td { background: ${LIGHT_BG}; }
+        tr:nth-child(even) td { background: #fafafa; }
         .badge {
             display: inline-block; padding: 2pt 6pt; border-radius: 10pt;
             font-size: 8pt; font-weight: 600; line-height: 1.3;
         }
         .badge-orange  { background: ${PRIMARY}; color: #fff; }
-        .badge-dark    { background: ${DARK}; color: #fff; }
+        .badge-dark    { background: #333; color: #fff; }
         .badge-green   { background: #198754; color: #fff; }
         .badge-blue    { background: #0d6efd; color: #fff; }
         .badge-red     { background: #dc3545; color: #fff; }
@@ -48,25 +49,14 @@
         .badge-grey    { background: #6c757d; color: #fff; }
         .badge-info    { background: #0dcaf0; color: #000; }
         .badge-light   { background: #e9ecef; color: #333; border: 1px solid #ccc; }
-        .section-box {
-            border: 1px solid ${BORDER}; border-radius: 6pt;
-            padding: 10pt 12pt; margin-bottom: 10pt;
-            break-inside: avoid;
-        }
-        .card {
-            border: 1px solid ${BORDER}; border-radius: 6pt;
-            padding: 10pt 12pt; margin-bottom: 10pt;
-            break-inside: avoid;
-        }
-        .section-box.accent { border-left: 4px solid ${PRIMARY}; }
-        .section-box.green  { border-left: 4px solid #198754; }
-        .section-box.blue   { border-left: 4px solid #0d6efd; }
-        .section-box.red    { border-left: 4px solid #dc3545; }
+        .section-box { margin-bottom: 10pt; break-inside: avoid; }
+        .card        { margin-bottom: 10pt; break-inside: avoid; }
+        .section-box.accent, .section-box.green, .section-box.blue, .section-box.red { }
         .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10pt; }
         .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10pt; }
-        .kv { margin-bottom: 3pt; break-inside: avoid; }
-        .kv strong { color: ${SECONDARY}; }
-        .empty-note { color: #aaa; font-style: italic; font-size: 9pt; }
+        .kv { margin-bottom: 4pt; break-inside: avoid; }
+        .kv strong { color: #000; }
+        .empty-note { color: #888; font-style: italic; font-size: 9pt; }
         .pill-row { display: flex; flex-wrap: wrap; gap: 4pt; margin-top: 3pt; }
         .page-break { page-break-before: always; }
         .no-break { break-inside: avoid; }
@@ -86,37 +76,28 @@
             </div>`;
         }
 
+        const logoUrl = (window.APP_CONFIG?.BASE_URL || window.location.origin) + '/img/f5-logo-naranja.webp';
+
         return `
         <div style="display:flex; justify-content:space-between; align-items:flex-start;
-                    border-bottom: 3px solid ${PRIMARY}; padding-bottom: 10pt; margin-bottom: 14pt;">
+                    border-bottom: 1px solid #ccc; padding-bottom: 12pt; margin-bottom: 16pt;">
             <div>
-                <div style="font-size:8pt; color:${PRIMARY}; font-weight:700; letter-spacing:1.5px;
-                            text-transform:uppercase; margin-bottom:4pt;">
-                    Factoría F5 · Bootcamp Manager
-                </div>
-                <h1>${_esc(title)}</h1>
-                ${subtitle ? `<div style="font-size:11pt; color:${SECONDARY}; margin-top:3pt;">${_esc(subtitle)}</div>` : ''}
-                ${promotionName ? `<div style="font-size:9pt; color:#888; margin-top:3pt;">Promoción: <strong>${_esc(promotionName)}</strong></div>` : ''}
+                <h1 style="font-size:17pt; font-weight:700; color:#000; margin:0 0 3pt 0;">${_esc(title)}</h1>
+                ${subtitle ? `<div style="font-size:10.5pt; color:#000; margin-top:3pt;">${_esc(subtitle)}</div>` : ''}
+                ${promotionName ? `<div style="font-size:9pt; color:#333; margin-top:3pt;">Promoción: <strong>${_esc(promotionName)}</strong></div>` : ''}
                 ${periodHtml}
             </div>
-            <div style="text-align:right; font-size:9pt; color:#888; min-width:100pt;">
-                <div>${_esc(date)}</div>
-                <div style="margin-top:4pt;">
-                    <span style="display:inline-block; width:28pt; height:3pt; background:${PRIMARY}; border-radius:2pt;"></span>
-                    <span style="display:inline-block; width:14pt; height:3pt; background:${DARK}; border-radius:2pt; margin-left:2pt;"></span>
-                </div>
+            <div style="flex-shrink:0; margin-left:16pt;">
+                <img src="${logoUrl}" alt="Factoria F5 logo naranja"
+                     style="height:80pt; width:auto; display:block;"
+                     onerror="this.style.display='none'">
             </div>
         </div>`;
     }
 
     // ─── Footer ──────────────────────────────────────────────────────────────
     function _footer() {
-        return `
-        <div style="margin-top:20pt; padding-top:8pt; border-top:1px solid ${BORDER};
-                    font-size:8pt; color:#aaa; display:flex; justify-content:space-between;">
-            <span>Factoría F5 – Bootcamp Manager</span>
-            <span>Generado el ${new Date().toLocaleDateString('es-ES', {day:'2-digit',month:'long',year:'numeric'})}</span>
-        </div>`;
+        return '';
     }
 
     // ─── html2pdf options ────────────────────────────────────────────────────
@@ -741,20 +722,9 @@
     // ─── Reason block HTML (injected right after the header) ─────────────────
     function _razonBlock(razonInforme) {
         if (!razonInforme) return '';
-        return `<div style="
-            margin-bottom: 14pt;
-            padding: 8pt 12pt;
-            background: #f8f9fa;
-            border-left: 4px solid ${PRIMARY};
-            border-radius: 0 6pt 6pt 0;
-            font-size: 9.5pt;
-            line-height: 1.6;
-        ">
-            <div>
-                <span style="color:${SECONDARY}; font-weight:600;">Motivo del informe:&nbsp;</span>
-                <span style="color:#222;">${_esc(razonInforme)}</span>
-            </div>
-        </div>`;
+        return `<p style="margin-bottom:12pt; font-size:9.5pt; color:#000;">
+            <strong>Motivo del informe:</strong> ${_esc(razonInforme)}
+        </p>`;
     }
 
     // ════════════════════════════════════════════════════════════════════════
@@ -776,7 +746,7 @@
             const s   = await stuRes.json();
             const promo = promoRes.ok ? await promoRes.json() : {};
             const pildarasData = pildarasRes.ok ? await pildarasRes.json() : {};
-            const modulesPildarasExtended = pildarasData.modulesPildoras || [];
+            const modulesPildorasExtended = pildarasData.modulesPildoras || [];
             const tt  = s.technicalTracking || {};
             const fullName = `${s.name || ''} ${s.lastname || ''}`.trim();
 
@@ -792,16 +762,14 @@
             html += _razonBlock(razonInforme);
 
             // ── Datos personales ──
-            html += `<div class="section-box accent">
-                <div class="kv"><strong>Coder:</strong> ${fullName}</div>
+            html += `<div class="kv"><strong>Coder:</strong> ${fullName}</div>
                 <div class="kv"><strong>Promoción:</strong> ${promo.name || '—'}</div>
-                <div class="kv"><strong>Fecha de generación:</strong> ${_today()}</div>
-            </div>`;
+                <div class="kv"><strong>Fecha de generación:</strong> ${_today()}</div>`;
 
             // ── Notas del profesor ── (omitir si vacío)
             const notes = tt.teacherNotes || [];
             if (notes.length) {
-                html += `<h3><span style="color:${PRIMARY}">✦</span> Notas del Profesor</h3>`;
+                html += `<h3>Notas del Profesor</h3>`;
                 html += `<table><thead><tr><th>Fecha</th><th>Nota</th></tr></thead><tbody>`;
                 notes.forEach(n => {
                     html += `<tr><td style="white-space:nowrap;">${_fmtDate(n.createdAt || n.date)}</td><td>${_esc(n.note || n.text || '')}</td></tr>`;
@@ -810,30 +778,26 @@
             }
 
             // ── Proyectos realizados ──
-            html += `<h3><span style="color:${PRIMARY}">✦</span> Proyectos Realizados</h3>`;
+            html += `<h3>Proyectos Realizados</h3>`;
             const teams = tt.teams || [];
             if (teams.length) {
                 teams.forEach(t => {
-                    const typeBadge = t.projectType === 'individual'
-                        ? `<span class="badge badge-info">Individual</span>`
-                        : `<span class="badge badge-green">Grupal</span>`;
+                    const typeLabel = t.projectType === 'individual' ? 'Individual' : 'Grupal';
                     const members = (t.members || []).map(m => _esc(m.name)).join(', ');
                     const comps   = t.competences || [];
-                    html += `<div class="section-box green no-break">
-                        <div style="display:flex; align-items:center; gap:8pt; margin-bottom:5pt;">
-                            <strong style="font-size:11pt;">${_esc(t.teamName || 'Proyecto')}</strong>
-                            ${typeBadge}
-                        </div>
+                    html += `<div class="no-break" style="margin-bottom:10pt;">
+                        <div style="margin-bottom:3pt;"><strong>${_esc(t.teamName || 'Proyecto')}</strong> — ${typeLabel}</div>
                         <div class="kv"><strong>Módulo:</strong> ${_esc(t.moduleName || '—')}</div>
                         ${members ? `<div class="kv"><strong>Compañeros:</strong> ${members}</div>` : ''}
                         ${comps.length ? `
-                        <div style="margin-top:6pt;">
-                            <strong style="font-size:9pt; color:${SECONDARY};">Competencias trabajadas:</strong>
+                        <div style="margin-top:4pt;">
+                            <strong>Competencias trabajadas:</strong>
+                            <ul style="margin-top:2pt;">
                             ${comps.map(c => {
-                                const tools = (c.toolsUsed || []).map(tl => `<span class="badge badge-light">${_esc(tl)}</span>`).join(' ');
-                                return `<div style="margin-top:4pt;">${_levelBadge(c.level)} <strong>${_esc(c.competenceName)}</strong>
-                                    ${tools ? `<span style="margin-left:4pt;">${tools}</span>` : ''}</div>`;
+                                const tools = (c.toolsUsed || []).join(', ');
+                                return `<li>${_esc(c.competenceName)} (Nivel ${c.level || '—'})${tools ? ' — ' + _esc(tools) : ''}</li>`;
                             }).join('')}
+                            </ul>
                         </div>` : ''}
                     </div>`;
                 });
@@ -856,7 +820,7 @@
                 });
             });
             if (pendingProjects.length) {
-                html += `<h3><span style="color:${PRIMARY}">✦</span> Proyectos Pendientes de Entrega</h3>`;
+                html += `<h3>Proyectos Pendientes de Entrega</h3>`;
                 html += `<table><thead><tr><th>Proyecto</th><th>Módulo</th></tr></thead><tbody>`;
                 pendingProjects.forEach(p => {
                     html += `<tr><td>${_esc(p.projectName)}</td><td>${_esc(p.moduleName)}</td></tr>`;
@@ -865,7 +829,7 @@
             }
 
             // ── Módulos completados ──
-            html += `<h3><span style="color:${PRIMARY}">✦</span> Módulos Completados</h3>`;
+            html += `<h3>Módulos Completados</h3>`;
             const mods = tt.completedModules || [];
             if (mods.length) {
                 html += `<table><thead><tr><th>Módulo</th><th>Fecha</th><th>Nota</th><th>Observaciones</th></tr></thead><tbody>`;
@@ -887,7 +851,7 @@
             // Compute both groups from live ExtendedInfo data
             const _pilPresentadas = [];
             const _pilPendientes  = [];
-            modulesPildarasExtended.forEach(mp => {
+            modulesPildorasExtended.forEach(mp => {
                 (mp.pildoras || []).forEach(p => {
                     const studentIds = (p.students || []).map(s2 => String(s2.id));
                     if (!studentIds.includes(String(studentId))) return;
@@ -905,7 +869,7 @@
 
             // ── Píldoras Presentadas (omitir si vacío) ──
             if (_pilPresentadas.length) {
-                html += `<h3><span style="color:${PRIMARY}">✦</span> Píldoras Presentadas</h3>`;
+                html += `<h3>Píldoras Presentadas</h3>`;
                 html += `<table><thead><tr><th>Título</th><th>Módulo</th><th>Fecha</th><th>Modalidad</th></tr></thead><tbody>`;
                 _pilPresentadas.forEach(p => {
                     html += `<tr>
@@ -920,14 +884,14 @@
 
             // ── Píldoras No Presentadas / Pendientes (omitir si vacío) ──
             if (_pilPendientes.length) {
-                html += `<h3><span style="color:${PRIMARY}">✦</span> Píldoras No Presentadas / Pendientes</h3>`;
+                html += `<h3>Píldoras No Presentadas / Pendientes</h3>`;
                 html += `<table><thead><tr><th>Título</th><th>Módulo</th><th>Fecha prevista</th><th>Estado</th></tr></thead><tbody>`;
                 _pilPendientes.forEach(p => {
                     html += `<tr>
                         <td>${_esc(p.pildoraTitle)}</td>
                         <td>${_esc(p.moduleName)}</td>
                         <td>${_fmtDate(p.date)}</td>
-                        <td><span style="color:#dc3545; font-weight:600;">${_esc(p.status || 'Pendiente')}</span></td>
+                        <td>${_esc(p.status || 'Pendiente')}</td>
                     </tr>`;
                 });
                 html += `</tbody></table>`;
@@ -1022,322 +986,74 @@ async function printActaInicio(promotionId) {
         const sched = ext.schedule || {};
         const team  = ext.team || [];
 
-        const ORANGE = '#E85D26';
-        const BLUE   = '#4472C4';  // azul usado en los valores del documento real
-
-        const style = `
-            <style>
-                * { box-sizing: border-box; margin: 0; padding: 0; }
-                body {
-                    font-family: 'Poppins', Arial, sans-serif;
-                    font-size: 10pt;
-                    color: #1a1a1a;
-                    padding: 40pt 50pt 80pt 50pt;
-                    line-height: 1.5;
-                }
-
-                /* ── Título principal ── */
-                .doc-title {
-                    font-size: 22pt;
-                    font-weight: bold;
-                    color: ${ORANGE};
-                    text-align: center;
-                    margin-bottom: 22pt;
-                    margin-top: 10pt;
-                }
-
-                /* ── Subtítulo: nombre proyecto y fecha ── */
-                .doc-meta {
-                    margin-bottom: 20pt;
-                }
-                .doc-meta .label {
-                    font-weight: bold;
-                    color: ${ORANGE};
-                    font-size: 11pt;
-                }
-                .doc-meta .value {
-                    color: #1a1a1a;
-                    font-size: 11pt;
-                    font-style: italic;
-                }
-                .doc-meta .promo-name {
-                    display: block;
-                    font-size: 13pt;
-                    font-weight: bold;
-                    color: ${BLUE};
-                    text-align: center;
-                    margin-top: 4pt;
-                    margin-bottom: 2pt;
-                }
-                .doc-meta .promo-sub {
-                    display: block;
-                    font-size: 11pt;
-                    font-weight: bold;
-                    color: ${BLUE};
-                    text-align: center;
-                    margin-bottom: 14pt;
-                }
-                .doc-meta .fecha-label {
-                    font-weight: bold;
-                    color: ${ORANGE};
-                    font-size: 10.5pt;
-                }
-                .doc-meta .fecha-value {
-                    font-style: italic;
-                    color: #1a1a1a;
-                    font-size: 10.5pt;
-                }
-
-                /* ── Tabla principal ── */
-                .main-table {
-                    width: 100%;
-                    border-collapse: collapse;
-                    margin-bottom: 20pt;
-                }
-                .main-table td {
-                    border: 1px solid #b0b0b0;
-                    padding: 10pt 12pt;
-                    vertical-align: top;
-                    line-height: 1.55;
-                }
-                /* columna izquierda: negrita, color oscuro */
-                .main-table td.label {
-                    width: 35%;
-                    font-weight: bold;
-                    color: #1a1a1a;
-                    font-size: 10pt;
-                }
-                /* columna derecha: color naranja/azul según doc */
-                .main-table td.value {
-                    width: 65%;
-                    color: ${BLUE};
-                    font-size: 10pt;
-                }
-                /* filas donde el valor va en naranja (horario, responsable, formadores...) */
-                .main-table td.value.orange {
-                    color: ${ORANGE};
-                }
-
-                /* ── Sección aprobación ── */
-                .approval {
-                    margin-top: 18pt;
-                    font-size: 10pt;
-                }
-                .approval p {
-                    margin-bottom: 5pt;
-                }
-                .approval .al {
-                    font-weight: bold;
-                }
-                .approval .sign-area {
-                    margin-top: 30pt;
-                    height: 50pt;
-                    border-bottom: 1px solid #999;
-                    width: 200pt;
-                }
-
-                /* ── Pie de página ── */
-                .footer {
-                    position: fixed;
-                    bottom: 16pt;
-                    right: 40pt;
-                    display: flex;
-                    align-items: center;
-                    gap: 6pt;
-                }
-                .footer-badge {
-                    background: ${ORANGE};
-                    color: white;
-                    font-size: 9pt;
-                    font-weight: bold;
-                    padding: 2pt 4pt;
-                    border-radius: 2pt;
-                }
-                .footer-text {
-                    font-size: 14pt;
-                    font-weight: bold;
-                    color: ${ORANGE};
-                }
-                .footer-sub {
-                    font-size: 6.5pt;
-                    color: #999;
-                    letter-spacing: 1.2pt;
-                    text-transform: uppercase;
-                    display: block;
-                    margin-top: -2pt;
-                }
-                .page-num {
-                    position: fixed;
-                    bottom: 16pt;
-                    left: 50pt;
-                    font-size: 8pt;
-                    color: #aaa;
-                }
-
-                @media print {
-                    body { padding: 20pt 30pt 60pt 30pt; }
-                    .no-break { page-break-inside: avoid; }
-                }
-            </style>
-        `;
-
-        // ── Helpers para construir celdas ──
-        const row = (labelHtml, valueHtml, colorClass = '') =>
-            `<tr>
-                <td class="label">${labelHtml}</td>
-                <td class="value ${colorClass}">${valueHtml}</td>
-            </tr>`;
-
+        // ── Helpers ──
+        const row = (labelHtml, valueHtml) =>
+            `<tr><td class="label">${labelHtml}</td><td class="value">${valueHtml}</td></tr>`;
         const esc = (v) => _esc(v);
         const val = (v) => esc(v || '—');
 
         // ── Horario ──
         let horarioHtml = '';
-        if (sched.online)      horarioHtml += `Virtual: de ${esc(sched.online.entry||'—')} a ${esc(sched.online.finish||'—')}<br>`;
-        if (sched.presential)  horarioHtml += `Presencial: de ${esc(sched.presential.entry||'—')} a ${esc(sched.presential.finish||'—')}`;
-        if (!horarioHtml)      horarioHtml = '—';
-        if (sched.notes)       horarioHtml += `<br><em>${esc(sched.notes)}</em>`;
+        if (sched.online)     horarioHtml += `Virtual: de ${esc(sched.online.entry||'—')} a ${esc(sched.online.finish||'—')}<br>`;
+        if (sched.presential) horarioHtml += `Presencial: de ${esc(sched.presential.entry||'—')} a ${esc(sched.presential.finish||'—')}`;
+        if (!horarioHtml)     horarioHtml = '—';
+        if (sched.notes)      horarioHtml += `<br><em>${esc(sched.notes)}</em>`;
 
         // ── Equipo por rol ──
         const byRole = (keywords) => {
-            const found = team.filter(m =>
-                keywords.some(k => (m.role||'').toLowerCase().includes(k))
-            );
+            const found = team.filter(m => keywords.some(k => (m.role||'').toLowerCase().includes(k)));
             if (!found.length) return '—';
             return found.map(m => esc(m.name + (m.period ? ` | ${m.period}` : ''))).join('<br>');
         };
         const otrosRoles = team
-            .filter(m => !['responsable','project','formador','coformador','co-formador',
-                           'coordinador','empleabilidad'].some(k => (m.role||'').toLowerCase().includes(k)))
+            .filter(m => !['responsable','project','formador','coformador','co-formador','coordinador','empleabilidad']
+                .some(k => (m.role||'').toLowerCase().includes(k)))
             .map(m => `- ${esc(m.role||'')}: ${esc(m.name||'')}`)
             .join('<br>') || '—';
 
-        // ── Responsable del proyecto (para sección aprobación) ──
         const responsable = team.find(m =>
             ['responsable','project'].some(k => (m.role||'').toLowerCase().includes(k))
         );
 
-        // ── HTML ──
-        let html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">${style}</head><body>`;
+        // ── HTML (body content only — _wrapHtml adds the outer document) ──
+        let html = `<style>
+            .main-table { width:100%; border-collapse:collapse; margin-bottom:20pt; }
+            .main-table td { border:1px solid #ccc; padding:8pt 10pt; vertical-align:top; line-height:1.55; font-size:10pt; color:#000; }
+            .main-table td.label { width:35%; font-weight:700; }
+            .main-table td.value { width:65%; }
+            .acta-approval { margin-top:18pt; font-size:10pt; }
+            .acta-approval .sign-area { margin-top:30pt; height:50pt; border-bottom:1px solid #999; width:200pt; }
+        </style>`;
 
-        // Título
-        html += `<div class="doc-title">Acta de inicio de proyecto formativo</div>`;
+        html += _header('Acta de Inicio de Proyecto Formativo', promo.name, null, _today(), promo);
 
-        // Meta: nombre proyecto + fecha
-        html += `<div class="doc-meta">
-            <span class="label">Nombre proyecto: </span>
-            <span class="promo-name">${val(promo.name)}</span>
-            ${promo.subtitle ? `<span class="promo-sub">${esc(promo.subtitle)}</span>` : ''}
-            <br>
-            <span class="fecha-label">Fecha de elaboración del acta: </span>
-            <span class="fecha-value">${_today()}</span>
-        </div>`;
-
-        // Tabla principal
         html += `<table class="main-table"><tbody>`;
-
-        html += row(
-            'Escuela y/o área<br>responsable del<br>proyecto formativo',
-            val(ext.school || promo.school)
-        );
-        html += row(
-            'Tipo proyecto formativo',
-            val(ext.projectType || ext.type || promo.type || 'Bootcamp')
-        );
-        html += row(
-            'Fecha de inicio de<br>proyecto formativo',
-            val(promo.startDate)
-        );
-        html += row(
-            'Fecha de fin de<br>proyecto formativo',
-            val(promo.endDate)
-        );
-        html += row(
-            'Fecha inicio formación:',
-            val(promo.startDate)
-        );
-        html += row(
-            'Fecha de fin de<br>formación:',
-            val(promo.endDate)
-        );
-        html += row(
-            'Fecha de inicio periodo<br>salida positiva:',
-            val(_fmtDateEs(ext.positiveExitStart))
-        );
-        html += row(
-            'Fecha de fin de periodo<br>de salida positiva:',
-            val(_fmtDateEs(ext.positiveExitEnd))
-        );
-        html += row(
-            'Horas totales de<br>formación',
-            val(ext.totalHours || promo.hours)
-        );
-        html += row(
-            'Modalidad',
-            val(ext.modality || promo.modality),
-            'orange'
-        );
-        html += row(
-            'Días presenciales y<br>lugar',
-            val(ext.presentialDays),
-            'orange'
-        );
-        html += row(
-            'Horario',
-            horarioHtml,
-            'orange'
-        );
-        html += row(
-            'Responsable del<br>proyecto',
-            byRole(['responsable','project']),
-            'orange'
-        );
-        html += row(
-            'Formador/a principal',
-            byRole(['formador']),
-            'orange'
-        );
-        html += row(
-            'Coformador/a',
-            byRole(['coformador','co-formador']),
-            'orange'
-        );
-        html += row(
-            'Coordinador/a de<br>Formación y<br>Empleabilidad IT',
-            byRole(['coordinador','empleabilidad']),
-            'orange'
-        );
-        // fila vacía como en el documento real
+        html += row('Escuela y/o área<br>responsable del<br>proyecto formativo', val(ext.school || promo.school));
+        html += row('Tipo proyecto formativo', val(ext.projectType || ext.type || promo.type || 'Bootcamp'));
+        html += row('Fecha de inicio de<br>proyecto formativo', val(promo.startDate));
+        html += row('Fecha de fin de<br>proyecto formativo', val(promo.endDate));
+        html += row('Fecha inicio formación:', val(promo.startDate));
+        html += row('Fecha de fin de<br>formación:', val(promo.endDate));
+        html += row('Fecha de inicio periodo<br>salida positiva:', val(_fmtDateEs(ext.positiveExitStart)));
+        html += row('Fecha de fin de periodo<br>de salida positiva:', val(_fmtDateEs(ext.positiveExitEnd)));
+        html += row('Horas totales de<br>formación', val(ext.totalHours || promo.hours));
+        html += row('Modalidad', val(ext.modality || promo.modality));
+        html += row('Días presenciales y<br>lugar', val(ext.presentialDays));
+        html += row('Horario', horarioHtml);
+        html += row('Responsable del<br>proyecto', byRole(['responsable','project']));
+        html += row('Formador/a principal', byRole(['formador']));
+        html += row('Coformador/a', byRole(['coformador','co-formador']));
+        html += row('Coordinador/a de<br>Formación y<br>Empleabilidad IT', byRole(['coordinador','empleabilidad']));
         html += `<tr><td class="label"></td><td class="value"></td></tr>`;
-        html += row('Otros roles:', otrosRoles, 'orange');
-        html += row(
-            'Materiales/recursos<br>necesarios',
-            val(ext.materials),
-            'orange'
-        );
-        html += row(
-            'Período prácticas<br>(sí/no)',
-            ext.internships != null ? (ext.internships ? 'Sí' : 'No') : '—',
-            'orange'
-        );
-        html += row(
-            'Financiadores',
-            (ext.funders||'').split('\n').map(f => f.trim()).filter(Boolean)
-                .map(f => esc(f)).join('<br>') || '—',
-            'orange'
-        );
-        html += row(
-            'Fecha de justificación a<br>cada financiador',
-            val(ext.funderDeadlines),
-            'orange'
-        );
-        html += row(
-            'OKR y KPIs de FF5 en<br>este proyecto formativo',
-            (ext.okrKpis||'').split('\n').map(l => l.trim()).filter(Boolean)
-                .map(l => `• ${esc(l)}`).join('<br>') || '—',
-            'orange'
-        );
-        // KPIs por financiador (format: "Funder: kpi\n---\nFunder2: kpi2")
+        html += row('Otros roles:', otrosRoles);
+        html += row('Materiales/recursos<br>necesarios', val(ext.materials));
+        html += row('Período prácticas<br>(sí/no)', ext.internships != null ? (ext.internships ? 'Sí' : 'No') : '—');
+        html += row('Financiadores',
+            (ext.funders||'').split('\n').map(f => f.trim()).filter(Boolean).map(f => esc(f)).join('<br>') || '—');
+        html += row('Fecha de justificación a<br>cada financiador', val(ext.funderDeadlines));
+        html += row('OKR y KPIs de FF5 en<br>este proyecto formativo',
+            (ext.okrKpis||'').split('\n').map(l => l.trim()).filter(Boolean).map(l => `• ${esc(l)}`).join('<br>') || '—');
+
         const kpiLines = (ext.funderKpis||'').split(/\n---\n/).map(b => {
             const m = b.match(/^([^:]+):\s*([\s\S]*)$/);
             if (!m) return esc(b.trim());
@@ -1345,59 +1061,26 @@ async function printActaInicio(promotionId) {
                 .map(l => `&nbsp;&nbsp;• ${esc(l)}`).join('<br>');
             return `<strong>${esc(m[1].trim())}:</strong><br>${kpiItems || '—'}`;
         }).filter(Boolean);
-        html += row(
-            'KPIs financiadores',
-            kpiLines.length ? kpiLines.join('<br><br>') : '—',
-            'orange'
-        );
-        html += row(
-            'Día off Formador/a',
-            (ext.trainerDayOff||'').split(/\.\s+/).map(e => e.trim().replace(/\.$/, '')).filter(Boolean)
-                .map(e => esc(e)).join('<br>') || '—',
-            'orange'
-        );
-        html += row(
-            'Día off coFormador/a',
-            (ext.cotrainerDayOff||'').split(/\.\s+/).map(e => e.trim().replace(/\.$/, '')).filter(Boolean)
-                .map(e => esc(e)).join('<br>') || '—',
-            'orange'
-        );
-        html += row(
-            'Planificación de<br>reuniones de proyecto',
-            val(ext.projectMeetings),
-            'orange'
-        );
-        html += row(
-            'Planificación de<br>reuniones de equipo<br>(formador/a-coformad<br>or/a-responsable de<br>promoción)',
-            val(ext.teamMeetings),
-            'orange'
-        );
-
+        html += row('KPIs financiadores', kpiLines.length ? kpiLines.join('<br><br>') : '—');
+        html += row('Día off Formador/a',
+            (ext.trainerDayOff||'').split(/\.\s+/).map(e => e.trim().replace(/\.$/, '')).filter(Boolean).map(e => esc(e)).join('<br>') || '—');
+        html += row('Día off coFormador/a',
+            (ext.cotrainerDayOff||'').split(/\.\s+/).map(e => e.trim().replace(/\.$/, '')).filter(Boolean).map(e => esc(e)).join('<br>') || '—');
+        html += row('Planificación de<br>reuniones de proyecto', val(ext.projectMeetings));
+        html += row('Planificación de<br>reuniones de equipo<br>(formador/a-coformador/a-<br>responsable de promoción)', val(ext.teamMeetings));
         html += `</tbody></table>`;
 
-        // ── Sección aprobación (igual que en la última página del acta real) ──
+        // ── Sección aprobación ──
         const approvalName = ext.approvalName || (responsable ? responsable.name : '');
         const approvalRole = ext.approvalRole || (responsable ? responsable.role : '');
-        html += `<div class="approval">
-            <p><span class="al">Aprobación y difusión del documento:</span></p>
+        html += `<div class="acta-approval">
+            <p><strong>Aprobación y difusión del documento:</strong></p>
             <br>
-            <p><span class="al">Nombre:</span> ${approvalName ? esc(approvalName) : '—'}</p>
-            <p><span class="al">Cargo:</span> ${approvalRole ? esc(approvalRole) : '—'}</p>
-            <p><span class="al">Firma y fecha:</span> ${_today()}</p>
+            <p><strong>Nombre:</strong> ${approvalName ? esc(approvalName) : '—'}</p>
+            <p><strong>Cargo:</strong> ${approvalRole ? esc(approvalRole) : '—'}</p>
+            <p><strong>Firma y fecha:</strong> ${_today()}</p>
             <div class="sign-area"></div>
         </div>`;
-
-        // ── Pie con logo Factoría F5 ──
-        html += `
-        <div class="footer">
-            <div>
-                <span class="footer-badge">F5</span>
-                <span class="footer-text">factoría</span>
-                <span class="footer-sub">powered by simplon</span>
-            </div>
-        </div>`;
-
-        html += `</body></html>`;
 
         const filename = `acta-inicio_${(promo.name||'promo').replace(/\s+/g,'-')}.pdf`;
         _showSaving('Generando PDF…');
@@ -1442,15 +1125,13 @@ async function printActaInicio(promotionId) {
 
             // ── 1. Presentación ──
             html += `<h3>1. Presentación del Programa</h3>
-            <div class="section-box accent row3">
-                <div class="kv"><strong>Nombre:</strong><br>${_esc(promo.name)}</div>
-                <div class="kv"><strong>Inicio:</strong><br>${_esc(promo.startDate || '—')}</div>
-                <div class="kv"><strong>Fin:</strong><br>${_esc(promo.endDate || '—')}</div>
-                <div class="kv"><strong>Duración:</strong><br>${_esc(promo.weeks || '—')} semanas</div>
-                <div class="kv"><strong>Nº módulos:</strong><br>${modules.length}</div>
-                <div class="kv"><strong>Equipo:</strong><br>${team.length} persona(s)</div>
-            </div>
-            ${promo.description ? `<p>${_esc(promo.description)}</p>` : ''}`;
+            <div class="kv"><strong>Nombre:</strong> ${_esc(promo.name)}</div>
+            <div class="kv"><strong>Inicio:</strong> ${_esc(promo.startDate || '—')}</div>
+            <div class="kv"><strong>Fin:</strong> ${_esc(promo.endDate || '—')}</div>
+            <div class="kv"><strong>Duración:</strong> ${_esc(promo.weeks || '—')} semanas</div>
+            <div class="kv"><strong>Nº módulos:</strong> ${modules.length}</div>
+            <div class="kv"><strong>Equipo:</strong> ${team.length} persona(s)</div>
+            ${promo.description ? `<p style="margin-top:6pt;">${_esc(promo.description)}</p>` : ''}`;
 
             // ── 2. Equipo formativo ──
             html += `<h3>2. Equipo Formativo</h3>`;
@@ -1464,20 +1145,14 @@ async function printActaInicio(promotionId) {
 
             // ── 3. Horario ──
             html += `<h3>3. Horario del Programa</h3>
-            <div class="row2">
-                <div class="section-box blue">
-                    <h4>Online</h4>
-                    ${['entry','start','break','lunch','finish'].map(k =>
-                        sched.online?.[k] ? `<div class="kv"><strong>${_schedLabel(k)}:</strong> ${_esc(sched.online[k])}</div>` : ''
-                    ).join('')}
-                </div>
-                <div class="section-box green">
-                    <h4>Presencial</h4>
-                    ${['entry','start','break','lunch','finish'].map(k =>
-                        sched.presential?.[k] ? `<div class="kv"><strong>${_schedLabel(k)}:</strong> ${_esc(sched.presential[k])}</div>` : ''
-                    ).join('')}
-                </div>
-            </div>`;
+            <h4>Online</h4>
+            ${['entry','start','break','lunch','finish'].map(k =>
+                sched.online?.[k] ? `<div class="kv"><strong>${_schedLabel(k)}:</strong> ${_esc(sched.online[k])}</div>` : ''
+            ).join('')}
+            <h4>Presencial</h4>
+            ${['entry','start','break','lunch','finish'].map(k =>
+                sched.presential?.[k] ? `<div class="kv"><strong>${_schedLabel(k)}:</strong> ${_esc(sched.presential[k])}</div>` : ''
+            ).join('')}`;
 
             // ── 4. Roadmap – módulos ──
             html += `<h3>4. Roadmap – Módulos y Contenidos</h3>`;
@@ -1486,30 +1161,26 @@ async function printActaInicio(promotionId) {
                     const courses  = mod.courses  || [];
                     const projects = mod.projects || [];
                     const pildoras = mod.pildoras || [];
-                    html += `<div class="section-box no-break" style="margin-bottom:8pt;">
-                        <div style="display:flex; align-items:baseline; gap:8pt; margin-bottom:6pt;">
-                            <span class="badge badge-orange">Módulo ${idx + 1}</span>
-                            <strong style="font-size:11pt;">${_esc(mod.name)}</strong>
-                            <span style="color:#888; font-size:9pt;">${mod.duration || '?'} semana(s)</span>
+                    html += `<div class="no-break" style="margin-bottom:10pt;">
+                        <div style="margin-bottom:4pt;">
+                            <strong>Módulo ${idx + 1}: ${_esc(mod.name)}</strong>
+                            <span style="font-size:9pt; margin-left:6pt;">(${mod.duration || '?'} semanas)</span>
                         </div>`;
 
                     if (courses.length) {
-                        html += `<div style="margin-bottom:5pt;"><strong style="font-size:9pt; color:${SECONDARY};">Cursos / Contenidos:</strong>
-                            <ul style="margin:3pt 0 0 14pt; padding:0;">
-                                ${courses.map(c => `<li>${_esc(c.name || '?')}${c.duration ? ` <span style="color:#aaa;">(${c.duration}d)</span>` : ''}</li>`).join('')}
+                        html += `<div style="margin-bottom:4pt;"><strong>Cursos / Contenidos:</strong>
+                            <ul style="margin:2pt 0 0 14pt; padding:0;">
+                                ${courses.map(c => `<li>${_esc(c.name || '?')}${c.duration ? ` (${c.duration}d)` : ''}</li>`).join('')}
                             </ul></div>`;
                     }
                     if (projects.length) {
-                        html += `<div style="margin-bottom:5pt;"><strong style="font-size:9pt; color:${SECONDARY};">Proyectos:</strong>
-                            <ul style="margin:3pt 0 0 14pt; padding:0;">
+                        html += `<div style="margin-bottom:4pt;"><strong>Proyectos:</strong>
+                            <ul style="margin:2pt 0 0 14pt; padding:0;">
                                 ${projects.map(p => `<li>${_esc(p.name || '?')}</li>`).join('')}
                             </ul></div>`;
                     }
                     if (pildoras.length) {
-                        html += `<div><strong style="font-size:9pt; color:${SECONDARY};">Píldoras asignadas:</strong>
-                            <span style="margin-left:6pt;">
-                                ${pildoras.map(p => `<span class="badge badge-dark">${_esc(p.title || '?')}</span>`).join(' ')}
-                            </span></div>`;
+                        html += `<div><strong>Píldoras asignadas:</strong> ${pildoras.map(p => _esc(p.title || '?')).join(', ')}</div>`;
                     }
                     html += `</div>`;
                 });
@@ -1524,19 +1195,19 @@ async function printActaInicio(promotionId) {
                     const levels = c.levels || [];
                     const tools  = c.selectedTools || c.allTools || (c.tools || []).map(t => t.name || t) || [];
                     const startMod = c.startModule?.name || '';
-                    html += `<div class="section-box no-break" style="margin-bottom:8pt;">
-                        <div style="display:flex; align-items:baseline; gap:8pt; margin-bottom:4pt;">
-                            ${areaLabel ? `<span class="badge badge-dark">${_esc(areaLabel)}</span>` : ''}
+                    html += `<div class="no-break" style="margin-bottom:10pt;">
+                        <div style="margin-bottom:3pt;">
                             <strong>${_esc(c.name)}</strong>
-                            ${startMod ? `<span style="color:#888; font-size:9pt;">desde: ${_esc(startMod)}</span>` : ''}
+                            ${areaLabel ? ` — ${_esc(areaLabel)}` : ''}
+                            ${startMod ? ` (desde: ${_esc(startMod)})` : ''}
                         </div>
-                        ${c.description ? `<p style="font-size:9pt; color:${SECONDARY}; margin-bottom:4pt;">${_esc(c.description)}</p>` : ''}
+                        ${c.description ? `<p style="font-size:9pt; margin-bottom:4pt;">${_esc(c.description)}</p>` : ''}
                         ${levels.length ? `
                         <table style="margin-bottom:0; font-size:8.5pt;">
                             <thead><tr><th style="width:60pt;">Nivel</th><th>Descripción</th><th>Indicadores</th></tr></thead>
                             <tbody>
                             ${levels.map(lv => `<tr>
-                                <td><span class="badge badge-grey">Nv.${lv.level ?? lv.levelId ?? '?'}</span></td>
+                                <td>Nv.${lv.level ?? lv.levelId ?? '?'}</td>
                                 <td>${_esc(lv.description || lv.levelDescription || '')}</td>
                                 <td>${(lv.indicators || []).map(ind =>
                                     `<div>• ${_esc(typeof ind === 'string' ? ind : ind.name || '')}</div>`
@@ -1544,10 +1215,7 @@ async function printActaInicio(promotionId) {
                             </tr>`).join('')}
                             </tbody>
                         </table>` : ''}
-                        ${tools.length ? `<div class="pill-row" style="margin-top:5pt;">
-                            <strong style="font-size:8.5pt; color:${SECONDARY};">Herramientas:</strong>
-                            ${tools.map(t => `<span class="badge badge-light">${_esc(t)}</span>`).join('')}
-                        </div>` : ''}
+                        ${tools.length ? `<div style="margin-top:4pt;"><strong>Herramientas:</strong> ${tools.map(t => _esc(t)).join(', ')}</div>` : ''}
                     </div>`;
                 });
             } else { html += `<p class="empty-note">Sin competencias definidas en el programa.</p>`; }
@@ -1655,24 +1323,17 @@ async function printActaInicio(promotionId) {
             ? `<span class="badge badge-info">Individual</span>`
             : `<span class="badge badge-green">Grupal</span>`;
 
-        html += `<div class="section-box accent row2">
-            <div>
-                <div class="kv"><strong>Proyecto:</strong> ${_esc(t.teamName || '—')}</div>
-                <div class="kv"><strong>Tipo:</strong> ${typeBadge}</div>
-                <div class="kv"><strong>Módulo:</strong> ${_esc(t.moduleName || '—')}</div>
-            </div>
-            <div>
-                <div class="kv"><strong>Coder:</strong> ${_esc(fullName)}</div>
-                <div class="kv"><strong>Email:</strong> ${_esc(s.email || '—')}</div>
-            </div>
-        </div>
+        const typeLabel = t.projectType === 'individual' ? 'Individual' : 'Grupal';
+
+        html += `<div class="kv"><strong>Proyecto:</strong> ${_esc(t.teamName || '—')}</div>
+            <div class="kv"><strong>Tipo:</strong> ${typeLabel}</div>
+            <div class="kv"><strong>Módulo:</strong> ${_esc(t.moduleName || '—')}</div>
+            <div class="kv"><strong>Coder:</strong> ${_esc(fullName)}</div>
+            <div class="kv"><strong>Email:</strong> ${_esc(s.email || '—')}</div>
         ${(t.members && t.members.length && t.projectType === 'grupal')
-            ? `<div class="section-box" style="margin-top:8pt;">
-                <div style="font-size:10pt; font-weight:700; color:${DARK}; margin-bottom:8pt; border-bottom:1px solid #e0e0e0; padding-bottom:4pt;">
-                    Integrantes del equipo
-                </div>
-                <ul style="margin:0; padding-left:16pt; list-style:disc;">
-                    ${t.members.map(m => `<li style="padding:2pt 0; font-size:10pt;">${_esc(m.name)}</li>`).join('')}
+            ? `<div style="margin-top:6pt;"><strong>Integrantes del equipo:</strong>
+                <ul style="margin:2pt 0 0 14pt;">
+                    ${t.members.map(m => `<li>${_esc(m.name)}</li>`).join('')}
                 </ul>
             </div>`
             : ''
@@ -1681,9 +1342,7 @@ async function printActaInicio(promotionId) {
         // ── Nota del profesor ──
         if (t.teacherNote) {
             html += `<h3>Nota del Profesor</h3>
-            <div class="section-box" style="border-left:4px solid #0dcaf0;">
-                <p style="white-space:pre-wrap; font-style:italic;">${_esc(t.teacherNote)}</p>
-            </div>`;
+            <p style="font-style:italic; white-space:pre-wrap;">${_esc(t.teacherNote)}</p>`;
         }
 
         // ── Competencias trabajadas ──
@@ -1732,12 +1391,10 @@ async function printActaInicio(promotionId) {
         }
 
         // ── Firmas ──
-        html += `<div style="margin-top:28pt;">
-            <div class="section-box no-break" style="max-width:260pt;">
-                <div style="font-size:9pt; color:${SECONDARY}; font-weight:600; margin-bottom:4pt;">Firma del/la docente</div>
-                <div style="border-bottom:1.5px solid #999; height:36pt;"></div>
-                <div style="font-size:8pt; color:#aaa; margin-top:4pt;">Docente responsable</div>
-            </div>
+        html += `<div style="margin-top:28pt; max-width:260pt;">
+            <div style="font-size:9pt; font-weight:600; margin-bottom:4pt;">Firma del/la docente</div>
+            <div style="border-bottom:1.5px solid #999; height:36pt;"></div>
+            <div style="font-size:8pt; margin-top:4pt;">Docente responsable</div>
         </div>`;
 
         const filename = `proyecto_${(t.teamName||'proyecto').replace(/\s+/g,'-')}_${(fullName).replace(/\s+/g,'-')}.pdf`;
@@ -1772,21 +1429,15 @@ async function printActaInicio(promotionId) {
         // ── Motivo del informe ──
         html += _razonBlock(razonInforme || '');
 
-        html += `<div class="section-box accent row2">
-            <div>
-                <div class="kv"><strong>Email:</strong> ${_esc(s.email || '—')}</div>
-                <div class="kv"><strong>Nacionalidad:</strong> ${_esc(s.nationality || '—')}</div>
-            </div>
-            <div>
-                <div class="kv"><strong>Edad:</strong> ${_esc(s.age || '—')}</div>
-                <div class="kv"><strong>Profesión:</strong> ${_esc(s.profession || '—')}</div>
-            </div>
-        </div>`;
+        html += `<div class="kv"><strong>Email:</strong> ${_esc(s.email || '—')}</div>
+            <div class="kv"><strong>Nacionalidad:</strong> ${_esc(s.nationality || '—')}</div>
+            <div class="kv"><strong>Edad:</strong> ${_esc(s.age || '—')}</div>
+            <div class="kv"><strong>Profesión:</strong> ${_esc(s.profession || '—')}</div>`;
 
         // ── Notas del Profesor (omitir si vacío) ──
         const notes = tt.teacherNotes || [];
         if (notes.length) {
-            html += `<h3>✦ Notas del Profesor</h3>`;
+            html += `<h3>Notas del Profesor</h3>`;
             html += `<table><thead><tr><th>Fecha</th><th>Nota</th></tr></thead><tbody>`;
             notes.forEach(n => {
                 html += `<tr><td style="white-space:nowrap;">${_fmtDate(n.createdAt || n.date)}</td><td>${_esc(n.note || n.text || '')}</td></tr>`;
@@ -1795,117 +1446,122 @@ async function printActaInicio(promotionId) {
         }
 
         // ── Proyectos Realizados ──
-        html += `<h3>✦ Proyectos Realizados</h3>`;
+        html += `<h3>Proyectos Realizados</h3>`;
         const teams = tt.teams || [];
         if (teams.length) {
             teams.forEach(t => {
-                const typeBadge = t.projectType === 'individual'
-                    ? `<span class="badge badge-info">Individual</span>`
-                    : `<span class="badge badge-green">Grupal</span>`;
+                const typeLabel = t.projectType === 'individual' ? 'Individual' : 'Grupal';
                 const members = (t.members || []).map(m => _esc(m.name)).join(', ');
                 const comps   = t.competences || [];
-                html += `<div class="section-box green no-break">
-                    <div style="display:flex; align-items:center; gap:8pt; margin-bottom:5pt;">
-                        <strong style="font-size:11pt;">${_esc(t.teamName || 'Proyecto')}</strong>
-                        ${typeBadge}
-                    </div>
+                html += `<div class="no-break" style="margin-bottom:10pt;">
+                    <div style="margin-bottom:3pt;"><strong>${_esc(t.teamName || 'Proyecto')}</strong> — ${typeLabel}</div>
                     <div class="kv"><strong>Módulo:</strong> ${_esc(t.moduleName || '—')}</div>
                     ${members ? `<div class="kv"><strong>Compañeros:</strong> ${members}</div>` : ''}
-                    ${t.teacherNote ? `<div class="kv" style="margin-top:4pt; font-style:italic; color:#555;">"${_esc(t.teacherNote)}"</div>` : ''}
+                    ${t.teacherNote ? `<div class="kv"><em>"${_esc(t.teacherNote)}"</em></div>` : ''}
                     ${comps.length ? `
-                    <div style="margin-top:6pt;">
-                        <strong style="font-size:9pt; color:${SECONDARY};">Competencias:</strong>
+                    <div style="margin-top:4pt;">
+                        <strong>Competencias:</strong>
+                        <ul style="margin-top:2pt;">
                         ${comps.map(c => {
-                            const tools = (c.toolsUsed || []).map(tl => `<span class="badge badge-light">${_esc(tl)}</span>`).join(' ');
-                            return `<div style="margin-top:3pt;">${_levelBadge(c.level)} <strong>${_esc(c.competenceName)}</strong> ${tools}</div>`;
+                            const tools = (c.toolsUsed || []).join(', ');
+                            return `<li>${_esc(c.competenceName)} (Nivel ${c.level || '—'})${tools ? ' — ' + _esc(tools) : ''}</li>`;
                         }).join('')}
+                        </ul>
                     </div>` : ''}
                 </div>`;
             });
         } else { html += `<p class="empty-note">Sin proyectos registrados.</p>`; }
 
-        // ── Proyectos Pendientes de Entrega (omitir si vacío) ──
-        // Compara proyectos del roadmap con los teams ya evaluados del alumno
-        const _evaluatedNames = new Set(
+        // ── Proyectos Pendientes de Entrega ──
+        // Compara los proyectos del roadmap con los teams ya evaluados del alumno
+        const evaluatedProjectNames = new Set(
             (tt.teams || []).map(t => (t.teamName || '').trim().toLowerCase())
         );
-        const _pendingProjects = [];
+        const pendingProjects = [];
         (promo.modules || []).forEach(mod => {
             (mod.projects || []).forEach(proj => {
                 const projName = typeof proj === 'string' ? proj : (proj.name || '');
-                if (projName && !_evaluatedNames.has(projName.trim().toLowerCase())) {
-                    _pendingProjects.push({ projectName: projName, moduleName: mod.name || '—' });
+                if (projName && !evaluatedProjectNames.has(projName.trim().toLowerCase())) {
+                    pendingProjects.push({ projectName: projName, moduleName: mod.name || '—' });
                 }
             });
         });
-        if (_pendingProjects.length) {
-            html += `<h3>✦ Proyectos Pendientes de Entrega</h3>`;
+        if (pendingProjects.length) {
+            html += `<h3>Proyectos Pendientes de Entrega</h3>`;
             html += `<table><thead><tr><th>Proyecto</th><th>Módulo</th></tr></thead><tbody>`;
-            _pendingProjects.forEach(p => {
+            pendingProjects.forEach(p => {
                 html += `<tr><td>${_esc(p.projectName)}</td><td>${_esc(p.moduleName)}</td></tr>`;
             });
             html += `</tbody></table>`;
         }
 
-        // ── Módulos Completados ──
-        html += `<h3>✦ Módulos Completados</h3>`;
+        // ── Módulos completados ──
+        html += `<h3>Módulos Completados</h3>`;
         const mods = tt.completedModules || [];
         if (mods.length) {
-            html += `<table><thead><tr><th>Módulo</th><th>Fecha</th><th>Nota</th></tr></thead><tbody>`;
+            html += `<table><thead><tr><th>Módulo</th><th>Fecha</th><th>Nota</th><th>Observaciones</th></tr></thead><tbody>`;
             mods.forEach(m => {
-                const gradeMap = { 1:'Insuficiente', 2:'Básico', 3:'Competente', 4:'Excelente' };
-                html += `<tr><td>${_esc(m.moduleName||'—')}</td><td>${_fmtDate(m.completionDate)}</td><td>${gradeMap[m.finalGrade]||m.finalGrade||'—'}</td></tr>`;
+                const gradeMap = { 1: 'Insuficiente', 2: 'Básico', 3: 'Competente', 4: 'Excelente' };
+                html += `<tr>
+                    <td>${_esc(m.moduleName || '—')}</td>
+                    <td>${_fmtDate(m.completionDate)}</td>
+                    <td>${gradeMap[m.finalGrade] || m.finalGrade || '—'}</td>
+                    <td>${_esc(m.notes || '')}</td>
+                </tr>`;
             });
             html += `</tbody></table>`;
-        } else { html += `<p class="empty-note">Sin módulos completados.</p>`; }
+        } else {
+            html += `<p class="empty-note">Sin módulos completados.</p>`;
+        }
 
-        // ── Píldoras (calculadas desde modulesPildoras si disponible) ──
-        if (modulesPildoras.length) {
-            const _pilPresentadas = [];
-            const _pilPendientes  = [];
-            modulesPildoras.forEach(mp => {
-                (mp.pildoras || []).forEach(p => {
-                    const sIds = (p.students || []).map(s2 => String(s2.id));
-                    if (!sIds.includes(String(s.id))) return;
-                    const entry = {
-                        pildoraTitle: p.title || '—',
-                        moduleName:   mp.moduleName || '—',
-                        date:         p.date || null,
-                        mode:         p.mode || null,
-                        status:       p.status || ''
-                    };
-                    if (p.status === 'Presentada') _pilPresentadas.push(entry);
-                    else                            _pilPendientes.push(entry);
-                });
+        // ── Píldoras: presentadas y no presentadas ──
+        // Compute both groups from live ExtendedInfo data
+        const _pilPresentadas = [];
+        const _pilPendientes  = [];
+        modulesPildorasExtended.forEach(mp => {
+            (mp.pildoras || []).forEach(p => {
+                const studentIds = (p.students || []).map(s2 => String(s2.id));
+                if (!studentIds.includes(String(studentId))) return;
+                const entry = {
+                    pildoraTitle: p.title || '—',
+                    moduleName:   mp.moduleName || '—',
+                    date:         p.date || null,
+                    mode:         p.mode || null,
+                    status:       p.status || ''
+                };
+                if (p.status === 'Presentada') _pilPresentadas.push(entry);
+                else                            _pilPendientes.push(entry);
             });
+        });
 
-            if (_pilPresentadas.length) {
-                html += `<h3>✦ Píldoras Presentadas</h3>`;
-                html += `<table><thead><tr><th>Título</th><th>Módulo</th><th>Fecha</th><th>Modalidad</th></tr></thead><tbody>`;
-                _pilPresentadas.forEach(p => {
-                    html += `<tr>
-                        <td>${_esc(p.pildoraTitle)}</td>
-                        <td>${_esc(p.moduleName)}</td>
-                        <td>${_fmtDate(p.date)}</td>
-                        <td>${_esc(p.mode || '—')}</td>
-                    </tr>`;
-                });
-                html += `</tbody></table>`;
-            }
+        // ── Píldoras Presentadas (omitir si vacío) ──
+        if (_pilPresentadas.length) {
+            html += `<h3>Píldoras Presentadas</h3>`;
+            html += `<table><thead><tr><th>Título</th><th>Módulo</th><th>Fecha</th><th>Modalidad</th></tr></thead><tbody>`;
+            _pilPresentadas.forEach(p => {
+                html += `<tr>
+                    <td>${_esc(p.pildoraTitle)}</td>
+                    <td>${_esc(p.moduleName)}</td>
+                    <td>${_fmtDate(p.date)}</td>
+                    <td>${_esc(p.mode || '—')}</td>
+                </tr>`;
+            });
+            html += `</tbody></table>`;
+        }
 
-            if (_pilPendientes.length) {
-                html += `<h3>✦ Píldoras No Presentadas / Pendientes</h3>`;
-                html += `<table><thead><tr><th>Título</th><th>Módulo</th><th>Fecha prevista</th><th>Estado</th></tr></thead><tbody>`;
-                _pilPendientes.forEach(p => {
-                    html += `<tr>
-                        <td>${_esc(p.pildoraTitle)}</td>
-                        <td>${_esc(p.moduleName)}</td>
-                        <td>${_fmtDate(p.date)}</td>
-                        <td><span style="color:#dc3545; font-weight:600;">${_esc(p.status || 'Pendiente')}</span></td>
-                    </tr>`;
-                });
-                html += `</tbody></table>`;
-            }
+        // ── Píldoras No Presentadas / Pendientes (omitir si vacío) ──
+        if (_pilPendientes.length) {
+            html += `<h3>Píldoras No Presentadas / Pendientes</h3>`;
+            html += `<table><thead><tr><th>Título</th><th>Módulo</th><th>Fecha prevista</th><th>Estado</th></tr></thead><tbody>`;
+            _pilPendientes.forEach(p => {
+                html += `<tr>
+                    <td>${_esc(p.pildoraTitle)}</td>
+                    <td>${_esc(p.moduleName)}</td>
+                    <td>${_fmtDate(p.date)}</td>
+                    <td>${_esc(p.status || 'Pendiente')}</td>
+                </tr>`;
+            });
+            html += `</tbody></table>`;
         }
 
         return html;
@@ -1916,18 +1572,12 @@ async function printActaInicio(promotionId) {
         const fullName = `${s.name || ''} ${s.lastname || ''}`.trim();
         let html = _header('Ficha de Seguimiento Transversal', fullName, promo.name, _today(), promo);
 
-        html += `<div class="section-box accent row2">
-            <div>
-                <div class="kv"><strong>Email:</strong> ${_esc(s.email || '—')}</div>
-                <div class="kv"><strong>Nacionalidad:</strong> ${_esc(s.nationality || '—')}</div>
-            </div>
-            <div>
-                <div class="kv"><strong>Edad:</strong> ${_esc(s.age || '—')}</div>
-                <div class="kv"><strong>Profesión:</strong> ${_esc(s.profession || '—')}</div>
-            </div>
-        </div>`;
+        html += `<div class="kv"><strong>Email:</strong> ${_esc(s.email || '—')}</div>
+            <div class="kv"><strong>Nacionalidad:</strong> ${_esc(s.nationality || '—')}</div>
+            <div class="kv"><strong>Edad:</strong> ${_esc(s.age || '—')}</div>
+            <div class="kv"><strong>Profesión:</strong> ${_esc(s.profession || '—')}</div>`;
 
-        html += `<h3>✦ Sesiones de Empleabilidad</h3>`;
+        html += `<h3>Sesiones de Empleabilidad</h3>`;
         const emp = tr2.employabilitySessions || [];
         if (emp.length) {
             html += `<table><thead><tr><th>Fecha</th><th>Tema</th><th>Notas</th></tr></thead><tbody>`;
@@ -1935,7 +1585,7 @@ async function printActaInicio(promotionId) {
             html += `</tbody></table>`;
         } else { html += `<p class="empty-note">Sin sesiones de empleabilidad.</p>`; }
 
-        html += `<h3>✦ Sesiones Individuales</h3>`;
+        html += `<h3>Sesiones Individuales</h3>`;
         const ind = tr2.individualSessions || [];
         if (ind.length) {
             html += `<table><thead><tr><th>Fecha</th><th>Tema</th><th>Notas</th></tr></thead><tbody>`;
@@ -1943,7 +1593,7 @@ async function printActaInicio(promotionId) {
             html += `</tbody></table>`;
         } else { html += `<p class="empty-note">Sin sesiones individuales.</p>`; }
 
-        html += `<h3>✦ Incidencias</h3>`;
+        html += `<h3>Incidencias</h3>`;
         const incs = tr2.incidents || [];
         if (incs.length) {
             html += `<table><thead><tr><th>Fecha</th><th>Tipo</th><th>Descripción</th><th>Estado</th></tr></thead><tbody>`;
@@ -2063,47 +1713,36 @@ async function printActaInicio(promotionId) {
                     (t.teamName || '').toLowerCase() === projectName.toLowerCase()
                 );
                 projectTeams.forEach(t => {
-                    const typeBadge = t.projectType === 'individual'
-                        ? `<span class="badge badge-info">Individual</span>`
-                        : `<span class="badge badge-green">Grupal</span>`;
+                    const typeLabel = t.projectType === 'individual' ? 'Individual' : 'Grupal';
                     const comps = t.competences || [];
-                    sHtml += `<div class="section-box accent row2" style="margin-bottom:8pt;">
-                        <div>
-                            <div class="kv"><strong>Tipo:</strong> ${typeBadge}</div>
-                            <div class="kv"><strong>Módulo:</strong> ${_esc(t.moduleName||'—')}</div>
-                        </div>
-                        <div>
-                            <div class="kv"><strong>Coder:</strong> ${_esc(fullName)}</div>
-                            <div class="kv"><strong>Email:</strong> ${_esc(s.email||'—')}</div>
-                        </div>
-                    </div>`;
+                    sHtml += `<div class="kv"><strong>Tipo:</strong> ${typeLabel}</div>
+                        <div class="kv"><strong>Módulo:</strong> ${_esc(t.moduleName||'—')}</div>
+                        <div class="kv"><strong>Coder:</strong> ${_esc(fullName)}</div>
+                        <div class="kv"><strong>Email:</strong> ${_esc(s.email||'—')}</div>`;
                     if (t.members?.length && t.projectType === 'grupal') {
-                        sHtml += `<div class="section-box" style="margin-bottom:8pt;">
-                            <strong style="font-size:10pt;">Integrantes del equipo</strong>
-                            <ul style="margin:5pt 0 0 14pt; padding:0;">${t.members.map(m=>`<li>${_esc(m.name)}</li>`).join('')}</ul>
+                        sHtml += `<div style="margin-top:5pt;"><strong>Integrantes del equipo:</strong>
+                            <ul style="margin:2pt 0 0 14pt;">${t.members.map(m=>`<li>${_esc(m.name)}</li>`).join('')}</ul>
                         </div>`;
                     }
                     if (t.teacherNote) {
                         sHtml += `<h3>Nota del Profesor</h3>
-                        <div class="section-box" style="border-left:4px solid #0dcaf0;">
-                            <p style="white-space:pre-wrap; font-style:italic;">${_esc(t.teacherNote)}</p>
-                        </div>`;
+                        <p style="font-style:italic; white-space:pre-wrap;">${_esc(t.teacherNote)}</p>`;
                     }
                     sHtml += `<h3>Competencias Trabajadas</h3>`;
                     if (comps.length) {
                         sHtml += `<table><thead><tr><th>Competencia</th><th>Nivel</th><th>Herramientas</th></tr></thead><tbody>`;
                         comps.forEach(c => {
-                            const tools = (c.toolsUsed||[]).map(tl=>`<span class="badge badge-light">${_esc(tl)}</span>`).join(' ');
-                            sHtml += `<tr><td><strong>${_esc(c.competenceName)}</strong></td><td>${_levelBadge(c.level)}</td><td>${tools||'—'}</td></tr>`;
+                            const tools = (c.toolsUsed||[]).join(', ');
+                            sHtml += `<tr><td><strong>${_esc(c.competenceName)}</strong></td><td>Nv.${c.level || '—'}</td><td>${tools||'—'}</td></tr>`;
                         });
                         sHtml += `</tbody></table>`;
                     } else { sHtml += `<p class="empty-note">Sin competencias evaluadas.</p>`; }
                 });
-                sHtml += `<div style="margin-top:28pt;"><div class="section-box no-break" style="max-width:260pt;">
-                    <div style="font-size:9pt; color:${SECONDARY}; font-weight:600; margin-bottom:4pt;">Firma del/la docente</div>
+                sHtml += `<div style="margin-top:28pt; max-width:260pt;">
+                    <div style="font-size:9pt; font-weight:600; margin-bottom:4pt;">Firma del/la docente</div>
                     <div style="border-bottom:1.5px solid #999; height:36pt;"></div>
-                    <div style="font-size:8pt; color:#aaa; margin-top:4pt;">Docente responsable</div>
-                </div></div>`;
+                    <div style="font-size:8pt; margin-top:4pt;">Docente responsable</div>
+                </div>`;
                 return sHtml;
             };
 
@@ -2195,7 +1834,7 @@ async function printActaInicio(promotionId) {
             // Detail section per project
             let projectIndex = 0;
             projectMap.forEach((entries, name) => {
-                if (projectIndex > 0) html += `<div style="margin-top:18pt; padding-top:12pt; border-top:2px solid ${PRIMARY};"></div>`;
+                if (projectIndex > 0) html += `<div style="margin-top:18pt; padding-top:12pt; border-top:1px solid #ccc;"></div>`;
                 html += `<h2 style="margin-top:14pt;">${_esc(name)}</h2>`;
 
                 // Aggregate all competences across all students for this project
@@ -2288,69 +1927,49 @@ async function printActaInicio(promotionId) {
 
             // ── Alert banner ──
             html += `
-            <div style="background:#fff1f0; border:1.5px solid #dc3545; border-left:5px solid #dc3545;
-                        border-radius:6pt; padding:10pt 14pt; margin-bottom:16pt; display:flex; align-items:center; gap:12pt;">
-                <div style="font-size:20pt; flex-shrink:0;">🚫</div>
-                <div>
-                    <div style="font-size:11pt; font-weight:700; color:#a31515;">Baja oficial del programa</div>
-                    <div style="font-size:9pt; color:#6b2b33; margin-top:2pt;">
-                        Este documento certifica que el/la participante ha causado baja oficial del bootcamp
-                        con fecha <strong>${bajaDate}</strong>.
-                    </div>
+            <div style="border:1px solid #ccc; border-radius:4pt; padding:10pt 14pt; margin-bottom:16pt;">
+                <div style="font-size:11pt; font-weight:700;">🚫 Baja oficial del programa</div>
+                <div style="font-size:9pt; color:#333; margin-top:2pt;">
+                    Este documento certifica que el/la participante ha causado baja oficial del bootcamp
+                    con fecha <strong>${bajaDate}</strong>.
                 </div>
             </div>`;
 
             // ── Datos del participante ──
-            html += `<h3><span style="color:${PRIMARY}">✦</span> Datos del/la Participante</h3>
-            <div class="section-box accent row2">
-                <div>
-                    <div class="kv"><strong>Nombre completo:</strong> ${_esc(fullName)}</div>
-                    <div class="kv"><strong>Email:</strong> ${_esc(s.email || '—')}</div>
-                    <div class="kv"><strong>Nacionalidad:</strong> ${_esc(s.nationality || '—')}</div>
-                    <div class="kv"><strong>Sit. Administrativa:</strong> ${_esc(s.administrativeSituation || '—')}</div>
-                </div>
-                <div>
-                    <div class="kv"><strong>Documento (DNI/NIE):</strong> ${_esc(s.identificationDocument || '—')}</div>
-                    <div class="kv"><strong>Nivel educativo:</strong> ${_esc(s.educationLevel || '—')}</div>
-                    <div class="kv"><strong>Género:</strong> ${_esc(s.gender || '—')}</div>
-                    <div class="kv"><strong>Profesión:</strong> ${_esc(s.profession || '—')}</div>
-                </div>
-            </div>`;
+            html += `<h3>Datos del/la Participante</h3>
+            <div class="kv"><strong>Nombre completo:</strong> ${_esc(fullName)}</div>
+            <div class="kv"><strong>Email:</strong> ${_esc(s.email || '—')}</div>
+            <div class="kv"><strong>Nacionalidad:</strong> ${_esc(s.nationality || '—')}</div>
+            <div class="kv"><strong>Sit. Administrativa:</strong> ${_esc(s.administrativeSituation || '—')}</div>
+            <div class="kv"><strong>Documento (DNI/NIE):</strong> ${_esc(s.identificationDocument || '—')}</div>
+            <div class="kv"><strong>Nivel educativo:</strong> ${_esc(s.educationLevel || '—')}</div>
+            <div class="kv"><strong>Género:</strong> ${_esc(s.gender || '—')}</div>
+            <div class="kv"><strong>Profesión:</strong> ${_esc(s.profession || '—')}</div>`;
 
             // ── Datos del programa ──
-            html += `<h3><span style="color:${PRIMARY}">✦</span> Datos del Programa</h3>
-            <div class="section-box blue row2">
-                <div>
-                    <div class="kv"><strong>Promoción:</strong> ${_esc(promo.name || '—')}</div>
-                    <div class="kv"><strong>Inicio del programa:</strong> ${promoStart}</div>
-                    <div class="kv"><strong>Fin previsto:</strong> ${promoEnd}</div>
-                </div>
-                <div>
-                    <div class="kv"><strong>Fecha oficial de baja:</strong>
-                        <span style="color:#dc3545; font-weight:700;">${bajaDate}</span>
-                    </div>
-                    <div class="kv"><strong>Representante Factoría F5:</strong> ${_esc(w.representative || '—')}</div>
-                    <div class="kv"><strong>Acta generada el:</strong> ${processedDate}</div>
-                </div>
-            </div>`;
+            html += `<h3>Datos del Programa</h3>
+            <div class="kv"><strong>Promoción:</strong> ${_esc(promo.name || '—')}</div>
+            <div class="kv"><strong>Inicio del programa:</strong> ${promoStart}</div>
+            <div class="kv"><strong>Fin previsto:</strong> ${promoEnd}</div>
+            <div class="kv"><strong>Fecha oficial de baja:</strong> ${bajaDate}</div>
+            <div class="kv"><strong>Representante Factoría F5:</strong> ${_esc(w.representative || '—')}</div>
+            <div class="kv"><strong>Acta generada el:</strong> ${processedDate}</div>`;
 
             // ── Motivo de la baja ──
-            html += `<h3><span style="color:${PRIMARY}">✦</span> Motivo de la Baja</h3>
-            <div class="section-box red">
-                <p style="white-space:pre-wrap; font-size:10pt; color:#333;">${_esc(w.reason || 'No especificado.')}</p>
-            </div>`;
+            html += `<h3>Motivo de la Baja</h3>
+            <p style="white-space:pre-wrap; font-size:10pt; color:#333;">${_esc(w.reason || 'No especificado.')}</p>`;
 
             // ── Bloque de firmas ──
             html += `
             <div style="margin-top:40pt;">
-                <h3><span style="color:${PRIMARY}">✦</span> Firmas</h3>
+                <h3>Firmas</h3>
                 <div style="display:grid; grid-template-columns:1fr 1fr; gap:30pt; margin-top:16pt;">
                     <div style="border-top:1.5px solid #333; padding-top:8pt; text-align:center;">
-                        <div style="font-size:9pt; color:${SECONDARY}; font-weight:600;">PARTICIPANTE</div>
+                        <div style="font-size:9pt; font-weight:600;">PARTICIPANTE</div>
                         <div style="font-size:9pt; margin-top:4pt;">${_esc(fullName)}</div>
                     </div>
                     <div style="border-top:1.5px solid #333; padding-top:8pt; text-align:center;">
-                        <div style="font-size:9pt; color:${SECONDARY}; font-weight:600;">REPRESENTANTE FACTORÍA F5</div>
+                        <div style="font-size:9pt; font-weight:600;">REPRESENTANTE FACTORÍA F5</div>
                         <div style="font-size:9pt; margin-top:4pt;">${_esc(w.representative || '—')}</div>
                     </div>
                 </div>
@@ -2367,7 +1986,7 @@ async function printActaInicio(promotionId) {
         }
     }
 
-    // ════════════════════════════════════════════════════════════════════════
+    // ─══════════════════════════════════════════════════════════════════════
     // ASISTENCIA SEMANAL (PDF)
     // ════════════════════════════════════════════════════════════════════════
     async function printWeeklyAttendance(promotionId, monthFilter = null) {
@@ -2477,7 +2096,7 @@ async function printActaInicio(promotionId) {
             
             html += `
             <div class="no-break" style="margin-top:20px;">
-                <h3 style="background:#f1f3f5; padding:6px 10px; border-left:4px solid ${PRIMARY}; margin-bottom:10px;">
+                <h3>
                     Semana ${selectedWeek.wIdx + 1} (${_fmtDateEs(formatLocal(workDays[0]))} al ${_fmtDateEs(formatLocal(workDays[4]))})
                 </h3>
                 <table style="font-size:8.5pt;">
