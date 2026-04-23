@@ -1513,7 +1513,6 @@ function renderVirtualClassroomSubmissions(submissions, students, type) {
             <div class="list-group-item px-3 py-2">
                 <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
                     <div class="flex-grow-1">
-                        <div class="small fw-semibold text-dark">${escapeHtml(targetName)}</div>
                         <div class="small text-muted mb-1">
                             <i class="bi bi-calendar me-1"></i>${escapeHtml(submittedDate)}
                         </div>
