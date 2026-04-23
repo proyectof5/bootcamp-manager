@@ -1417,11 +1417,17 @@ async function populateAulaVirtualTargets() {
     }
     const students = Array.isArray(window.publicStudents) ? window.publicStudents : [];
 
+    // Cargar entregas realizadas
+    const submissions = await loadVirtualClassroomSubmissions();
+    const submittedIds = new Set(submissions.map(s => s.targetId));
+
     let optionsHtml = '';
     if (type === 'individual') {
         label.textContent = 'Selecciona tu nombre';
         optionsHtml = '<option value="">Selecciona tu nombre…</option>' +
-            students.map(st => `
+            students
+                .filter(st => !submittedIds.has(String(st.id)))  // Filtrar ya entregados
+                .map(st => `
                 <option value="student:${escapeHtml(String(st.id))}">
                     ${escapeHtml(`${st.name || ''} ${st.lastname || ''}`.trim())}
                 </option>
@@ -1433,7 +1439,9 @@ async function populateAulaVirtualTargets() {
         students.forEach(s => { byId[String(s.id)] = s; });
 
         optionsHtml = '<option value="">Selecciona tu equipo…</option>' +
-            groups.map(g => {
+            groups
+                .filter(g => !submittedIds.has(g.groupName))  // Filtrar equipos ya entregados
+                .map(g => {
                 const members = (g.studentIds || []).map(id => {
                     const st = byId[String(id)];
                     return st ? `${st.name || ''} ${st.lastname || ''}`.trim() : id;
@@ -1448,6 +1456,87 @@ async function populateAulaVirtualTargets() {
     }
 
     select.innerHTML = optionsHtml;
+
+    // Mostrar entregas realizadas
+    renderVirtualClassroomSubmissions(submissions, students, type);
+}
+
+async function loadVirtualClassroomSubmissions() {
+    try {
+        if (!_virtualClassroomState || !_virtualClassroomState.active) return [];
+
+        const type = _virtualClassroomState.projectType === 'grupal' ? 'grupal' : 'individual';
+        const params = new URLSearchParams({ type });
+
+        // Nota: Sin identificación específica, cargamos todas las entregas del proyecto
+        // El frontend mostrará todas las realizadas
+        const res = await fetch(`${API_URL}/api/promotions/${promotionId}/virtual-classroom/submissions?${params}`, {
+            method: 'GET'
+        });
+
+        if (!res.ok) {
+            console.warn('[loadVirtualClassroomSubmissions] Error:', res.status);
+            return [];
+        }
+
+        const data = await res.json();
+        return data.submissions || [];
+    } catch (error) {
+        console.error('[loadVirtualClassroomSubmissions] Error:', error);
+        return [];
+    }
+}
+
+function renderVirtualClassroomSubmissions(submissions, students, type) {
+    const section = document.getElementById('aula-virtual-submissions-section');
+    const list = document.getElementById('aula-virtual-submissions-list');
+
+    if (!section || !list) return;
+
+    if (!submissions || submissions.length === 0) {
+        section.classList.add('d-none');
+        return;
+    }
+
+    section.classList.remove('d-none');
+
+    // Crear mapa de estudiantes por ID
+    const studentMap = {};
+    students.forEach(s => {
+        studentMap[String(s.id)] = `${s.name || ''} ${s.lastname || ''}`.trim();
+    });
+
+    const submissionsHtml = submissions.map(sub => {
+        const targetName = type === 'individual'
+            ? (studentMap[String(sub.targetId)] || sub.targetId)
+            : sub.targetId;
+
+        const submittedDate = sub.submittedAt
+            ? new Date(sub.submittedAt).toLocaleDateString('es-ES', {
+                year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+            })
+            : 'Desconocida';
+
+        return `
+            <div class="list-group-item px-3 py-2">
+                <div class="d-flex justify-content-between align-items-start flex-wrap gap-2">
+                    <div class="flex-grow-1">
+                        <div class="small text-muted mb-1">
+                            <i class="bi bi-calendar me-1"></i>${escapeHtml(submittedDate)}
+                        </div>
+                        <div class="small">
+                            <a href="${escapeHtml(sub.submissionLink)}" target="_blank" rel="noopener noreferrer" class="text-primary text-decoration-none">
+                                <i class="bi bi-box-arrow-up-right me-1"></i>${escapeHtml(sub.submissionLink.substring(0, 50))}${sub.submissionLink.length > 50 ? '…' : ''}
+                            </a>
+                        </div>
+                    </div>
+                    <div class="badge bg-success align-self-start">${escapeHtml(sub.submissionStatus || 'Entregado')}</div>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    list.innerHTML = submissionsHtml;
 }
 
 async function submitVirtualClassroomDelivery() {
@@ -1518,6 +1607,9 @@ async function submitVirtualClassroomDelivery() {
         feedbackEl.textContent = 'Entrega registrada correctamente.';
         feedbackEl.className = 'small text-success';
         suffixEl.value = '';
+
+        // Recargar entregas y actualizar UI
+        await populateAulaVirtualTargets();
     } catch (error) {
         console.error('Error submitting virtual classroom delivery:', error);
         feedbackEl.textContent = 'Error de conexión al enviar la entrega.';

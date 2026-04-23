@@ -2142,7 +2142,8 @@ async function saveExtendedInfo() {
         
         // Find project type for the selected project
         const savedEvaluations = window._evalState?.savedEvaluations || [];
-        const existingEval = savedEvaluations.find(e => e.moduleId === vMid && e.projectName === vPname);
+        // FIXED: Search by projectName ONLY to match backend storage of Aula Virtual submissions
+        const existingEval = savedEvaluations.find(e => e.projectName === vPname);
         const vType = existingEval ? (existingEval.type || 'individual') : 'individual';
 
         extendedInfoData.virtualClassroom = {
@@ -7460,12 +7461,12 @@ function renderAttendanceTable() {
         } else {
             thDay.textContent = dateStr;
         }
-        // Right-click on weekday header (not on weekends) to toggle holiday
+        // Right-click on weekday header (not on weekends) to show context menu
         if (!isWeekend) {
             thDay.style.cursor = 'context-menu';
             thDay.addEventListener('contextmenu', (e) => {
                 e.preventDefault();
-                toggleHoliday(dateKey);
+                showDateContextMenu(dateKey, e);
             });
         }
         headerRow.appendChild(thDay);
@@ -7568,17 +7569,31 @@ function renderAttendanceTable() {
             else if (status === 'Sale antes') td.innerHTML = '<i class="bi bi-box-arrow-left"></i>';
             else td.innerHTML = '';
 
+            // ── New UX: Click opens dropdown, Shift+Click cycles, Right-Click opens modal
             td.onclick = (e) => {
                 if (e.shiftKey) {
-                    openAttendanceModal(student.id, dateKey);
-                } else {
+                    // Shift+Click: cycle through states (old behavior, for power users)
                     cycleAttendanceStatus(td);
+                } else {
+                    // Regular click: show dropdown menu
+                    e.stopPropagation();
+                    showAttendanceDropdown(td, student.id, dateKey, student);
                 }
             };
             td.oncontextmenu = (e) => {
                 e.preventDefault();
+                // Right-click: open full modal with notes
                 openAttendanceModal(student.id, dateKey);
             };
+
+            // ── Highlight feedback: hover highlights the row
+            td.addEventListener('mouseenter', () => {
+                tr.classList.add('attendance-row-highlight');
+            });
+            td.addEventListener('mouseleave', () => {
+                tr.classList.remove('attendance-row-highlight');
+            });
+            
             tr.appendChild(td);
         }
 
@@ -7633,6 +7648,28 @@ function updateAttendanceStats() {
     const avg = totalMarked > 0 ? Math.round(((present + late + justified + earlyLeave) / totalMarked) * 100) : 0;
     document.getElementById('stat-attendance-avg').textContent = `${avg}%`;
 }
+
+// ════════════════════════════════════════════════════════════════════════════
+// 🎯 UX IMPROVEMENTS FOR ATTENDANCE MODULE (Frontend-Only)
+// ════════════════════════════════════════════════════════════════════════════
+// 
+// Improvement 1: Visual Feedback (Row Highlight)
+// ├─ When hovering over an attendance cell, the corresponding student row
+// │  is highlighted with a subtle background color change
+// ├─ CSS classes: .attendance-row-highlight, .attendance-row-highlight-active
+// ├─ Implemented in: renderAttendanceTable() > addEventListener('mouseenter')
+// └─ Effect: Easier visual tracking of which student row you're marking
+//
+// Improvement 2: Dropdown Status Selection (1-click selection)
+// ├─ Click on a cell → Shows floating dropdown with 6 status options
+// ├─ Replaces the old "cycle through 5 states" behavior
+// ├─ Old behavior preserved: Shift+Click still cycles (for power users)
+// ├─ Right-Click still opens modal (for adding notes)
+// ├─ Implemented in: showAttendanceDropdown(), closeAttendanceDropdown()
+// ├─ CSS classes: .attendance-dropdown, .attendance-dropdown-item
+// └─ Effect: Direct 1-click access to any status (no more 4+ clicks to reach Justificado)
+//
+// ════════════════════════════════════════════════════════════════════════════
 
 // ── Per-cell debounce map: cellKey -> { timer, pendingStatus } ───────────────
 // This allows rapid clicks on the same cell to accumulate (cycling the status
@@ -7699,6 +7736,315 @@ function _applyAttendanceCellStyle(cell, status, hasNote) {
         cell.innerHTML = '<i class="bi bi-box-arrow-left"></i>';
     } else {
         cell.innerHTML = '';
+    }
+}
+
+// ── Show Attendance Dropdown (New UX Feature) ────────────────────────────────
+/**
+ * Shows a floating dropdown menu to quickly set attendance status for a cell.
+ * Replaces the old cycle-on-click behavior with a direct selection interface.
+ * @param {HTMLTableCellElement} cell - The attendance cell being clicked
+ * @param {string} studentId - Student ID
+ * @param {string} date - Date in YYYY-MM-DD format
+ * @param {Object} student - Student object (for context)
+ */
+function showAttendanceDropdown(cell, studentId, date, student) {
+    // Close any existing dropdown
+    closeAttendanceDropdown();
+
+    const container = document.getElementById('attendance-dropdown-container');
+    const dropdown = document.createElement('div');
+    dropdown.className = 'attendance-dropdown';
+    dropdown.id = 'attendance-dropdown-current';
+
+    // Get current status
+    const currentStatus = cell.dataset.status || '';
+
+    // Define status options with icons
+    const statusOptions = [
+        { value: '', label: 'Vacío', icon: '◯' },
+        { value: 'Presente', label: 'Presente', icon: '✓' },
+        { value: 'Ausente', label: 'Ausente', icon: '✗' },
+        { value: 'Con retraso', label: 'Con retraso', icon: '⏱' },
+        { value: 'Justificado', label: 'Justificado', icon: 'ℹ' },
+        { value: 'Sale antes', label: 'Sale antes', icon: '→' }
+    ];
+
+    // Create dropdown items
+    statusOptions.forEach(option => {
+        const item = document.createElement('div');
+        item.className = 'attendance-dropdown-item';
+        if (option.value === currentStatus) {
+            item.classList.add('active');
+        }
+
+        item.innerHTML = `
+            <span class="attendance-dropdown-item-icon">${option.icon}</span>
+            <span>${option.label}</span>
+        `;
+
+        item.onclick = async (e) => {
+            e.stopPropagation();
+            // Apply the status directly
+            cell.dataset.status = option.value;
+            _applyAttendanceCellStyle(cell, option.value, cell.classList.contains('attendance-has-note'));
+            
+            // Show saving indicator
+            cell.style.opacity = '0.6';
+            
+            // Send to server
+            await _flushAttendanceSave(studentId, date, option.value, null, cell);
+            
+            // Close dropdown
+            closeAttendanceDropdown();
+        };
+
+        dropdown.appendChild(item);
+    });
+
+    container.appendChild(dropdown);
+
+    // ── Intelligent Positioning: Open down or up depending on available space
+    const rect = cell.getBoundingClientRect();
+    
+    // Dimensions
+    const dropdownWidth = 220;
+    const dropdownHeight = 268; // 6 items × 40px + padding (more accurate)
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const spacing = 8; // gap between cell and dropdown
+    const minMargin = 10; // minimum margin from viewport edge
+
+    // ── Horizontal Positioning
+    let left = rect.right + spacing;
+    
+    // If dropdown goes off-screen to the right, try left side
+    if (left + dropdownWidth > viewportWidth - minMargin) {
+        left = rect.left - dropdownWidth - spacing;
+    }
+    
+    // If still off-screen to the left, center it and clamp
+    if (left < minMargin) {
+        left = Math.max(minMargin, (viewportWidth - dropdownWidth) / 2);
+    }
+
+    // ── Vertical Positioning (Smart: Down or Up)
+    let top;
+    let openDirection = 'down'; // track which direction we open for debugging
+    
+    // Calculate space below and above the cell
+    const spaceBelow = viewportHeight - rect.bottom;
+    const spaceAbove = rect.top;
+    
+    // If there's enough space below, open downward
+    if (spaceBelow >= dropdownHeight + spacing) {
+        top = rect.bottom + spacing;
+        openDirection = 'down';
+    }
+    // If there's more space above, open upward
+    else if (spaceAbove > spaceBelow) {
+        top = rect.top - dropdownHeight - spacing;
+        openDirection = 'up';
+    }
+    // Fallback: open down but allow scrolling
+    else {
+        top = rect.bottom + spacing;
+        openDirection = 'down (scrollable)';
+    }
+    
+    // Ensure top is within viewport with minimum margin
+    if (top < minMargin) {
+        top = minMargin;
+    }
+    
+    if (top + dropdownHeight > viewportHeight) {
+        top = Math.max(minMargin, viewportHeight - dropdownHeight - minMargin);
+    }
+
+    dropdown.style.left = left + 'px';
+    dropdown.style.top = top + 'px';
+    
+    // Debug: log positioning (can be removed later)
+    dropdown.dataset.openDirection = openDirection;
+
+    // Close dropdown when clicking outside
+    setTimeout(() => {
+        document.addEventListener('click', closeAttendanceDropdownListener, true);
+    }, 0);
+}
+
+// Global listener reference so we can remove it
+let closeAttendanceDropdownListener = (e) => {
+    const dropdown = document.getElementById('attendance-dropdown-current');
+    if (dropdown && !dropdown.contains(e.target)) {
+        closeAttendanceDropdown();
+    }
+};
+
+function closeAttendanceDropdown() {
+    const dropdown = document.getElementById('attendance-dropdown-current');
+    if (dropdown) {
+        dropdown.remove();
+    }
+    document.removeEventListener('click', closeAttendanceDropdownListener, true);
+}
+
+// ── Date Header Context Menu ────────────────────────────────────────────────
+/**
+ * Shows a context menu for date header with options to:
+ * 1. Toggle holiday status
+ * 2. Clear attendance for the entire day
+ */
+function showDateContextMenu(dateKey, event) {
+    closeAttendanceDropdown();
+    closeDateContextMenu();
+
+    const container = document.getElementById('attendance-dropdown-container');
+    const menu = document.createElement('div');
+    menu.className = 'date-context-menu';
+    menu.id = 'date-context-menu-current';
+
+    const isHoliday = promotionHolidays.has(dateKey);
+
+    // Option 1: Toggle Holiday
+    const toggleOption = document.createElement('div');
+    toggleOption.className = 'date-context-menu-item';
+    toggleOption.innerHTML = `
+        <span class="date-context-menu-item-icon">${isHoliday ? '➖' : '🎉'}</span>
+        <span>${isHoliday ? 'Quitar festivo' : 'Marcar como festivo'}</span>
+    `;
+    toggleOption.onclick = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        toggleHoliday(dateKey);
+        closeDateContextMenu();
+    };
+    menu.appendChild(toggleOption);
+
+    // Separator
+    const separator = document.createElement('div');
+    separator.style.height = '1px';
+    separator.style.backgroundColor = '#e0e0e0';
+    separator.style.margin = '4px 0';
+    menu.appendChild(separator);
+
+    // Option 2: Clear Attendance for Day
+    const clearOption = document.createElement('div');
+    clearOption.className = 'date-context-menu-item danger';
+    clearOption.innerHTML = `
+        <span class="date-context-menu-item-icon">🗑️</span>
+        <span>Limpiar asistencia del día</span>
+    `;
+    clearOption.onclick = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        clearDayAttendance(dateKey);
+        closeDateContextMenu();
+    };
+    menu.appendChild(clearOption);
+
+    container.appendChild(menu);
+
+    // Position menu near the header cell
+    const rect = event.target.getBoundingClientRect();
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    const spacing = 4;
+    const minMargin = 10;
+
+    let left = rect.left;
+    let top = rect.bottom + spacing;
+
+    // Adjust horizontally if would overflow
+    const menuWidth = 240;
+    if (left + menuWidth > viewportWidth - minMargin) {
+        left = rect.right - menuWidth;
+    }
+
+    if (left < minMargin) {
+        left = minMargin;
+    }
+
+    // Adjust vertically if would overflow
+    if (top + 150 > viewportHeight) {
+        top = rect.top - 150 - spacing;
+    }
+
+    menu.style.left = left + 'px';
+    menu.style.top = top + 'px';
+
+    // Close menu when clicking outside (use bubble phase, not capture)
+    // Delay to prevent immediate closure from the triggering event
+    setTimeout(() => {
+        document.addEventListener('click', closeDateContextMenuListener, false);
+    }, 10);
+}
+
+// Global listener for context menu - IMPROVED: use bubbling phase and check properly
+let closeDateContextMenuListener = (e) => {
+    const menu = document.getElementById('date-context-menu-current');
+    if (!menu) {
+        document.removeEventListener('click', closeDateContextMenuListener, false);
+        return;
+    }
+    
+    // Close only if clicking completely outside the menu
+    if (!menu.contains(e.target)) {
+        closeDateContextMenu();
+    }
+};
+
+function closeDateContextMenu() {
+    const menu = document.getElementById('date-context-menu-current');
+    if (menu) {
+        menu.remove();
+    }
+    document.removeEventListener('click', closeDateContextMenuListener, false);
+}
+
+// ── Clear Day Attendance ────────────────────────────────────────────────────
+/**
+ * Clears all attendance records for a specific date across all students.
+ * Asks for confirmation before proceeding.
+ * @param {string} dateKey - Date in YYYY-MM-DD format
+ */
+async function clearDayAttendance(dateKey) {
+    // Confirmation dialog
+    const confirmMsg = `¿Estás seguro de que deseas limpiar la asistencia de todos los estudiantes para el día ${dateKey}? Esta acción no se puede deshacer.`;
+    if (!confirm(confirmMsg)) {
+        return;
+    }
+
+    // Find all cells for this date
+    const cells = document.querySelectorAll(`[data-date="${dateKey}"]`);
+    let clearCount = 0;
+
+    // For each cell, set status to empty and save
+    for (const cell of cells) {
+        const studentId = cell.dataset.studentId;
+        if (!studentId) continue;
+
+        // Update local data
+        const index = attendanceData.findIndex(a => a.studentId === studentId && a.date === dateKey);
+        if (index > -1) {
+            attendanceData.splice(index, 1);
+            clearCount++;
+        }
+
+        // Update cell visualization
+        cell.dataset.status = '';
+        _applyAttendanceCellStyle(cell, '', false);
+
+        // Send to server (debounced via _flushAttendanceSave)
+        await _flushAttendanceSave(studentId, dateKey, '', null, cell);
+    }
+
+    // Update stats
+    updateAttendanceStats();
+
+    // Show success message
+    if (clearCount > 0) {
+        console.log(`✓ Limpied ${clearCount} attendance records for ${dateKey}`);
     }
 }
 
@@ -8909,7 +9255,8 @@ async function saveVirtualClassroom(isActive) {
 
     // Derive project type from saved evaluations if exists (fallback: individual)
     const savedEvaluations = window._evalState.savedEvaluations || [];
-    const existingEval = savedEvaluations.find(e => e.moduleId === moduleId && e.projectName === projectName);
+    // FIXED: Search by projectName ONLY to match backend storage of Aula Virtual submissions
+    const existingEval = savedEvaluations.find(e => e.projectName === projectName);
     const projectType = existingEval ? (existingEval.type || 'individual') : 'individual';
 
     // Prepare current enriched competences from _evalState to sync with DB
@@ -9059,7 +9406,8 @@ function renderEvaluationTab() {
 
         mod.projects.forEach((proj, pIdx) => {
             const projKey = _evalProjectKey(mod.id || String(mIdx), proj.name);
-            const saved = savedEvaluations.find(e => e.moduleId === (mod.id || String(mIdx)) && e.projectName === proj.name);
+            // FIXED: Search by projectName ONLY to match backend storage of Aula Virtual submissions
+            const saved = savedEvaluations.find(e => e.projectName === proj.name);
             const projType = saved ? saved.type : 'individual';
             const compCount = (proj.competenceIds || []).length;
             const evals = saved ? (saved.evaluations || []) : [];
@@ -9537,7 +9885,8 @@ function _computePairCount() {
     modules.forEach((mod, mIdx) => {
         (mod.projects || []).forEach((proj) => {
             const modId = mod.id || String(mIdx);
-            const saved = savedEvaluations.find(e => e.moduleId === modId && e.projectName === proj.name);
+            // FIXED: Search by projectName ONLY to match backend storage of Aula Virtual submissions
+            const saved = savedEvaluations.find(e => e.projectName === proj.name);
             if (!saved || saved.type !== 'grupal' || !saved.groups) return;
             saved.groups.forEach(grp => {
                 const ids = (grp.studentIds || []).map(String);
@@ -9586,7 +9935,8 @@ function openTeamHistoryView() {
     modules.forEach((mod, mIdx) => {
         (mod.projects || []).forEach((proj, pIdx) => {
             const modId = mod.id || String(mIdx);
-            const saved = savedEvaluations.find(e => e.moduleId === modId && e.projectName === proj.name);
+            // FIXED: Search by projectName ONLY to match backend storage of Aula Virtual submissions
+            const saved = savedEvaluations.find(e => e.projectName === proj.name);
             if (saved && saved.type === 'grupal' && saved.groups && saved.groups.length > 0) {
                 grupalProjects.push({ mIdx, pIdx, modId, modName: mod.name || `Módulo ${mIdx + 1}`, projName: proj.name, groups: saved.groups });
             }
@@ -9598,7 +9948,8 @@ function openTeamHistoryView() {
     modules.forEach((mod, mIdx) => {
         (mod.projects || []).forEach((proj, pIdx) => {
             const modId = mod.id || String(mIdx);
-            const saved = savedEvaluations.find(e => e.moduleId === modId && e.projectName === proj.name);
+            // FIXED: Search by projectName ONLY to match backend storage of Aula Virtual submissions
+            const saved = savedEvaluations.find(e => e.projectName === proj.name);
             if (saved && saved.type === 'grupal') {
                 allGrupalForSelect.push({ mIdx, pIdx, modName: mod.name, projName: proj.name });
             }
@@ -9843,7 +10194,8 @@ async function setEvalProjectType(mIdx, pIdx, type) {
     const proj = mod.projects[pIdx];
     const modId = mod.id || String(mIdx);
 
-    let saved = savedEvaluations.find(e => e.moduleId === modId && e.projectName === proj.name);
+    // FIXED: Search by projectName ONLY to match backend storage of Aula Virtual submissions
+    let saved = savedEvaluations.find(e => e.projectName === proj.name);
     if (!saved) {
         saved = {
             moduleId: modId,
@@ -9875,7 +10227,8 @@ function openGroupsModal(mIdx, pIdx) {
     window._evalState.currentProjectIdx = pIdx;
 
     // Ensure a saved entry exists
-    let saved = savedEvaluations.find(e => e.moduleId === modId && e.projectName === proj.name);
+    // FIXED: Search by projectName ONLY to match backend storage of Aula Virtual submissions
+    let saved = savedEvaluations.find(e => e.projectName === proj.name);
     if (!saved) {
         saved = { moduleId: modId, moduleName: mod.name, projectName: proj.name, type: 'grupal', groups: [], evaluations: [] };
         window._evalState.savedEvaluations.push(saved);
@@ -10253,7 +10606,8 @@ function openEvaluationView(mIdx, pIdx) {
     window._evalRemovedComps = {};
     window._evalRemovedTools = {};
 
-    const saved = savedEvaluations.find(e => e.moduleId === modId && e.projectName === proj.name) || {
+    // FIXED: Search by projectName ONLY to match backend storage of Aula Virtual submissions
+    const saved = savedEvaluations.find(e => e.projectName === proj.name) || {
         moduleId: modId, moduleName: mod.name, projectName: proj.name,
         type: 'individual', groups: [], evaluations: []
     };
@@ -10874,7 +11228,8 @@ function openEvaluationModal(mIdx, pIdx) {
     // Reset per-target removed-competence tracking each time the modal opens
     window._evalRemovedComps = {};
 
-    const saved = savedEvaluations.find(e => e.moduleId === modId && e.projectName === proj.name) || {
+    // FIXED: Search by projectName ONLY to match backend storage of Aula Virtual submissions
+    const saved = savedEvaluations.find(e => e.projectName === proj.name) || {
         moduleId: modId, moduleName: mod.name, projectName: proj.name,
         type: 'individual', groups: [], evaluations: []
     };

@@ -274,7 +274,28 @@ body {
 /* Attendance Table Styles */
 .attendance-table-wrapper {
     max-height: 700px;
-    overflow: auto;
+    overflow-x: auto;
+    overflow-y: visible;
+    display: block;
+}
+
+/* Customize scrollbar appearance */
+.attendance-table-wrapper::-webkit-scrollbar {
+    height: 8px;
+}
+
+.attendance-table-wrapper::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+.attendance-table-wrapper::-webkit-scrollbar-thumb {
+    background: #ff4700;
+    border-radius: 4px;
+}
+
+.attendance-table-wrapper::-webkit-scrollbar-thumb:hover {
+    background: #d63900;
 }
 
 #attendance-table th,
@@ -283,7 +304,9 @@ body {
     vertical-align: middle;
     padding: 10px;
     min-width: 45px;
+    max-width: 45px;
     font-size: 0.7rem;
+    white-space: nowrap;
 }
 
 #attendance-table td.sticky-column,
@@ -292,7 +315,7 @@ body {
     left: 0;
     text-align: left;
     background-color: #f8f9fa;
-    z-index: 5;
+    z-index: 10;
     border-right: 2px solid #dee2e6;
 }
 

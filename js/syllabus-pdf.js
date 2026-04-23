@@ -15,14 +15,14 @@
 const SyllabusPDF = (() => {
     // ─── Colores de marca ──────────────────────────────────────────────────────
     const C = {
-        orange:     [255,  71,   0],
-        orangeLight:[255, 200, 175],
+        orange:     [255, 107,  53],   // #FF6B35 - brand orange (used sparingly)
+        orangeLight:[240, 240, 240],   // replaced with light grey
         dark:       [ 30,  30,  30],
         gray:       [100, 100, 100],
-        lightGray:  [240, 240, 240],
+        lightGray:  [245, 245, 245],
         white:      [255, 255, 255],
-        ganttBar:   [255, 180, 130],
-        ganttHead:  [255, 120,  60],
+        ganttBar:   [200, 200, 200],   // neutral grey bar
+        ganttHead:  [ 80,  80,  80],
     };
 
     // ─── Helpers básicos ───────────────────────────────────────────────────────
@@ -48,16 +48,17 @@ const SyllabusPDF = (() => {
         return y;
     }
 
-    /** Título de sección con fondo naranja */
+    /** Título de sección — plain bold text with a thin grey underline */
     function sectionTitle(doc, text, y, margin, pageW) {
-        setFill(doc, C.orange);
-        doc.roundedRect(margin, y, pageW - margin * 2, 7, 1.5, 1.5, 'F');
-        setFont(doc, C.white);
-        setFontSize(doc, 9);
+        setFont(doc, C.dark);
         doc.setFont('helvetica', 'bold');
-        doc.text(text.toUpperCase(), margin + 3, y + 5);
+        setFontSize(doc, 10);
+        doc.text(text, margin, y + 5);
+        doc.setLineWidth(0.4);
+        setDraw(doc, C.gray);
+        doc.line(margin, y + 7, pageW - margin, y + 7);
         doc.setFont('helvetica', 'normal');
-        return y + 10;
+        return y + 12;
     }
 
     /** Fila de tabla simple */
@@ -93,56 +94,58 @@ const SyllabusPDF = (() => {
     }
 
     // ─── PORTADA ───────────────────────────────────────────────────────────────
-    function buildCover(doc, title, subtitle, date, pageW, pageH) {
-        // Franja superior naranja
-        setFill(doc, C.orange);
-        doc.rect(0, 0, pageW, 38, 'F');
+    function buildCover(doc, title, subtitle, date, pageW, pageH, logoDataUrl) {
+        // White background — no coloured banner
 
-        // Título
-        setFont(doc, C.white);
+        // Logo top-right (if available)
+        if (logoDataUrl) {
+            try {
+                doc.addImage(logoDataUrl, 'WEBP', pageW - 52, 14, 38, 0);
+            } catch (_) {
+                // image failed — skip silently
+            }
+        }
+
+        // // Thin grey rule across full width
+        // doc.setLineWidth(0.5);
+        // setDraw(doc, C.gray);
+        // doc.line(12, 28, pageW - 12, 28);
+
+        // Title block
+        setFont(doc, C.dark);
         doc.setFont('helvetica', 'bold');
         setFontSize(doc, 22);
-        doc.text('SYLLABUS', pageW / 2, 16, { align: 'center' });
-        setFontSize(doc, 11);
-        doc.text('Bootcamp Manager · Factoría F5', pageW / 2, 25, { align: 'center' });
-
-        // Recuadro central con nombre
-        const bx = 20, by = 50, bw = pageW - 40, bh = 50;
-        setFill(doc, C.lightGray);
-        doc.roundedRect(bx, by, bw, bh, 3, 3, 'F');
-        setFont(doc, C.orange);
-        doc.setFont('helvetica', 'bold');
-        setFontSize(doc, 17);
-        const titleLines = doc.splitTextToSize(title, bw - 10);
-        doc.text(titleLines, pageW / 2, by + 18, { align: 'center' });
+        const titleLines = doc.splitTextToSize(title, pageW - 60);
+        doc.text(titleLines, 12, 50);
 
         if (subtitle) {
             setFont(doc, C.gray);
             doc.setFont('helvetica', 'normal');
-            setFontSize(doc, 9);
-            doc.text(subtitle, pageW / 2, by + 38, { align: 'center' });
+            setFontSize(doc, 10);
+            doc.text(subtitle, 12, 50 + titleLines.length * 9 + 4);
         }
 
-        // Fecha
-        setFont(doc, C.gray);
-        setFontSize(doc, 8);
-        doc.setFont('helvetica', 'italic');
-        doc.text(`Generado: ${date}`, pageW / 2, pageH - 12, { align: 'center' });
-
-        // Franja inferior
-        setFill(doc, C.orange);
-        doc.rect(0, pageH - 8, pageW, 8, 'F');
+        // Bottom thin rule
+        doc.setLineWidth(0.5);
+        setDraw(doc, C.gray);
+        doc.line(12, pageH - 20, pageW - 12, pageH - 20);
     }
 
     // ─── HEADER en cada página (excepto portada) ───────────────────────────────
-    function pageHeader(doc, title, pageW) {
-        setFill(doc, C.orange);
-        doc.rect(0, 0, pageW, 10, 'F');
-        setFont(doc, C.white);
-        doc.setFont('helvetica', 'bold');
-        setFontSize(doc, 7);
-        doc.text(title, 10, 6.5);
+    function pageHeader(doc, title, pageW, logoDataUrl) {
+        // Thin top line
+        // doc.setLineWidth(0.4);
+        // setDraw(doc, [180, 180, 180]);
+        // doc.line(0, 10, pageW, 10);
+        // Small title text left
+        setFont(doc, C.gray);
         doc.setFont('helvetica', 'normal');
+        setFontSize(doc, 6.5);
+        doc.text(title, 12, 7.5);
+        // Logo right (small)
+        if (logoDataUrl) {
+            try { doc.addImage(logoDataUrl, 'WEBP', pageW - 30, 1.5, 18, 0); } catch (_) {}
+        }
     }
 
     // ─── FOOTER con número de página ─────────────────────────────────────────
@@ -150,13 +153,13 @@ const SyllabusPDF = (() => {
         const total = doc.getNumberOfPages();
         for (let i = 1; i <= total; i++) {
             doc.setPage(i);
-            if (i === 1) continue; // portada sin footer de página
-            setFill(doc, C.orange);
-            doc.rect(0, pageH - 6, pageW, 6, 'F');
-            setFont(doc, C.white);
+            doc.setLineWidth(0.3);
+            setDraw(doc, [180, 180, 180]);
+            doc.line(12, pageH - 8, pageW - 12, pageH - 8);
+            setFont(doc, C.gray);
             setFontSize(doc, 6.5);
             doc.setFont('helvetica', 'normal');
-            doc.text(`Página ${i} de ${total}`, pageW - 10, pageH - 1.5, { align: 'right' });
+            doc.text(`Página ${i} de ${total}`, pageW - 12, pageH - 4, { align: 'right' });
         }
     }
 
@@ -166,35 +169,36 @@ const SyllabusPDF = (() => {
         y = sectionTitle(doc, '1. Información General', y, margin, pageW);
 
         const rows = [
-            ['Nombre',       data.name       || '—'],
-            ['Tipo',         data.type       || '—'],
-            ['Modalidad',    data.modality   || '—'],
-            ['Horas totales',data.totalHours ? `${data.totalHours} h` : (data.hours ? `${data.hours} h` : '—')],
-            ['Semanas',      data.weeks      ? `${data.weeks} semanas` : '—'],
-            ['Inicio',       data.startDate  || '—'],
-            ['Fin',          data.endDate    || '—'],
-            ['Idioma',       data.language   || '—'],
-            ['Descripción',  data.description|| '—'],
-        ].filter(r => r[1] !== '—' || r[0] === 'Nombre');
+            ['Nombre',        data.name        || '—'],
+            ['Tipo',          data.type        || '—'],
+            ['Modalidad',     data.modality    || '—'],
+            ['Horas totales', data.totalHours  ? `${data.totalHours} h` : (data.hours ? `${data.hours} h` : null)],
+            ['Duración',      data.weeks       ? `${data.weeks} semanas` : null],
+            ['Inicio',        data.startDate   || null],
+            ['Fin',           data.endDate     || null],
+            ['Idioma',        data.language    || null],
+            ['Descripción',   data.description || null],
+        ].filter(r => r[1]);
 
-        const colW = [(pageW - margin * 2) * 0.32, (pageW - margin * 2) * 0.68];
-        rows.forEach((row, i) => {
-            y = checkPage(doc, y, 7, margin, pageH);
-            const bg = i % 2 === 0 ? C.lightGray : C.white;
-            setFill(doc, bg);
-            doc.rect(margin, y, colW[0] + colW[1], 6, 'F');
+        rows.forEach(row => {
+            y = checkPage(doc, y, 6, margin, pageH);
             setFont(doc, C.gray);
-            setFontSize(doc, 7.5);
             doc.setFont('helvetica', 'bold');
-            doc.text(row[0], margin + 1.5, y + 4);
+            setFontSize(doc, 8);
+            doc.text(`${row[0]}:`, margin, y);
             setFont(doc, C.dark);
             doc.setFont('helvetica', 'normal');
-            const lines = doc.splitTextToSize(String(row[1]), colW[1] - 3);
-            doc.text(lines[0], margin + colW[0] + 1.5, y + 4);
-            y += 6;
+            const lines = doc.splitTextToSize(String(row[1]), pageW - margin * 2 - 42);
+            doc.text(lines[0], margin + 42, y);
+            y += 5.5;
+            lines.slice(1).forEach(l => {
+                y = checkPage(doc, y, 5, margin, pageH);
+                doc.text(l, margin + 42, y);
+                y += 5;
+            });
         });
 
-        return y + 4;
+        return y + 5;
     }
 
     // ─── SECCIÓN: Horario ──────────────────────────────────────────────────────
@@ -207,7 +211,6 @@ const SyllabusPDF = (() => {
         if (schedule.online?.start)     modes.push({ label: 'Online / Teletrabajo', data: schedule.online });
         if (schedule.presential?.start) modes.push({ label: 'Presencial',            data: schedule.presential });
 
-        const colW = (pageW - margin * 2) / (modes.length || 1);
         const fields = [
             { key: 'entry',  label: 'Entrada'  },
             { key: 'start',  label: 'Inicio'   },
@@ -216,40 +219,30 @@ const SyllabusPDF = (() => {
             { key: 'finish', label: 'Fin'      },
         ];
 
-        // Cabeceras de modalidad
-        let xOff = margin;
         modes.forEach(m => {
-            setFill(doc, C.orangeLight);
-            doc.rect(xOff, y, colW, 6, 'F');
+            y = checkPage(doc, y, 6, margin, pageH);
             setFont(doc, C.dark);
             doc.setFont('helvetica', 'bold');
             setFontSize(doc, 8);
-            doc.text(m.label, xOff + 2, y + 4);
-            xOff += colW;
-        });
-        y += 6;
-
-        fields.forEach((f, fi) => {
-            const rowY = y;
-            xOff = margin;
-            modes.forEach(m => {
-                const bg = fi % 2 === 0 ? C.lightGray : C.white;
-                setFill(doc, bg);
-                doc.rect(xOff, rowY, colW, 5.5, 'F');
+            doc.text(m.label, margin, y);
+            y += 5.5;
+            fields.forEach(f => {
+                if (!m.data[f.key]) return;
+                y = checkPage(doc, y, 5, margin, pageH);
                 setFont(doc, C.gray);
                 doc.setFont('helvetica', 'bold');
-                setFontSize(doc, 7);
-                doc.text(f.label + ':', xOff + 2, rowY + 3.8);
+                setFontSize(doc, 7.5);
+                doc.text(`${f.label}:`, margin + 4, y);
                 setFont(doc, C.dark);
                 doc.setFont('helvetica', 'normal');
-                doc.text(m.data[f.key] || '—', xOff + 26, rowY + 3.8);
-                xOff += colW;
+                doc.text(m.data[f.key], margin + 28, y);
+                y += 5;
             });
-            y += 5.5;
+            y += 2;
         });
 
         if (schedule.notes) {
-            y += 2;
+            y += 1;
             setFont(doc, C.gray);
             setFontSize(doc, 7);
             doc.setFont('helvetica', 'italic');
@@ -270,198 +263,91 @@ const SyllabusPDF = (() => {
         y = checkPage(doc, y, 20, margin, pageH);
         y = sectionTitle(doc, '3. Competencias', y, margin, pageW);
 
-        const totalW = pageW - margin * 2;
-        const cW = [totalW * 0.30, totalW * 0.70];
-
-        // Cabecera de tabla
-        setFill(doc, C.dark);
-        doc.rect(margin, y, totalW, 6, 'F');
-        setFont(doc, C.white);
-        doc.setFont('helvetica', 'bold');
-        setFontSize(doc, 7.5);
-        doc.text('Competencia', margin + 2, y + 4);
-        doc.text('Descripción', margin + cW[0] + 2, y + 4);
-        y += 6;
-
         competences.forEach((comp, i) => {
-            const descLines = doc.splitTextToSize(comp.description || comp.name || '—', cW[1] - 4);
-            const rowH = Math.max(6, descLines.length * 4.5 + 2);
-            y = checkPage(doc, y, rowH + 2, margin, pageH);
-
-            const bg = i % 2 === 0 ? C.lightGray : C.white;
-            setFill(doc, bg);
-            doc.rect(margin, y, totalW, rowH, 'F');
+            y = checkPage(doc, y, 12, margin, pageH);
 
             // Nombre
-            setFont(doc, C.orange);
+            setFont(doc, C.dark);
             doc.setFont('helvetica', 'bold');
-            setFontSize(doc, 7.5);
-            const nameLines = doc.splitTextToSize(comp.name || '—', cW[0] - 4);
-            doc.text(nameLines, margin + 2, y + 4);
+            setFontSize(doc, 8.5);
+            const nameLines = doc.splitTextToSize(comp.name || '—', pageW - margin * 2);
+            doc.text(nameLines, margin, y);
+            y += nameLines.length * 5 + 1;
 
             // Descripción
-            setFont(doc, C.dark);
-            doc.setFont('helvetica', 'normal');
-            setFontSize(doc, 7);
-            doc.text(descLines, margin + cW[0] + 2, y + 4);
+            if (comp.description) {
+                y = checkPage(doc, y, 5, margin, pageH);
+                setFont(doc, C.dark);
+                doc.setFont('helvetica', 'normal');
+                setFontSize(doc, 7.5);
+                const descLines = doc.splitTextToSize(comp.description, pageW - margin * 2 - 4);
+                descLines.forEach(l => {
+                    y = checkPage(doc, y, 5, margin, pageH);
+                    doc.text(l, margin + 4, y);
+                    y += 4.5;
+                });
+            }
 
-            y += rowH;
-
-            // ── Herramientas de la competencia ──────────────────────────────
+            // Herramientas
             const tools = comp.selectedTools || comp.allTools || [];
             if (tools.length) {
-                y = checkPage(doc, y, 10, margin, pageH);
-                setFill(doc, [250, 245, 240]);
-                doc.rect(margin + 4, y, totalW - 4, 5.5, 'F');
-                setFont(doc, C.orange);
+                y = checkPage(doc, y, 5, margin, pageH);
+                setFont(doc, C.gray);
                 doc.setFont('helvetica', 'bold');
-                setFontSize(doc, 6.5);
-                doc.text('🔧 Herramientas:', margin + 6, y + 3.8);
+                setFontSize(doc, 7);
+                doc.text('Herramientas:', margin + 4, y);
                 setFont(doc, C.dark);
                 doc.setFont('helvetica', 'normal');
                 const toolNames = tools.map(t => typeof t === 'string' ? t : (t.name || t)).join(' · ');
-                const tLines = doc.splitTextToSize(toolNames, totalW - 40);
-                doc.text(tLines[0], margin + 36, y + 3.8);
-                y += 5.5;
+                const tLines = doc.splitTextToSize(toolNames, pageW - margin * 2 - 40);
+                doc.text(tLines[0], margin + 34, y);
+                y += 4.5;
+                tLines.slice(1).forEach(l => {
+                    y = checkPage(doc, y, 4.5, margin, pageH);
+                    doc.text(l, margin + 34, y);
+                    y += 4.5;
+                });
             }
 
-            // ── Indicadores por nivel ──────────────────────────────────────
+            // Indicadores por nivel
             const indicators = comp.competenceIndicators || {};
             const levels = [
-                { key: 'initial', label: 'Inicial',   color: [220, 252, 231] },
-                { key: 'medio',   label: 'Medio',     color: [254, 249, 195] },
-                { key: 'advance', label: 'Avanzado',  color: [254, 226, 226] },
+                { key: 'initial', label: 'Inicial' },
+                { key: 'medio',   label: 'Medio'   },
+                { key: 'advance', label: 'Avanzado' },
             ];
-
             levels.forEach(lv => {
                 const inds = indicators[lv.key] || [];
                 if (!inds.length) return;
-                y = checkPage(doc, y, 7, margin, pageH);
-                setFill(doc, lv.color);
-                doc.rect(margin + 4, y, totalW - 4, 5.5, 'F');
-                setFont(doc, C.dark);
+                y = checkPage(doc, y, 5, margin, pageH);
+                setFont(doc, C.gray);
                 doc.setFont('helvetica', 'bold');
-                setFontSize(doc, 6.5);
-                doc.text(`Nivel ${lv.label}:`, margin + 6, y + 3.8);
-                doc.setFont('helvetica', 'normal');
+                setFontSize(doc, 7);
+                doc.text(`Nivel ${lv.label}:`, margin + 4, y);
                 const indStr = inds.map(ind => typeof ind === 'string' ? ind : (ind.name || ind.description || ind)).join(' / ');
-                const iLines = doc.splitTextToSize(indStr, totalW - 40);
-                doc.text(iLines[0], margin + 34, y + 3.8);
-                y += 5.5;
-                if (iLines.length > 1) {
-                    iLines.slice(1).forEach(il => {
-                        y = checkPage(doc, y, 5, margin, pageH);
-                        setFont(doc, C.dark);
-                        doc.setFont('helvetica', 'normal');
-                        setFontSize(doc, 6.5);
-                        doc.text(il, margin + 6, y + 3.8);
-                        y += 4.5;
-                    });
-                }
+                const iLines = doc.splitTextToSize(indStr, pageW - margin * 2 - 38);
+                setFont(doc, C.dark);
+                doc.setFont('helvetica', 'normal');
+                doc.text(iLines[0], margin + 34, y);
+                y += 4.5;
+                iLines.slice(1).forEach(il => {
+                    y = checkPage(doc, y, 4.5, margin, pageH);
+                    doc.text(il, margin + 34, y);
+                    y += 4.5;
+                });
             });
 
             y += 2;
-            hLine(doc, y, margin, pageW - margin, C.orangeLight, 0.2);
-            y += 2;
+            hLine(doc, y, margin, pageW - margin, C.lightGray, 0.2);
+            y += 3;
         });
 
         return y + 4;
     }
 
-    // ─── SECCIÓN: Diagrama Gantt ───────────────────────────────────────────────
+    // ─── SECCIÓN: Diagrama Gantt — DESACTIVADO ────────────────────────────────
     function buildGanttSection(doc, promotion, y, margin, pageW, pageH, sectionNum) {
-        const modules = promotion.modules || [];
-        const weeks   = promotion.weeks   || 0;
-        if (!modules.length || !weeks) return y;
-
-        y = checkPage(doc, y, 20, margin, pageH);
-        y = sectionTitle(doc, `${sectionNum}. Diagrama Gantt`, y, margin, pageW);
-
-        const totalW   = pageW - margin * 2;
-        const labelW   = 42;
-        const weekW    = Math.min(4.5, (totalW - labelW) / weeks);
-        const tableW   = labelW + weekW * weeks;
-        const rowH     = 5;
-
-        // Fila de cabecera (semanas)
-        setFill(doc, C.dark);
-        doc.rect(margin, y, tableW, rowH, 'F');
-        setFont(doc, C.white);
-        doc.setFont('helvetica', 'bold');
-        setFontSize(doc, 5.5);
-        doc.text('Módulo / Sem.', margin + 1, y + 3.5);
-        for (let w = 0; w < weeks; w++) {
-            const xW = margin + labelW + w * weekW;
-            if (w % 4 === 0) {
-                // Mes
-                setFont(doc, C.white);
-                setFontSize(doc, 4.5);
-                doc.text(`M${Math.floor(w / 4) + 1}`, xW + 0.5, y + 3.5);
-            }
-        }
-        y += rowH;
-
-        // Fila de números de semana
-        setFill(doc, C.orangeLight);
-        doc.rect(margin, y, tableW, rowH - 1, 'F');
-        setFont(doc, C.dark);
-        setFontSize(doc, 4.5);
-        doc.setFont('helvetica', 'normal');
-        for (let w = 0; w < weeks; w++) {
-            const xW = margin + labelW + w * weekW;
-            doc.text(`${w + 1}`, xW + weekW / 2 - 1, y + 3);
-        }
-        y += rowH - 1;
-
-        // Filas de módulos
-        let weekCursor = 0;
-        modules.forEach((mod, i) => {
-            y = checkPage(doc, y, rowH + 1, margin, pageH);
-            const bg = i % 2 === 0 ? C.lightGray : C.white;
-            setFill(doc, bg);
-            doc.rect(margin, y, tableW, rowH, 'F');
-
-            // Etiqueta
-            setFont(doc, C.dark);
-            doc.setFont('helvetica', 'bold');
-            setFontSize(doc, 5.5);
-            const modLabel = doc.splitTextToSize(`M${i + 1}: ${mod.name}`, labelW - 2);
-            doc.text(modLabel[0], margin + 1, y + 3.5);
-            doc.setFont('helvetica', 'normal');
-
-            // Barras de duración
-            const dur = parseInt(mod.duration) || 0;
-            const start = weekCursor;
-            const end   = Math.min(start + dur, weeks);
-            for (let w = start; w < end; w++) {
-                const xW = margin + labelW + w * weekW;
-                setFill(doc, C.ganttBar);
-                doc.rect(xW + 0.3, y + 0.8, weekW - 0.6, rowH - 1.6, 'F');
-            }
-            weekCursor += dur;
-
-            // Línea divisora de mes
-            for (let w = 0; w < weeks; w++) {
-                if (w % 4 === 0 && w > 0) {
-                    setDraw(doc, C.gray);
-                    doc.setLineWidth(0.1);
-                    const xW = margin + labelW + w * weekW;
-                    doc.line(xW, y, xW, y + rowH);
-                }
-            }
-
-            y += rowH;
-        });
-
-        // Leyenda
-        y += 3;
-        setFill(doc, C.ganttBar);
-        doc.rect(margin, y, 8, 4, 'F');
-        setFont(doc, C.dark);
-        setFontSize(doc, 6.5);
-        doc.text('= Duración del módulo', margin + 10, y + 3);
-        y += 8;
-
+        // Gantt removed per design guidelines — modules section shows week info
         return y;
     }
 
@@ -474,66 +360,68 @@ const SyllabusPDF = (() => {
         modules.forEach((mod, i) => {
             y = checkPage(doc, y, 12, margin, pageH);
 
-            // Cabecera de módulo
-            setFill(doc, C.orangeLight);
-            doc.roundedRect(margin, y, pageW - margin * 2, 6.5, 1, 1, 'F');
+            // Nombre del módulo + duración en semanas
             setFont(doc, C.dark);
             doc.setFont('helvetica', 'bold');
-            setFontSize(doc, 8.5);
-            doc.text(`Módulo ${i + 1}: ${mod.name}   (${mod.duration || '?'} semanas)`, margin + 3, y + 4.5);
-            y += 7.5;
-
-            const totalW = pageW - margin * 2;
+            setFontSize(doc, 9);
+            const dur = mod.duration ? ` — ${mod.duration} semana${mod.duration == 1 ? '' : 's'}` : '';
+            const modTitle = `Módulo ${i + 1}: ${mod.name}${dur}`;
+            const titleLines = doc.splitTextToSize(modTitle, pageW - margin * 2);
+            doc.text(titleLines, margin, y);
+            y += titleLines.length * 5.5 + 1;
 
             // Proyectos
             const projects = mod.projects || [];
             if (projects.length) {
-                y = checkPage(doc, y, 6, margin, pageH);
-                setFont(doc, C.orange);
+                y = checkPage(doc, y, 5, margin, pageH);
+                setFont(doc, C.gray);
                 doc.setFont('helvetica', 'bold');
                 setFontSize(doc, 7.5);
-                doc.text('Proyectos:', margin + 3, y + 3);
-                y += 5;
-                projects.forEach((p, pi) => {
+                doc.text('Proyectos:', margin + 4, y);
+                y += 4.5;
+                projects.forEach(p => {
                     y = checkPage(doc, y, 5, margin, pageH);
                     const pName = typeof p === 'string' ? p : (p.name || 'Proyecto');
-                    const pDesc = typeof p === 'object' && p.description ? ` — ${p.description}` : '';
-                    setFill(doc, pi % 2 === 0 ? C.lightGray : C.white);
-                    doc.rect(margin + 4, y, totalW - 4, 5, 'F');
+                    const pWeeks = typeof p === 'object' && p.weeks ? ` (${p.weeks} sem.)` : '';
+                    const pDesc  = typeof p === 'object' && p.description ? ` — ${p.description}` : '';
                     setFont(doc, C.dark);
                     doc.setFont('helvetica', 'normal');
-                    setFontSize(doc, 7);
-                    const pLine = doc.splitTextToSize(`• ${pName}${pDesc}`, totalW - 10);
-                    doc.text(pLine[0], margin + 6, y + 3.5);
-                    y += 5;
+                    setFontSize(doc, 7.5);
+                    const pLine = doc.splitTextToSize(`• ${pName}${pWeeks}${pDesc}`, pageW - margin * 2 - 8);
+                    pLine.forEach(l => {
+                        y = checkPage(doc, y, 5, margin, pageH);
+                        doc.text(l, margin + 8, y);
+                        y += 4.5;
+                    });
                 });
+                y += 1;
             }
 
             // Cursos
             const courses = mod.courses || [];
             if (courses.length) {
-                y = checkPage(doc, y, 6, margin, pageH);
-                setFont(doc, C.orange);
+                y = checkPage(doc, y, 5, margin, pageH);
+                setFont(doc, C.gray);
                 doc.setFont('helvetica', 'bold');
                 setFontSize(doc, 7.5);
-                doc.text('Cursos:', margin + 3, y + 3);
-                y += 5;
-                courses.forEach((c, ci) => {
+                doc.text('Cursos:', margin + 4, y);
+                y += 4.5;
+                courses.forEach(c => {
                     y = checkPage(doc, y, 5, margin, pageH);
-                    const cName = typeof c === 'string' ? c : (c.name || 'Curso');
-                    setFill(doc, ci % 2 === 0 ? C.lightGray : C.white);
-                    doc.rect(margin + 4, y, totalW - 4, 5, 'F');
+                    const cName  = typeof c === 'string' ? c : (c.name || 'Curso');
+                    const cWeeks = typeof c === 'object' && c.weeks ? ` (${c.weeks} sem.)` : '';
                     setFont(doc, C.dark);
                     doc.setFont('helvetica', 'normal');
-                    setFontSize(doc, 7);
-                    doc.text(`• ${cName}`, margin + 6, y + 3.5);
-                    y += 5;
+                    setFontSize(doc, 7.5);
+                    doc.text(`• ${cName}${cWeeks}`, margin + 8, y);
+                    y += 4.5;
                 });
+                y += 1;
             }
 
+            y += 2;
+            hLine(doc, y, margin, pageW - margin, C.lightGray);
             y += 4;
-            hLine(doc, y, margin, pageW - margin, C.orangeLight);
-            y += 3;
         });
 
         return y;
@@ -573,7 +461,7 @@ const SyllabusPDF = (() => {
             const isBullet = line.trim().startsWith('•');
             const isTitle = !isBullet && line.trim().length > 0 && line.trim().length < 60 && !line.includes(' ');
             if (isBullet) {
-                setFont(doc, C.orange);
+                setFont(doc, C.dark);
                 doc.setFont('helvetica', 'bold');
                 setFontSize(doc, 7.5);
             } else if (line.trim().startsWith('Evaluación') || line.trim().startsWith('Valoración')) {
@@ -602,186 +490,145 @@ const SyllabusPDF = (() => {
 
         const today = new Date().toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' });
 
-        // Portada
-        buildCover(doc, title, subtitle, today, pageW, pageH);
+        // ── Try to load logo as base64 for jsPDF ──
+        const logoSrc = (window.APP_CONFIG?.BASE_URL || window.location.origin) + '/img/f5-logo-naranja.webp';
+        const _withLogo = (cb) => {
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.onload = () => {
+                const cvs = document.createElement('canvas');
+                cvs.width = img.naturalWidth; cvs.height = img.naturalHeight;
+                cvs.getContext('2d').drawImage(img, 0, 0);
+                cb(cvs.toDataURL('image/png'));
+            };
+            img.onerror = () => cb(null);
+            img.src = logoSrc;
+        };
 
-        // ── Página 2 en adelante ──────────────────────────────────────────────
-        doc.addPage();
-        pageHeader(doc, title, pageW);
-        let y = 14;
+        _withLogo((logoDataUrl) => {
+            // ── Página 1: directamente la información (sin portada) ──────────
+            pageHeader(doc, title, pageW, logoDataUrl);
+            let y = 16;
 
-        // 1. Info general
-        y = buildInfoSection(doc, infoData, y, margin, pageW, pageH);
+            // 1. Info general
+            y = buildInfoSection(doc, infoData, y, margin, pageW, pageH);
 
-        // 2. Horario
-        pageHeader(doc, title, pageW);
-        y = buildScheduleSection(doc, schedule, y, margin, pageW, pageH);
+            // 2. Horario
+            pageHeader(doc, title, pageW, logoDataUrl);
+            y = buildScheduleSection(doc, schedule, y, margin, pageW, pageH);
 
-        // 3. Competencias
-        if (competences && competences.length) {
-            pageHeader(doc, title, pageW);
-            y = buildCompetencesSection(doc, competences, y, margin, pageW, pageH);
-        }
+            // 3. Competencias
+            if (competences && competences.length) {
+                pageHeader(doc, title, pageW, logoDataUrl);
+                y = buildCompetencesSection(doc, competences, y, margin, pageW, pageH);
+            }
 
-        // 4. Gantt
-        let sectionCounter = competences && competences.length ? 4 : 3;
-        if (modules && modules.length && weeks) {
-            pageHeader(doc, title, pageW);
-            y = buildGanttSection(doc, { modules, weeks }, y, margin, pageW, pageH, sectionCounter);
-            sectionCounter++;
-        }
+            // 4. Gantt
+            let sectionCounter = competences && competences.length ? 4 : 3;
+            if (modules && modules.length && weeks) {
+                pageHeader(doc, title, pageW, logoDataUrl);
+                y = buildGanttSection(doc, { modules, weeks }, y, margin, pageW, pageH, sectionCounter);
+                sectionCounter++;
+            }
 
-        // 5. Módulos
-        if (modules && modules.length) {
-            pageHeader(doc, title, pageW);
-            y = buildModulesSection(doc, modules, y, margin, pageW, pageH, sectionCounter);
-            sectionCounter++;
-        }
+            // 5. Módulos
+            if (modules && modules.length) {
+                pageHeader(doc, title, pageW, logoDataUrl);
+                y = buildModulesSection(doc, modules, y, margin, pageW, pageH, sectionCounter);
+                sectionCounter++;
+            }
 
-        // 6. Evaluación
-        if (evaluation) {
-            pageHeader(doc, title, pageW);
-            y = buildEvaluationSection(doc, evaluation, y, margin, pageW, pageH, sectionCounter);
-        }
-
-        // Footers (número de página)
-        addFooters(doc, pageW, pageH);
-
-        const safeTitle = title.replace(/[^a-zA-Z0-9_\-]/g, '_').substring(0, 40);
-        doc.save(`syllabus_${safeTitle}.pdf`);
+            const safeTitle = title.replace(/[^a-zA-Z0-9_\-]/g, '_').substring(0, 40);
+            doc.save(`syllabus_${safeTitle}.pdf`);
+        });
     }
 
     // ─── BUILDER WORD (.doc editable) ────────────────────────────────────────
     function _toDoc(title, info, schedule, competences, modules, evaluation, weeks) {
         const esc = s => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
-        // Calcular horas si no vienen en info
         const computedHours = info.totalHours || info.hours || calcHours(schedule, weeks) || null;
 
-        let body = `<h1 style="color:#FF4700;font-family:Arial;margin-bottom:4px">${esc(title)}</h1>`;
-        body += `<hr style="border:2px solid #FF4700;margin-bottom:16px"/>`;
+        let body = `<h1 style="color:#000;font-family:Arial;margin-bottom:4px">${esc(title)}</h1>`;
+        body += `<hr style="border:1px solid #ccc;margin-bottom:16px"/>`;
 
-        // 1. Info general — sin fechas de inicio/fin
-        body += `<h2 style="color:#FF4700;font-family:Arial">1. Información General</h2>`;
-        body += `<table border="1" cellpadding="6" style="border-collapse:collapse;width:100%;font-family:Arial;font-size:10pt">`;
-        body += `<tr style="background:#FF4700"><th style="color:#fff">Campo</th><th style="color:#fff">Valor</th></tr>`;
+        // 1. Info general — plain key-value lines
+        body += `<h2 style="color:#000;font-family:Arial">1. Información General</h2>`;
         [
-            ['Nombre',      info.name],
-            ['Tipo',        info.type],
-            ['Modalidad',   info.modality],
-            ['Horas totales', computedHours ? `${computedHours} h` : ''],
-            ['Semanas',     info.weeks ? `${info.weeks} semanas` : ''],
-            ['Idioma',      info.language],
-            ['Descripción', info.description],
-        ].filter(r => r[1]).forEach((r, i) => {
-            body += `<tr style="background:${i % 2 === 0 ? '#f9f9f9' : '#fff'}">
-                       <td><b>${esc(r[0])}</b></td><td>${esc(r[1])}</td>
-                     </tr>`;
+            ['Nombre',        info.name],
+            ['Tipo',          info.type],
+            ['Modalidad',     info.modality],
+            ['Horas totales', computedHours ? `${computedHours} h` : null],
+            ['Duración',      info.weeks    ? `${info.weeks} semanas` : null],
+            ['Idioma',        info.language],
+            ['Descripción',   info.description],
+        ].filter(r => r[1]).forEach(r => {
+            body += `<p style="font-family:Arial;font-size:10pt;margin:3px 0"><b>${esc(r[0])}:</b> ${esc(r[1])}</p>`;
         });
-        body += `</table>`;
 
         // 2. Horario
         if (schedule && (schedule.online?.start || schedule.presential?.start)) {
             const modes = [];
             if (schedule.online?.start)     modes.push({ label: 'Online / Teletrabajo', d: schedule.online });
             if (schedule.presential?.start) modes.push({ label: 'Presencial',           d: schedule.presential });
-            body += `<h2 style="color:#FF4700;font-family:Arial">2. Horario de la Formación</h2>`;
-            body += `<table border="1" cellpadding="6" style="border-collapse:collapse;width:100%;font-family:Arial;font-size:10pt">`;
-            body += `<tr style="background:#FF4700"><th style="color:#fff">Campo</th>${modes.map(m => `<th style="color:#fff">${esc(m.label)}</th>`).join('')}</tr>`;
-            [['entry','Entrada'],['start','Inicio'],['break','Descanso'],['lunch','Comida'],['finish','Fin']].forEach(([k, lbl], i) => {
-                body += `<tr style="background:${i % 2 === 0 ? '#f9f9f9' : '#fff'}">
-                           <td><b>${lbl}</b></td>${modes.map(m => `<td>${esc(m.d[k] || '—')}</td>`).join('')}
-                         </tr>`;
+            body += `<h2 style="color:#000;font-family:Arial">2. Horario de la Formación</h2>`;
+            modes.forEach(m => {
+                body += `<p style="font-family:Arial;font-weight:bold;margin:6px 0 2px">${esc(m.label)}</p>`;
+                [['entry','Entrada'],['start','Inicio'],['break','Descanso'],['lunch','Comida'],['finish','Fin']].forEach(([k, lbl]) => {
+                    if (!m.d[k]) return;
+                    body += `<p style="font-family:Arial;font-size:10pt;margin:2px 0 2px 12px"><b>${lbl}:</b> ${esc(m.d[k])}</p>`;
+                });
             });
-            body += `</table>`;
+            if (schedule.notes) body += `<p style="font-family:Arial;font-size:9pt;color:#666;font-style:italic;margin-top:4px">${esc(schedule.notes)}</p>`;
         }
 
         // 3. Competencias
         let sN = 3;
         if (competences && competences.length) {
-            body += `<h2 style="color:#FF4700;font-family:Arial">${sN}. Competencias</h2>`;
-            competences.forEach((comp, i) => {
+            body += `<h2 style="color:#000;font-family:Arial">${sN}. Competencias</h2>`;
+            competences.forEach(comp => {
                 const tools = (comp.selectedTools || comp.allTools || [])
                     .map(t => typeof t === 'string' ? t : (t.name || t)).filter(Boolean);
-                body += `<div style="font-family:Arial;background:${i % 2 === 0 ? '#f9f9f9' : '#fff'};padding:8px;border-left:4px solid #FF4700;margin:6px 0">`;
-                body += `<b style="color:#FF4700">${esc(comp.name)}</b>`;
-                if (comp.description) body += `<p style="margin:4px 0">${esc(comp.description)}</p>`;
-                if (tools.length) body += `<p style="margin:2px 0"><b>Herramientas:</b> ${esc(tools.join(' · '))}</p>`;
-                body += `</div>`;
+                body += `<p style="font-family:Arial;font-size:10pt;font-weight:bold;margin:8px 0 2px">${esc(comp.name)}</p>`;
+                if (comp.description) body += `<p style="font-family:Arial;font-size:10pt;margin:2px 0 2px 12px">${esc(comp.description)}</p>`;
+                if (tools.length) body += `<p style="font-family:Arial;font-size:9pt;color:#555;margin:2px 0 2px 12px"><b>Herramientas:</b> ${esc(tools.join(' · '))}</p>`;
+                body += `<hr style="border:0;border-top:1px solid #ddd;margin:6px 0"/>`;
             });
             sN++;
         }
 
-        // 4. Diagrama Gantt (tabla HTML)
-        if (modules && modules.length && weeks) {
-            body += `<h2 style="color:#FF4700;font-family:Arial">${sN}. Diagrama Gantt</h2>`;
-            // Cabecera: columna de módulo + una celda por semana
-            body += `<table border="1" cellpadding="3" cellspacing="0" style="border-collapse:collapse;width:100%;font-family:Arial;font-size:8pt;table-layout:fixed">`;
-            body += `<colgroup><col style="width:22%">`;
-            for (let w = 0; w < weeks; w++) body += `<col style="width:${78 / weeks}%">`;
-            body += `</colgroup>`;
-            // Fila de cabecera semanas
-            body += `<tr style="background:#1e1e1e">`;
-            body += `<td style="color:#fff;font-weight:bold;padding:4px 6px">Módulo / Sem.</td>`;
-            for (let w = 0; w < weeks; w++) {
-                const isMes = w % 4 === 0;
-                body += `<td style="color:#fff;text-align:center;font-size:7pt;background:${isMes ? '#FF4700' : '#1e1e1e'}">${w + 1}</td>`;
-            }
-            body += `</tr>`;
-            // Filas de módulos
-            let cursor = 0;
-            modules.forEach((mod, i) => {
-                const dur = parseInt(mod.duration) || 0;
-                const start = cursor;
-                const end   = Math.min(start + dur, weeks);
-                const bg    = i % 2 === 0 ? '#f9f9f9' : '#fff';
-                body += `<tr style="background:${bg}">`;
-                body += `<td style="font-family:Arial;font-size:8pt;padding:3px 5px;font-weight:bold">M${i+1}: ${esc(mod.name)}</td>`;
-                for (let w = 0; w < weeks; w++) {
-                    const inBar = w >= start && w < end;
-                    body += `<td style="background:${inBar ? '#FFB47A' : bg};border:1px solid #ddd"></td>`;
-                }
-                body += `</tr>`;
-                cursor += dur;
-            });
-            body += `</table>`;
-            body += `<p style="font-family:Arial;font-size:8pt;color:#888;margin-top:4px">
-                       <span style="display:inline-block;width:14px;height:10px;background:#FFB47A;border:1px solid #ccc;vertical-align:middle"></span>
-                       = Duración del módulo
-                     </p>`;
-            sN++;
-        }
-
-        // 5. Módulos
+        // 4. Módulos (sin Gantt)
         if (modules && modules.length) {
-            body += `<h2 style="color:#FF4700;font-family:Arial">${sN}. Módulos y Contenido</h2>`;
+            body += `<h2 style="color:#000;font-family:Arial">${sN}. Módulos y Contenido</h2>`;
             modules.forEach((mod, i) => {
-                body += `<h3 style="font-family:Arial;background:#FFE0D0;padding:6px 10px;margin:10px 0 4px">
-                           Módulo ${i + 1}: ${esc(mod.name)}
-                           <span style="color:#888;font-weight:normal"> (${esc(mod.duration || '?')} semanas)</span>
-                         </h3>`;
+                const dur = mod.duration ? ` — ${mod.duration} semana${mod.duration == 1 ? '' : 's'}` : '';
+                body += `<h3 style="font-family:Arial;color:#000;margin:12px 0 4px">Módulo ${i + 1}: ${esc(mod.name)}<span style="font-weight:normal;color:#666">${esc(dur)}</span></h3>`;
                 if (mod.projects?.length) {
-                    body += `<p style="font-family:Arial;margin:4px 0"><b>Proyectos:</b></p><ul style="font-family:Arial;margin:2px 0">`;
+                    body += `<p style="font-family:Arial;font-size:10pt;margin:4px 0 2px"><b>Proyectos:</b></p><ul style="font-family:Arial;font-size:10pt;margin:2px 0">`;
                     mod.projects.forEach(p => {
                         const n = typeof p === 'string' ? p : (p.name || '');
+                        const w = typeof p === 'object' && p.weeks ? ` (${p.weeks} sem.)` : '';
                         const d = typeof p === 'object' && p.description ? ` — ${p.description}` : '';
-                        body += `<li>${esc(n + d)}</li>`;
+                        body += `<li>${esc(n + w + d)}</li>`;
                     });
                     body += `</ul>`;
                 }
                 if (mod.courses?.length) {
-                    body += `<p style="font-family:Arial;margin:4px 0"><b>Cursos:</b></p><ul style="font-family:Arial;margin:2px 0">`;
-                    mod.courses.forEach(c => { body += `<li>${esc(typeof c === 'string' ? c : (c.name || ''))}</li>`; });
+                    body += `<p style="font-family:Arial;font-size:10pt;margin:4px 0 2px"><b>Cursos:</b></p><ul style="font-family:Arial;font-size:10pt;margin:2px 0">`;
+                    mod.courses.forEach(c => {
+                        const n = typeof c === 'string' ? c : (c.name || '');
+                        const w = typeof c === 'object' && c.weeks ? ` (${c.weeks} sem.)` : '';
+                        body += `<li>${esc(n + w)}</li>`;
+                    });
                     body += `</ul>`;
                 }
             });
             sN++;
         }
 
-        // 6. Evaluación
+        // 5. Evaluación
         if (evaluation) {
-            body += `<h2 style="color:#FF4700;font-family:Arial">${sN}. Evaluación</h2>`;
-            // evaluation may be stored as rich HTML or plain text
+            body += `<h2 style="color:#000;font-family:Arial">${sN}. Evaluación</h2>`;
             const evalHasHtml = /<[a-z]/i.test(evaluation);
             if (evalHasHtml) {
                 body += `<div style="font-family:Arial;">${evaluation}</div>`;
@@ -796,11 +643,9 @@ xmlns="http://www.w3.org/TR/REC-html40">
 <head><meta charset="utf-8">
 <style>
   body  { font-family:Arial,sans-serif; font-size:11pt; margin:2cm; }
-  h1    { font-size:20pt; color:#FF4700; }
-  h2    { font-size:14pt; color:#FF4700; margin-top:18pt; }
+  h1    { font-size:20pt; color:#000; }
+  h2    { font-size:14pt; color:#000; margin-top:18pt; }
   h3    { font-size:12pt; }
-  table { width:100%; border-collapse:collapse; }
-  td,th { border:1px solid #ccc; padding:5px 8px; }
 </style>
 </head><body>${body}</body></html>`;
 

@@ -429,6 +429,8 @@
                                         </div>
                                     </div>
 
+                    
+
                                     <!-- Attendance Stats Row -->
                                     <div class="row mb-4 g-2" id="attendance-stats-container">
                                         <div class="col-auto d-flex">
@@ -487,6 +489,30 @@
                                         </div>
                                     </div>
 
+                                    <div class="ins-attendance">
+                                            <div class="d-flex flex-wrap gap-4 small"
+                                                style="color: var(--principal-2);">
+                                                <div class="d-flex align-items-center"><span class="attendance-dot me-2"
+                                                        style="background-color: var(--green-f5);"></span> Presente
+                                                </div>
+                                                <div class="d-flex align-items-center"><span class="attendance-dot me-2"
+                                                        style="background-color: var(--principal-1);"></span> Ausente
+                                                </div>
+                                                <div class="d-flex align-items-center"><span class="attendance-dot me-2"
+                                                        style="background-color: var(--complementario-2);"></span> Con
+                                                    retraso</div>
+                                                <div class="d-flex align-items-center"><span class="attendance-dot me-2"
+                                                        style="background-color: var(--blue-light-f5);"></span>
+                                                    Justificado</div>
+                                                <div class="d-flex align-items-center"><span class="attendance-dot me-2"
+                                                        style="background-color: #e9d8fd;"></span> Sale antes</div>
+                                                <div class="ms-auto"><i class="bi bi-info-circle me-1"></i>
+                                                    <strong>Click</strong> para marcar | <strong>Clic derecho</strong>
+                                                    para comentario
+                                                </div>
+                                            </div>
+                                    </div>
+
                                     <div class="card mb-4">
                                         <div class="card-body p-0">
                                             <div class="table-responsive attendance-table-wrapper">
@@ -508,30 +534,6 @@
                                                         <!-- Attendance data will be loaded here -->
                                                     </tbody>
                                                 </table>
-                                            </div>
-                                        </div>
-                                        <div class="card-footer"
-                                            style="background-color: var(--complementario-1-extra-light);">
-                                            <div class="d-flex flex-wrap gap-4 small"
-                                                style="color: var(--principal-2);">
-                                                <div class="d-flex align-items-center"><span class="attendance-dot me-2"
-                                                        style="background-color: var(--green-f5);"></span> Presente
-                                                </div>
-                                                <div class="d-flex align-items-center"><span class="attendance-dot me-2"
-                                                        style="background-color: var(--principal-1);"></span> Ausente
-                                                </div>
-                                                <div class="d-flex align-items-center"><span class="attendance-dot me-2"
-                                                        style="background-color: var(--complementario-2);"></span> Con
-                                                    retraso</div>
-                                                <div class="d-flex align-items-center"><span class="attendance-dot me-2"
-                                                        style="background-color: var(--blue-light-f5);"></span>
-                                                    Justificado</div>
-                                                <div class="d-flex align-items-center"><span class="attendance-dot me-2"
-                                                        style="background-color: #e9d8fd;"></span> Sale antes</div>
-                                                <div class="ms-auto"><i class="bi bi-info-circle me-1"></i>
-                                                    <strong>Click</strong> para marcar | <strong>Clic derecho</strong>
-                                                    para comentario
-                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -3001,6 +3003,9 @@ ISECR2 Finalizar cada programa con un máximo de bajas de 10%.</textarea>
             </div>
         </div>
     </div>
+
+    <!-- Attendance Dropdown Container (dynamic) -->
+    <div id="attendance-dropdown-container"></div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
