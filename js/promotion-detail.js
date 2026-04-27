@@ -12218,6 +12218,81 @@ function _closeStudentEvalPanel() {
     }
 }
 
+/**
+ * Saves the current individual evaluation and then sends the project report PDF by email to the student.
+ */
+async function sendEvaluationByEmail() {
+    const splitView = document.getElementById('eval-project-view');
+    const legacyPanel = document.getElementById('student-eval-panel');
+    const inSplitView = splitView && !splitView.classList.contains('hidden');
+
+    const studentId = inSplitView
+        ? (splitView.dataset.targetStudentId || null)
+        : (legacyPanel ? legacyPanel.dataset.targetStudentId : null);
+
+    if (!studentId) { showToast('Selecciona un estudiante primero', 'danger'); return; }
+
+    // Set spinner on send button
+    const sendBtn = document.getElementById(inSplitView ? 'send-eval-splitview-btn' : 'send-eval-panel-btn');
+    const originalHtml = sendBtn ? sendBtn.innerHTML : '';
+    if (sendBtn) {
+        sendBtn.disabled = true;
+        sendBtn.innerHTML = `<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>Enviando...`;
+    }
+
+    try {
+        // 1. Save evaluation first
+        await saveIndividualStudentEval();
+
+        // 2. Find student email
+        const students = window._evalState?.allStudents || window._evalState?.students || [];
+        const student = students.find(s => String(s.id || s._id) === String(studentId));
+        const studentEmail = student?.email || '';
+
+        if (!studentEmail) {
+            showToast('El estudiante no tiene email registrado', 'danger');
+            if (sendBtn) { sendBtn.disabled = false; sendBtn.innerHTML = originalHtml; }
+            return;
+        }
+
+        // 3. Find the team index in the student's technicalTracking.teams matching current project
+        const saved = window._evalCurrentSaved;
+        const mIdx = window._evalState?.currentModuleIdx;
+        const pIdx = window._evalState?.currentProjectIdx;
+        const modules = window._evalState?.modules || [];
+        const mod = modules[mIdx];
+        const proj = mod?.projects[pIdx];
+
+        // Resolve student tracking data to get team index
+        const token = localStorage.getItem('token');
+        const stuRes = await fetch(`${API_URL}/api/promotions/${promotionId}/students/${studentId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!stuRes.ok) throw new Error('No se pudo cargar el estudiante');
+        const stuData = await stuRes.json();
+        const teams = stuData.technicalTracking?.teams || [];
+
+        // Find team index matching current project name
+        let teamIndex = teams.findIndex(t => t.teamName === (proj?.name || saved?.projectName));
+        if (teamIndex < 0) teamIndex = 0; // fallback
+
+        // 4. Send report by email
+        if (!window.Reports?.sendProjectReportByEmail) {
+            showToast('La librería de informes no está disponible', 'danger');
+            if (sendBtn) { sendBtn.disabled = false; sendBtn.innerHTML = originalHtml; }
+            return;
+        }
+
+        await window.Reports.sendProjectReportByEmail(teamIndex, studentId, promotionId, studentEmail);
+        showToast('Informe de evaluación enviado correctamente', 'success');
+    } catch (err) {
+        console.error('[sendEvaluationByEmail]', err);
+        showToast('Error al enviar el informe: ' + err.message, 'danger');
+    } finally {
+        if (sendBtn) { sendBtn.disabled = false; sendBtn.innerHTML = originalHtml; }
+    }
+}
+
 /** Called by the "Cancelar" / "Volver" buttons in the inline eval panel or split view. */
 window.cancelStudentEvalPanel = function () {
     const splitView = document.getElementById('eval-project-view');

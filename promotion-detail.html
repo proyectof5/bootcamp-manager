@@ -580,6 +580,9 @@
                                             <button type="button" class="btn btn-sm btn-primary"
                                                 onclick="saveIndividualStudentEval()"><i
                                                     class="bi bi-save me-1"></i>Guardar</button>
+                                            <button type="button" class="btn btn-sm btn-outline-success" id="send-eval-splitview-btn"
+                                                onclick="sendEvaluationByEmail()" title="Guardar y enviar informe PDF al correo del estudiante"><i
+                                                    class="bi bi-envelope-arrow-up me-1"></i>Enviar evaluación</button>
                                         </div>
                                         <div class="eval-split-layout">
                                             <aside class="eval-targets-sidebar">
@@ -605,6 +608,16 @@
                                             <h4 class="mb-0 fw-bold">Evaluación Individual</h4>
                                         </div>
                                         <div id="student-eval-panel-body"></div>
+                                        <div class="d-flex gap-2 mt-4 mb-4">
+                                            <button type="button" class="btn btn-primary" id="save-eval-panel-btn"
+                                                onclick="saveIndividualStudentEval()">
+                                                <i class="bi bi-save me-1"></i>Guardar evaluación
+                                            </button>
+                                            <button type="button" class="btn btn-outline-success" id="send-eval-panel-btn"
+                                                onclick="sendEvaluationByEmail()" title="Guardar y enviar informe PDF al correo del estudiante">
+                                                <i class="bi bi-envelope-arrow-up me-1"></i>Enviar evaluación
+                                            </button>
+                                        </div>
                                     </div>
                                 </div>
                             </div>

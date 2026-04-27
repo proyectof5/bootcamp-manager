@@ -1390,15 +1390,145 @@ async function printActaInicio(promotionId) {
             html += `<p class="empty-note">No se registraron competencias para este proyecto.</p>`;
         }
 
-        // ── Firmas ──
-        html += `<div style="margin-top:28pt; max-width:260pt;">
-            <div style="font-size:9pt; font-weight:600; margin-bottom:4pt;">Firma del/la docente</div>
-            <div style="border-bottom:1.5px solid #999; height:36pt;"></div>
-            <div style="font-size:8pt; margin-top:4pt;">Docente responsable</div>
-        </div>`;
-
         const filename = `proyecto_${(t.teamName||'proyecto').replace(/\s+/g,'-')}_${(fullName).replace(/\s+/g,'-')}.pdf`;
         _previewWindow(html, filename);
+    }
+
+    /**
+     * Generates the project evaluation PDF and sends it by email to the student.
+     * @param {number} teamIndex - Index in student's technicalTracking.teams
+     * @param {string} studentId - Student ID
+     * @param {string} promotionId - Promotion ID
+     * @param {string} overrideEmail - (optional) email to send to; defaults to student.email
+     * @returns {Promise<void>}
+     */
+    async function sendProjectReportByEmail(teamIndex, studentId, promotionId, overrideEmail) {
+        const token = localStorage.getItem('token');
+        const st = window.StudentTracking;
+        let t  = st?._getTeam(teamIndex);
+        let s  = st?._getCurrentStudent();
+        let promoName = window.currentPromotion?.name || '';
+
+        if (!t || !s) {
+            try {
+                const [stuRes, promoRes] = await Promise.all([
+                    fetch(`${API_URL}/api/promotions/${promotionId}/students/${studentId}`, { headers: { 'Authorization': `Bearer ${token}` } }),
+                    fetch(`${API_URL}/api/promotions/${promotionId}`,                       { headers: { 'Authorization': `Bearer ${token}` } })
+                ]);
+                if (!stuRes.ok) throw new Error('No se pudo cargar el estudiante');
+                s = await stuRes.json();
+                const promo = promoRes.ok ? await promoRes.json() : {};
+                promoName = promo.name || '';
+                t = (s.technicalTracking?.teams || [])[teamIndex];
+            } catch (e) {
+                alert('Error cargando datos: ' + e.message);
+                return;
+            }
+        }
+
+        if (!t) { alert('Proyecto no encontrado.'); return; }
+
+        const toEmail = overrideEmail || s.email;
+        if (!toEmail) { alert('El estudiante no tiene email registrado.'); return; }
+
+        const fullName = `${s.name || ''} ${s.lastname || ''}`.trim();
+        const PROJ_LEVEL_COLORS = { 0: 'grey', 1: 'red', 2: 'yellow', 3: 'green' };
+        const PROJ_LEVEL_LABELS = { 0: 'Sin nivel', 1: 'Básico', 2: 'Medio', 3: 'Avanzado' };
+
+        let html = _header(t.teamName || 'Proyecto', fullName, promoName, _today());
+
+        const typeLabel = t.projectType === 'individual' ? 'Individual' : 'Grupal';
+        html += `<div class="kv"><strong>Proyecto:</strong> ${_esc(t.teamName || '—')}</div>
+            <div class="kv"><strong>Tipo:</strong> ${typeLabel}</div>
+            <div class="kv"><strong>Módulo:</strong> ${_esc(t.moduleName || '—')}</div>
+            <div class="kv"><strong>Coder:</strong> ${_esc(fullName)}</div>
+            <div class="kv"><strong>Email:</strong> ${_esc(s.email || '—')}</div>
+        ${(t.members && t.members.length && t.projectType === 'grupal')
+            ? `<div style="margin-top:6pt;"><strong>Integrantes del equipo:</strong>
+                <ul style="margin:2pt 0 0 14pt;">
+                    ${t.members.map(m => `<li>${_esc(m.name)}</li>`).join('')}
+                </ul>
+            </div>`
+            : ''
+        }`;
+
+        if (t.teacherNote) {
+            html += `<h3>Nota del Profesor</h3>
+            <p style="font-style:italic; white-space:pre-wrap;">${_esc(t.teacherNote)}</p>`;
+        }
+
+        html += `<h3>Competencias Trabajadas</h3>`;
+        const comps = t.competences || [];
+        if (comps.length) {
+            html += `<table>
+                <thead><tr><th>Competencia</th><th>Nivel alcanzado</th><th>Herramientas</th></tr></thead>
+                <tbody>`;
+            comps.forEach(c => {
+                const tools = (c.toolsUsed || [])
+                    .map(tl => `<span class="badge badge-light">${_esc(tl)}</span>`)
+                    .join(' ');
+                html += `<tr>
+                    <td><strong>${_esc(c.competenceName || '—')}</strong></td>
+                    <td>${_levelBadge(c.level)}</td>
+                    <td>${tools || '<span style="color:#aaa;">—</span>'}</td>
+                </tr>`;
+            });
+            html += `</tbody></table>`;
+
+            html += `<div style="margin-top:10pt;">`;
+            comps.forEach(c => {
+                const pct = Math.round((c.level / 3) * 100);
+                const barColor = c.level === 3 ? '#198754' : c.level === 2 ? '#ffc107' : c.level === 1 ? '#dc3545' : '#aaa';
+                const tools = (c.toolsUsed || [])
+                    .map(tl => `<span class="badge badge-light">${_esc(tl)}</span>`)
+                    .join(' ');
+                html += `<div class="section-box no-break" style="margin-bottom:7pt;">
+                    <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:4pt;">
+                        <strong>${_esc(c.competenceName)}</strong>
+                        <span style="font-size:9pt; color:#888;">${PROJ_LEVEL_LABELS[c.level] ?? ''}</span>
+                    </div>
+                    <div style="background:#eee; border-radius:4pt; height:8pt; overflow:hidden; margin-bottom:5pt;">
+                        <div style="width:${pct}%; height:100%; background:${barColor}; border-radius:4pt;"></div>
+                    </div>
+                    ${tools ? `<div class="pill-row">${tools}</div>` : ''}
+                </div>`;
+            });
+            html += `</div>`;
+        } else {
+            html += `<p class="empty-note">No se registraron competencias para este proyecto.</p>`;
+        }
+
+        const filename = `evaluacion_${(t.teamName||'proyecto').replace(/\s+/g,'-')}_${fullName.replace(/\s+/g,'-')}.pdf`;
+
+        _showSaving('Generando y enviando informe de evaluación...');
+        try {
+            const pdf = await _renderToPdf(html, filename);
+            const base64Data = pdf.output('datauristring');
+            const emailRes = await fetch(`${API_URL}/api/reports/send-email`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    to: toEmail,
+                    subject: `Informe de evaluación: ${t.teamName || 'Proyecto'} — ${fullName}`,
+                    body: `Hola ${s.name || ''},<br><br>Te enviamos el informe de evaluación del proyecto <strong>${t.teamName || 'Proyecto'}</strong>.<br><br>En el PDF adjunto encontrarás el detalle de las competencias trabajadas y el nivel alcanzado durante el desarrollo del proyecto.<br><br>¡Mucho ánimo y sigue aprendiendo!<br><br>Un saludo,<br>Equipo formador Factoria F5`,
+                    filename: filename,
+                    base64Data: base64Data
+                })
+            });
+            _hideSaving();
+            if (emailRes.ok) {
+                alert(`¡Informe enviado correctamente a ${toEmail}!`);
+            } else {
+                const error = await emailRes.json();
+                throw new Error(error.error || 'Error al enviar el email');
+            }
+        } catch (e) {
+            _hideSaving();
+            alert('Error al enviar el informe: ' + e.message);
+        }
     }
 
     // ════════════════════════════════════════════════════════════════════════
@@ -1738,11 +1868,6 @@ async function printActaInicio(promotionId) {
                         sHtml += `</tbody></table>`;
                     } else { sHtml += `<p class="empty-note">Sin competencias evaluadas.</p>`; }
                 });
-                sHtml += `<div style="margin-top:28pt; max-width:260pt;">
-                    <div style="font-size:9pt; font-weight:600; margin-bottom:4pt;">Firma del/la docente</div>
-                    <div style="border-bottom:1.5px solid #999; height:36pt;"></div>
-                    <div style="font-size:8pt; margin-top:4pt;">Docente responsable</div>
-                </div>`;
                 return sHtml;
             };
 
@@ -2291,6 +2416,7 @@ async function printActaInicio(promotionId) {
         printActaBaja,
         printDescripcionTecnica,
         printProjectReport,
+        sendProjectReportByEmail,
         printBulkTechnical,
         printBulkTransversal,
         printBulkByProject,
