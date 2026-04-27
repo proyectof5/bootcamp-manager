@@ -573,8 +573,7 @@ body {
 .attendance-camera-off {
     position: relative;
 }
-.attendance-camera-off::before {
-    content: '📷';
+.attendance-camera-off .camera-off-icon {
     position: absolute;
     top: 1px;
     left: 2px;

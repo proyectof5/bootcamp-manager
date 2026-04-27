@@ -7575,6 +7575,12 @@ function renderAttendanceTable() {
             else if (statusBase === 'Sale antes') td.innerHTML = '<i class="bi bi-box-arrow-left"></i>';
             else td.innerHTML = '';
 
+            if (statusCameraOff) {
+                const camIcon = document.createElement('i');
+                camIcon.className = 'bi bi-camera-video-off camera-off-icon';
+                td.appendChild(camIcon);
+            }
+
             // ── New UX: Click opens dropdown, Shift+Click cycles, Right-Click opens modal
             td.onclick = (e) => {
                 if (e.shiftKey) {
@@ -7772,6 +7778,11 @@ function _applyAttendanceCellStyle(cell, status, hasNote) {
         cell.innerHTML = '<i class="bi bi-box-arrow-left"></i>';
     } else {
         cell.innerHTML = '';
+    }
+    if (cameraOff) {
+        const camIcon = document.createElement('i');
+        camIcon.className = 'bi bi-camera-video-off camera-off-icon';
+        cell.appendChild(camIcon);
     }
 }
 
