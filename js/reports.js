@@ -1518,10 +1518,10 @@ async function printActaInicio(promotionId) {
         // Compute both groups from live ExtendedInfo data
         const _pilPresentadas = [];
         const _pilPendientes  = [];
-        modulesPildorasExtended.forEach(mp => {
+        modulesPildoras.forEach(mp => {
             (mp.pildoras || []).forEach(p => {
                 const studentIds = (p.students || []).map(s2 => String(s2.id));
-                if (!studentIds.includes(String(studentId))) return;
+                if (!studentIds.includes(String(s.id))) return;
                 const entry = {
                     pildoraTitle: p.title || '—',
                     moduleName:   mp.moduleName || '—',

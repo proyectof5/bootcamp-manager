@@ -7120,9 +7120,6 @@ function updateSelectionState() {
                 <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); if(window._bulkReportTechnical) { window._bulkReportTechnical() } else { console.error('_bulkReportTechnical not found') }">
                     <i class="bi bi-file-earmark-person me-2"></i>Seguimiento Técnico
                 </a></li>
-                <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); if(window._bulkReportTransversal) { window._bulkReportTransversal() } else { console.error('_bulkReportTransversal not found') }">
-                    <i class="bi bi-file-earmark-check me-2"></i>Evaluación Transversal
-                </a></li>
                 <li><hr class="dropdown-divider"></li>
                 <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); if(window._bulkReportByProject) { window._bulkReportByProject() } else { console.error('_bulkReportByProject not found') }">
                     <i class="bi bi-folder me-2"></i>Informes por Proyecto
