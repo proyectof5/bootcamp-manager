@@ -480,6 +480,15 @@
                                         </div>
                                         <div class="col-auto d-flex">
                                             <div class="card"
+                                                style="background-color: #e2e8f0; color: #475569; border: none;">
+                                                <div class="card-body text-center py-2">
+                                                    <h6 class="mb-0"><i class="bi bi-camera-video-off me-1"></i>Cámara apagada</h6>
+                                                    <h3 class="mb-0" id="stat-camera-off-total">0</h3>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-auto d-flex">
+                                            <div class="card"
                                                 style="background-color: var(--complementario-1-extra-light); color: var(--principal-2); border: 1px solid var(--grey-light-f5);">
                                                 <div class="card-body text-center py-2">
                                                     <h6 class="mb-0">Media Asistencia</h6>
@@ -506,6 +515,7 @@
                                                     Justificado</div>
                                                 <div class="d-flex align-items-center"><span class="attendance-dot me-2"
                                                         style="background-color: #e9d8fd;"></span> Sale antes</div>
+                                                <div class="d-flex align-items-center"><i class="bi bi-camera-video-off me-2 text-secondary"></i> Cámara apagada</div>
                                                 <div class="ms-auto"><i class="bi bi-info-circle me-1"></i>
                                                     <strong>Click</strong> para marcar | <strong>Clic derecho</strong>
                                                     para comentario
@@ -2503,6 +2513,16 @@
                             <option value="Justificado">Justificado</option>
                             <option value="Sale antes">Sale antes</option>
                         </select>
+                    </div>
+                    <div class="mb-3" id="attendance-camera-off-wrapper">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="attendance-modal-camera-off">
+                            <label class="form-check-label" for="attendance-modal-camera-off">
+                                <i class="bi bi-camera-video-off me-1 text-secondary"></i>
+                                <strong>Cámara apagada</strong>
+                                <span class="text-muted small ms-1">(solo si está presente)</span>
+                            </label>
+                        </div>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Nota / Comentario</label>

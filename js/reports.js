@@ -2215,6 +2215,13 @@ async function printActaInicio(promotionId) {
 
             const stMap = { 'Presente': 'P', 'Ausente': 'A', 'Con retraso': 'T', 'Justificado': 'J', 'Sale antes': 'S' };
 
+            // Helper: parse composite status "Base|cámara apagada"
+            function _parseStatus(s) {
+                if (!s) return { base: '', cameraOff: false };
+                const parts = s.split('|');
+                return { base: parts[0].trim(), cameraOff: parts.length > 1 };
+            }
+
             let html = _header('Informe de Asistencia Semanal', `Semana ${selectedWeek.wIdx + 1}`, promo.name, _today(), promo);
 
             const workDays = selectedWeek.dates.slice(0, 5);
@@ -2256,7 +2263,9 @@ async function printActaInicio(promotionId) {
                         let mark = '-';
                         let col = '#000';
                         if (rec) {
-                            mark = stMap[rec.status] || rec.status.charAt(0);
+                            const { base: recBase, cameraOff: recCam } = _parseStatus(rec.status);
+                            mark = stMap[recBase] || (recBase ? recBase.charAt(0) : '-');
+                            const camSuffix = recCam ? '📷' : '';
                             if (mark === 'P') { col = '#198754'; p++; }
                             else if (mark === 'A') { col = '#dc3545'; a++; }
                             else if (mark === 'T') { col = '#fd7e14'; r++; }
@@ -2264,8 +2273,11 @@ async function printActaInicio(promotionId) {
                             else if (mark === 'S') { col = '#fd7e14'; }
                             
                             if (rec.note) comments.push(`<strong>${dateNum}:</strong> ${_esc(rec.note)}`);
+                            if (recCam) comments.push(`<strong>${dateNum}:</strong> 📷 cámara apagada`);
+                            marksHtml += `<td style="text-align:center;font-weight:600;color:${col}" title="${recBase}${recCam ? ' (cámara apagada)' : ''}">${mark}${camSuffix}</td>`;
+                        } else {
+                            marksHtml += `<td style="text-align:center;font-weight:600;color:${col}">-</td>`;
                         }
-                        marksHtml += `<td style="text-align:center;font-weight:600;color:${col}">${mark}</td>`;
                     }
                 });
 
@@ -2332,12 +2344,14 @@ async function printActaInicio(promotionId) {
                         } else {
                             const rec = stAtt[localDateStr];
                             if (rec) {
-                                const mark = stMapFull[rec.status] || rec.status.charAt(0);
-                                row.push(mark);
+                                const { base: recBase, cameraOff: recCam } = _parseStatus(rec.status);
+                                const mark = stMapFull[recBase] || (recBase ? recBase.charAt(0) : '-');
+                                row.push(mark + (recCam ? '📷' : ''));
                                 if (mark === 'P') p++;
                                 else if (mark === 'A') a++;
                                 else if (mark === 'T') r++;
                                 if (rec.note) comments.push(`${wd.getDate()}: ${rec.note}`);
+                                if (recCam) comments.push(`${wd.getDate()}: cámara apagada`);
                             } else {
                                 row.push('-');
                             }
