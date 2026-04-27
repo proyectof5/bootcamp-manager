@@ -611,11 +611,22 @@
               <select id="${id}-dest-select" class="form-select form-select-sm mb-2" style="font-size:.8rem;">
                 ${collHtml}
               </select>
-              <input type="email" id="${id}-manual-email" class="form-control form-control-sm" placeholder="ejemplo@email.com" style="display:none;font-size:.8rem;">
+              <input type="email" id="${id}-manual-email" class="form-control form-control-sm mb-2" placeholder="ejemplo@email.com" style="display:none;font-size:.8rem;">
+              <label class="form-label small text-muted mb-1">Formato a enviar:</label>
+              <div class="d-flex gap-3">
+                <div class="form-check">
+                  <input class="form-check-input" type="radio" name="${id}-format" id="${id}-format-pdf" value="pdf" checked>
+                  <label class="form-check-label small" for="${id}-format-pdf"><i class="bi bi-file-earmark-pdf me-1 text-danger"></i>PDF</label>
+                </div>
+                <div class="form-check">
+                  <input class="form-check-input" type="radio" name="${id}-format" id="${id}-format-excel" value="excel">
+                  <label class="form-check-label small" for="${id}-format-excel"><i class="bi bi-file-earmark-spreadsheet me-1 text-success"></i>Excel</label>
+                </div>
+              </div>
             </div>
         </div>
         
-        <div class="form-text mt-1 text-muted small">Al elegir "Enviar", el sistema generará el PDF y lo hará llegar por email al destino seleccionado.</div>
+        <div class="form-text mt-1 text-muted small">Al elegir "Enviar", el sistema generará el informe y lo hará llegar por email al destino seleccionado.</div>
       </div>
       <div class="modal-footer pt-1">
         <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">
@@ -698,11 +709,14 @@
                }
                resolved = true;
                const val = parseInt(document.getElementById(`${id}-select`).value, 10);
+               const formatRadio = document.querySelector(`input[name="${id}-format"]:checked`);
+               const sendFormat = formatRadio ? formatRadio.value : 'pdf';
                modal.hide();
                resolve({
                  weekIdx: isNaN(val) ? 0 : val,
                  action: 'send',
-                 email: email
+                 email: email,
+                 sendFormat: sendFormat
                });
             });
 
@@ -2384,8 +2398,73 @@ async function printActaInicio(promotionId) {
 
             } else if (selection.action === 'send') {
                 _showSaving('Generando y enviando...');
-                const pdf = await _renderToPdf(html, filename + '.pdf');
-                const base64Data = pdf.output('datauristring');
+
+                let base64Data, attachFilename, mimeType;
+
+                if (selection.sendFormat === 'excel') {
+                    // Build Excel and convert to base64
+                    const XLSX = window.XLSX;
+                    if (!XLSX) throw new Error('Librería XLSX no disponible. Recarga la página.');
+
+                    const wb = XLSX.utils.book_new();
+                    const dayLabels = ['Lu', 'Ma', 'Mi', 'Ju', 'Vi'];
+                    const headerRow = ['Estudiante'];
+                    workDays.forEach((wd, i) => {
+                        const dd = String(wd.getDate()).padStart(2, '0');
+                        const mm = String(wd.getMonth() + 1).padStart(2, '0');
+                        headerRow.push(`${dayLabels[i]} ${dd}/${mm}`);
+                    });
+                    headerRow.push('Presentes', 'Ausentes', 'Retrasos', 'Comentarios');
+                    const wsData = [headerRow];
+
+                    const stMapFull = { 'Presente': 'P', 'Ausente': 'A', 'Con retraso': 'T', 'Justificado': 'J', 'Sale antes': 'S' };
+                    students.forEach(st => {
+                        const stuId = String(st.id || st._id);
+                        const stAtt = attMap[stuId] || {};
+                        let p = 0, a = 0, r = 0;
+                        const row = [`${st.name || ''} ${st.lastname || ''}`.trim()];
+                        const comments = [];
+                        workDays.forEach(wd => {
+                            const localDateStr = formatLocal(wd);
+                            if (holidays.has(localDateStr)) {
+                                row.push('F');
+                            } else {
+                                const rec = stAtt[localDateStr];
+                                if (rec) {
+                                    const { base: recBase, cameraOff: recCam } = _parseStatus(rec.status);
+                                    const mark = stMapFull[recBase] || (recBase ? recBase.charAt(0) : '-');
+                                    row.push(mark + (recCam ? '📷' : ''));
+                                    if (mark === 'P') p++;
+                                    else if (mark === 'A') a++;
+                                    else if (mark === 'T') r++;
+                                    if (rec.note) comments.push(`${wd.getDate()}: ${rec.note}`);
+                                    if (recCam) comments.push(`${wd.getDate()}: cámara apagada`);
+                                } else {
+                                    row.push('-');
+                                }
+                            }
+                        });
+                        row.push(p, a, r, comments.join(' | '));
+                        wsData.push(row);
+                    });
+                    wsData.push([]);
+                    wsData.push(['Leyenda: P=Presente  A=Ausente  T=Con retraso  J=Justificado  S=Sale antes  F=Festivo']);
+
+                    const ws = XLSX.utils.aoa_to_sheet(wsData);
+                    ws['!cols'] = [{ wch: 28 }, ...workDays.map(() => ({ wch: 10 })), { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 45 }];
+                    XLSX.utils.book_append_sheet(wb, ws, `Semana ${selectedWeek.wIdx + 1}`);
+
+                    const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
+                    base64Data = 'data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,' + wbout;
+                    attachFilename = filename + '.xlsx';
+                    mimeType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+                } else {
+                    const pdf = await _renderToPdf(html, filename + '.pdf');
+                    base64Data = pdf.output('datauristring');
+                    attachFilename = filename + '.pdf';
+                    mimeType = 'application/pdf';
+                }
+
                 const emailRes = await fetch(`${API_URL}/api/reports/send-email`, {
                     method: 'POST',
                     headers: {
@@ -2396,7 +2475,7 @@ async function printActaInicio(promotionId) {
                         to: selection.email,
                         subject: `Informe de Asistencia Semanal: ${promo.name} - Semana ${selectedWeek.wIdx + 1}`,
                         body: `Hola,<br><br>Se adjunta el informe de asistencia semanal correspondiente a la <strong>Semana ${selectedWeek.wIdx + 1}</strong> de la promoción <strong>${promo.name}</strong> (${_fmtDateEs(formatLocal(selectedWeek.dates[0]))} al ${_fmtDateEs(formatLocal(selectedWeek.dates[4]))}).<br><br>Un saludo,<br>Sistema de Gestión de Bootcamps`,
-                        filename: filename + '.pdf',
+                        filename: attachFilename,
                         base64Data: base64Data
                     })
                 });
