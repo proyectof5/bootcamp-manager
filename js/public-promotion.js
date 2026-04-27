@@ -288,8 +288,7 @@ function _renderNextPildoraNotice(info) {
     bodyEl.innerHTML = `
         <p class="mb-1"><strong>${escapeHtml(nextPildora.title || 'Píldora')}</strong></p>
         <p class="mb-1 small"><i class="bi bi-calendar2-event me-1"></i>${escapeHtml(nextPildora.date)}</p>
-        ${nextPildora.mode ? `<p class="mb-1 small"><i class="bi bi-broadcast me-1"></i>${escapeHtml(nextPildora.mode)}</p>` : ''}
-        <p class="mb-0 small"><i class="bi bi-person me-1"></i>${students}</p>
+        ${nextPildora.mode ? `<p class="mb-0 small"><i class="bi bi-broadcast me-1"></i>${escapeHtml(nextPildora.mode)}</p>` : ''}
     `;
 }
 
