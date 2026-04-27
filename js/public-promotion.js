@@ -1209,6 +1209,18 @@ async function loadVirtualClassroom() {
             prefixEl.textContent = base;
         }
 
+        // Show project name as title above briefing
+        const projectTitleEl = document.getElementById('aula-virtual-project-title');
+        if (projectTitleEl) {
+            const pName = data.project && data.project.projectName ? data.project.projectName : '';
+            if (pName) {
+                projectTitleEl.textContent = pName;
+                projectTitleEl.classList.remove('d-none');
+            } else {
+                projectTitleEl.classList.add('d-none');
+            }
+        }
+
         const briefingEl = document.getElementById('aula-virtual-briefing');
         if (briefingEl) {
             const url = data.briefingUrl;
