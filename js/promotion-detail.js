@@ -10449,10 +10449,22 @@ function _renderGroupsModalBody(saved, students, mod, proj) {
             });
 
             // Students available for this group = current members + unassigned
-            const availableStudents = students.filter(st => {
-                const stId = String(st.id || st._id);
-                return memberIds.includes(stId) || !assignedIds.has(stId);
-            });
+            // Assigned members first, then unassigned (alphabetically within each group)
+            const availableStudents = students
+                .filter(st => {
+                    const stId = String(st.id || st._id);
+                    return memberIds.includes(stId) || !assignedIds.has(stId);
+                })
+                .sort((a, b) => {
+                    const aId = String(a.id || a._id);
+                    const bId = String(b.id || b._id);
+                    const aChecked = memberIds.includes(aId);
+                    const bChecked = memberIds.includes(bId);
+                    if (aChecked !== bChecked) return aChecked ? -1 : 1;
+                    const aName = ((a.name || '') + ' ' + (a.lastname || '')).trim().toLowerCase();
+                    const bName = ((b.name || '') + ' ' + (b.lastname || '')).trim().toLowerCase();
+                    return aName.localeCompare(bName);
+                });
 
             const collapseId = `grp-collapse-${gIdx}`;
 
@@ -10573,12 +10585,17 @@ function _toggleGroupMemberInline(gIdx, studentId, checked) {
     }
 
     // Re-render so available-student lists and the unassigned counter update
-    // Preserve which accordion panel is open
+    // Preserve which accordion panel is open — set it instantly (no animation) to avoid the collapse/expand flash
     const openCollapseId = `grp-collapse-${gIdx}`;
     _renderGroupsModalBody(saved, window._evalState.students);
-    // Re-open the same accordion panel after re-render
+    // Restore open state without animation (add Bootstrap's 'show' class directly)
     const collapseEl = document.getElementById(openCollapseId);
-    if (collapseEl) new bootstrap.Collapse(collapseEl, { toggle: false }).show();
+    if (collapseEl) {
+        collapseEl.classList.add('show');
+        // Keep the accordion button in sync
+        const btn = collapseEl.closest('.accordion-item')?.querySelector('.accordion-button');
+        if (btn) btn.classList.remove('collapsed');
+    }
 }
 
 async function saveGroups() {
