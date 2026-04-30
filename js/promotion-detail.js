@@ -7884,14 +7884,16 @@ function showAttendanceDropdown(cell, studentId, date, student) {
     }
     dropdown.appendChild(cameraItem);
 
+    // ── Append hidden first to measure real height ──────────────────────────
+    dropdown.style.visibility = 'hidden';
     container.appendChild(dropdown);
 
     // ── Intelligent Positioning: Open down or up depending on available space
     const rect = cell.getBoundingClientRect();
     
-    // Dimensions
+    // Dimensions — use the actual rendered height instead of a hardcoded estimate
     const dropdownWidth = 220;
-    const dropdownHeight = 268; // 6 items × 40px + padding (more accurate)
+    const dropdownHeight = dropdown.offsetHeight || 300;
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
     const spacing = 8; // gap between cell and dropdown
@@ -7912,41 +7914,37 @@ function showAttendanceDropdown(cell, studentId, date, student) {
 
     // ── Vertical Positioning (Smart: Down or Up)
     let top;
-    let openDirection = 'down'; // track which direction we open for debugging
+    let openDirection = 'down';
     
-    // Calculate space below and above the cell
     const spaceBelow = viewportHeight - rect.bottom;
     const spaceAbove = rect.top;
     
-    // If there's enough space below, open downward
     if (spaceBelow >= dropdownHeight + spacing) {
         top = rect.bottom + spacing;
         openDirection = 'down';
-    }
-    // If there's more space above, open upward
-    else if (spaceAbove > spaceBelow) {
+    } else if (spaceAbove > spaceBelow) {
         top = rect.top - dropdownHeight - spacing;
         openDirection = 'up';
-    }
-    // Fallback: open down but allow scrolling
-    else {
+    } else {
         top = rect.bottom + spacing;
-        openDirection = 'down (scrollable)';
+        openDirection = 'down';
     }
     
-    // Ensure top is within viewport with minimum margin
-    if (top < minMargin) {
-        top = minMargin;
-    }
-    
-    if (top + dropdownHeight > viewportHeight) {
+    // Clamp within viewport
+    if (top < minMargin) top = minMargin;
+    if (top + dropdownHeight > viewportHeight - minMargin) {
         top = Math.max(minMargin, viewportHeight - dropdownHeight - minMargin);
+    }
+
+    // Limit max-height so it never extends outside the viewport
+    const availableHeight = viewportHeight - top - minMargin;
+    if (availableHeight < dropdownHeight) {
+        dropdown.style.maxHeight = Math.max(availableHeight, 150) + 'px';
     }
 
     dropdown.style.left = left + 'px';
     dropdown.style.top = top + 'px';
-    
-    // Debug: log positioning (can be removed later)
+    dropdown.style.visibility = '';
     dropdown.dataset.openDirection = openDirection;
 
     // Close dropdown when clicking outside
