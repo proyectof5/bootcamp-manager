@@ -4794,7 +4794,8 @@ async function loadOverviewAttendanceAlert() {
         // Count only 'Ausente' records from all months
         allAttendanceData.forEach(record => {
             const studentId = record.studentId;
-            if (record.status === 'Ausente' && absencesPerStudent[studentId]) {
+            const { base: rBase } = _parseAttendanceStatus(record.status);
+            if (rBase === 'Ausente' && absencesPerStudent[studentId]) {
                 absencesPerStudent[studentId].absences++;
             }
         });
@@ -4811,11 +4812,12 @@ async function loadOverviewAttendanceAlert() {
         // Calculate attendance rate using CURRENT MONTH data (matching the Attendance tab)
         let present = 0, absent = 0, late = 0, justified = 0, earlyLeave = 0;
         currentMonthData.forEach(record => {
-            if (record.status === 'Presente') present++;
-            else if (record.status === 'Ausente') absent++;
-            else if (record.status === 'Con retraso') late++;
-            else if (record.status === 'Justificado') justified++;
-            else if (record.status === 'Sale antes') earlyLeave++;
+            const { base: rBase } = _parseAttendanceStatus(record.status);
+            if (rBase === 'Presente') present++;
+            else if (rBase === 'Ausente') absent++;
+            else if (rBase === 'Con retraso') late++;
+            else if (rBase === 'Justificado') justified++;
+            else if (rBase === 'Sale antes') earlyLeave++;
         });
 
         const totalMarked = present + absent + late + justified + earlyLeave;
@@ -7120,9 +7122,6 @@ function updateSelectionState() {
                 <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); if(window._bulkReportTechnical) { window._bulkReportTechnical() } else { console.error('_bulkReportTechnical not found') }">
                     <i class="bi bi-file-earmark-person me-2"></i>Seguimiento Técnico
                 </a></li>
-                <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); if(window._bulkReportTransversal) { window._bulkReportTransversal() } else { console.error('_bulkReportTransversal not found') }">
-                    <i class="bi bi-file-earmark-check me-2"></i>Evaluación Transversal
-                </a></li>
                 <li><hr class="dropdown-divider"></li>
                 <li><a class="dropdown-item" href="#" onclick="event.preventDefault(); if(window._bulkReportByProject) { window._bulkReportByProject() } else { console.error('_bulkReportByProject not found') }">
                     <i class="bi bi-folder me-2"></i>Informes por Proyecto
@@ -7556,18 +7555,31 @@ function renderAttendanceTable() {
             else if (status === 'Justificado') statusClass = 'attendance-justified';
             else if (status === 'Sale antes') statusClass = 'attendance-early-leave';
 
-            td.className = `attendance-cell ${statusClass} ${note ? 'attendance-has-note' : ''}`;
+            const { base: statusBase, cameraOff: statusCameraOff } = _parseAttendanceStatus(status);
+            if (statusBase === 'Presente') statusClass = 'attendance-present';
+            else if (statusBase === 'Ausente') statusClass = 'attendance-absent';
+            else if (statusBase === 'Con retraso') statusClass = 'attendance-late';
+            else if (statusBase === 'Justificado') statusClass = 'attendance-justified';
+            else if (statusBase === 'Sale antes') statusClass = 'attendance-early-leave';
+
+            td.className = `attendance-cell ${statusClass} ${statusCameraOff ? 'attendance-camera-off' : ''} ${note ? 'attendance-has-note' : ''}`;
             td.dataset.studentId = student.id;
             td.dataset.date = dateKey;
             td.dataset.status = status;
 
             // Icon or text representation
-            if (status === 'Presente') td.innerHTML = '<i class="bi bi-check-lg"></i>';
-            else if (status === 'Ausente') td.innerHTML = '<i class="bi bi-x-lg"></i>';
-            else if (status === 'Con retraso') td.innerHTML = '<i class="bi bi-clock"></i>';
-            else if (status === 'Justificado') td.innerHTML = '<i class="bi bi-info-circle"></i>';
-            else if (status === 'Sale antes') td.innerHTML = '<i class="bi bi-box-arrow-left"></i>';
+            if (statusBase === 'Presente') td.innerHTML = '<i class="bi bi-check-lg"></i>';
+            else if (statusBase === 'Ausente') td.innerHTML = '<i class="bi bi-x-lg"></i>';
+            else if (statusBase === 'Con retraso') td.innerHTML = '<i class="bi bi-clock"></i>';
+            else if (statusBase === 'Justificado') td.innerHTML = '<i class="bi bi-info-circle"></i>';
+            else if (statusBase === 'Sale antes') td.innerHTML = '<i class="bi bi-box-arrow-left"></i>';
             else td.innerHTML = '';
+
+            if (statusCameraOff) {
+                const camIcon = document.createElement('i');
+                camIcon.className = 'bi bi-camera-video-off camera-off-icon';
+                td.appendChild(camIcon);
+            }
 
             // ── New UX: Click opens dropdown, Shift+Click cycles, Right-Click opens modal
             td.onclick = (e) => {
@@ -7627,14 +7639,16 @@ function updateAttendanceStats() {
         ...currentAttendanceMonth.split('-').map(Number), 0
     ).getDate();
 
-    let present = 0, absent = 0, late = 0, justified = 0, earlyLeave = 0;
+    let present = 0, absent = 0, late = 0, justified = 0, earlyLeave = 0, cameraOff = 0;
 
     attendanceData.forEach(record => {
-        if (record.status === 'Presente') present++;
-        else if (record.status === 'Ausente') absent++;
-        else if (record.status === 'Con retraso') late++;
-        else if (record.status === 'Justificado') justified++;
-        else if (record.status === 'Sale antes') earlyLeave++;
+        const { base, cameraOff: cam } = _parseAttendanceStatus(record.status);
+        if (base === 'Presente') present++;
+        else if (base === 'Ausente') absent++;
+        else if (base === 'Con retraso') late++;
+        else if (base === 'Justificado') justified++;
+        else if (base === 'Sale antes') earlyLeave++;
+        if (cam) cameraOff++;
     });
 
     document.getElementById('stat-present-total').textContent = present;
@@ -7643,6 +7657,8 @@ function updateAttendanceStats() {
     document.getElementById('stat-justified-total').textContent = justified;
     const earlyLeaveEl = document.getElementById('stat-early-leave-total');
     if (earlyLeaveEl) earlyLeaveEl.textContent = earlyLeave;
+    const cameraOffEl = document.getElementById('stat-camera-off-total');
+    if (cameraOffEl) cameraOffEl.textContent = cameraOff;
 
     const totalMarked = present + absent + late + justified + earlyLeave;
     const avg = totalMarked > 0 ? Math.round(((present + late + justified + earlyLeave) / totalMarked) * 100) : 0;
@@ -7678,6 +7694,26 @@ function updateAttendanceStats() {
 // Clicks on DIFFERENT cells are always independent and never block each other.
 const _attendancePendingMap = new Map(); // key: "studentId|date"
 
+// ── Camera-off helpers ────────────────────────────────────────────────────────
+// Status is stored as "Base" or "Base|cámara apagada" in the DB.
+// _parseAttendanceStatus extracts { base, cameraOff }.
+function _parseAttendanceStatus(status) {
+    if (!status) return { base: '', cameraOff: false };
+    const parts = status.split('|');
+    return {
+        base: parts[0].trim(),
+        cameraOff: parts.length > 1 && parts[1].trim() === 'cámara apagada'
+    };
+}
+function _buildAttendanceStatus(base, cameraOff) {
+    const CAMERA_OFF_COMPATIBLE = ['Presente', 'Con retraso', 'Justificado', 'Sale antes'];
+    if (cameraOff && base && CAMERA_OFF_COMPATIBLE.includes(base)) {
+        return `${base}|cámara apagada`;
+    }
+    return base || '';
+}
+// ─────────────────────────────────────────────────────────────────────────────
+
 function cycleAttendanceStatus(cell) {
     const studentId = cell.dataset.studentId;
     const date = cell.dataset.date;
@@ -7685,15 +7721,19 @@ function cycleAttendanceStatus(cell) {
 
     // Determine the current "displayed" status (may differ from saved if user clicked rapidly)
     const currentStatus = cell.dataset.status;
+    const { base: currentBase, cameraOff } = _parseAttendanceStatus(currentStatus);
 
     // Cycle: "" -> "Presente" -> "Ausente" -> "Con retraso" -> "Justificado" -> "Sale antes" -> ""
-    let nextStatus = "";
-    if (currentStatus === "") nextStatus = "Presente";
-    else if (currentStatus === "Presente") nextStatus = "Ausente";
-    else if (currentStatus === "Ausente") nextStatus = "Con retraso";
-    else if (currentStatus === "Con retraso") nextStatus = "Justificado";
-    else if (currentStatus === "Justificado") nextStatus = "Sale antes";
-    else if (currentStatus === "Sale antes") nextStatus = "";
+    let nextBase = "";
+    if (currentBase === "") nextBase = "Presente";
+    else if (currentBase === "Presente") nextBase = "Ausente";
+    else if (currentBase === "Ausente") nextBase = "Con retraso";
+    else if (currentBase === "Con retraso") nextBase = "Justificado";
+    else if (currentBase === "Justificado") nextBase = "Sale antes";
+    else if (currentBase === "Sale antes") nextBase = "";
+
+    // Preserve camera-off flag unless we switch to Ausente or empty
+    const nextStatus = _buildAttendanceStatus(nextBase, cameraOff && nextBase !== 'Ausente' && nextBase !== '');
 
     // Update dataset immediately so the next rapid click cycles from the right state
     cell.dataset.status = nextStatus;
@@ -7717,25 +7757,32 @@ function cycleAttendanceStatus(cell) {
 
 // Applies visual style to a cell without touching the DOM outside it
 function _applyAttendanceCellStyle(cell, status, hasNote) {
+    const { base, cameraOff } = _parseAttendanceStatus(status);
     cell.className = 'attendance-cell';
     if (hasNote) cell.classList.add('attendance-has-note');
-    if (status === 'Presente') {
+    if (cameraOff) cell.classList.add('attendance-camera-off');
+    if (base === 'Presente') {
         cell.classList.add('attendance-present');
         cell.innerHTML = '<i class="bi bi-check-lg"></i>';
-    } else if (status === 'Ausente') {
+    } else if (base === 'Ausente') {
         cell.classList.add('attendance-absent');
         cell.innerHTML = '<i class="bi bi-x-lg"></i>';
-    } else if (status === 'Con retraso') {
+    } else if (base === 'Con retraso') {
         cell.classList.add('attendance-late');
         cell.innerHTML = '<i class="bi bi-clock"></i>';
-    } else if (status === 'Justificado') {
+    } else if (base === 'Justificado') {
         cell.classList.add('attendance-justified');
         cell.innerHTML = '<i class="bi bi-info-circle"></i>';
-    } else if (status === 'Sale antes') {
+    } else if (base === 'Sale antes') {
         cell.classList.add('attendance-early-leave');
         cell.innerHTML = '<i class="bi bi-box-arrow-left"></i>';
     } else {
         cell.innerHTML = '';
+    }
+    if (cameraOff) {
+        const camIcon = document.createElement('i');
+        camIcon.className = 'bi bi-camera-video-off camera-off-icon';
+        cell.appendChild(camIcon);
     }
 }
 
@@ -7759,6 +7806,7 @@ function showAttendanceDropdown(cell, studentId, date, student) {
 
     // Get current status
     const currentStatus = cell.dataset.status || '';
+    const { base: currentBase, cameraOff: currentCameraOff } = _parseAttendanceStatus(currentStatus);
 
     // Define status options with icons
     const statusOptions = [
@@ -7774,7 +7822,7 @@ function showAttendanceDropdown(cell, studentId, date, student) {
     statusOptions.forEach(option => {
         const item = document.createElement('div');
         item.className = 'attendance-dropdown-item';
-        if (option.value === currentStatus) {
+        if (option.value === currentBase) {
             item.classList.add('active');
         }
 
@@ -7785,15 +7833,17 @@ function showAttendanceDropdown(cell, studentId, date, student) {
 
         item.onclick = async (e) => {
             e.stopPropagation();
+            // Preserve cameraOff only if new status is compatible
+            const newStatus = _buildAttendanceStatus(option.value, currentCameraOff);
             // Apply the status directly
-            cell.dataset.status = option.value;
-            _applyAttendanceCellStyle(cell, option.value, cell.classList.contains('attendance-has-note'));
+            cell.dataset.status = newStatus;
+            _applyAttendanceCellStyle(cell, newStatus, cell.classList.contains('attendance-has-note'));
             
             // Show saving indicator
             cell.style.opacity = '0.6';
             
             // Send to server
-            await _flushAttendanceSave(studentId, date, option.value, null, cell);
+            await _flushAttendanceSave(studentId, date, newStatus, null, cell);
             
             // Close dropdown
             closeAttendanceDropdown();
@@ -7802,14 +7852,48 @@ function showAttendanceDropdown(cell, studentId, date, student) {
         dropdown.appendChild(item);
     });
 
+    // ── Camera-off toggle ────────────────────────────────────────────────────
+    const CAMERA_OFF_COMPATIBLE = ['Presente', 'Con retraso', 'Justificado', 'Sale antes'];
+    const sep = document.createElement('div');
+    sep.style.cssText = 'height:1px; background:#e0e0e0; margin:4px 0;';
+    dropdown.appendChild(sep);
+
+    const cameraItem = document.createElement('div');
+    cameraItem.className = 'attendance-dropdown-item' + (currentCameraOff ? ' active' : '');
+    cameraItem.style.color = currentCameraOff ? '#0ea5e9' : '#64748b';
+    const cameraDisabled = !CAMERA_OFF_COMPATIBLE.includes(currentBase);
+    if (cameraDisabled) {
+        cameraItem.style.opacity = '0.4';
+        cameraItem.style.cursor = 'not-allowed';
+        cameraItem.title = 'Solo disponible cuando el alumno está presente';
+    }
+    cameraItem.innerHTML = `
+        <span class="attendance-dropdown-item-icon">📷</span>
+        <span>${currentCameraOff ? 'Quitar: cámara apagada' : 'Cámara apagada'}</span>
+    `;
+    if (!cameraDisabled) {
+        cameraItem.onclick = async (e) => {
+            e.stopPropagation();
+            const newStatus = _buildAttendanceStatus(currentBase, !currentCameraOff);
+            cell.dataset.status = newStatus;
+            _applyAttendanceCellStyle(cell, newStatus, cell.classList.contains('attendance-has-note'));
+            cell.style.opacity = '0.6';
+            await _flushAttendanceSave(studentId, date, newStatus, null, cell);
+            closeAttendanceDropdown();
+        };
+    }
+    dropdown.appendChild(cameraItem);
+
+    // ── Append hidden first to measure real height ──────────────────────────
+    dropdown.style.visibility = 'hidden';
     container.appendChild(dropdown);
 
     // ── Intelligent Positioning: Open down or up depending on available space
     const rect = cell.getBoundingClientRect();
     
-    // Dimensions
+    // Dimensions — use the actual rendered height instead of a hardcoded estimate
     const dropdownWidth = 220;
-    const dropdownHeight = 268; // 6 items × 40px + padding (more accurate)
+    const dropdownHeight = dropdown.offsetHeight || 300;
     const viewportWidth = window.innerWidth;
     const viewportHeight = window.innerHeight;
     const spacing = 8; // gap between cell and dropdown
@@ -7830,41 +7914,37 @@ function showAttendanceDropdown(cell, studentId, date, student) {
 
     // ── Vertical Positioning (Smart: Down or Up)
     let top;
-    let openDirection = 'down'; // track which direction we open for debugging
+    let openDirection = 'down';
     
-    // Calculate space below and above the cell
     const spaceBelow = viewportHeight - rect.bottom;
     const spaceAbove = rect.top;
     
-    // If there's enough space below, open downward
     if (spaceBelow >= dropdownHeight + spacing) {
         top = rect.bottom + spacing;
         openDirection = 'down';
-    }
-    // If there's more space above, open upward
-    else if (spaceAbove > spaceBelow) {
+    } else if (spaceAbove > spaceBelow) {
         top = rect.top - dropdownHeight - spacing;
         openDirection = 'up';
-    }
-    // Fallback: open down but allow scrolling
-    else {
+    } else {
         top = rect.bottom + spacing;
-        openDirection = 'down (scrollable)';
+        openDirection = 'down';
     }
     
-    // Ensure top is within viewport with minimum margin
-    if (top < minMargin) {
-        top = minMargin;
-    }
-    
-    if (top + dropdownHeight > viewportHeight) {
+    // Clamp within viewport
+    if (top < minMargin) top = minMargin;
+    if (top + dropdownHeight > viewportHeight - minMargin) {
         top = Math.max(minMargin, viewportHeight - dropdownHeight - minMargin);
+    }
+
+    // Limit max-height so it never extends outside the viewport
+    const availableHeight = viewportHeight - top - minMargin;
+    if (availableHeight < dropdownHeight) {
+        dropdown.style.maxHeight = Math.max(availableHeight, 150) + 'px';
     }
 
     dropdown.style.left = left + 'px';
     dropdown.style.top = top + 'px';
-    
-    // Debug: log positioning (can be removed later)
+    dropdown.style.visibility = '';
     dropdown.dataset.openDirection = openDirection;
 
     // Close dropdown when clicking outside
@@ -8176,16 +8256,33 @@ function openAttendanceModal(studentId, date) {
 
     document.getElementById('attendance-modal-student-name').textContent = studentFullName(student);
     document.getElementById('attendance-modal-date').textContent = date;
-    document.getElementById('attendance-modal-status').value = (record && record.status) ? record.status : '';
+    const _rec = (record && record.status) ? record.status : '';
+    const { base: _recBase, cameraOff: _recCam } = _parseAttendanceStatus(_rec);
+    document.getElementById('attendance-modal-status').value = _recBase;
+    const cameraOffCheck = document.getElementById('attendance-modal-camera-off');
+    if (cameraOffCheck) {
+        cameraOffCheck.checked = _recCam;
+        // Show/hide the camera checkbox based on status
+        const CAMERA_COMPATIBLE = ['Presente', 'Con retraso', 'Justificado', 'Sale antes'];
+        const wrapper = document.getElementById('attendance-camera-off-wrapper');
+        if (wrapper) wrapper.classList.toggle('d-none', !_recBase || !CAMERA_COMPATIBLE.includes(_recBase));
+        // Update visibility dynamically when status changes
+        document.getElementById('attendance-modal-status').onchange = function() {
+            const sel = this.value;
+            if (wrapper) wrapper.classList.toggle('d-none', !sel || !CAMERA_COMPATIBLE.includes(sel));
+            if (!CAMERA_COMPATIBLE.includes(sel) && cameraOffCheck) cameraOffCheck.checked = false;
+        };
+    }
     document.getElementById('attendance-modal-note').value = (record && record.note) ? record.note : '';
 
     // Calculate student stats for this month
     let sPres = 0, sAbs = 0, sLate = 0, sJust = 0;
     attendanceData.filter(a => a.studentId === studentId).forEach(r => {
-        if (r.status === 'Presente') sPres++;
-        else if (r.status === 'Ausente') sAbs++;
-        else if (r.status === 'Con retraso') sLate++;
-        else if (r.status === 'Justificado') sJust++;
+        const { base } = _parseAttendanceStatus(r.status);
+        if (base === 'Presente') sPres++;
+        else if (base === 'Ausente') sAbs++;
+        else if (base === 'Con retraso') sLate++;
+        else if (base === 'Justificado') sJust++;
     });
 
     document.getElementById('student-stat-present').textContent = sPres;
@@ -8265,17 +8362,20 @@ function openStudentSummary(studentId) {
     } else {
         records.forEach(r => {
             const tr = document.createElement('tr');
+            const { base: rBase, cameraOff: rCam } = _parseAttendanceStatus(r.status);
+            const camBadge = rCam ? ' <span class="badge" style="background-color:#e2e8f0;color:#475569;font-size:0.65rem;"><i class="bi bi-camera-video-off me-1"></i>cámara apagada</span>' : '';
 
             let statusBadge = '';
-            if (r.status === 'Presente') statusBadge = '<span class="badge" style="background-color: var(--green-f5); color: var(--principal-2);">Presente</span>';
-            else if (r.status === 'Ausente') statusBadge = '<span class="badge" style="background-color: var(--principal-1); color: var(--principal-3);">Ausente</span>';
-            else if (r.status === 'Con retraso') statusBadge = '<span class="badge" style="background-color: var(--complementario-2); color: var(--principal-2);">Con retraso</span>';
-            else if (r.status === 'Justificado') statusBadge = '<span class="badge" style="background-color: var(--blue-light-f5); color: var(--principal-2);">Justificado</span>';
+            if (rBase === 'Presente') statusBadge = '<span class="badge" style="background-color: var(--green-f5); color: var(--principal-2);">Presente</span>';
+            else if (rBase === 'Ausente') statusBadge = '<span class="badge" style="background-color: var(--principal-1); color: var(--principal-3);">Ausente</span>';
+            else if (rBase === 'Con retraso') statusBadge = '<span class="badge" style="background-color: var(--complementario-2); color: var(--principal-2);">Con retraso</span>';
+            else if (rBase === 'Justificado') statusBadge = '<span class="badge" style="background-color: var(--blue-light-f5); color: var(--principal-2);">Justificado</span>';
+            else if (rBase === 'Sale antes') statusBadge = '<span class="badge" style="background-color:#e9d8fd;color:#5b21b6;">Sale antes</span>';
             else statusBadge = '<span class="badge" style="background-color: var(--complementario-1-extra-light); color: var(--principal-2); border: 1px solid var(--complementario-1);">No marcado</span>';
 
             tr.innerHTML = `
                 <td class="fw-bold">${r.date.split('-')[2]}</td>
-                <td>${statusBadge}</td>
+                <td>${statusBadge}${camBadge}</td>
                 <td class="small">${escapeHtml(r.note || '-')}</td>
             `;
             tbody.appendChild(tr);
@@ -8396,7 +8496,10 @@ async function exportStudentAttendancePdf(mode) {
     // ── Global totals (used in header summary + final summary) ───────────────
     let y = 30;
     const globalCounts = { 'Presente': 0, 'Ausente': 0, 'Con retraso': 0, 'Justificado': 0, 'Sale antes': 0 };
-    records.forEach(r => { if (globalCounts[r.status] !== undefined) globalCounts[r.status]++; });
+    records.forEach(r => {
+        const { base } = _parseAttendanceStatus(r.status);
+        if (globalCounts[base] !== undefined) globalCounts[base]++;
+    });
     const totalRecords = records.length;
     const totalAttended = globalCounts['Presente'] + globalCounts['Con retraso'] + globalCounts['Justificado'] + globalCounts['Sale antes'];
     const totalAbsent = globalCounts['Ausente'];
@@ -8435,7 +8538,7 @@ async function exportStudentAttendancePdf(mode) {
         doc.setFontSize(8);
         doc.setFont('helvetica', 'bold');
         doc.text(monthLabel, MARGIN + 2, y + 5);
-        const monthAttended = recs.filter(r => r.status === 'Presente' || r.status === 'Con retraso' || r.status === 'Justificado' || r.status === 'Sale antes').length;
+        const monthAttended = recs.filter(r => { const { base } = _parseAttendanceStatus(r.status); return base === 'Presente' || base === 'Con retraso' || base === 'Justificado' || base === 'Sale antes'; }).length;
         const monthAbsent = recs.filter(r => r.status === 'Ausente').length;
         const monthPct = recs.length > 0 ? Math.round((monthAttended / recs.length) * 100) : 0;
         doc.text(`${monthAttended} asistidos · ${monthAbsent} faltas · ${monthPct}%`, PAGE_W - MARGIN - 2, y + 5, { align: 'right' });
@@ -8629,7 +8732,9 @@ function saveAttendanceFromModal() {
         if (date >= withdrawalDate) return; // silently blocked — button should already be disabled
     }
 
-    const status = document.getElementById('attendance-modal-status').value;
+    const statusBase = document.getElementById('attendance-modal-status').value;
+    const cameraOffChecked = document.getElementById('attendance-modal-camera-off')?.checked || false;
+    const status = _buildAttendanceStatus(statusBase, cameraOffChecked);
     const note = document.getElementById('attendance-modal-note').value;
 
     updateAttendance(studentId, date, status, note, null);
@@ -10344,10 +10449,22 @@ function _renderGroupsModalBody(saved, students, mod, proj) {
             });
 
             // Students available for this group = current members + unassigned
-            const availableStudents = students.filter(st => {
-                const stId = String(st.id || st._id);
-                return memberIds.includes(stId) || !assignedIds.has(stId);
-            });
+            // Assigned members first, then unassigned (alphabetically within each group)
+            const availableStudents = students
+                .filter(st => {
+                    const stId = String(st.id || st._id);
+                    return memberIds.includes(stId) || !assignedIds.has(stId);
+                })
+                .sort((a, b) => {
+                    const aId = String(a.id || a._id);
+                    const bId = String(b.id || b._id);
+                    const aChecked = memberIds.includes(aId);
+                    const bChecked = memberIds.includes(bId);
+                    if (aChecked !== bChecked) return aChecked ? -1 : 1;
+                    const aName = ((a.name || '') + ' ' + (a.lastname || '')).trim().toLowerCase();
+                    const bName = ((b.name || '') + ' ' + (b.lastname || '')).trim().toLowerCase();
+                    return aName.localeCompare(bName);
+                });
 
             const collapseId = `grp-collapse-${gIdx}`;
 
@@ -10468,12 +10585,17 @@ function _toggleGroupMemberInline(gIdx, studentId, checked) {
     }
 
     // Re-render so available-student lists and the unassigned counter update
-    // Preserve which accordion panel is open
+    // Preserve which accordion panel is open — set it instantly (no animation) to avoid the collapse/expand flash
     const openCollapseId = `grp-collapse-${gIdx}`;
     _renderGroupsModalBody(saved, window._evalState.students);
-    // Re-open the same accordion panel after re-render
+    // Restore open state without animation (add Bootstrap's 'show' class directly)
     const collapseEl = document.getElementById(openCollapseId);
-    if (collapseEl) new bootstrap.Collapse(collapseEl, { toggle: false }).show();
+    if (collapseEl) {
+        collapseEl.classList.add('show');
+        // Keep the accordion button in sync
+        const btn = collapseEl.closest('.accordion-item')?.querySelector('.accordion-button');
+        if (btn) btn.classList.remove('collapsed');
+    }
 }
 
 async function saveGroups() {
@@ -12218,6 +12340,81 @@ function _closeStudentEvalPanel() {
     if (saveBtn) {
         saveBtn.disabled = false;
         saveBtn.innerHTML = `<i class="bi bi-save me-1"></i>Guardar evaluación`;
+    }
+}
+
+/**
+ * Saves the current individual evaluation and then sends the project report PDF by email to the student.
+ */
+async function sendEvaluationByEmail() {
+    const splitView = document.getElementById('eval-project-view');
+    const legacyPanel = document.getElementById('student-eval-panel');
+    const inSplitView = splitView && !splitView.classList.contains('hidden');
+
+    const studentId = inSplitView
+        ? (splitView.dataset.targetStudentId || null)
+        : (legacyPanel ? legacyPanel.dataset.targetStudentId : null);
+
+    if (!studentId) { showToast('Selecciona un estudiante primero', 'danger'); return; }
+
+    // Set spinner on send button
+    const sendBtn = document.getElementById(inSplitView ? 'send-eval-splitview-btn' : 'send-eval-panel-btn');
+    const originalHtml = sendBtn ? sendBtn.innerHTML : '';
+    if (sendBtn) {
+        sendBtn.disabled = true;
+        sendBtn.innerHTML = `<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>Enviando...`;
+    }
+
+    try {
+        // 1. Save evaluation first
+        await saveIndividualStudentEval();
+
+        // 2. Find student email
+        const students = window._evalState?.allStudents || window._evalState?.students || [];
+        const student = students.find(s => String(s.id || s._id) === String(studentId));
+        const studentEmail = student?.email || '';
+
+        if (!studentEmail) {
+            showToast('El estudiante no tiene email registrado', 'danger');
+            if (sendBtn) { sendBtn.disabled = false; sendBtn.innerHTML = originalHtml; }
+            return;
+        }
+
+        // 3. Find the team index in the student's technicalTracking.teams matching current project
+        const saved = window._evalCurrentSaved;
+        const mIdx = window._evalState?.currentModuleIdx;
+        const pIdx = window._evalState?.currentProjectIdx;
+        const modules = window._evalState?.modules || [];
+        const mod = modules[mIdx];
+        const proj = mod?.projects[pIdx];
+
+        // Resolve student tracking data to get team index
+        const token = localStorage.getItem('token');
+        const stuRes = await fetch(`${API_URL}/api/promotions/${promotionId}/students/${studentId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!stuRes.ok) throw new Error('No se pudo cargar el estudiante');
+        const stuData = await stuRes.json();
+        const teams = stuData.technicalTracking?.teams || [];
+
+        // Find team index matching current project name
+        let teamIndex = teams.findIndex(t => t.teamName === (proj?.name || saved?.projectName));
+        if (teamIndex < 0) teamIndex = 0; // fallback
+
+        // 4. Send report by email
+        if (!window.Reports?.sendProjectReportByEmail) {
+            showToast('La librería de informes no está disponible', 'danger');
+            if (sendBtn) { sendBtn.disabled = false; sendBtn.innerHTML = originalHtml; }
+            return;
+        }
+
+        await window.Reports.sendProjectReportByEmail(teamIndex, studentId, promotionId, studentEmail);
+        showToast('Informe de evaluación enviado correctamente', 'success');
+    } catch (err) {
+        console.error('[sendEvaluationByEmail]', err);
+        showToast('Error al enviar el informe: ' + err.message, 'danger');
+    } finally {
+        if (sendBtn) { sendBtn.disabled = false; sendBtn.innerHTML = originalHtml; }
     }
 }
 

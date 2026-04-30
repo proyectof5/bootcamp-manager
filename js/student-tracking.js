@@ -2143,11 +2143,16 @@
 
     async function _savePersonal() {
         const token = localStorage.getItem('token');
+        // Helper: try the form-specific ID first, then the ficha template ID as fallback
+        const _getVal = (fpId, fichaId) =>
+            document.getElementById(fpId)?.value?.trim() ||
+            document.getElementById(fichaId)?.value?.trim() || '';
+
         const payload = {
-            name: document.getElementById('fp-name')?.value?.trim(),
-            lastname: document.getElementById('fp-lastname')?.value?.trim(),
-            email: document.getElementById('fp-email')?.value?.trim(),
-            phone: document.getElementById('fp-phone')?.value?.trim(),
+            name: _getVal('fp-name', 'ficha-student-name'),
+            lastname: _getVal('fp-lastname', 'ficha-student-lastname'),
+            email: _getVal('fp-email', 'ficha-student-email'),
+            phone: document.getElementById('fp-phone')?.value?.trim() || '',
             age: parseInt(document.getElementById('fp-age')?.value) || null,
             administrativeSituation: document.getElementById('fp-admin-situation')?.value || '',
             nationality: document.getElementById('fp-nationality')?.value?.trim() || '',
@@ -2161,9 +2166,9 @@
 
         // Only validate the absolutely minimum fields
         if (!payload.name || !payload.lastname || !payload.email) {
-            // Highlight missing fields
-            ['fp-name', 'fp-lastname', 'fp-email'].forEach(id => {
-                const el = document.getElementById(id);
+            // Highlight missing fields — try both ID variants
+            [['fp-name', 'ficha-student-name'], ['fp-lastname', 'ficha-student-lastname'], ['fp-email', 'ficha-student-email']].forEach(([fpId, fichaId]) => {
+                const el = document.getElementById(fpId) || document.getElementById(fichaId);
                 if (el) el.classList.toggle('is-invalid', !el.value.trim());
             });
             _showToast('Nombre, apellido y email son obligatorios', 'warning');
@@ -2171,7 +2176,8 @@
         }
 
         // Clear any previous validation highlights
-        ['fp-name', 'fp-lastname', 'fp-email', 'fp-phone', 'fp-age'].forEach(id => {
+        ['fp-name', 'fp-lastname', 'fp-email', 'fp-phone', 'fp-age',
+         'ficha-student-name', 'ficha-student-lastname', 'ficha-student-email'].forEach(id => {
             document.getElementById(id)?.classList.remove('is-invalid');
         });
 

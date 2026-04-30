@@ -611,11 +611,22 @@
               <select id="${id}-dest-select" class="form-select form-select-sm mb-2" style="font-size:.8rem;">
                 ${collHtml}
               </select>
-              <input type="email" id="${id}-manual-email" class="form-control form-control-sm" placeholder="ejemplo@email.com" style="display:none;font-size:.8rem;">
+              <input type="email" id="${id}-manual-email" class="form-control form-control-sm mb-2" placeholder="ejemplo@email.com" style="display:none;font-size:.8rem;">
+              <label class="form-label small text-muted mb-1">Formato a enviar:</label>
+              <div class="d-flex gap-3">
+                <div class="form-check">
+                  <input class="form-check-input" type="radio" name="${id}-format" id="${id}-format-pdf" value="pdf" checked>
+                  <label class="form-check-label small" for="${id}-format-pdf"><i class="bi bi-file-earmark-pdf me-1 text-danger"></i>PDF</label>
+                </div>
+                <div class="form-check">
+                  <input class="form-check-input" type="radio" name="${id}-format" id="${id}-format-excel" value="excel">
+                  <label class="form-check-label small" for="${id}-format-excel"><i class="bi bi-file-earmark-spreadsheet me-1 text-success"></i>Excel</label>
+                </div>
+              </div>
             </div>
         </div>
         
-        <div class="form-text mt-1 text-muted small">Al elegir "Enviar", el sistema generará el PDF y lo hará llegar por email al destino seleccionado.</div>
+        <div class="form-text mt-1 text-muted small">Al elegir "Enviar", el sistema generará el informe y lo hará llegar por email al destino seleccionado.</div>
       </div>
       <div class="modal-footer pt-1">
         <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal">
@@ -698,11 +709,14 @@
                }
                resolved = true;
                const val = parseInt(document.getElementById(`${id}-select`).value, 10);
+               const formatRadio = document.querySelector(`input[name="${id}-format"]:checked`);
+               const sendFormat = formatRadio ? formatRadio.value : 'pdf';
                modal.hide();
                resolve({
                  weekIdx: isNaN(val) ? 0 : val,
                  action: 'send',
-                 email: email
+                 email: email,
+                 sendFormat: sendFormat
                });
             });
 
@@ -1390,15 +1404,145 @@ async function printActaInicio(promotionId) {
             html += `<p class="empty-note">No se registraron competencias para este proyecto.</p>`;
         }
 
-        // ── Firmas ──
-        html += `<div style="margin-top:28pt; max-width:260pt;">
-            <div style="font-size:9pt; font-weight:600; margin-bottom:4pt;">Firma del/la docente</div>
-            <div style="border-bottom:1.5px solid #999; height:36pt;"></div>
-            <div style="font-size:8pt; margin-top:4pt;">Docente responsable</div>
-        </div>`;
-
         const filename = `proyecto_${(t.teamName||'proyecto').replace(/\s+/g,'-')}_${(fullName).replace(/\s+/g,'-')}.pdf`;
         _previewWindow(html, filename);
+    }
+
+    /**
+     * Generates the project evaluation PDF and sends it by email to the student.
+     * @param {number} teamIndex - Index in student's technicalTracking.teams
+     * @param {string} studentId - Student ID
+     * @param {string} promotionId - Promotion ID
+     * @param {string} overrideEmail - (optional) email to send to; defaults to student.email
+     * @returns {Promise<void>}
+     */
+    async function sendProjectReportByEmail(teamIndex, studentId, promotionId, overrideEmail) {
+        const token = localStorage.getItem('token');
+        const st = window.StudentTracking;
+        let t  = st?._getTeam(teamIndex);
+        let s  = st?._getCurrentStudent();
+        let promoName = window.currentPromotion?.name || '';
+
+        if (!t || !s) {
+            try {
+                const [stuRes, promoRes] = await Promise.all([
+                    fetch(`${API_URL}/api/promotions/${promotionId}/students/${studentId}`, { headers: { 'Authorization': `Bearer ${token}` } }),
+                    fetch(`${API_URL}/api/promotions/${promotionId}`,                       { headers: { 'Authorization': `Bearer ${token}` } })
+                ]);
+                if (!stuRes.ok) throw new Error('No se pudo cargar el estudiante');
+                s = await stuRes.json();
+                const promo = promoRes.ok ? await promoRes.json() : {};
+                promoName = promo.name || '';
+                t = (s.technicalTracking?.teams || [])[teamIndex];
+            } catch (e) {
+                alert('Error cargando datos: ' + e.message);
+                return;
+            }
+        }
+
+        if (!t) { alert('Proyecto no encontrado.'); return; }
+
+        const toEmail = overrideEmail || s.email;
+        if (!toEmail) { alert('El estudiante no tiene email registrado.'); return; }
+
+        const fullName = `${s.name || ''} ${s.lastname || ''}`.trim();
+        const PROJ_LEVEL_COLORS = { 0: 'grey', 1: 'red', 2: 'yellow', 3: 'green' };
+        const PROJ_LEVEL_LABELS = { 0: 'Sin nivel', 1: 'Básico', 2: 'Medio', 3: 'Avanzado' };
+
+        let html = _header(t.teamName || 'Proyecto', fullName, promoName, _today());
+
+        const typeLabel = t.projectType === 'individual' ? 'Individual' : 'Grupal';
+        html += `<div class="kv"><strong>Proyecto:</strong> ${_esc(t.teamName || '—')}</div>
+            <div class="kv"><strong>Tipo:</strong> ${typeLabel}</div>
+            <div class="kv"><strong>Módulo:</strong> ${_esc(t.moduleName || '—')}</div>
+            <div class="kv"><strong>Coder:</strong> ${_esc(fullName)}</div>
+            <div class="kv"><strong>Email:</strong> ${_esc(s.email || '—')}</div>
+        ${(t.members && t.members.length && t.projectType === 'grupal')
+            ? `<div style="margin-top:6pt;"><strong>Integrantes del equipo:</strong>
+                <ul style="margin:2pt 0 0 14pt;">
+                    ${t.members.map(m => `<li>${_esc(m.name)}</li>`).join('')}
+                </ul>
+            </div>`
+            : ''
+        }`;
+
+        if (t.teacherNote) {
+            html += `<h3>Nota del Profesor</h3>
+            <p style="font-style:italic; white-space:pre-wrap;">${_esc(t.teacherNote)}</p>`;
+        }
+
+        html += `<h3>Competencias Trabajadas</h3>`;
+        const comps = t.competences || [];
+        if (comps.length) {
+            html += `<table>
+                <thead><tr><th>Competencia</th><th>Nivel alcanzado</th><th>Herramientas</th></tr></thead>
+                <tbody>`;
+            comps.forEach(c => {
+                const tools = (c.toolsUsed || [])
+                    .map(tl => `<span class="badge badge-light">${_esc(tl)}</span>`)
+                    .join(' ');
+                html += `<tr>
+                    <td><strong>${_esc(c.competenceName || '—')}</strong></td>
+                    <td>${_levelBadge(c.level)}</td>
+                    <td>${tools || '<span style="color:#aaa;">—</span>'}</td>
+                </tr>`;
+            });
+            html += `</tbody></table>`;
+
+            html += `<div style="margin-top:10pt;">`;
+            comps.forEach(c => {
+                const pct = Math.round((c.level / 3) * 100);
+                const barColor = c.level === 3 ? '#198754' : c.level === 2 ? '#ffc107' : c.level === 1 ? '#dc3545' : '#aaa';
+                const tools = (c.toolsUsed || [])
+                    .map(tl => `<span class="badge badge-light">${_esc(tl)}</span>`)
+                    .join(' ');
+                html += `<div class="section-box no-break" style="margin-bottom:7pt;">
+                    <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:4pt;">
+                        <strong>${_esc(c.competenceName)}</strong>
+                        <span style="font-size:9pt; color:#888;">${PROJ_LEVEL_LABELS[c.level] ?? ''}</span>
+                    </div>
+                    <div style="background:#eee; border-radius:4pt; height:8pt; overflow:hidden; margin-bottom:5pt;">
+                        <div style="width:${pct}%; height:100%; background:${barColor}; border-radius:4pt;"></div>
+                    </div>
+                    ${tools ? `<div class="pill-row">${tools}</div>` : ''}
+                </div>`;
+            });
+            html += `</div>`;
+        } else {
+            html += `<p class="empty-note">No se registraron competencias para este proyecto.</p>`;
+        }
+
+        const filename = `evaluacion_${(t.teamName||'proyecto').replace(/\s+/g,'-')}_${fullName.replace(/\s+/g,'-')}.pdf`;
+
+        _showSaving('Generando y enviando informe de evaluación...');
+        try {
+            const pdf = await _renderToPdf(html, filename);
+            const base64Data = pdf.output('datauristring');
+            const emailRes = await fetch(`${API_URL}/api/reports/send-email`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({
+                    to: toEmail,
+                    subject: `Informe de evaluación: ${t.teamName || 'Proyecto'} — ${fullName}`,
+                    body: `Hola ${s.name || ''},<br><br>Te enviamos el informe de evaluación del proyecto <strong>${t.teamName || 'Proyecto'}</strong>.<br><br>En el PDF adjunto encontrarás el detalle de las competencias trabajadas y el nivel alcanzado durante el desarrollo del proyecto.<br><br>¡Mucho ánimo y sigue aprendiendo!<br><br>Un saludo,<br>Equipo formador Factoria F5`,
+                    filename: filename,
+                    base64Data: base64Data
+                })
+            });
+            _hideSaving();
+            if (emailRes.ok) {
+                alert(`¡Informe enviado correctamente a ${toEmail}!`);
+            } else {
+                const error = await emailRes.json();
+                throw new Error(error.error || 'Error al enviar el email');
+            }
+        } catch (e) {
+            _hideSaving();
+            alert('Error al enviar el informe: ' + e.message);
+        }
     }
 
     // ════════════════════════════════════════════════════════════════════════
@@ -1518,10 +1662,10 @@ async function printActaInicio(promotionId) {
         // Compute both groups from live ExtendedInfo data
         const _pilPresentadas = [];
         const _pilPendientes  = [];
-        modulesPildorasExtended.forEach(mp => {
+        modulesPildoras.forEach(mp => {
             (mp.pildoras || []).forEach(p => {
                 const studentIds = (p.students || []).map(s2 => String(s2.id));
-                if (!studentIds.includes(String(studentId))) return;
+                if (!studentIds.includes(String(s.id))) return;
                 const entry = {
                     pildoraTitle: p.title || '—',
                     moduleName:   mp.moduleName || '—',
@@ -1738,11 +1882,6 @@ async function printActaInicio(promotionId) {
                         sHtml += `</tbody></table>`;
                     } else { sHtml += `<p class="empty-note">Sin competencias evaluadas.</p>`; }
                 });
-                sHtml += `<div style="margin-top:28pt; max-width:260pt;">
-                    <div style="font-size:9pt; font-weight:600; margin-bottom:4pt;">Firma del/la docente</div>
-                    <div style="border-bottom:1.5px solid #999; height:36pt;"></div>
-                    <div style="font-size:8pt; margin-top:4pt;">Docente responsable</div>
-                </div>`;
                 return sHtml;
             };
 
@@ -2090,6 +2229,13 @@ async function printActaInicio(promotionId) {
 
             const stMap = { 'Presente': 'P', 'Ausente': 'A', 'Con retraso': 'T', 'Justificado': 'J', 'Sale antes': 'S' };
 
+            // Helper: parse composite status "Base|cámara apagada"
+            function _parseStatus(s) {
+                if (!s) return { base: '', cameraOff: false };
+                const parts = s.split('|');
+                return { base: parts[0].trim(), cameraOff: parts.length > 1 };
+            }
+
             let html = _header('Informe de Asistencia Semanal', `Semana ${selectedWeek.wIdx + 1}`, promo.name, _today(), promo);
 
             const workDays = selectedWeek.dates.slice(0, 5);
@@ -2131,7 +2277,9 @@ async function printActaInicio(promotionId) {
                         let mark = '-';
                         let col = '#000';
                         if (rec) {
-                            mark = stMap[rec.status] || rec.status.charAt(0);
+                            const { base: recBase, cameraOff: recCam } = _parseStatus(rec.status);
+                            mark = stMap[recBase] || (recBase ? recBase.charAt(0) : '-');
+                            const camSuffix = recCam ? '📷' : '';
                             if (mark === 'P') { col = '#198754'; p++; }
                             else if (mark === 'A') { col = '#dc3545'; a++; }
                             else if (mark === 'T') { col = '#fd7e14'; r++; }
@@ -2139,8 +2287,11 @@ async function printActaInicio(promotionId) {
                             else if (mark === 'S') { col = '#fd7e14'; }
                             
                             if (rec.note) comments.push(`<strong>${dateNum}:</strong> ${_esc(rec.note)}`);
+                            if (recCam) comments.push(`<strong>${dateNum}:</strong> 📷 cámara apagada`);
+                            marksHtml += `<td style="text-align:center;font-weight:600;color:${col}" title="${recBase}${recCam ? ' (cámara apagada)' : ''}">${mark}${camSuffix}</td>`;
+                        } else {
+                            marksHtml += `<td style="text-align:center;font-weight:600;color:${col}">-</td>`;
                         }
-                        marksHtml += `<td style="text-align:center;font-weight:600;color:${col}">${mark}</td>`;
                     }
                 });
 
@@ -2207,12 +2358,14 @@ async function printActaInicio(promotionId) {
                         } else {
                             const rec = stAtt[localDateStr];
                             if (rec) {
-                                const mark = stMapFull[rec.status] || rec.status.charAt(0);
-                                row.push(mark);
+                                const { base: recBase, cameraOff: recCam } = _parseStatus(rec.status);
+                                const mark = stMapFull[recBase] || (recBase ? recBase.charAt(0) : '-');
+                                row.push(mark + (recCam ? '📷' : ''));
                                 if (mark === 'P') p++;
                                 else if (mark === 'A') a++;
                                 else if (mark === 'T') r++;
                                 if (rec.note) comments.push(`${wd.getDate()}: ${rec.note}`);
+                                if (recCam) comments.push(`${wd.getDate()}: cámara apagada`);
                             } else {
                                 row.push('-');
                             }
@@ -2245,8 +2398,73 @@ async function printActaInicio(promotionId) {
 
             } else if (selection.action === 'send') {
                 _showSaving('Generando y enviando...');
-                const pdf = await _renderToPdf(html, filename + '.pdf');
-                const base64Data = pdf.output('datauristring');
+
+                let base64Data, attachFilename, mimeType;
+
+                if (selection.sendFormat === 'excel') {
+                    // Build Excel and convert to base64
+                    const XLSX = window.XLSX;
+                    if (!XLSX) throw new Error('Librería XLSX no disponible. Recarga la página.');
+
+                    const wb = XLSX.utils.book_new();
+                    const dayLabels = ['Lu', 'Ma', 'Mi', 'Ju', 'Vi'];
+                    const headerRow = ['Estudiante'];
+                    workDays.forEach((wd, i) => {
+                        const dd = String(wd.getDate()).padStart(2, '0');
+                        const mm = String(wd.getMonth() + 1).padStart(2, '0');
+                        headerRow.push(`${dayLabels[i]} ${dd}/${mm}`);
+                    });
+                    headerRow.push('Presentes', 'Ausentes', 'Retrasos', 'Comentarios');
+                    const wsData = [headerRow];
+
+                    const stMapFull = { 'Presente': 'P', 'Ausente': 'A', 'Con retraso': 'T', 'Justificado': 'J', 'Sale antes': 'S' };
+                    students.forEach(st => {
+                        const stuId = String(st.id || st._id);
+                        const stAtt = attMap[stuId] || {};
+                        let p = 0, a = 0, r = 0;
+                        const row = [`${st.name || ''} ${st.lastname || ''}`.trim()];
+                        const comments = [];
+                        workDays.forEach(wd => {
+                            const localDateStr = formatLocal(wd);
+                            if (holidays.has(localDateStr)) {
+                                row.push('F');
+                            } else {
+                                const rec = stAtt[localDateStr];
+                                if (rec) {
+                                    const { base: recBase, cameraOff: recCam } = _parseStatus(rec.status);
+                                    const mark = stMapFull[recBase] || (recBase ? recBase.charAt(0) : '-');
+                                    row.push(mark + (recCam ? '📷' : ''));
+                                    if (mark === 'P') p++;
+                                    else if (mark === 'A') a++;
+                                    else if (mark === 'T') r++;
+                                    if (rec.note) comments.push(`${wd.getDate()}: ${rec.note}`);
+                                    if (recCam) comments.push(`${wd.getDate()}: cámara apagada`);
+                                } else {
+                                    row.push('-');
+                                }
+                            }
+                        });
+                        row.push(p, a, r, comments.join(' | '));
+                        wsData.push(row);
+                    });
+                    wsData.push([]);
+                    wsData.push(['Leyenda: P=Presente  A=Ausente  T=Con retraso  J=Justificado  S=Sale antes  F=Festivo']);
+
+                    const ws = XLSX.utils.aoa_to_sheet(wsData);
+                    ws['!cols'] = [{ wch: 28 }, ...workDays.map(() => ({ wch: 10 })), { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 45 }];
+                    XLSX.utils.book_append_sheet(wb, ws, `Semana ${selectedWeek.wIdx + 1}`);
+
+                    const wbout = XLSX.write(wb, { bookType: 'xlsx', type: 'base64' });
+                    base64Data = 'data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,' + wbout;
+                    attachFilename = filename + '.xlsx';
+                    mimeType = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+                } else {
+                    const pdf = await _renderToPdf(html, filename + '.pdf');
+                    base64Data = pdf.output('datauristring');
+                    attachFilename = filename + '.pdf';
+                    mimeType = 'application/pdf';
+                }
+
                 const emailRes = await fetch(`${API_URL}/api/reports/send-email`, {
                     method: 'POST',
                     headers: {
@@ -2257,7 +2475,7 @@ async function printActaInicio(promotionId) {
                         to: selection.email,
                         subject: `Informe de Asistencia Semanal: ${promo.name} - Semana ${selectedWeek.wIdx + 1}`,
                         body: `Hola,<br><br>Se adjunta el informe de asistencia semanal correspondiente a la <strong>Semana ${selectedWeek.wIdx + 1}</strong> de la promoción <strong>${promo.name}</strong> (${_fmtDateEs(formatLocal(selectedWeek.dates[0]))} al ${_fmtDateEs(formatLocal(selectedWeek.dates[4]))}).<br><br>Un saludo,<br>Sistema de Gestión de Bootcamps`,
-                        filename: filename + '.pdf',
+                        filename: attachFilename,
                         base64Data: base64Data
                     })
                 });
@@ -2291,6 +2509,7 @@ async function printActaInicio(promotionId) {
         printActaBaja,
         printDescripcionTecnica,
         printProjectReport,
+        sendProjectReportByEmail,
         printBulkTechnical,
         printBulkTransversal,
         printBulkByProject,
