@@ -1170,7 +1170,7 @@ function _addAulaVirtualToSidebar() {
     const quickLinksAnchor = nav.querySelector('a[href="#quick-links"]');
     const quickLinksItem = quickLinksAnchor ? quickLinksAnchor.parentElement : null;
     if (quickLinksItem) {
-        nav.insertBefore(aulaLi, quickLinksItem);
+        quickLinksItem.insertAdjacentElement('afterend', aulaLi);
     } else {
         nav.appendChild(aulaLi);
     }
@@ -1364,8 +1364,12 @@ function openAulaVirtualPage(event) {
     const tabInfo = document.getElementById('tab-info');
     const tabNav = document.getElementById('pp-main-tabs');
     const banner = document.querySelector('.pp-banner');
+    const progressCard = document.querySelector('.pp-progress-card');
+    const quickLinks = document.getElementById('quick-links');
+    const ctaAula = document.getElementById('pp-cta-aula-virtual');
+    const pildoraCalRow = document.querySelector('.pp-pildora-calendar-row');
 
-    [tabProgreso, tabInfo, tabNav, banner].forEach(el => {
+    [tabProgreso, tabInfo, tabNav, banner, progressCard, quickLinks, ctaAula, pildoraCalRow].forEach(el => {
         if (el) el.classList.add('d-none');
     });
 
@@ -1392,8 +1396,19 @@ function closeAulaVirtualPage() {
     // Restore tab panels and nav
     const tabNav = document.getElementById('pp-main-tabs');
     const banner = document.querySelector('.pp-banner');
+    const progressCard = document.querySelector('.pp-progress-card');
+    const quickLinks = document.getElementById('quick-links');
+    const pildoraCalRow = document.querySelector('.pp-pildora-calendar-row');
     if (tabNav) tabNav.classList.remove('d-none');
     if (banner) banner.classList.remove('d-none');
+    if (progressCard) progressCard.classList.remove('d-none');
+    if (pildoraCalRow) pildoraCalRow.classList.remove('d-none');
+    // Restore quick-links only if it has content (it uses 'hidden' class normally when empty)
+    if (quickLinks && !quickLinks.classList.contains('hidden')) quickLinks.classList.remove('d-none');
+    else if (quickLinks) quickLinks.classList.remove('d-none');
+    // Restore CTA if it was visible before
+    const ctaAula = document.getElementById('pp-cta-aula-virtual');
+    if (ctaAula && _virtualClassroomState && _virtualClassroomState.active) ctaAula.classList.remove('d-none');
 
     // Show whichever tab was active
     const progresoBtn = document.getElementById('tab-progreso-btn');
