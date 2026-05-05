@@ -1707,33 +1707,32 @@
                             </div>
                         </div>
 
-                        <!-- Courses Section -->
+                        <!-- Courses Section — LEGACY oculto, conservado para compatibilidad (TASK-RM-06b) -->
+                        <div id="courses-container" style="display:none;"></div>
+                        <!-- Projects Section — LEGACY oculto, conservado para compatibilidad (TASK-RM-06b) -->
+                        <div id="projects-container" style="display:none;"></div>
+
+                        <!-- Planificador de Módulo (TASK-RM-05c / TASK-RM-06b) -->
                         <div class="mb-4">
                             <div class="d-flex justify-content-between align-items-center mb-2">
-                                <h6 class="mb-0"><i class="bi bi-book me-2"></i>Cursos</h6>
-                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="addCoursField()">
-                                    <i class="bi bi-plus"></i> Agregar curso
-                                </button>
+                                <h6 class="mb-0"><i class="bi bi-calendar3 me-2"></i>Planificador de M&oacute;dulo</h6>
+                                <div class="d-flex gap-2">
+                                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="addPlannerItem('curso')">
+                                        <i class="bi bi-book me-1"></i>A&ntilde;adir Curso
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-success" onclick="addPlannerItem('proyecto')">
+                                        <i class="bi bi-kanban me-1"></i>A&ntilde;adir Proyecto
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-warning" onclick="addPlannerItem('leccion')">
+                                        <i class="bi bi-easel me-1"></i>A&ntilde;adir Lecci&oacute;n
+                                    </button>
+                                </div>
                             </div>
-                            <div id="courses-container" class="border rounded p-3 bg-light">
-                                <!-- Courses will be added dynamically here -->
+                            <div id="planner-container" class="border rounded p-3 bg-light">
+                                <p class="text-muted small mb-0">No hay elementos todav&iacute;a. A&ntilde;ade un curso, proyecto o lecci&oacute;n.</p>
                             </div>
+                            <small class="text-muted">Arrastra los elementos para reordenarlos. Los cambios se guardan al pulsar "Guardar M&oacute;dulo".</small>
                         </div>
-
-                        <!-- Projects Section -->
-                        <div class="mb-4">
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <h6 class="mb-0"><i class="bi bi-laptop me-2"></i>Proyectos</h6>
-                                <button type="button" class="btn btn-sm btn-outline-primary"
-                                    onclick="addProjectField()">
-                                    <i class="bi bi-plus"></i> Agregar proyecto
-                                </button>
-                            </div>
-                            <div id="projects-container" class="border rounded p-3 bg-light">
-                                <!-- Projects will be added dynamically here -->
-                            </div>
-                        </div>
-
 
                     </div>
                     <div class="modal-footer">
@@ -3041,6 +3040,7 @@ ISECR2 Finalizar cada programa con un máximo de bajas de 10%.</textarea>
     <div id="attendance-dropdown-container"></div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1/Sortable.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -3054,6 +3054,26 @@ ISECR2 Finalizar cada programa con un máximo de bajas de 10%.</textarea>
     <script src="js/program-competences.js"></script>
     <script src="js/student-tracking.js"></script>
     <script src="js/promotion-detail.js"></script>
+
+    <!-- Modal confirmacion eliminacion de tema -->
+    <div class="modal fade" id="confirmDeleteTopicModal" tabindex="-1">
+        <div class="modal-dialog modal-sm">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Eliminar tema</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Esta accion eliminara el tema y todo su contenido (lecciones y proyectos). No se puede deshacer.</p>
+                    <p class="fw-bold" id="confirm-delete-topic-name"></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-danger btn-sm" id="confirm-delete-topic-btn">Eliminar</button>
+                </div>
+            </div>
+        </div>
+    </div>
 </body>
 
 </html>
