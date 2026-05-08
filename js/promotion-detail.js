@@ -862,7 +862,7 @@ function displayPildoras() {
     // Get current module píldoras
     const currentModule = promotionModules[currentModuleIndex];
     if (!currentModule) {
-        tbody.innerHTML = '<tr><td colspan="6" class="text-muted">No modules found.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="text-muted">No modules found.</td></tr>';
         return;
     }
 
@@ -877,7 +877,7 @@ function displayPildoras() {
     updateModuleNavigation();
 
     if (pildoras.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" class="text-muted">No píldoras configuradas para ${currentModule.name}.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" class="text-muted">No píldoras configuradas para ${currentModule.name}.</td></tr>`;
         return;
     }
 
@@ -898,6 +898,9 @@ function displayPildoras() {
         const tr = document.createElement('tr');
         tr.dataset.index = index;
         tr.innerHTML = `
+            <td class="pildora-drag-handle" style="cursor:grab;width:28px;text-align:center;color:#adb5bd;">
+                <i class="bi bi-grip-vertical"></i>
+            </td>
             <td>
                 <select class="form-select form-select-sm pildora-mode pildora-mode-${modeValue.toLowerCase().replace(' ', '-')}">
                     <option value="Virtual" ${modeValue === 'Virtual' ? 'selected' : ''}>Virtual</option>
@@ -1041,6 +1044,8 @@ function displayPildoras() {
             }
         });
     });
+
+    initPildorasSortable();
 }
 
 // Helper function to update other fields for píldoras
@@ -1236,7 +1241,8 @@ function navigateToNextModule() {
 
 /**
  * Sync píldoras from UI table to extendedInfoData state
- * Called before navigating between modules to preserve changes
+ * Called before navigating between modules to preserve changes.
+ * Usa la posición DOM (domIndex) como fuente de verdad del orden — no dataset.index.
  */
 function syncPildorasFromUIToState() {
     const pildorasRows = document.querySelectorAll('#pildoras-list-body tr');
@@ -1248,13 +1254,16 @@ function syncPildorasFromUIToState() {
     const currentModulePildoras = [];
     const students = window.currentStudents || [];
 
-    pildorasRows.forEach(row => {
+    // Iterar en orden DOM. domIndex es la fuente de verdad de la posición en el array.
+    // No se usa row.dataset.index porque puede estar desfasado tras un drag.
+    pildorasRows.forEach((row, domIndex) => {
         const modeEl = row.querySelector('.pildora-mode');
         const dateEl = row.querySelector('.pildora-date');
         const titleEl = row.querySelector('.pildora-title');
         const statusEl = row.querySelector('.pildora-status');
         const dropdown = row.querySelector('.pildora-students-dropdown');
 
+        // Si la fila no tiene controles (ej. fila de "sin píldoras"), ignorar
         if (!modeEl || !dateEl || !titleEl || !statusEl || !dropdown) return;
 
         const mode = modeEl.value || '';
@@ -1274,15 +1283,15 @@ function syncPildorasFromUIToState() {
             };
         });
 
-        if (mode || date || title || status || studentsForPildora.length > 0) {
-            currentModulePildoras.push({
-                mode,
-                date,
-                title,
-                students: studentsForPildora,
-                status
-            });
-        }
+        // Incluir siempre todas las filas (incluso vacías) para que el índice DOM
+        // coincida con el índice del array en memoria tras cualquier reordenamiento.
+        currentModulePildoras.push({
+            mode,
+            date,
+            title,
+            students: studentsForPildora,
+            status
+        });
     });
 
     // Update the module's píldoras in state
@@ -5843,6 +5852,40 @@ function initPlannerSortable() {
             if (evt.oldIndex === evt.newIndex) return;
             const moved = currentPlannerItems.splice(evt.oldIndex, 1)[0];
             currentPlannerItems.splice(evt.newIndex, 0, moved);
+        }
+    });
+}
+
+function initPildorasSortable() {
+    const tbody = document.getElementById('pildoras-list-body');
+    if (!tbody || !window.Sortable) return;
+    if (tbody._sortableInstance) tbody._sortableInstance.destroy();
+    tbody._sortableInstance = new Sortable(tbody, {
+        animation: 150,
+        handle: '.pildora-drag-handle',
+        onEnd(evt) {
+            if (evt.oldIndex === evt.newIndex) return;
+
+            // Reordenar el array en memoria
+            const currentModule = promotionModules[currentModuleIndex];
+            if (!currentModule) return;
+            const modulePildoras = extendedInfoData.modulesPildoras?.find(mp => mp.moduleId === currentModule.id);
+            if (!modulePildoras || !modulePildoras.pildoras) return;
+
+            const moved = modulePildoras.pildoras.splice(evt.oldIndex, 1)[0];
+            modulePildoras.pildoras.splice(evt.newIndex, 0, moved);
+
+            // Actualizar data-index en todos los <tr> y data-pildora-index en checkboxes
+            const rows = tbody.querySelectorAll('tr');
+            rows.forEach((tr, i) => {
+                tr.dataset.index = i;
+                tr.querySelectorAll('.pildora-student-checkbox').forEach(cb => {
+                    cb.dataset.pildoraIndex = i;
+                });
+            });
+
+            // Persistir en servidor
+            savePildorasToServer(currentModule);
         }
     });
 }

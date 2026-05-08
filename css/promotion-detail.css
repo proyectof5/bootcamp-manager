@@ -2756,3 +2756,32 @@ progress-bar progress-bar-striped {
 }
 
 /* ==================== SIDEBAR RESPONSIVE - TO BE RECODIFIED ==================== */
+
+/* ==================== PÍLDORAS DRAG & DROP (TASK-PILD-SORT-04) ==================== */
+
+/* Handle de arrastre de píldoras */
+.pildora-drag-handle {
+    cursor: grab;
+    width: 28px;
+    text-align: center;
+    color: #adb5bd;
+    user-select: none;
+    vertical-align: middle;
+    transition: color 0.15s ease;
+}
+
+.pildora-drag-handle:hover {
+    color: #6c757d;
+}
+
+/* Cursor activo mientras se arrastra */
+.pildora-drag-handle:active,
+.sortable-drag .pildora-drag-handle {
+    cursor: grabbing;
+}
+
+/* Fila fantasma (placeholder) mientras se arrastra */
+#pildoras-list-body .sortable-ghost {
+    opacity: 0.4;
+    background-color: #f0f4ff;
+}
