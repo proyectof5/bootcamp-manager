@@ -593,12 +593,27 @@
                                             <button type="button" class="btn btn-sm btn-outline-success" id="send-eval-splitview-btn"
                                                 onclick="sendEvaluationByEmail()" title="Guardar y enviar informe PDF al correo del estudiante"><i
                                                     class="bi bi-envelope-arrow-up me-1"></i>Enviar evaluación</button>
+                                            <button type="button" class="btn btn-sm btn-outline-primary" id="send-eval-all-splitview-btn"
+                                                onclick="sendEvaluationToAllInProject()" title="Guardar y enviar la evaluación individual a todos los estudiantes evaluados en este proyecto"><i
+                                                    class="bi bi-send me-1"></i>Enviar a todos</button>
                                         </div>
                                         <div class="eval-split-layout">
                                             <aside class="eval-targets-sidebar">
                                                 <ul class="eval-targets-list list-unstyled mb-0" id="eval-targets-list">
                                                 </ul>
                                             </aside>
+                                            <!-- AUDITORÍA TASK-EVAL-05 — Comportamiento de Enter en .eval-feedback-rte:
+                                                 Los editores .eval-feedback-rte se generan dinámicamente por JS e inyectan
+                                                 en #eval-right-body y #student-eval-panel-body, ambos son <div> simples.
+                                                 ✅ NO están dentro de ningún <form>, por lo que Enter es libre por diseño:
+                                                    el navegador nunca interceptará la tecla como "submit".
+                                                 ✅ Comportamiento estándar de contenteditable en browsers modernos:
+                                                    - Enter simple     → nuevo bloque <div> (Chrome/Edge) o <p> (Firefox).
+                                                    - Shift+Enter      → <br> (salto de línea suave) en todos los browsers.
+                                                 ✅ Se registra un listener keydown con delegación en #teacher-area-evaluation
+                                                    (ver promotion-detail.js, función _initEvalFeedbackRteKeyHandler) que
+                                                    normaliza Shift+Enter a <br> para garantizar consistencia cross-browser.
+                                            -->
                                             <main class="eval-right-panel" id="eval-right-panel">
                                                 <div id="eval-right-empty" class="text-center py-5">Selecciona un alumno
                                                 </div>
@@ -1319,8 +1334,8 @@
                                     </h6>
                                 </div>
                                 <div class="card-body p-0">
-                                    <!-- Rich-text toolbar -->
-                                    <div id="eval-rte-toolbar" style="display:flex;flex-wrap:wrap;gap:4px;padding:8px 12px;background:#f8f9fa;border-bottom:1px solid #dee2e6;">
+                                    <!-- Rich-text toolbar — sticky durante el scroll de página -->
+                                    <div id="eval-rte-toolbar" class="eval-toolbar-sticky" style="display:flex;flex-wrap:wrap;gap:4px;padding:8px 12px;background:#f8f9fa;border-bottom:1px solid #dee2e6;">
                                         <button type="button" class="btn btn-sm btn-outline-secondary" title="Negrita (Ctrl+B)"
                                             onclick="document.execCommand('bold');document.getElementById('evaluation-text').focus()">
                                             <i class="bi bi-type-bold"></i>
@@ -1351,10 +1366,33 @@
                                             onclick="document.execCommand('redo');document.getElementById('evaluation-text').focus()">
                                             <i class="bi bi-arrow-clockwise"></i>
                                         </button>
+                                        <div style="width:1px;background:#ced4da;margin:0 4px;"></div>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" title="Insertar enlace"
+                                            onclick="insertEvalLink()">
+                                            <i class="bi bi-link-45deg"></i>
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" title="Insertar imagen"
+                                            onclick="insertEvalImage()">
+                                            <i class="bi bi-image"></i>
+                                        </button>
+                                        <div style="width:1px;background:#ced4da;margin:0 4px;"></div>
+                                        <button type="button" class="btn btn-sm btn-outline-primary" title="Guardar evaluación"
+                                            onclick="saveEvaluationFeedback()">
+                                            <i class="bi bi-floppy"></i>
+                                        </button>
                                     </div>
-                                    <!-- Editable area -->
+                                    <!-- Editable area
+                                         AUDITORÍA TASK-EVAL-05 — Comportamiento de Enter:
+                                         ✅ Este div NO está dentro de ningún <form>, por lo que Enter es libre por diseño:
+                                            el navegador no intercepta la tecla como "submit".
+                                         ✅ Comportamiento estándar de contenteditable en browsers modernos:
+                                            - Enter simple → inserta un nuevo bloque <div> (Chrome/Edge) o <p> (Firefox).
+                                            - Shift+Enter → inserta <br> (salto de línea suave) en todos los browsers.
+                                         ✅ No se añade ningún handler de teclado — el comportamiento por defecto es correcto
+                                            para un editor de texto enriquecido como este.
+                                    -->
                                     <div id="evaluation-text" contenteditable="true"
-                                        style="min-height:340px;max-height:600px;overflow-y:auto;padding:14px 16px;outline:none;font-size:0.92rem;line-height:1.6;border:none;"
+                                        style="min-height:340px;padding:14px 16px;outline:none;font-size:0.92rem;line-height:1.6;border:none;"
                                         data-placeholder="Describe los criterios de evaluación...">
                                     </div>
                                 </div>

@@ -1416,7 +1416,9 @@ async function printActaInicio(promotionId) {
      * @param {string} overrideEmail - (optional) email to send to; defaults to student.email
      * @returns {Promise<void>}
      */
-    async function sendProjectReportByEmail(teamIndex, studentId, promotionId, overrideEmail) {
+    async function sendProjectReportByEmail(teamIndex, studentId, promotionId, overrideEmail, { silent = false } = {}) {
+        const _fail = (msg) => { if (silent) throw new Error(msg); else { alert(msg); } };
+        const _ok   = (msg) => { if (!silent) alert(msg); };  // éxito: solo muestra en modo interactivo
         const token = localStorage.getItem('token');
         const st = window.StudentTracking;
         let t  = st?._getTeam(teamIndex);
@@ -1435,15 +1437,15 @@ async function printActaInicio(promotionId) {
                 promoName = promo.name || '';
                 t = (s.technicalTracking?.teams || [])[teamIndex];
             } catch (e) {
-                alert('Error cargando datos: ' + e.message);
+                _fail('Error cargando datos: ' + e.message);
                 return;
             }
         }
 
-        if (!t) { alert('Proyecto no encontrado.'); return; }
+        if (!t) { _fail('Proyecto no encontrado.'); return; }
 
         const toEmail = overrideEmail || s.email;
-        if (!toEmail) { alert('El estudiante no tiene email registrado.'); return; }
+        if (!toEmail) { _fail('El estudiante no tiene email registrado.'); return; }
 
         const fullName = `${s.name || ''} ${s.lastname || ''}`.trim();
         const PROJ_LEVEL_COLORS = { 0: 'grey', 1: 'red', 2: 'yellow', 3: 'green' };
@@ -1534,14 +1536,14 @@ async function printActaInicio(promotionId) {
             });
             _hideSaving();
             if (emailRes.ok) {
-                alert(`¡Informe enviado correctamente a ${toEmail}!`);
+                _ok(`¡Informe enviado correctamente a ${toEmail}!`);
             } else {
                 const error = await emailRes.json();
                 throw new Error(error.error || 'Error al enviar el email');
             }
         } catch (e) {
             _hideSaving();
-            alert('Error al enviar el informe: ' + e.message);
+            _fail('Error al enviar el informe: ' + e.message);
         }
     }
 

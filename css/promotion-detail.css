@@ -2785,3 +2785,68 @@ progress-bar progress-bar-striped {
     opacity: 0.4;
     background-color: #f0f4ff;
 }
+
+/* ==================== EVALUATION TOOLBAR STICKY (TASK-EVAL-01) ==================== */
+
+/*
+ * El toolbar del editor de evaluación es sticky respecto al scroll de la página.
+ * Para que sticky funcione, el contenedor del tab (.tab-pane y sus ancestros)
+ * NO debe tener overflow:hidden ni overflow:auto — el scroll debe ocurrir en la
+ * ventana o en el contenedor de scroll más cercano que NO tenga overflow:hidden.
+ * El área editable (#evaluation-text) no tiene scroll propio: crece con el contenido.
+ *
+ * top: 60px — desplazamiento para quedar justo bajo la barra de tabs sticky
+ * (#program-details-tabs tiene top:16px y ~44px de altura visible).
+ */
+.eval-toolbar-sticky {
+    position: sticky;
+    top: 60px;
+    z-index: 10;
+    background: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+}
+
+/* TASK-BUG-EVAL-02 — Compensar el solapamiento del toolbar sticky.
+ * El toolbar sticky (.eval-toolbar-sticky, top:60px, ~52px alto) flota sobre
+ * el editor al hacer scroll. El #evaluation-text ya tiene padding:14px 16px
+ * en línea — suficiente para cuando la página está en la posición inicial.
+ * Al hacer scroll el toolbar cubre el contenido: se añade scroll-padding-top
+ * al elemento raíz para que los anclas y el foco no queden ocultos,
+ * y scroll-margin-top al editor para el mismo efecto. */
+html {
+    scroll-padding-top: 116px; /* 60px (tabs sticky) + 56px (toolbar sticky) */
+}
+
+#evaluation-text {
+    scroll-margin-top: 116px;
+}
+
+/* ==================== EVAL FEEDBACK RTE (TASK-EVAL-AREA-DOCENTE) ==================== */
+/* Toolbar + contenteditable para el feedback individual/grupal en Área del Docente > Evaluación */
+
+.eval-feedback-toolbar .btn {
+    font-size: 0.78rem;
+    line-height: 1.2;
+}
+
+.eval-feedback-toolbar .btn:focus {
+    box-shadow: none;
+}
+
+.eval-feedback-rte:focus {
+    outline: none;
+    box-shadow: none;
+}
+
+.eval-feedback-rte ul,
+.eval-feedback-rte ol {
+    padding-left: 1.3em;
+    margin-bottom: 0.4em;
+}
+
+.eval-feedback-rte:empty:before {
+    content: attr(data-placeholder);
+    color: #adb5bd;
+    pointer-events: none;
+}
+
