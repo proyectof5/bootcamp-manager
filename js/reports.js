@@ -1516,7 +1516,7 @@ async function printActaInicio(promotionId) {
 
         const filename = `evaluacion_${(t.teamName||'proyecto').replace(/\s+/g,'-')}_${fullName.replace(/\s+/g,'-')}.pdf`;
 
-        _showSaving('Generando y enviando informe de evaluación...');
+        if (!silent) _showSaving('Generando y enviando informe de evaluación...');
         try {
             const pdf = await _renderToPdf(html, filename);
             const base64Data = pdf.output('datauristring');
@@ -1534,7 +1534,7 @@ async function printActaInicio(promotionId) {
                     base64Data: base64Data
                 })
             });
-            _hideSaving();
+            if (!silent) _hideSaving();
             if (emailRes.ok) {
                 _ok(`¡Informe enviado correctamente a ${toEmail}!`);
             } else {
@@ -1542,7 +1542,7 @@ async function printActaInicio(promotionId) {
                 throw new Error(error.error || 'Error al enviar el email');
             }
         } catch (e) {
-            _hideSaving();
+            if (!silent) _hideSaving();
             _fail('Error al enviar el informe: ' + e.message);
         }
     }

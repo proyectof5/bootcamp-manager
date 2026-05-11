@@ -13865,7 +13865,7 @@ async function sendEvaluationToAllInProject() {
     const mod = modules[mIdx];
     const proj = mod?.projects[pIdx];
 
-    // Only send to students that have been evaluated (have evaluatedAt)
+    // Solo enviar a estudiantes realmente evaluados (tienen evaluatedAt)
     const evaluatedEntries = (saved.evaluations || []).filter(e => e.evaluatedAt && !e.isGroup);
     if (evaluatedEntries.length === 0) {
         showToast('No hay estudiantes evaluados en este proyecto', 'warning');
@@ -13877,48 +13877,53 @@ async function sendEvaluationToAllInProject() {
     );
     if (!confirmed) return;
 
-    const sendAllBtn = document.getElementById('send-eval-all-splitview-btn');
-    const originalHtml = sendAllBtn ? sendAllBtn.innerHTML : '';
-    if (sendAllBtn) {
-        sendAllBtn.disabled = true;
-        sendAllBtn.innerHTML = `<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>Enviando...`;
-    }
-
+    // Capturamos los datos necesarios ANTES de ceder el hilo,
+    // ya que el estado global puede cambiar si el usuario navega.
     const token = localStorage.getItem('token');
     const students = window._evalState?.allStudents || window._evalState?.students || [];
-    let sent = 0, failed = 0;
+    const projectName = proj?.name || saved.projectName;
+    const total = evaluatedEntries.length;
 
-    for (const entry of evaluatedEntries) {
-        try {
-            const studentId = String(entry.targetId);
-            const student = students.find(s => String(s.id || s._id) === studentId);
-            const studentEmail = student?.email || '';
-            if (!studentEmail) { failed++; continue; }
+    // Iniciar badge de progreso — no bloqueamos la UI
+    const taskId = _bgTaskManager.start(`Enviando informes 0/${total}...`);
 
-            // Load student tracking to resolve team index
-            const stuRes = await fetch(`${API_URL}/api/promotions/${promotionId}/students/${studentId}`, {
-                headers: { 'Authorization': `Bearer ${token}` }
-            });
-            if (!stuRes.ok) { failed++; continue; }
-            const stuData = await stuRes.json();
-            const teams = stuData.technicalTracking?.teams || [];
-            let teamIndex = teams.findIndex(t => t.teamName === (proj?.name || saved.projectName));
-            if (teamIndex < 0) teamIndex = 0;
+    // Lanzar el bucle de envío en background (cede el control al event loop antes de empezar)
+    setTimeout(async function _doSendAll() {
+        let sent = 0, failed = 0;
 
-            await window.Reports.sendProjectReportByEmail(teamIndex, studentId, promotionId, studentEmail, { silent: true });
-            sent++;
-        } catch (err) {
-            console.error('[sendEvaluationToAllInProject] student error:', entry.targetId, err);
-            failed++;
+        for (const entry of evaluatedEntries) {
+            try {
+                const studentId = String(entry.targetId);
+                const student = students.find(s => String(s.id || s._id) === studentId);
+                const studentEmail = student?.email || '';
+                if (!studentEmail) { failed++; _bgTaskManager.update(taskId, `Enviando informes ${sent + failed}/${total}...`); continue; }
+
+                // Cargar tracking del estudiante para resolver el teamIndex
+                const stuRes = await fetch(`${API_URL}/api/promotions/${promotionId}/students/${studentId}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (!stuRes.ok) { failed++; _bgTaskManager.update(taskId, `Enviando informes ${sent + failed}/${total}...`); continue; }
+                const stuData = await stuRes.json();
+                const teams = stuData.technicalTracking?.teams || [];
+                let teamIndex = teams.findIndex(t => t.teamName === projectName);
+                if (teamIndex < 0) teamIndex = 0;
+
+                await window.Reports.sendProjectReportByEmail(teamIndex, studentId, promotionId, studentEmail, { silent: true });
+                sent++;
+            } catch (err) {
+                console.error('[sendEvaluationToAllInProject] student error:', entry.targetId, err);
+                failed++;
+            }
+            _bgTaskManager.update(taskId, `Enviando informes ${sent + failed}/${total}...`);
         }
-    }
 
-    if (sendAllBtn) { sendAllBtn.disabled = false; sendAllBtn.innerHTML = originalHtml; }
-
-    const msg = failed === 0
-        ? `Informes enviados a ${sent} estudiante${sent !== 1 ? 's' : ''} correctamente`
-        : `Informes enviados: ${sent}. Fallidos: ${failed}`;
-    showToast(msg, failed > 0 ? 'warning' : 'success');
+        // Finalizar: eliminar badge y mostrar toast de resumen
+        _bgTaskManager.finish(taskId);
+        const msg = failed === 0
+            ? `Informes enviados a ${sent} estudiante${sent !== 1 ? 's' : ''} correctamente`
+            : `Informes enviados: ${sent}. Fallidos: ${failed}`;
+        showToast(msg, failed > 0 ? 'warning' : 'success');
+    }, 0);
 }
 
 /** Called by the "Cancelar" / "Volver" buttons in the inline eval panel or split view. */
@@ -14413,6 +14418,101 @@ async function _persistEvaluations() {
         console.error('Error persisting evaluations:', err);
     }
 }
+
+// ==================== BACKGROUND TASK MANAGER ====================
+
+/**
+ * Gestor de tareas en background.
+ * Muestra un badge flotante en la esquina inferior derecha para tareas de larga duración
+ * que se ejecutan sin bloquear la UI (ej. envío masivo de informes).
+ *
+ * Uso:
+ *   const taskId = _bgTaskManager.start('Enviando informes 0/10...');
+ *   _bgTaskManager.update(taskId, 'Enviando informes 5/10...');
+ *   _bgTaskManager.finish(taskId);
+ */
+const _bgTaskManager = (() => {
+    // Map de taskId → { el: HTMLElement }
+    const _tasks = new Map();
+    const _CONTAINER_ID = 'bg-task-badge-container';
+
+    function _getOrCreateContainer() {
+        let container = document.getElementById(_CONTAINER_ID);
+        if (!container) {
+            container = document.createElement('div');
+            container.id = _CONTAINER_ID;
+            // Posicionado justo encima del área de toasts de Bootstrap (bottom: 0 end: 0)
+            container.style.cssText = [
+                'position:fixed',
+                'bottom:80px',
+                'right:20px',
+                'z-index:10000',
+                'display:flex',
+                'flex-direction:column',
+                'gap:8px',
+                'align-items:flex-end',
+                'pointer-events:none',
+            ].join(';');
+            document.body.appendChild(container);
+        }
+        return container;
+    }
+
+    function _removeContainerIfEmpty() {
+        const container = document.getElementById(_CONTAINER_ID);
+        if (container && container.childElementCount === 0) {
+            container.remove();
+        }
+    }
+
+    /**
+     * Inicia una tarea en background y muestra el badge.
+     * @param {string} label - Texto inicial del badge
+     * @returns {string} taskId — pásalo a update() y finish()
+     */
+    function start(label) {
+        const taskId = `bgt-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+        const container = _getOrCreateContainer();
+
+        const el = document.createElement('div');
+        el.id = taskId;
+        el.style.cssText = 'pointer-events:auto;';
+        el.innerHTML = `
+            <span class="badge bg-primary d-flex align-items-center gap-2 px-3 py-2 shadow" style="font-size:.8rem;white-space:nowrap;">
+                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                <span class="bg-task-label">${escapeHtml(label)}</span>
+            </span>`;
+        container.appendChild(el);
+        _tasks.set(taskId, { el });
+        return taskId;
+    }
+
+    /**
+     * Actualiza el texto del badge de una tarea activa.
+     * @param {string} taskId
+     * @param {string} label
+     */
+    function update(taskId, label) {
+        const task = _tasks.get(taskId);
+        if (!task) return;
+        const labelEl = task.el.querySelector('.bg-task-label');
+        if (labelEl) labelEl.textContent = label;
+    }
+
+    /**
+     * Finaliza una tarea y elimina su badge.
+     * @param {string} taskId
+     */
+    function finish(taskId) {
+        const task = _tasks.get(taskId);
+        if (!task) return;
+        task.el.remove();
+        _tasks.delete(taskId);
+        _removeContainerIfEmpty();
+    }
+
+    return { start, update, finish };
+})();
 
 function showToast(message, type = 'info') {
     // Create a simple Bootstrap toast
