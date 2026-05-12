@@ -862,7 +862,7 @@ function displayPildoras() {
     // Get current module píldoras
     const currentModule = promotionModules[currentModuleIndex];
     if (!currentModule) {
-        tbody.innerHTML = '<tr><td colspan="6" class="text-muted">No modules found.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="text-muted">No modules found.</td></tr>';
         return;
     }
 
@@ -877,7 +877,7 @@ function displayPildoras() {
     updateModuleNavigation();
 
     if (pildoras.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" class="text-muted">No píldoras configuradas para ${currentModule.name}.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" class="text-muted">No píldoras configuradas para ${currentModule.name}.</td></tr>`;
         return;
     }
 
@@ -898,6 +898,9 @@ function displayPildoras() {
         const tr = document.createElement('tr');
         tr.dataset.index = index;
         tr.innerHTML = `
+            <td class="pildora-drag-handle" style="cursor:grab;width:28px;text-align:center;color:#adb5bd;">
+                <i class="bi bi-grip-vertical"></i>
+            </td>
             <td>
                 <select class="form-select form-select-sm pildora-mode pildora-mode-${modeValue.toLowerCase().replace(' ', '-')}">
                     <option value="Virtual" ${modeValue === 'Virtual' ? 'selected' : ''}>Virtual</option>
@@ -1041,6 +1044,8 @@ function displayPildoras() {
             }
         });
     });
+
+    initPildorasSortable();
 }
 
 // Helper function to update other fields for píldoras
@@ -1236,7 +1241,8 @@ function navigateToNextModule() {
 
 /**
  * Sync píldoras from UI table to extendedInfoData state
- * Called before navigating between modules to preserve changes
+ * Called before navigating between modules to preserve changes.
+ * Usa la posición DOM (domIndex) como fuente de verdad del orden — no dataset.index.
  */
 function syncPildorasFromUIToState() {
     const pildorasRows = document.querySelectorAll('#pildoras-list-body tr');
@@ -1248,13 +1254,16 @@ function syncPildorasFromUIToState() {
     const currentModulePildoras = [];
     const students = window.currentStudents || [];
 
-    pildorasRows.forEach(row => {
+    // Iterar en orden DOM. domIndex es la fuente de verdad de la posición en el array.
+    // No se usa row.dataset.index porque puede estar desfasado tras un drag.
+    pildorasRows.forEach((row, domIndex) => {
         const modeEl = row.querySelector('.pildora-mode');
         const dateEl = row.querySelector('.pildora-date');
         const titleEl = row.querySelector('.pildora-title');
         const statusEl = row.querySelector('.pildora-status');
         const dropdown = row.querySelector('.pildora-students-dropdown');
 
+        // Si la fila no tiene controles (ej. fila de "sin píldoras"), ignorar
         if (!modeEl || !dateEl || !titleEl || !statusEl || !dropdown) return;
 
         const mode = modeEl.value || '';
@@ -1274,15 +1283,15 @@ function syncPildorasFromUIToState() {
             };
         });
 
-        if (mode || date || title || status || studentsForPildora.length > 0) {
-            currentModulePildoras.push({
-                mode,
-                date,
-                title,
-                students: studentsForPildora,
-                status
-            });
-        }
+        // Incluir siempre todas las filas (incluso vacías) para que el índice DOM
+        // coincida con el índice del array en memoria tras cualquier reordenamiento.
+        currentModulePildoras.push({
+            mode,
+            date,
+            title,
+            students: studentsForPildora,
+            status
+        });
     });
 
     // Update the module's píldoras in state
@@ -5847,6 +5856,199 @@ function initPlannerSortable() {
     });
 }
 
+function initPildorasSortable() {
+    const tbody = document.getElementById('pildoras-list-body');
+    if (!tbody || !window.Sortable) return;
+    if (tbody._sortableInstance) tbody._sortableInstance.destroy();
+    tbody._sortableInstance = new Sortable(tbody, {
+        animation: 150,
+        handle: '.pildora-drag-handle',
+        onEnd(evt) {
+            if (evt.oldIndex === evt.newIndex) return;
+
+            // Reordenar el array en memoria
+            const currentModule = promotionModules[currentModuleIndex];
+            if (!currentModule) return;
+            const modulePildoras = extendedInfoData.modulesPildoras?.find(mp => mp.moduleId === currentModule.id);
+            if (!modulePildoras || !modulePildoras.pildoras) return;
+
+            const moved = modulePildoras.pildoras.splice(evt.oldIndex, 1)[0];
+            modulePildoras.pildoras.splice(evt.newIndex, 0, moved);
+
+            // Actualizar data-index en todos los <tr> y data-pildora-index en checkboxes
+            const rows = tbody.querySelectorAll('tr');
+            rows.forEach((tr, i) => {
+                tr.dataset.index = i;
+                tr.querySelectorAll('.pildora-student-checkbox').forEach(cb => {
+                    cb.dataset.pildoraIndex = i;
+                });
+            });
+
+            // Persistir en servidor
+            savePildorasToServer(currentModule);
+        }
+    });
+}
+
+/**
+ * Guarda el contenido del editor de evaluación directamente en el servidor
+ * sin necesidad de pasar por el guardado general de la promoción.
+ */
+async function saveEvaluationFeedback() {
+    const evalEl = document.getElementById('evaluation-text');
+    if (!evalEl) return;
+    const html = evalEl.innerHTML;
+    extendedInfoData.evaluation = html;
+    const token = localStorage.getItem('token');
+    try {
+        const res = await fetch(`${API_URL}/api/promotions/${promotionId}/extended-info`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ evaluation: html })
+        });
+        if (!res.ok) throw new Error(await res.text());
+        window.showApiToast('Evaluación guardada', 'success');
+    } catch (err) {
+        console.error('saveEvaluationFeedback error:', err);
+        window.showApiToast('Error al guardar la evaluación', 'error');
+    }
+}
+
+/**
+ * TASK-EVAL-07 — Guarda la evaluación y la envía por email a todos los estudiantes activos
+ * de la promoción. Pide confirmación antes de enviar.
+ */
+async function sendEvaluationToAllStudents() {
+    // Contar estudiantes activos a partir del estado local
+    const activeCount = (window._evalState?.students || []).length;
+    const countLabel = activeCount > 0 ? `${activeCount} estudiante${activeCount !== 1 ? 's' : ''}` : 'los estudiantes activos';
+
+    const confirmed = window.confirm(
+        `¿Guardar y enviar la evaluación a ${countLabel}?\n\nEsta acción enviará un correo a cada estudiante activo de la promoción.`
+    );
+    if (!confirmed) return;
+
+    // Guardar primero para que el backend lea la versión más reciente
+    await saveEvaluationFeedback();
+
+    const token = localStorage.getItem('token');
+    try {
+        const res = await fetch(`${API_URL}/api/promotions/${promotionId}/send-evaluation`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data?.message || res.statusText);
+        const msg = `Evaluación enviada a ${data.sent} estudiante${data.sent !== 1 ? 's' : ''}` +
+            (data.failed > 0 ? ` (${data.failed} fallidos)` : '');
+        window.showApiToast(msg, data.failed > 0 ? 'warning' : 'success');
+    } catch (err) {
+        console.error('sendEvaluationToAllStudents error:', err);
+        window.showApiToast('Error al enviar la evaluación: ' + err.message, 'error');
+    }
+}
+
+/**
+ * Inserta un enlace (<a>) en la posición del cursor dentro del editor de evaluación.
+ * Usa insertHTML en lugar de createLink para poder configurar target="_blank".
+ */
+function insertEvalLink() {
+    const url = window.prompt('URL del enlace:');
+    if (!url || !url.trim()) return;
+
+    // Obtener el texto seleccionado; si no hay selección, pedir texto al usuario
+    const selection = window.getSelection();
+    const selectedText = selection && !selection.isCollapsed ? selection.toString() : null;
+    const linkText = selectedText || window.prompt('Texto del enlace:') || url;
+
+    const safeUrl = url.trim().replace(/"/g, '&quot;');
+    const safeText = linkText.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const anchorHtml = `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer">${safeText}</a>`;
+
+    // Restaurar foco al editor antes de ejecutar el comando
+    document.getElementById('evaluation-text').focus();
+    document.execCommand('insertHTML', false, anchorHtml);
+}
+
+/**
+ * Inserta una imagen (<img>) en la posición del cursor dentro del editor de evaluación.
+ * Solo soporta URL externa — la subida de archivo se documenta como deuda técnica (TD-11).
+ */
+function insertEvalImage() {
+    const url = window.prompt('URL de la imagen:');
+    if (!url || !url.trim()) return;
+
+    const altText = window.prompt('Texto alternativo (descripción):') || '';
+    const safeUrl = url.trim().replace(/"/g, '&quot;');
+    const safeAlt = altText.replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const imgHtml = `<img src="${safeUrl}" alt="${safeAlt}" style="max-width:100%;height:auto;display:block;margin:8px 0;">`;
+
+    // Restaurar foco al editor antes de ejecutar el comando
+    document.getElementById('evaluation-text').focus();
+    document.execCommand('insertHTML', false, imgHtml);
+}
+
+/**
+ * Inserta un enlace en el .eval-feedback-rte del panel de evaluación del docente.
+ * Se llama con onmousedown + event.preventDefault() para preservar la selección.
+ * @param {HTMLElement} btn - El botón que disparó el evento
+ */
+function _insertEvalFeedbackLink(btn) {
+    // Guardar la selección antes de que prompt() la destruya
+    const sel = window.getSelection();
+    let savedRange = null;
+    if (sel && sel.rangeCount > 0) {
+        savedRange = sel.getRangeAt(0).cloneRange();
+    }
+
+    const url = window.prompt('URL del enlace:');
+    if (!url || !url.trim()) return;
+
+    const selectedText = savedRange && !savedRange.collapsed ? savedRange.toString() : null;
+    const linkText = selectedText || window.prompt('Texto del enlace:') || url;
+
+    // Encontrar el RTE más cercano al botón
+    const rte = btn.closest('.border')?.querySelector('.eval-feedback-rte');
+    if (!rte) return;
+
+    // Restaurar selección
+    rte.focus();
+    if (savedRange) {
+        sel.removeAllRanges();
+        sel.addRange(savedRange);
+    }
+
+    const safeUrl = url.trim().replace(/"/g, '&quot;');
+    const safeText = linkText.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const anchorHtml = `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer">${safeText}</a>`;
+    document.execCommand('insertHTML', false, anchorHtml);
+}
+
+/**
+ * Inserta una imagen en el .eval-feedback-rte del panel de evaluación del docente.
+ * Se llama con onmousedown + event.preventDefault() para preservar el foco.
+ * @param {HTMLElement} btn - El botón que disparó el evento
+ */
+function _insertEvalFeedbackImage(btn) {
+    const url = window.prompt('URL de la imagen:');
+    if (!url || !url.trim()) return;
+
+    const altText = window.prompt('Texto alternativo (descripción):') || '';
+
+    const rte = btn.closest('.border')?.querySelector('.eval-feedback-rte');
+    if (!rte) return;
+
+    rte.focus();
+
+    const safeUrl = url.trim().replace(/"/g, '&quot;');
+    const safeAlt = altText.replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const imgHtml = `<img src="${safeUrl}" alt="${safeAlt}" style="max-width:100%;height:auto;display:block;margin:8px 0;">`;
+    document.execCommand('insertHTML', false, imgHtml);
+}
+
 /**
  * Anade un nuevo item vacio del tipo indicado al final de la lista.
  * @param {'curso'|'proyecto'|'leccion'} type
@@ -10166,12 +10368,59 @@ async function loadEvaluation() {
 
         initVirtualClassroomPanel(ext, promo);
         renderEvaluationTab();
+        // Register the keyboard handler for .eval-feedback-rte elements once evaluation is loaded.
+        // Uses event delegation so it covers dynamically injected RTEs.
+        _initEvalFeedbackRteKeyHandler();
     } catch (err) {
         console.error('Error loading evaluation data:', err);
         if (container) {
             container.innerHTML = `<div class="alert alert-danger">Error al cargar los proyectos: ${err.message}</div>`;
         }
     }
+}
+
+/**
+ * TASK-EVAL-05 — Auditoría y normalización del comportamiento de Enter en .eval-feedback-rte.
+ *
+ * Contexto:
+ *   Los editores `.eval-feedback-rte` son `<div contenteditable>` inyectados dinámicamente
+ *   en `#eval-right-body` y `#student-eval-panel-body`. Ninguno de estos contenedores está
+ *   dentro de un `<form>`, por lo que Enter NUNCA actúa como submit — el comportamiento es
+ *   libre por diseño.
+ *
+ * Comportamiento estándar de contenteditable (browsers modernos):
+ *   - Enter simple    → inserta un nuevo bloque: <div> en Chrome/Edge, <p> en Firefox.
+ *   - Shift+Enter     → inserta <br> (salto de línea suave) en todos los browsers.
+ *
+ * Normalización aplicada:
+ *   - Shift+Enter se normaliza a <br> explícito mediante execCommand('insertLineBreak').
+ *     Esto garantiza comportamiento consistente en Chrome, Firefox y Safari.
+ *   - Enter simple se deja al comportamiento por defecto del browser (bloque nuevo).
+ *     No se normaliza a <br> porque la semántica de párrafos es más apropiada para
+ *     un editor de feedback con texto largo.
+ *
+ * Implementación con delegación de eventos sobre #teacher-area-evaluation para cubrir
+ * RTEs generados dinámicamente (split-view, grupal, legacy panel).
+ */
+function _initEvalFeedbackRteKeyHandler() {
+    const evalTab = document.getElementById('teacher-area-evaluation');
+    if (!evalTab || evalTab.dataset.rteKeyHandlerBound) return; // prevent duplicate binding
+    evalTab.dataset.rteKeyHandlerBound = '1';
+
+    evalTab.addEventListener('keydown', function (e) {
+        // Only act on .eval-feedback-rte elements
+        if (!e.target.classList.contains('eval-feedback-rte')) return;
+
+        if (e.key === 'Enter' && e.shiftKey) {
+            // Shift+Enter: insert <br> for consistent soft line break across all browsers.
+            // Chrome/Edge and Firefox both honour execCommand('insertLineBreak') here.
+            e.preventDefault();
+            document.execCommand('insertLineBreak');
+        }
+        // Enter alone: let the browser insert its default block element (<div> or <p>).
+        // This is intentional — do not convert to <br> as paragraph-level breaks are
+        // semantically correct for multi-paragraph feedback text.
+    }, false);
 }
 
 // ==================== AULA VIRTUAL – PANEL PROFESOR ====================
@@ -12087,9 +12336,29 @@ function selectEvalTarget(targetId) {
         </div>
         <div class="mt-3 mb-4">
             <label class="form-label small fw-semibold"><i class="bi bi-chat-text me-1"></i>Feedback</label>
-            <textarea class="form-control" rows="3" placeholder="Comentarios de feedback para el informe..."
-                data-target-type="${isGrupal ? 'group' : 'individual'}"
-                data-target-id="${escapeHtml(String(targetId))}">${escapeHtml(savedFeedback)}</textarea>
+            <div class="border rounded" style="overflow:hidden;">
+                <div class="eval-feedback-toolbar d-flex flex-wrap gap-1 p-1 bg-light border-bottom">
+                    <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1" title="Negrita" onclick="document.execCommand('bold');this.closest('.border').querySelector('.eval-feedback-rte').focus()"><i class="bi bi-type-bold"></i></button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1" title="Cursiva" onclick="document.execCommand('italic');this.closest('.border').querySelector('.eval-feedback-rte').focus()"><i class="bi bi-type-italic"></i></button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1" title="Subrayado" onclick="document.execCommand('underline');this.closest('.border').querySelector('.eval-feedback-rte').focus()"><i class="bi bi-type-underline"></i></button>
+                    <div style="width:1px;background:#ced4da;margin:0 2px;"></div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1" title="Lista viñetas" onclick="document.execCommand('insertUnorderedList');this.closest('.border').querySelector('.eval-feedback-rte').focus()"><i class="bi bi-list-ul"></i></button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1" title="Lista numerada" onclick="document.execCommand('insertOrderedList');this.closest('.border').querySelector('.eval-feedback-rte').focus()"><i class="bi bi-list-ol"></i></button>
+                    <div style="width:1px;background:#ced4da;margin:0 2px;"></div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1" title="Deshacer" onclick="document.execCommand('undo');this.closest('.border').querySelector('.eval-feedback-rte').focus()"><i class="bi bi-arrow-counterclockwise"></i></button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1" title="Rehacer" onclick="document.execCommand('redo');this.closest('.border').querySelector('.eval-feedback-rte').focus()"><i class="bi bi-arrow-clockwise"></i></button>
+                    <div style="width:1px;background:#ced4da;margin:0 2px;"></div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1" title="Insertar enlace" onmousedown="event.preventDefault();_insertEvalFeedbackLink(this)"><i class="bi bi-link-45deg"></i></button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1" title="Insertar imagen" onmousedown="event.preventDefault();_insertEvalFeedbackImage(this)"><i class="bi bi-image"></i></button>
+                </div>
+                <div class="eval-feedback-rte"
+                    contenteditable="true"
+                    data-target-type="${isGrupal ? 'group' : 'individual'}"
+                    data-target-id="${escapeHtml(String(targetId))}"
+                    data-placeholder="Comentarios de feedback para el informe..."
+                    style="min-height:90px;padding:8px 10px;outline:none;font-size:0.88rem;line-height:1.5;"
+                >${savedFeedback ? (/<[a-z][\s\S]*>/i.test(savedFeedback) ? savedFeedback : savedFeedback.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>')) : ''}</div>
+            </div>
         </div>`;
     }
 
@@ -12810,8 +13079,26 @@ function openEvaluationModal(mIdx, pIdx) {
                         </div>
                         <div class="mt-2">
                             <label class="form-label small fw-semibold"><i class="bi bi-chat-text me-1"></i>Feedback del grupo</label>
-                            <textarea class="form-control form-control-sm" rows="2" placeholder="Comentarios de feedback..."
-                                data-target-type="group" data-target-id="${escapeHtml(grp.groupName)}">${escapeHtml(savedFeedback)}</textarea>
+                            <div class="border rounded" style="overflow:hidden;">
+                                <div class="eval-feedback-toolbar d-flex flex-wrap gap-1 p-1 bg-light border-bottom">
+                                    <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1" title="Negrita" onclick="document.execCommand('bold');this.closest('.border').querySelector('.eval-feedback-rte').focus()"><i class="bi bi-type-bold"></i></button>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1" title="Cursiva" onclick="document.execCommand('italic');this.closest('.border').querySelector('.eval-feedback-rte').focus()"><i class="bi bi-type-italic"></i></button>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1" title="Subrayado" onclick="document.execCommand('underline');this.closest('.border').querySelector('.eval-feedback-rte').focus()"><i class="bi bi-type-underline"></i></button>
+                                    <div style="width:1px;background:#ced4da;margin:0 2px;"></div>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1" title="Lista viñetas" onclick="document.execCommand('insertUnorderedList');this.closest('.border').querySelector('.eval-feedback-rte').focus()"><i class="bi bi-list-ul"></i></button>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1" title="Lista numerada" onclick="document.execCommand('insertOrderedList');this.closest('.border').querySelector('.eval-feedback-rte').focus()"><i class="bi bi-list-ol"></i></button>
+                                    <div style="width:1px;background:#ced4da;margin:0 2px;"></div>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1" title="Insertar enlace" onmousedown="event.preventDefault();_insertEvalFeedbackLink(this)"><i class="bi bi-link-45deg"></i></button>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1" title="Insertar imagen" onmousedown="event.preventDefault();_insertEvalFeedbackImage(this)"><i class="bi bi-image"></i></button>
+                                </div>
+                                <div class="eval-feedback-rte"
+                                    contenteditable="true"
+                                    data-target-type="group"
+                                    data-target-id="${escapeHtml(grp.groupName)}"
+                                    data-placeholder="Comentarios de feedback..."
+                                    style="min-height:60px;padding:8px 10px;outline:none;font-size:0.85rem;line-height:1.5;"
+                                >${savedFeedback ? (/<[a-z][\s\S]*>/i.test(savedFeedback) ? savedFeedback : savedFeedback.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>')) : ''}</div>
+                            </div>
                         </div>
                     </div>
                 </div>`;
@@ -13218,8 +13505,29 @@ function _openStudentEvalSubModalFor(studentId) {
         </div>
         <div class="mt-3">
             <label class="form-label small fw-semibold"><i class="bi bi-chat-text me-1"></i>Feedback</label>
-            <textarea class="form-control form-control-sm" rows="2" placeholder="Comentarios de feedback para el informe..."
-                data-target-type="individual" data-target-id="${escapeHtml(studentId)}">${escapeHtml(savedFeedback)}</textarea>
+            <div class="border rounded" style="overflow:hidden;">
+                <div class="eval-feedback-toolbar d-flex flex-wrap gap-1 p-1 bg-light border-bottom">
+                    <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1" title="Negrita" onclick="document.execCommand('bold');this.closest('.border').querySelector('.eval-feedback-rte').focus()"><i class="bi bi-type-bold"></i></button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1" title="Cursiva" onclick="document.execCommand('italic');this.closest('.border').querySelector('.eval-feedback-rte').focus()"><i class="bi bi-type-italic"></i></button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1" title="Subrayado" onclick="document.execCommand('underline');this.closest('.border').querySelector('.eval-feedback-rte').focus()"><i class="bi bi-type-underline"></i></button>
+                    <div style="width:1px;background:#ced4da;margin:0 2px;"></div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1" title="Lista viñetas" onclick="document.execCommand('insertUnorderedList');this.closest('.border').querySelector('.eval-feedback-rte').focus()"><i class="bi bi-list-ul"></i></button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1" title="Lista numerada" onclick="document.execCommand('insertOrderedList');this.closest('.border').querySelector('.eval-feedback-rte').focus()"><i class="bi bi-list-ol"></i></button>
+                    <div style="width:1px;background:#ced4da;margin:0 2px;"></div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1" title="Deshacer" onclick="document.execCommand('undo');this.closest('.border').querySelector('.eval-feedback-rte').focus()"><i class="bi bi-arrow-counterclockwise"></i></button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1" title="Rehacer" onclick="document.execCommand('redo');this.closest('.border').querySelector('.eval-feedback-rte').focus()"><i class="bi bi-arrow-clockwise"></i></button>
+                    <div style="width:1px;background:#ced4da;margin:0 2px;"></div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1" title="Insertar enlace" onmousedown="event.preventDefault();_insertEvalFeedbackLink(this)"><i class="bi bi-link-45deg"></i></button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1" title="Insertar imagen" onmousedown="event.preventDefault();_insertEvalFeedbackImage(this)"><i class="bi bi-image"></i></button>
+                </div>
+                <div class="eval-feedback-rte"
+                    contenteditable="true"
+                    data-target-type="individual"
+                    data-target-id="${escapeHtml(studentId)}"
+                    data-placeholder="Comentarios de feedback para el informe..."
+                    style="min-height:72px;padding:8px 10px;outline:none;font-size:0.88rem;line-height:1.5;"
+                >${savedFeedback ? (/<[a-z][\s\S]*>/i.test(savedFeedback) ? savedFeedback : savedFeedback.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>')) : ''}</div>
+            </div>
         </div>`;
 
     // ── Show the inline eval panel (within the page, sidebar + navbar still visible) ──
@@ -13398,9 +13706,11 @@ async function saveIndividualStudentEval() {
 
     try {
         // Collect feedback from whichever panel is active
+        // Supports both legacy <textarea> and new RTE <div contenteditable class="eval-feedback-rte">
         const searchRoot = inSplitView ? document.getElementById('eval-right-body') : legacyPanel;
-        const ta = searchRoot ? searchRoot.querySelector(`textarea[data-target-id="${CSS.escape(studentId)}"]`) : null;
-        const feedback = ta ? ta.value : '';
+        const rte = searchRoot ? searchRoot.querySelector(`.eval-feedback-rte[data-target-id="${CSS.escape(studentId)}"]`) : null;
+        const ta  = !rte && searchRoot ? searchRoot.querySelector(`textarea[data-target-id="${CSS.escape(studentId)}"]`) : null;
+        const feedback = rte ? rte.innerHTML : (ta ? ta.value : '');
 
         let evalEntry = (saved.evaluations || []).find(e => e.targetId === studentId);
         if (!evalEntry) {
@@ -13538,6 +13848,82 @@ async function sendEvaluationByEmail() {
     } finally {
         if (sendBtn) { sendBtn.disabled = false; sendBtn.innerHTML = originalHtml; }
     }
+}
+
+/**
+ * Sends the individual evaluation report to ALL evaluated students in the current project.
+ * Uses the same flow as sendEvaluationByEmail() but iterates over every student
+ * that has been graded (evaluatedAt is set) in the active project split-view.
+ */
+async function sendEvaluationToAllInProject() {
+    const saved = window._evalCurrentSaved;
+    if (!saved) { showToast('Abre un proyecto primero', 'danger'); return; }
+
+    const mIdx = window._evalState?.currentModuleIdx;
+    const pIdx = window._evalState?.currentProjectIdx;
+    const modules = window._evalState?.modules || [];
+    const mod = modules[mIdx];
+    const proj = mod?.projects[pIdx];
+
+    // Solo enviar a estudiantes realmente evaluados (tienen evaluatedAt)
+    const evaluatedEntries = (saved.evaluations || []).filter(e => e.evaluatedAt && !e.isGroup);
+    if (evaluatedEntries.length === 0) {
+        showToast('No hay estudiantes evaluados en este proyecto', 'warning');
+        return;
+    }
+
+    const confirmed = window.confirm(
+        `¿Enviar el informe de evaluación a ${evaluatedEntries.length} estudiante${evaluatedEntries.length !== 1 ? 's' : ''} evaluados en "${proj?.name || saved.projectName}"?\n\nSe enviará un correo individual a cada uno.`
+    );
+    if (!confirmed) return;
+
+    // Capturamos los datos necesarios ANTES de ceder el hilo,
+    // ya que el estado global puede cambiar si el usuario navega.
+    const token = localStorage.getItem('token');
+    const students = window._evalState?.allStudents || window._evalState?.students || [];
+    const projectName = proj?.name || saved.projectName;
+    const total = evaluatedEntries.length;
+
+    // Iniciar badge de progreso — no bloqueamos la UI
+    const taskId = _bgTaskManager.start(`Enviando informes 0/${total}...`);
+
+    // Lanzar el bucle de envío en background (cede el control al event loop antes de empezar)
+    setTimeout(async function _doSendAll() {
+        let sent = 0, failed = 0;
+
+        for (const entry of evaluatedEntries) {
+            try {
+                const studentId = String(entry.targetId);
+                const student = students.find(s => String(s.id || s._id) === studentId);
+                const studentEmail = student?.email || '';
+                if (!studentEmail) { failed++; _bgTaskManager.update(taskId, `Enviando informes ${sent + failed}/${total}...`); continue; }
+
+                // Cargar tracking del estudiante para resolver el teamIndex
+                const stuRes = await fetch(`${API_URL}/api/promotions/${promotionId}/students/${studentId}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (!stuRes.ok) { failed++; _bgTaskManager.update(taskId, `Enviando informes ${sent + failed}/${total}...`); continue; }
+                const stuData = await stuRes.json();
+                const teams = stuData.technicalTracking?.teams || [];
+                let teamIndex = teams.findIndex(t => t.teamName === projectName);
+                if (teamIndex < 0) teamIndex = 0;
+
+                await window.Reports.sendProjectReportByEmail(teamIndex, studentId, promotionId, studentEmail, { silent: true });
+                sent++;
+            } catch (err) {
+                console.error('[sendEvaluationToAllInProject] student error:', entry.targetId, err);
+                failed++;
+            }
+            _bgTaskManager.update(taskId, `Enviando informes ${sent + failed}/${total}...`);
+        }
+
+        // Finalizar: eliminar badge y mostrar toast de resumen
+        _bgTaskManager.finish(taskId);
+        const msg = failed === 0
+            ? `Informes enviados a ${sent} estudiante${sent !== 1 ? 's' : ''} correctamente`
+            : `Informes enviados: ${sent}. Fallidos: ${failed}`;
+        showToast(msg, failed > 0 ? 'warning' : 'success');
+    }, 0);
 }
 
 /** Called by the "Cancelar" / "Volver" buttons in the inline eval panel or split view. */
@@ -14032,6 +14418,101 @@ async function _persistEvaluations() {
         console.error('Error persisting evaluations:', err);
     }
 }
+
+// ==================== BACKGROUND TASK MANAGER ====================
+
+/**
+ * Gestor de tareas en background.
+ * Muestra un badge flotante en la esquina inferior derecha para tareas de larga duración
+ * que se ejecutan sin bloquear la UI (ej. envío masivo de informes).
+ *
+ * Uso:
+ *   const taskId = _bgTaskManager.start('Enviando informes 0/10...');
+ *   _bgTaskManager.update(taskId, 'Enviando informes 5/10...');
+ *   _bgTaskManager.finish(taskId);
+ */
+const _bgTaskManager = (() => {
+    // Map de taskId → { el: HTMLElement }
+    const _tasks = new Map();
+    const _CONTAINER_ID = 'bg-task-badge-container';
+
+    function _getOrCreateContainer() {
+        let container = document.getElementById(_CONTAINER_ID);
+        if (!container) {
+            container = document.createElement('div');
+            container.id = _CONTAINER_ID;
+            // Posicionado justo encima del área de toasts de Bootstrap (bottom: 0 end: 0)
+            container.style.cssText = [
+                'position:fixed',
+                'bottom:80px',
+                'right:20px',
+                'z-index:10000',
+                'display:flex',
+                'flex-direction:column',
+                'gap:8px',
+                'align-items:flex-end',
+                'pointer-events:none',
+            ].join(';');
+            document.body.appendChild(container);
+        }
+        return container;
+    }
+
+    function _removeContainerIfEmpty() {
+        const container = document.getElementById(_CONTAINER_ID);
+        if (container && container.childElementCount === 0) {
+            container.remove();
+        }
+    }
+
+    /**
+     * Inicia una tarea en background y muestra el badge.
+     * @param {string} label - Texto inicial del badge
+     * @returns {string} taskId — pásalo a update() y finish()
+     */
+    function start(label) {
+        const taskId = `bgt-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+        const container = _getOrCreateContainer();
+
+        const el = document.createElement('div');
+        el.id = taskId;
+        el.style.cssText = 'pointer-events:auto;';
+        el.innerHTML = `
+            <span class="badge bg-primary d-flex align-items-center gap-2 px-3 py-2 shadow" style="font-size:.8rem;white-space:nowrap;">
+                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                <span class="bg-task-label">${escapeHtml(label)}</span>
+            </span>`;
+        container.appendChild(el);
+        _tasks.set(taskId, { el });
+        return taskId;
+    }
+
+    /**
+     * Actualiza el texto del badge de una tarea activa.
+     * @param {string} taskId
+     * @param {string} label
+     */
+    function update(taskId, label) {
+        const task = _tasks.get(taskId);
+        if (!task) return;
+        const labelEl = task.el.querySelector('.bg-task-label');
+        if (labelEl) labelEl.textContent = label;
+    }
+
+    /**
+     * Finaliza una tarea y elimina su badge.
+     * @param {string} taskId
+     */
+    function finish(taskId) {
+        const task = _tasks.get(taskId);
+        if (!task) return;
+        task.el.remove();
+        _tasks.delete(taskId);
+        _removeContainerIfEmpty();
+    }
+
+    return { start, update, finish };
+})();
 
 function showToast(message, type = 'info') {
     // Create a simple Bootstrap toast

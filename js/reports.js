@@ -420,6 +420,191 @@
         return String(text).replace(/[&<>"']/g, m => map[m]);
     }
 
+    /**
+     * Sanitiza HTML rico de contenteditable para inyección segura en el PDF.
+     * Solo permite un subconjunto seguro de tags inline y de bloque.
+     * El contenido viene del formador (usuario autenticado), no de entrada pública,
+     * por lo que el riesgo XSS en este contexto de generación de PDF es bajo.
+     * @param {string} html - HTML crudo del campo teacherNote / feedback
+     * @returns {string} HTML con solo los tags permitidos, el resto escapado
+     */
+    function _sanitizeRichHtml(html) {
+        if (!html) return '';
+        // Tags permitidos: formato inline y listas
+        const ALLOWED = /^\/?(b|strong|i|em|u|s|br|ul|ol|li|p|div|span)$/i;
+        return String(html)
+            // Normalizar &nbsp; → espacio regular
+            .replace(/&nbsp;/gi, ' ')
+            // Permitir solo tags de la allowlist; escapar el resto
+            .replace(/<(\/?[a-zA-Z][a-zA-Z0-9]*)[^>]*>/g, (match, tag) => {
+                if (ALLOWED.test(tag)) {
+                    // Solo conservar el tag sin atributos (evita onerror, style, etc.)
+                    return tag.startsWith('/') ? `</${tag.replace('/', '')}>` : `<${tag}>`;
+                }
+                // Tag no permitido → escapar para que aparezca como texto si acaso
+                return '';
+            });
+    }
+
+    /**
+     * Builds the "Competencias Trabajadas" HTML block for a project report.
+     * Used in both printProjectReport (preview) and sendProjectReportByEmail (email PDF).
+     * @param {Array} comps - Array of competence objects from t.competences
+     * @returns {string} HTML string
+     */
+    function _buildCompetencesHtml(comps) {
+        const PROJ_LEVEL_LABELS = { 0: 'Sin nivel', 1: 'Básico', 2: 'Medio', 3: 'Avanzado' };
+        const TOOL_LEVEL_LABELS = { 1: 'Básico', 2: 'Medio', 3: 'Avanzado' };
+
+        if (!comps || !comps.length) {
+            return `<p class="empty-note">No se registraron competencias para este proyecto.</p>`;
+        }
+
+        /**
+         * Builds the indicators block HTML from a list of tool groups.
+         * toolGroups: [{ name, level, byLevel: { [lvl]: [{name}] } }]
+         * compInds:   [{ name, levelId }]  — competence-level indicators
+         */
+        function _renderIndicatorGroups(toolGroups, compInds) {
+            if (!toolGroups.length && !compInds.length) return '';
+            let h = `<div style="margin-top:6pt; border-top:1px solid #e8e8e8; padding-top:6pt;">`;
+
+            toolGroups.forEach(tg => {
+                h += `<div style="margin-bottom:6pt;">`;
+                h += `<div style="font-size:9pt; font-weight:600; margin-bottom:2pt;">`;
+                h += _esc(tg.name || '—');
+                if (tg.level > 0) {
+                    h += ` <span style="font-weight:400; color:#555;">— ${_esc(TOOL_LEVEL_LABELS[tg.level] || '')}</span>`;
+                }
+                h += `</div>`;
+                [1, 2, 3].forEach(lvl => {
+                    const inds = tg.byLevel[lvl];
+                    if (!inds || !inds.length) return;
+                    h += `<div style="font-size:8.5pt; color:#444; margin-left:8pt; margin-bottom:1pt;">`;
+                    h += `<em>${_esc(TOOL_LEVEL_LABELS[lvl] || '')}:</em>`;
+                    h += `<ul style="margin:1pt 0 2pt 12pt;">`;
+                    inds.forEach(ind => { h += `<li>${_esc(ind.name || '')}</li>`; });
+                    h += `</ul></div>`;
+                });
+                h += `</div>`;
+            });
+
+            // Competence-level indicators (grouped by levelId)
+            if (compInds.length) {
+                const byLvl = {};
+                compInds.forEach(ind => {
+                    const lvl = ind.levelId || 0;
+                    if (!byLvl[lvl]) byLvl[lvl] = [];
+                    byLvl[lvl].push(ind);
+                });
+                h += `<div style="margin-bottom:6pt;">`;
+                h += `<div style="font-size:9pt; font-weight:600; margin-bottom:2pt;">Indicadores de competencia</div>`;
+                [1, 2, 3].forEach(lvl => {
+                    const inds = byLvl[lvl];
+                    if (!inds || !inds.length) return;
+                    h += `<div style="font-size:8.5pt; color:#444; margin-left:8pt; margin-bottom:1pt;">`;
+                    h += `<em>${_esc(TOOL_LEVEL_LABELS[lvl] || '')}:</em>`;
+                    h += `<ul style="margin:1pt 0 2pt 12pt;">`;
+                    inds.forEach(ind => { h += `<li>${_esc(ind.name || '')}</li>`; });
+                    h += `</ul></div>`;
+                });
+                h += `</div>`;
+            }
+
+            h += `</div>`;
+            return h;
+        }
+
+        let html = `<div style="margin-top:6pt;">`;
+        comps.forEach(c => {
+            const levelLabel = PROJ_LEVEL_LABELS[c.level] ?? `Nv.${c.level}`;
+            const tools = (c.toolsUsed || []);
+
+            // ── Path A: live session data (checkedIndicators + toolsWithIndicators) ──
+            const checkedMap          = c.checkedIndicators    || {};
+            const toolsWithIndicators = c.toolsWithIndicators  || [];
+            const hasCheckedPath      = toolsWithIndicators.some(tool =>
+                (tool.indicators || []).some(ind =>
+                    checkedMap[`tool-${tool.id}-${ind.id}`] === true
+                )
+            );
+
+            // ── Path B: persisted data (achievedIndicators array) ──
+            const achievedIndicators = c.achievedIndicators || [];
+            const hasAchievedPath    = achievedIndicators.length > 0;
+
+            let indicatorsHtml = '';
+
+            if (hasCheckedPath) {
+                // Build tool groups from checkedMap + toolsWithIndicators
+                const toolGroups = [];
+                toolsWithIndicators.forEach(tool => {
+                    const checkedInds = (tool.indicators || []).filter(ind =>
+                        checkedMap[`tool-${tool.id}-${ind.id}`] === true
+                    );
+                    if (!checkedInds.length) return;
+
+                    let toolLevel = 0;
+                    for (let l = 1; l <= 3; l++) {
+                        const levelInds = (tool.indicators || []).filter(ind => ind.levelId === l);
+                        if (levelInds.length > 0 && levelInds.every(ind =>
+                                checkedMap[`tool-${tool.id}-${ind.id}`] === true)) {
+                            toolLevel = l;
+                        } else { break; }
+                    }
+                    const byLevel = {};
+                    checkedInds.forEach(ind => {
+                        const lvl = ind.levelId || 0;
+                        if (!byLevel[lvl]) byLevel[lvl] = [];
+                        byLevel[lvl].push(ind);
+                    });
+                    toolGroups.push({ name: tool.name, level: toolLevel, byLevel });
+                });
+                indicatorsHtml = _renderIndicatorGroups(toolGroups, []);
+
+            } else if (hasAchievedPath) {
+                // Build tool groups from achievedIndicators (persisted format)
+                const toolMap = {};
+                const compInds = [];
+                achievedIndicators.forEach(ai => {
+                    if (ai.type === 'tool' && ai.toolName) {
+                        if (!toolMap[ai.toolName]) toolMap[ai.toolName] = {};
+                        const lvl = ai.levelId || 0;
+                        if (!toolMap[ai.toolName][lvl]) toolMap[ai.toolName][lvl] = [];
+                        toolMap[ai.toolName][lvl].push({ name: ai.indicatorName });
+                    } else if (ai.type === 'competence') {
+                        compInds.push({ name: ai.indicatorName, levelId: ai.levelId || 0 });
+                    }
+                });
+
+                const toolGroups = Object.entries(toolMap).map(([toolName, byLevel]) => {
+                    // Auto-level: highest consecutive level where ALL that level's inds are present
+                    // Since we only stored achieved ones, max consecutive levelId present
+                    let toolLevel = 0;
+                    for (let l = 1; l <= 3; l++) {
+                        if (byLevel[l] && byLevel[l].length > 0) toolLevel = l;
+                        else break;
+                    }
+                    return { name: toolName, level: toolLevel, byLevel };
+                });
+                indicatorsHtml = _renderIndicatorGroups(toolGroups, compInds);
+            }
+
+            html += `<div class="section-box no-break" style="margin-bottom:8pt; padding:8pt 10pt; border:1px solid #e0e0e0; border-radius:4pt;">
+                <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:3pt;">
+                    <strong style="font-size:10pt;">${_esc(c.competenceName || '—')}</strong>
+                    <span style="font-size:9pt; font-weight:600; color:#333;">${_esc(levelLabel)}</span>
+                </div>
+                ${tools.length ? `<div style="font-size:9pt; color:#555; margin-top:2pt;">
+                    <strong>Herramientas:</strong> ${tools.map(tl => _esc(tl)).join(', ')}
+                </div>` : ''}
+                ${indicatorsHtml}
+            </div>`;
+        });
+        html += `</div>`;
+        return html;
+    }
+
     function _fmtDate(d) {
         if (!d) return '—';
         try { return new Date(d).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }); }
@@ -1353,56 +1538,15 @@ async function printActaInicio(promotionId) {
             : ''
         }`;
 
-        // ── Nota del profesor ──
+        // ── Feedback ──
         if (t.teacherNote) {
-            html += `<h3>Nota del Profesor</h3>
-            <p style="font-style:italic; white-space:pre-wrap;">${_esc(t.teacherNote)}</p>`;
+            html += `<h3>Feedback</h3>
+            <div style="font-style:italic;">${_sanitizeRichHtml(t.teacherNote)}</div>`;
         }
 
         // ── Competencias trabajadas ──
         html += `<h3>Competencias Trabajadas</h3>`;
-        const comps = t.competences || [];
-        if (comps.length) {
-            html += `<table>
-                <thead><tr><th>Competencia</th><th>Nivel alcanzado</th><th>Herramientas</th></tr></thead>
-                <tbody>`;
-            comps.forEach(c => {
-                const lvlColor = PROJ_LEVEL_COLORS[c.level] ?? 'grey';
-                const lvlLabel = PROJ_LEVEL_LABELS[c.level] ?? `Nv.${c.level}`;
-                const tools = (c.toolsUsed || [])
-                    .map(tl => `<span class="badge badge-light">${_esc(tl)}</span>`)
-                    .join(' ');
-                html += `<tr>
-                    <td><strong>${_esc(c.competenceName || '—')}</strong></td>
-                    <td>${_levelBadge(c.level)}</td>
-                    <td>${tools || '<span style="color:#aaa;">—</span>'}</td>
-                </tr>`;
-            });
-            html += `</tbody></table>`;
-
-            // Visual summary: one big card per competence with level bar
-            html += `<div style="margin-top:10pt;">`;
-            comps.forEach(c => {
-                const pct = Math.round((c.level / 3) * 100);
-                const barColor = c.level === 3 ? '#198754' : c.level === 2 ? '#ffc107' : c.level === 1 ? '#dc3545' : '#aaa';
-                const tools = (c.toolsUsed || [])
-                    .map(tl => `<span class="badge badge-light">${_esc(tl)}</span>`)
-                    .join(' ');
-                html += `<div class="section-box no-break" style="margin-bottom:7pt;">
-                    <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:4pt;">
-                        <strong>${_esc(c.competenceName)}</strong>
-                        <span style="font-size:9pt; color:#888;">${PROJ_LEVEL_LABELS[c.level] ?? ''}</span>
-                    </div>
-                    <div style="background:#eee; border-radius:4pt; height:8pt; overflow:hidden; margin-bottom:5pt;">
-                        <div style="width:${pct}%; height:100%; background:${barColor}; border-radius:4pt;"></div>
-                    </div>
-                    ${tools ? `<div class="pill-row">${tools}</div>` : ''}
-                </div>`;
-            });
-            html += `</div>`;
-        } else {
-            html += `<p class="empty-note">No se registraron competencias para este proyecto.</p>`;
-        }
+        html += _buildCompetencesHtml(t.competences || []);
 
         const filename = `proyecto_${(t.teamName||'proyecto').replace(/\s+/g,'-')}_${(fullName).replace(/\s+/g,'-')}.pdf`;
         _previewWindow(html, filename);
@@ -1416,7 +1560,9 @@ async function printActaInicio(promotionId) {
      * @param {string} overrideEmail - (optional) email to send to; defaults to student.email
      * @returns {Promise<void>}
      */
-    async function sendProjectReportByEmail(teamIndex, studentId, promotionId, overrideEmail) {
+    async function sendProjectReportByEmail(teamIndex, studentId, promotionId, overrideEmail, { silent = false } = {}) {
+        const _fail = (msg) => { if (silent) throw new Error(msg); else { alert(msg); } };
+        const _ok   = (msg) => { if (!silent) alert(msg); };  // éxito: solo muestra en modo interactivo
         const token = localStorage.getItem('token');
         const st = window.StudentTracking;
         let t  = st?._getTeam(teamIndex);
@@ -1435,15 +1581,15 @@ async function printActaInicio(promotionId) {
                 promoName = promo.name || '';
                 t = (s.technicalTracking?.teams || [])[teamIndex];
             } catch (e) {
-                alert('Error cargando datos: ' + e.message);
+                _fail('Error cargando datos: ' + e.message);
                 return;
             }
         }
 
-        if (!t) { alert('Proyecto no encontrado.'); return; }
+        if (!t) { _fail('Proyecto no encontrado.'); return; }
 
         const toEmail = overrideEmail || s.email;
-        if (!toEmail) { alert('El estudiante no tiene email registrado.'); return; }
+        if (!toEmail) { _fail('El estudiante no tiene email registrado.'); return; }
 
         const fullName = `${s.name || ''} ${s.lastname || ''}`.trim();
         const PROJ_LEVEL_COLORS = { 0: 'grey', 1: 'red', 2: 'yellow', 3: 'green' };
@@ -1467,54 +1613,16 @@ async function printActaInicio(promotionId) {
         }`;
 
         if (t.teacherNote) {
-            html += `<h3>Nota del Profesor</h3>
-            <p style="font-style:italic; white-space:pre-wrap;">${_esc(t.teacherNote)}</p>`;
+            html += `<h3>Feedback</h3>
+            <div style="font-style:italic;">${_sanitizeRichHtml(t.teacherNote)}</div>`;
         }
 
         html += `<h3>Competencias Trabajadas</h3>`;
-        const comps = t.competences || [];
-        if (comps.length) {
-            html += `<table>
-                <thead><tr><th>Competencia</th><th>Nivel alcanzado</th><th>Herramientas</th></tr></thead>
-                <tbody>`;
-            comps.forEach(c => {
-                const tools = (c.toolsUsed || [])
-                    .map(tl => `<span class="badge badge-light">${_esc(tl)}</span>`)
-                    .join(' ');
-                html += `<tr>
-                    <td><strong>${_esc(c.competenceName || '—')}</strong></td>
-                    <td>${_levelBadge(c.level)}</td>
-                    <td>${tools || '<span style="color:#aaa;">—</span>'}</td>
-                </tr>`;
-            });
-            html += `</tbody></table>`;
-
-            html += `<div style="margin-top:10pt;">`;
-            comps.forEach(c => {
-                const pct = Math.round((c.level / 3) * 100);
-                const barColor = c.level === 3 ? '#198754' : c.level === 2 ? '#ffc107' : c.level === 1 ? '#dc3545' : '#aaa';
-                const tools = (c.toolsUsed || [])
-                    .map(tl => `<span class="badge badge-light">${_esc(tl)}</span>`)
-                    .join(' ');
-                html += `<div class="section-box no-break" style="margin-bottom:7pt;">
-                    <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:4pt;">
-                        <strong>${_esc(c.competenceName)}</strong>
-                        <span style="font-size:9pt; color:#888;">${PROJ_LEVEL_LABELS[c.level] ?? ''}</span>
-                    </div>
-                    <div style="background:#eee; border-radius:4pt; height:8pt; overflow:hidden; margin-bottom:5pt;">
-                        <div style="width:${pct}%; height:100%; background:${barColor}; border-radius:4pt;"></div>
-                    </div>
-                    ${tools ? `<div class="pill-row">${tools}</div>` : ''}
-                </div>`;
-            });
-            html += `</div>`;
-        } else {
-            html += `<p class="empty-note">No se registraron competencias para este proyecto.</p>`;
-        }
+        html += _buildCompetencesHtml(t.competences || []);
 
         const filename = `evaluacion_${(t.teamName||'proyecto').replace(/\s+/g,'-')}_${fullName.replace(/\s+/g,'-')}.pdf`;
 
-        _showSaving('Generando y enviando informe de evaluación...');
+        if (!silent) _showSaving('Generando y enviando informe de evaluación...');
         try {
             const pdf = await _renderToPdf(html, filename);
             const base64Data = pdf.output('datauristring');
@@ -1532,16 +1640,16 @@ async function printActaInicio(promotionId) {
                     base64Data: base64Data
                 })
             });
-            _hideSaving();
+            if (!silent) _hideSaving();
             if (emailRes.ok) {
-                alert(`¡Informe enviado correctamente a ${toEmail}!`);
+                _ok(`¡Informe enviado correctamente a ${toEmail}!`);
             } else {
                 const error = await emailRes.json();
                 throw new Error(error.error || 'Error al enviar el email');
             }
         } catch (e) {
-            _hideSaving();
-            alert('Error al enviar el informe: ' + e.message);
+            if (!silent) _hideSaving();
+            _fail('Error al enviar el informe: ' + e.message);
         }
     }
 
@@ -1869,7 +1977,7 @@ async function printActaInicio(promotionId) {
                         </div>`;
                     }
                     if (t.teacherNote) {
-                        sHtml += `<h3>Nota del Profesor</h3>
+                        sHtml += `<h3>Feedback</h3>
                         <p style="font-style:italic; white-space:pre-wrap;">${_esc(t.teacherNote)}</p>`;
                     }
                     sHtml += `<h3>Competencias Trabajadas</h3>`;
