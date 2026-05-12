@@ -420,6 +420,32 @@
         return String(text).replace(/[&<>"']/g, m => map[m]);
     }
 
+    /**
+     * Sanitiza HTML rico de contenteditable para inyección segura en el PDF.
+     * Solo permite un subconjunto seguro de tags inline y de bloque.
+     * El contenido viene del formador (usuario autenticado), no de entrada pública,
+     * por lo que el riesgo XSS en este contexto de generación de PDF es bajo.
+     * @param {string} html - HTML crudo del campo teacherNote / feedback
+     * @returns {string} HTML con solo los tags permitidos, el resto escapado
+     */
+    function _sanitizeRichHtml(html) {
+        if (!html) return '';
+        // Tags permitidos: formato inline y listas
+        const ALLOWED = /^\/?(b|strong|i|em|u|s|br|ul|ol|li|p|div|span)$/i;
+        return String(html)
+            // Normalizar &nbsp; → espacio regular
+            .replace(/&nbsp;/gi, ' ')
+            // Permitir solo tags de la allowlist; escapar el resto
+            .replace(/<(\/?[a-zA-Z][a-zA-Z0-9]*)[^>]*>/g, (match, tag) => {
+                if (ALLOWED.test(tag)) {
+                    // Solo conservar el tag sin atributos (evita onerror, style, etc.)
+                    return tag.startsWith('/') ? `</${tag.replace('/', '')}>` : `<${tag}>`;
+                }
+                // Tag no permitido → escapar para que aparezca como texto si acaso
+                return '';
+            });
+    }
+
     function _fmtDate(d) {
         if (!d) return '—';
         try { return new Date(d).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }); }
@@ -1353,10 +1379,10 @@ async function printActaInicio(promotionId) {
             : ''
         }`;
 
-        // ── Nota del profesor ──
+        // ── Feedback ──
         if (t.teacherNote) {
-            html += `<h3>Nota del Profesor</h3>
-            <p style="font-style:italic; white-space:pre-wrap;">${_esc(t.teacherNote)}</p>`;
+            html += `<h3>Feedback</h3>
+            <div style="font-style:italic;">${_sanitizeRichHtml(t.teacherNote)}</div>`;
         }
 
         // ── Competencias trabajadas ──
@@ -1469,44 +1495,99 @@ async function printActaInicio(promotionId) {
         }`;
 
         if (t.teacherNote) {
-            html += `<h3>Nota del Profesor</h3>
-            <p style="font-style:italic; white-space:pre-wrap;">${_esc(t.teacherNote)}</p>`;
+            html += `<h3>Feedback</h3>
+            <div style="font-style:italic;">${_sanitizeRichHtml(t.teacherNote)}</div>`;
         }
 
         html += `<h3>Competencias Trabajadas</h3>`;
         const comps = t.competences || [];
         if (comps.length) {
-            html += `<table>
-                <thead><tr><th>Competencia</th><th>Nivel alcanzado</th><th>Herramientas</th></tr></thead>
-                <tbody>`;
-            comps.forEach(c => {
-                const tools = (c.toolsUsed || [])
-                    .map(tl => `<span class="badge badge-light">${_esc(tl)}</span>`)
-                    .join(' ');
-                html += `<tr>
-                    <td><strong>${_esc(c.competenceName || '—')}</strong></td>
-                    <td>${_levelBadge(c.level)}</td>
-                    <td>${tools || '<span style="color:#aaa;">—</span>'}</td>
-                </tr>`;
-            });
-            html += `</tbody></table>`;
+            // Etiquetas de nivel para indicadores de herramienta
+            const TOOL_LEVEL_LABELS = { 1: 'Básico', 2: 'Medio', 3: 'Avanzado' };
 
-            html += `<div style="margin-top:10pt;">`;
+            html += `<div style="margin-top:6pt;">`;
             comps.forEach(c => {
-                const pct = Math.round((c.level / 3) * 100);
-                const barColor = c.level === 3 ? '#198754' : c.level === 2 ? '#ffc107' : c.level === 1 ? '#dc3545' : '#aaa';
-                const tools = (c.toolsUsed || [])
-                    .map(tl => `<span class="badge badge-light">${_esc(tl)}</span>`)
-                    .join(' ');
-                html += `<div class="section-box no-break" style="margin-bottom:7pt;">
-                    <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:4pt;">
-                        <strong>${_esc(c.competenceName)}</strong>
-                        <span style="font-size:9pt; color:#888;">${PROJ_LEVEL_LABELS[c.level] ?? ''}</span>
+                const levelLabel = PROJ_LEVEL_LABELS[c.level] ?? `Nv.${c.level}`;
+                const tools = (c.toolsUsed || []);
+
+                // ── Indicadores de herramienta (TASK-RPT-04) ──────────────────────────
+                // checkedIndicators: { 'tool-{toolId}-{indId}': true }
+                // toolsWithIndicators: [{ id, name, indicators: [{ id, levelId, name }] }]
+                const checkedMap         = c.checkedIndicators    || {};
+                const toolsWithIndicators = c.toolsWithIndicators  || [];
+
+                // Solo renderizar la sección si al menos un indicador está marcado
+                const hasAnyChecked = toolsWithIndicators.some(tool =>
+                    (tool.indicators || []).some(ind =>
+                        checkedMap[`tool-${tool.id}-${ind.id}`] === true
+                    )
+                );
+
+                let indicatorsHtml = '';
+                if (hasAnyChecked) {
+                    indicatorsHtml += `<div style="margin-top:6pt; border-top:1px solid #e8e8e8; padding-top:6pt;">`;
+
+                    toolsWithIndicators.forEach(tool => {
+                        // Solo herramientas con al menos un indicador marcado
+                        const checkedInds = (tool.indicators || []).filter(ind =>
+                            checkedMap[`tool-${tool.id}-${ind.id}`] === true
+                        );
+                        if (!checkedInds.length) return;
+
+                        // toolAutoLevel: acumulativo desde nivel 1; se detiene cuando un nivel no está completo
+                        let toolLevel = 0;
+                        for (let l = 1; l <= 3; l++) {
+                            const levelInds = (tool.indicators || []).filter(ind => ind.levelId === l);
+                            if (levelInds.length > 0 && levelInds.every(ind =>
+                                    checkedMap[`tool-${tool.id}-${ind.id}`] === true)) {
+                                toolLevel = l;
+                            } else {
+                                break;
+                            }
+                        }
+
+                        // Agrupar indicadores marcados por levelId
+                        const byLevel = {};
+                        checkedInds.forEach(ind => {
+                            const lvl = ind.levelId || 0;
+                            if (!byLevel[lvl]) byLevel[lvl] = [];
+                            byLevel[lvl].push(ind);
+                        });
+
+                        indicatorsHtml += `<div style="margin-bottom:6pt;">`;
+                        indicatorsHtml += `<div style="font-size:9pt; font-weight:600; margin-bottom:2pt;">`;
+                        indicatorsHtml += _esc(tool.name || '—');
+                        if (toolLevel > 0) {
+                            indicatorsHtml += ` <span style="font-weight:400; color:#555;">— ${_esc(TOOL_LEVEL_LABELS[toolLevel] || '')}</span>`;
+                        }
+                        indicatorsHtml += `</div>`;
+
+                        [1, 2, 3].forEach(lvl => {
+                            if (!byLevel[lvl] || !byLevel[lvl].length) return;
+                            indicatorsHtml += `<div style="font-size:8.5pt; color:#444; margin-left:8pt; margin-bottom:1pt;">`;
+                            indicatorsHtml += `<em>${_esc(TOOL_LEVEL_LABELS[lvl] || '')}:</em>`;
+                            indicatorsHtml += `<ul style="margin:1pt 0 2pt 12pt;">`;
+                            byLevel[lvl].forEach(ind => {
+                                indicatorsHtml += `<li>${_esc(ind.name || '')}</li>`;
+                            });
+                            indicatorsHtml += `</ul></div>`;
+                        });
+
+                        indicatorsHtml += `</div>`;
+                    });
+
+                    indicatorsHtml += `</div>`;
+                }
+
+                html += `<div class="section-box no-break" style="margin-bottom:8pt; padding:8pt 10pt; border:1px solid #e0e0e0; border-radius:4pt;">
+                    <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:3pt;">
+                        <strong style="font-size:10pt;">${_esc(c.competenceName || '—')}</strong>
+                        <span style="font-size:9pt; font-weight:600; color:#333;">${_esc(levelLabel)}</span>
                     </div>
-                    <div style="background:#eee; border-radius:4pt; height:8pt; overflow:hidden; margin-bottom:5pt;">
-                        <div style="width:${pct}%; height:100%; background:${barColor}; border-radius:4pt;"></div>
-                    </div>
-                    ${tools ? `<div class="pill-row">${tools}</div>` : ''}
+                    ${tools.length ? `<div style="font-size:9pt; color:#555; margin-top:2pt;">
+                        <strong>Herramientas:</strong> ${tools.map(tl => _esc(tl)).join(', ')}
+                    </div>` : ''}
+                    ${indicatorsHtml}
                 </div>`;
             });
             html += `</div>`;
@@ -1871,7 +1952,7 @@ async function printActaInicio(promotionId) {
                         </div>`;
                     }
                     if (t.teacherNote) {
-                        sHtml += `<h3>Nota del Profesor</h3>
+                        sHtml += `<h3>Feedback</h3>
                         <p style="font-style:italic; white-space:pre-wrap;">${_esc(t.teacherNote)}</p>`;
                     }
                     sHtml += `<h3>Competencias Trabajadas</h3>`;
