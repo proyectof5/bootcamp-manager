@@ -593,12 +593,27 @@
                                             <button type="button" class="btn btn-sm btn-outline-success" id="send-eval-splitview-btn"
                                                 onclick="sendEvaluationByEmail()" title="Guardar y enviar informe PDF al correo del estudiante"><i
                                                     class="bi bi-envelope-arrow-up me-1"></i>Enviar evaluación</button>
+                                            <button type="button" class="btn btn-sm btn-outline-primary" id="send-eval-all-splitview-btn"
+                                                onclick="sendEvaluationToAllInProject()" title="Guardar y enviar la evaluación individual a todos los estudiantes evaluados en este proyecto"><i
+                                                    class="bi bi-send me-1"></i>Enviar a todos</button>
                                         </div>
                                         <div class="eval-split-layout">
                                             <aside class="eval-targets-sidebar">
                                                 <ul class="eval-targets-list list-unstyled mb-0" id="eval-targets-list">
                                                 </ul>
                                             </aside>
+                                            <!-- AUDITORÍA TASK-EVAL-05 — Comportamiento de Enter en .eval-feedback-rte:
+                                                 Los editores .eval-feedback-rte se generan dinámicamente por JS e inyectan
+                                                 en #eval-right-body y #student-eval-panel-body, ambos son <div> simples.
+                                                 ✅ NO están dentro de ningún <form>, por lo que Enter es libre por diseño:
+                                                    el navegador nunca interceptará la tecla como "submit".
+                                                 ✅ Comportamiento estándar de contenteditable en browsers modernos:
+                                                    - Enter simple     → nuevo bloque <div> (Chrome/Edge) o <p> (Firefox).
+                                                    - Shift+Enter      → <br> (salto de línea suave) en todos los browsers.
+                                                 ✅ Se registra un listener keydown con delegación en #teacher-area-evaluation
+                                                    (ver promotion-detail.js, función _initEvalFeedbackRteKeyHandler) que
+                                                    normaliza Shift+Enter a <br> para garantizar consistencia cross-browser.
+                                            -->
                                             <main class="eval-right-panel" id="eval-right-panel">
                                                 <div id="eval-right-empty" class="text-center py-5">Selecciona un alumno
                                                 </div>
@@ -1319,8 +1334,8 @@
                                     </h6>
                                 </div>
                                 <div class="card-body p-0">
-                                    <!-- Rich-text toolbar -->
-                                    <div id="eval-rte-toolbar" style="display:flex;flex-wrap:wrap;gap:4px;padding:8px 12px;background:#f8f9fa;border-bottom:1px solid #dee2e6;">
+                                    <!-- Rich-text toolbar — sticky durante el scroll de página -->
+                                    <div id="eval-rte-toolbar" class="eval-toolbar-sticky" style="display:flex;flex-wrap:wrap;gap:4px;padding:8px 12px;background:#f8f9fa;border-bottom:1px solid #dee2e6;">
                                         <button type="button" class="btn btn-sm btn-outline-secondary" title="Negrita (Ctrl+B)"
                                             onclick="document.execCommand('bold');document.getElementById('evaluation-text').focus()">
                                             <i class="bi bi-type-bold"></i>
@@ -1351,10 +1366,33 @@
                                             onclick="document.execCommand('redo');document.getElementById('evaluation-text').focus()">
                                             <i class="bi bi-arrow-clockwise"></i>
                                         </button>
+                                        <div style="width:1px;background:#ced4da;margin:0 4px;"></div>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" title="Insertar enlace"
+                                            onclick="insertEvalLink()">
+                                            <i class="bi bi-link-45deg"></i>
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary" title="Insertar imagen"
+                                            onclick="insertEvalImage()">
+                                            <i class="bi bi-image"></i>
+                                        </button>
+                                        <div style="width:1px;background:#ced4da;margin:0 4px;"></div>
+                                        <button type="button" class="btn btn-sm btn-outline-primary" title="Guardar evaluación"
+                                            onclick="saveEvaluationFeedback()">
+                                            <i class="bi bi-floppy"></i>
+                                        </button>
                                     </div>
-                                    <!-- Editable area -->
+                                    <!-- Editable area
+                                         AUDITORÍA TASK-EVAL-05 — Comportamiento de Enter:
+                                         ✅ Este div NO está dentro de ningún <form>, por lo que Enter es libre por diseño:
+                                            el navegador no intercepta la tecla como "submit".
+                                         ✅ Comportamiento estándar de contenteditable en browsers modernos:
+                                            - Enter simple → inserta un nuevo bloque <div> (Chrome/Edge) o <p> (Firefox).
+                                            - Shift+Enter → inserta <br> (salto de línea suave) en todos los browsers.
+                                         ✅ No se añade ningún handler de teclado — el comportamiento por defecto es correcto
+                                            para un editor de texto enriquecido como este.
+                                    -->
                                     <div id="evaluation-text" contenteditable="true"
-                                        style="min-height:340px;max-height:600px;overflow-y:auto;padding:14px 16px;outline:none;font-size:0.92rem;line-height:1.6;border:none;"
+                                        style="min-height:340px;padding:14px 16px;outline:none;font-size:0.92rem;line-height:1.6;border:none;"
                                         data-placeholder="Describe los criterios de evaluación...">
                                     </div>
                                 </div>
@@ -1707,33 +1745,32 @@
                             </div>
                         </div>
 
-                        <!-- Courses Section -->
+                        <!-- Courses Section — LEGACY oculto, conservado para compatibilidad (TASK-RM-06b) -->
+                        <div id="courses-container" style="display:none;"></div>
+                        <!-- Projects Section — LEGACY oculto, conservado para compatibilidad (TASK-RM-06b) -->
+                        <div id="projects-container" style="display:none;"></div>
+
+                        <!-- Planificador de Módulo (TASK-RM-05c / TASK-RM-06b) -->
                         <div class="mb-4">
                             <div class="d-flex justify-content-between align-items-center mb-2">
-                                <h6 class="mb-0"><i class="bi bi-book me-2"></i>Cursos</h6>
-                                <button type="button" class="btn btn-sm btn-outline-primary" onclick="addCoursField()">
-                                    <i class="bi bi-plus"></i> Agregar curso
-                                </button>
+                                <h6 class="mb-0"><i class="bi bi-calendar3 me-2"></i>Planificador de M&oacute;dulo</h6>
+                                <div class="d-flex gap-2">
+                                    <button type="button" class="btn btn-sm btn-outline-primary" onclick="addPlannerItem('curso')">
+                                        <i class="bi bi-book me-1"></i>A&ntilde;adir Curso
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-success" onclick="addPlannerItem('proyecto')">
+                                        <i class="bi bi-kanban me-1"></i>A&ntilde;adir Proyecto
+                                    </button>
+                                    <button type="button" class="btn btn-sm btn-outline-warning" onclick="addPlannerItem('leccion')">
+                                        <i class="bi bi-easel me-1"></i>A&ntilde;adir Lecci&oacute;n
+                                    </button>
+                                </div>
                             </div>
-                            <div id="courses-container" class="border rounded p-3 bg-light">
-                                <!-- Courses will be added dynamically here -->
+                            <div id="planner-container" class="border rounded p-3 bg-light">
+                                <p class="text-muted small mb-0">No hay elementos todav&iacute;a. A&ntilde;ade un curso, proyecto o lecci&oacute;n.</p>
                             </div>
+                            <small class="text-muted">Arrastra los elementos para reordenarlos. Los cambios se guardan al pulsar "Guardar M&oacute;dulo".</small>
                         </div>
-
-                        <!-- Projects Section -->
-                        <div class="mb-4">
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <h6 class="mb-0"><i class="bi bi-laptop me-2"></i>Proyectos</h6>
-                                <button type="button" class="btn btn-sm btn-outline-primary"
-                                    onclick="addProjectField()">
-                                    <i class="bi bi-plus"></i> Agregar proyecto
-                                </button>
-                            </div>
-                            <div id="projects-container" class="border rounded p-3 bg-light">
-                                <!-- Projects will be added dynamically here -->
-                            </div>
-                        </div>
-
 
                     </div>
                     <div class="modal-footer">
@@ -3041,6 +3078,7 @@ ISECR2 Finalizar cada programa con un máximo de bajas de 10%.</textarea>
     <div id="attendance-dropdown-container"></div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1/Sortable.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
@@ -3054,6 +3092,26 @@ ISECR2 Finalizar cada programa con un máximo de bajas de 10%.</textarea>
     <script src="js/program-competences.js"></script>
     <script src="js/student-tracking.js"></script>
     <script src="js/promotion-detail.js"></script>
+
+    <!-- Modal confirmacion eliminacion de tema -->
+    <div class="modal fade" id="confirmDeleteTopicModal" tabindex="-1">
+        <div class="modal-dialog modal-sm">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Eliminar tema</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <p>Esta accion eliminara el tema y todo su contenido (lecciones y proyectos). No se puede deshacer.</p>
+                    <p class="fw-bold" id="confirm-delete-topic-name"></p>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-danger btn-sm" id="confirm-delete-topic-btn">Eliminar</button>
+                </div>
+            </div>
+        </div>
+    </div>
 </body>
 
 </html>

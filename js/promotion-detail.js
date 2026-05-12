@@ -103,11 +103,11 @@ window.openProfileModal = async function () {
 
             profileModal.show();
         } else {
-            alert('Error loading profile');
+            window.showApiToast('Error loading profile', 'danger');
         }
     } catch (error) {
         console.error('Error loading profile:', error);
-        alert('Error loading profile');
+        window.showApiToast('Error loading profile', 'danger');
     }
 };
 
@@ -862,7 +862,7 @@ function displayPildoras() {
     // Get current module píldoras
     const currentModule = promotionModules[currentModuleIndex];
     if (!currentModule) {
-        tbody.innerHTML = '<tr><td colspan="6" class="text-muted">No modules found.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="text-muted">No modules found.</td></tr>';
         return;
     }
 
@@ -877,7 +877,7 @@ function displayPildoras() {
     updateModuleNavigation();
 
     if (pildoras.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" class="text-muted">No píldoras configuradas para ${currentModule.name}.</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="7" class="text-muted">No píldoras configuradas para ${currentModule.name}.</td></tr>`;
         return;
     }
 
@@ -898,6 +898,9 @@ function displayPildoras() {
         const tr = document.createElement('tr');
         tr.dataset.index = index;
         tr.innerHTML = `
+            <td class="pildora-drag-handle" style="cursor:grab;width:28px;text-align:center;color:#adb5bd;">
+                <i class="bi bi-grip-vertical"></i>
+            </td>
             <td>
                 <select class="form-select form-select-sm pildora-mode pildora-mode-${modeValue.toLowerCase().replace(' ', '-')}">
                     <option value="Virtual" ${modeValue === 'Virtual' ? 'selected' : ''}>Virtual</option>
@@ -1041,6 +1044,8 @@ function displayPildoras() {
             }
         });
     });
+
+    initPildorasSortable();
 }
 
 // Helper function to update other fields for píldoras
@@ -1094,7 +1099,7 @@ function applyPildorasColorCoding() {
 function addPildoraRow() {
     const currentModule = promotionModules[currentModuleIndex];
     if (!currentModule) {
-        alert('No module selected');
+        window.showApiToast('No module selected', 'warning');
         return;
     }
 
@@ -1178,7 +1183,7 @@ async function savePildorasToServer(module) {
         //console.log('Píldoras saved successfully');
     } catch (error) {
         console.error('Error saving píldoras:', error);
-        alert('Error saving changes to server');
+        window.showApiToast('Error saving changes to server', 'danger');
     }
 }
 
@@ -1236,7 +1241,8 @@ function navigateToNextModule() {
 
 /**
  * Sync píldoras from UI table to extendedInfoData state
- * Called before navigating between modules to preserve changes
+ * Called before navigating between modules to preserve changes.
+ * Usa la posición DOM (domIndex) como fuente de verdad del orden — no dataset.index.
  */
 function syncPildorasFromUIToState() {
     const pildorasRows = document.querySelectorAll('#pildoras-list-body tr');
@@ -1248,13 +1254,16 @@ function syncPildorasFromUIToState() {
     const currentModulePildoras = [];
     const students = window.currentStudents || [];
 
-    pildorasRows.forEach(row => {
+    // Iterar en orden DOM. domIndex es la fuente de verdad de la posición en el array.
+    // No se usa row.dataset.index porque puede estar desfasado tras un drag.
+    pildorasRows.forEach((row, domIndex) => {
         const modeEl = row.querySelector('.pildora-mode');
         const dateEl = row.querySelector('.pildora-date');
         const titleEl = row.querySelector('.pildora-title');
         const statusEl = row.querySelector('.pildora-status');
         const dropdown = row.querySelector('.pildora-students-dropdown');
 
+        // Si la fila no tiene controles (ej. fila de "sin píldoras"), ignorar
         if (!modeEl || !dateEl || !titleEl || !statusEl || !dropdown) return;
 
         const mode = modeEl.value || '';
@@ -1274,15 +1283,15 @@ function syncPildorasFromUIToState() {
             };
         });
 
-        if (mode || date || title || status || studentsForPildora.length > 0) {
-            currentModulePildoras.push({
-                mode,
-                date,
-                title,
-                students: studentsForPildora,
-                status
-            });
-        }
+        // Incluir siempre todas las filas (incluso vacías) para que el índice DOM
+        // coincida con el índice del array en memoria tras cualquier reordenamiento.
+        currentModulePildoras.push({
+            mode,
+            date,
+            title,
+            students: studentsForPildora,
+            status
+        });
     });
 
     // Update the module's píldoras in state
@@ -1387,7 +1396,7 @@ function importPildorasFromExcel(input) {
 
     const currentModule = promotionModules[currentModuleIndex];
     if (!currentModule) {
-        alert('No module selected. Please select a module first.');
+        window.showApiToast('No module selected. Please select a module first.', 'warning');
         input.value = '';
         return;
     }
@@ -1397,7 +1406,7 @@ function importPildorasFromExcel(input) {
 
     const token = localStorage.getItem('token');
     if (!token) {
-        alert('Authentication token not found. Please login again.');
+        window.showApiToast('Authentication token not found. Please login again.', 'warning');
         return;
     }
 
@@ -1420,9 +1429,9 @@ function importPildorasFromExcel(input) {
         .then(response => response.json())
         .then(data => {
             if (data.error) {
-                alert(`Error importing Excel file: ${data.error}`);
+                window.showApiToast(`Error importing Excel file: ${data.error}`, 'danger');
             } else {
-                alert(`Successfully imported ${data.pildoras.length} píldoras to module "${data.module.name}"`);
+                window.showApiToast(`Successfully imported ${data.pildoras.length} píldoras to module "${data.module.name}"`, 'success');
 
                 // Update the current module's píldoras in our local data structure
                 if (!extendedInfoData.modulesPildoras) {
@@ -1449,7 +1458,7 @@ function importPildorasFromExcel(input) {
         })
         .catch(error => {
             console.error('Error importing Excel:', error);
-            alert('Error importing Excel file');
+            window.showApiToast('Error importing Excel file', 'danger');
             input.value = ''; // Clear input
         })
         .finally(() => {
@@ -1540,14 +1549,14 @@ function addTeamMember() {
     const collab = collabSelect._collabData && collabSelect._collabData[collabSelect.value];
 
     if (!collab) {
-        alert('Please select a collaborator.');
+        window.showApiToast('Please select a collaborator.', 'warning');
         return;
     }
 
     // Check if already added
     const alreadyAdded = (extendedInfoData.team || []).some(m => m.collaboratorId === collab.id);
     if (alreadyAdded) {
-        alert(`${collab.name} is already in the team.`);
+        window.showApiToast(`${collab.name} is already in the team.`, 'warning');
         return;
     }
 
@@ -1923,7 +1932,7 @@ function editEmployabilityItem(index) {
     const item = promotion.employability[index];
 
     if (!item) {
-        alert('Item not found');
+        window.showApiToast('Item not found', 'warning');
         return;
     }
 
@@ -1945,7 +1954,7 @@ async function saveEmployabilityItem() {
     const duration = parseInt(document.getElementById('employability-duration').value) || 1;
 
     if (!name) {
-        alert('Item name is required');
+        window.showApiToast('Item name is required', 'warning');
         return;
     }
 
@@ -1955,7 +1964,7 @@ async function saveEmployabilityItem() {
         });
 
         if (!response.ok) {
-            alert('Error loading promotion');
+            window.showApiToast('Error loading promotion', 'danger');
             return;
         }
 
@@ -1988,11 +1997,11 @@ async function saveEmployabilityItem() {
             employabilityModal.hide();
             loadModules();
         } else {
-            alert('Error saving employability item');
+            window.showApiToast('Error saving employability item', 'danger');
         }
     } catch (error) {
         console.error('Error saving employability item:', error);
-        alert('Error saving employability item');
+        window.showApiToast('Error saving employability item', 'danger');
     }
 }
 
@@ -2007,7 +2016,7 @@ async function deleteEmployabilityItem(index) {
         });
 
         if (!response.ok) {
-            alert('Error loading promotion');
+            window.showApiToast('Error loading promotion', 'danger');
             return;
         }
 
@@ -2028,12 +2037,12 @@ async function deleteEmployabilityItem(index) {
             if (updateResponse.ok) {
                 loadModules();
             } else {
-                alert('Error deleting employability item');
+                window.showApiToast('Error deleting employability item', 'danger');
             }
         }
     } catch (error) {
         console.error('Error deleting employability item:', error);
-        alert('Error deleting employability item');
+        window.showApiToast('Error deleting employability item', 'danger');
     }
 }
 
@@ -2195,14 +2204,14 @@ async function saveExtendedInfo() {
             try {
                 const errorData = await response.json();
                 console.error('Save error:', errorData);
-                alert(`Failed to save info: ${response.status} - ${errorData.error || 'Unknown error'}`);
+                window.showApiToast(`Failed to save info: ${response.status} - ${errorData.error || 'Unknown error'}`, 'danger');
             } catch {
-                alert(`Failed to save info: ${response.status} ${response.statusText}`);
+                window.showApiToast(`Failed to save info: ${response.status} ${response.statusText}`, 'danger');
             }
         }
     } catch (error) {
         console.error('Error saving info:', error);
-        alert(`Error saving info: ${error.message}`);
+        window.showApiToast(`Error saving info: ${error.message}`, 'danger');
     }
 }
 
@@ -2560,11 +2569,11 @@ async function saveActaData() {
             location.reload();
         } else {
             const err = await response.json().catch(() => ({}));
-            alert(`Error al guardar: ${response.status} - ${err.error || 'Error desconocido'}`);
+            window.showApiToast(`Error al guardar: ${response.status} - ${err.error || 'Error desconocido'}`, 'danger');
         }
     } catch (error) {
         console.error('Error saving acta data:', error);
-        alert(`Error al guardar: ${error.message}`);
+        window.showApiToast(`Error al guardar: ${error.message}`, 'danger');
     }
 }
 
@@ -2578,13 +2587,13 @@ async function toggleShowEmployability(show) {
             body: JSON.stringify({ showEmployability: show })
         });
         if (!response.ok) {
-            alert('Error al actualizar la visibilidad de empleabilidad');
+            window.showApiToast('Error al actualizar la visibilidad de empleabilidad', 'danger');
             document.getElementById('show-employability-toggle').checked = !show;
             extendedInfoData.showEmployability = !show;
         }
     } catch (error) {
         console.error('Error toggling employability visibility:', error);
-        alert('Error al actualizar la visibilidad de empleabilidad');
+        window.showApiToast('Error al actualizar la visibilidad de empleabilidad', 'danger');
         document.getElementById('show-employability-toggle').checked = !show;
         extendedInfoData.showEmployability = !show;
     }
@@ -3739,7 +3748,7 @@ async function editModule(moduleId) {
             const module = promotion.modules.find(m => m.id === moduleId);
 
             if (!module) {
-                alert('Module not found');
+                window.showApiToast('Module not found', 'warning');
                 return;
             }
 
@@ -3777,12 +3786,40 @@ async function editModule(moduleId) {
                 });
             }
 
+            // Cargar topics existentes en el estado en memoria y renderizar el editor
+            currentEditingTopics = Array.isArray(module.topics)
+                ? module.topics.map(t => ({
+                    id:       t.id       || generateTopicId(),
+                    name:     t.name     || '',
+                    lessons:  Array.isArray(t.lessons)  ? t.lessons  : [],
+                    projects: Array.isArray(t.projects) ? t.projects : [],
+                  }))
+                : [];
+            // Poblar los proyectos del modulo para los selectores de checkboxes en temas
+            currentEditingModuleProjects = Array.isArray(module.projects)
+                ? module.projects.map((p, i) => {
+                    const isObj = p && typeof p === 'object';
+                    return {
+                        id:   isObj ? (p.id   || String(i)) : String(i),
+                        name: isObj ? (p.name || 'Proyecto ' + (i + 1)) : String(p),
+                    };
+                  })
+                : [];
+            renderTopicsEditor();
+
+            // Inicializar el planificador (TASK-RM-05c)
+            // Si el modulo ya tiene plannerItems los usa; si no, genera la lista desde legacy
+            currentPlannerItems = Array.isArray(module.plannerItems) && module.plannerItems.length > 0
+                ? module.plannerItems.map(item => ({ ...item, id: item.id || generatePlannerId() }))
+                : buildInitialPlannerFromLegacy(module);
+            renderPlannerEditor();
+
             currentEditingModuleId = moduleId;
             moduleModal.show();
         }
     } catch (error) {
         console.error('Error editing module:', error);
-        alert('Error loading module data');
+        window.showApiToast('Error loading module data', 'danger');
     }
 }
 
@@ -3799,7 +3836,7 @@ async function deleteModule(moduleId) {
             const moduleIndex = promotion.modules.findIndex(m => m.id === moduleId);
 
             if (moduleIndex === -1) {
-                alert('Module not found');
+                window.showApiToast('Module not found', 'warning');
                 return;
             }
 
@@ -3817,14 +3854,14 @@ async function deleteModule(moduleId) {
             if (updateResponse.ok) {
                 loadModules();
                 loadPromotion();
-                alert('Module deleted successfully');
+                window.showApiToast('Module deleted successfully', 'success');
             } else {
-                alert('Error deleting module');
+                window.showApiToast('Error deleting module', 'danger');
             }
         }
     } catch (error) {
         console.error('Error deleting module:', error);
-        alert('Error deleting module');
+        window.showApiToast('Error deleting module', 'danger');
     }
 }
 
@@ -3841,7 +3878,7 @@ async function deleteCourseFromModule(moduleId, courseIndex) {
             const module = promotion.modules.find(m => m.id === moduleId);
 
             if (!module) {
-                alert('Module not found');
+                window.showApiToast('Module not found', 'warning');
                 return;
             }
 
@@ -3861,13 +3898,13 @@ async function deleteCourseFromModule(moduleId, courseIndex) {
                     loadModules();
                     loadPromotion();
                 } else {
-                    alert('Error deleting course');
+                    window.showApiToast('Error deleting course', 'danger');
                 }
             }
         }
     } catch (error) {
         console.error('Error deleting course:', error);
-        alert('Error deleting course');
+        window.showApiToast('Error deleting course', 'danger');
     }
 }
 
@@ -3884,7 +3921,7 @@ async function deleteProjectFromModule(moduleId, projectIndex) {
             const module = promotion.modules.find(m => m.id === moduleId);
 
             if (!module) {
-                alert('Module not found');
+                window.showApiToast('Module not found', 'warning');
                 return;
             }
 
@@ -3904,13 +3941,13 @@ async function deleteProjectFromModule(moduleId, projectIndex) {
                     loadModules();
                     loadPromotion();
                 } else {
-                    alert('Error deleting project');
+                    window.showApiToast('Error deleting project', 'danger');
                 }
             }
         }
     } catch (error) {
         console.error('Error deleting project:', error);
-        alert('Error deleting project');
+        window.showApiToast('Error deleting project', 'danger');
     }
 }
 
@@ -4914,6 +4951,1207 @@ function displayCalendar(calendarId) {
 
 let currentEditingModuleId = null;
 
+// Estado en memoria para los temas del modulo que se esta editando.
+// No se persiste hasta que el usuario pulsa "Guardar Modulo".
+let currentEditingTopics = [];
+
+// Proyectos definidos en el modulo actual (module.projects[]).
+// Se usa en renderTopicsEditor para mostrar los checkboxes de asignacion.
+let currentEditingModuleProjects = [];
+
+// ── Gestion de temas (TASK-RM-03) ────────────────────────────────────────────
+
+/**
+ * Genera un id unico local para temas nuevos creados en cliente.
+ */
+function generateTopicId() {
+    return 'topic-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7);
+}
+
+/**
+ * Re-renderiza la lista de temas en el contenedor del modal a partir de
+ * currentEditingTopics. Se llama cada vez que el array cambia.
+ * Incluye el panel inline de lecciones (TASK-RM-04) cuando el tema esta expandido.
+ */
+function renderTopicsEditor() {
+    const container = document.getElementById('topics-container');
+    if (!container) return;
+
+    if (currentEditingTopics.length === 0) {
+        container.innerHTML = '<p class="text-muted small mb-0">No hay temas aun. Agrega uno para empezar.</p>';
+        return;
+    }
+
+    container.innerHTML = currentEditingTopics.map((topic, index) => {
+        const lessons        = topic.lessons  || [];
+        const assignedProjs  = topic.projects || [];   // array de IDs de proyectos del modulo asignados a este tema
+        const isExpanded     = !!topic._expanded;
+
+        // Badge lecciones
+        const lessonBadge = lessons.length > 0
+            ? `<span class="badge bg-secondary ms-1" title="Lecciones">${lessons.length} lecci&oacute;n(es)</span>`
+            : `<span class="badge bg-light text-muted border ms-1">0 lecciones</span>`;
+
+        // Badge proyectos asignados
+        const projectBadge = assignedProjs.length > 0
+            ? `<span class="badge bg-success ms-1" title="Proyectos asignados">${assignedProjs.length} proyecto(s)</span>`
+            : `<span class="badge bg-light text-muted border ms-1">0 proyectos</span>`;
+
+        // Panel unificado (lecciones + proyectos del modulo) — expandible con un solo toggle
+        const contentPanel = isExpanded ? `
+            <div class="topic-content-panel mt-2 ps-3 border-start border-2 border-secondary-subtle">
+
+                <!-- Seccion lecciones -->
+                <div class="d-flex justify-content-between align-items-center mb-2">
+                    <span class="small fw-semibold text-secondary">
+                        <i class="bi bi-collection-play me-1"></i>Lecciones
+                    </span>
+                    <button type="button" class="btn btn-sm btn-outline-primary py-0" onclick="addLesson(${index})">
+                        <i class="bi bi-plus"></i> Agregar lecci&oacute;n
+                    </button>
+                </div>
+                ${lessons.length === 0
+                    ? '<p class="text-muted small mb-1">No hay lecciones aun. Agrega una.</p>'
+                    : lessons.map((lesson, li) => `
+                        <div class="lesson-item d-flex flex-wrap align-items-center gap-2 mb-2 p-2 rounded bg-white border" data-lesson-index="${li}">
+                            <div class="d-flex flex-column gap-1">
+                                <button type="button" class="btn btn-xs btn-outline-secondary p-0 px-1"
+                                    title="Subir" onclick="moveLesson(${index}, ${li}, -1)" ${li === 0 ? 'disabled' : ''}>
+                                    <i class="bi bi-chevron-up" style="font-size:0.65rem;"></i>
+                                </button>
+                                <button type="button" class="btn btn-xs btn-outline-secondary p-0 px-1"
+                                    title="Bajar" onclick="moveLesson(${index}, ${li}, 1)" ${li === lessons.length - 1 ? 'disabled' : ''}>
+                                    <i class="bi bi-chevron-down" style="font-size:0.65rem;"></i>
+                                </button>
+                            </div>
+                            <input type="text"
+                                class="form-control form-control-sm lesson-title-input"
+                                value="${escapeHtml(lesson.title)}"
+                                placeholder="T&iacute;tulo de la lecci&oacute;n"
+                                oninput="updateLesson(${index}, ${li}, 'title', this.value)"
+                                onblur="updateLesson(${index}, ${li}, 'title', this.value)"
+                                style="min-width:180px; max-width:260px;" />
+                            <div class="btn-group btn-group-sm" role="group" aria-label="Tipo de lecci&oacute;n">
+                                <input type="radio" class="btn-check" name="lesson-type-${index}-${li}"
+                                    id="lt-teorica-${index}-${li}" autocomplete="off"
+                                    ${lesson.type !== 'workshop' ? 'checked' : ''}
+                                    onchange="updateLesson(${index}, ${li}, 'type', 'teorica')">
+                                <label class="btn btn-outline-secondary btn-sm" for="lt-teorica-${index}-${li}">
+                                    <i class="bi bi-book me-1"></i>Te&oacute;rica
+                                </label>
+                                <input type="radio" class="btn-check" name="lesson-type-${index}-${li}"
+                                    id="lt-workshop-${index}-${li}" autocomplete="off"
+                                    ${lesson.type === 'workshop' ? 'checked' : ''}
+                                    onchange="updateLesson(${index}, ${li}, 'type', 'workshop')">
+                                <label class="btn btn-outline-warning btn-sm" for="lt-workshop-${index}-${li}">
+                                    <i class="bi bi-tools me-1"></i>Workshop
+                                </label>
+                            </div>
+                            <span class="badge ${lesson.type === 'workshop' ? 'bg-warning text-dark' : 'bg-secondary'}">
+                                ${lesson.type === 'workshop' ? 'Workshop' : 'Te&oacute;rica'}
+                            </span>
+                            <button type="button" class="btn btn-xs btn-outline-danger ms-auto" title="Eliminar lecci&oacute;n"
+                                onclick="deleteLesson(${index}, ${li})">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    `).join('')
+                }
+
+                <!-- Separador -->
+                <hr class="my-2">
+
+                <!-- Seccion proyectos del modulo asignables al tema -->
+                <div class="mb-1">
+                    <span class="small fw-semibold text-success">
+                        <i class="bi bi-kanban me-1"></i>Proyectos del m&oacute;dulo en este tema
+                    </span>
+                </div>
+                ${currentEditingModuleProjects.length === 0
+                    ? '<p class="text-muted small mb-1">El m&oacute;dulo no tiene proyectos definidos todav&iacute;a.</p>'
+                    : `<div class="d-flex flex-wrap gap-2 mb-1">
+                        ${currentEditingModuleProjects.map((proj, pi) => {
+                            const projId    = proj.id || String(pi);
+                            const projName  = typeof proj === 'string' ? proj : (proj.name || 'Proyecto ' + (pi + 1));
+                            const isChecked = assignedProjs.includes(projId) ? 'checked' : '';
+                            return `
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input topic-project-check" type="checkbox"
+                                        id="tpc-${index}-${pi}" value="${escapeHtml(projId)}"
+                                        ${isChecked}
+                                        onchange="toggleTopicProject(${index}, '${escapeHtml(projId)}', this.checked)">
+                                    <label class="form-check-label small" for="tpc-${index}-${pi}">
+                                        <i class="bi bi-kanban text-success me-1"></i>${escapeHtml(projName)}
+                                    </label>
+                                </div>`;
+                        }).join('')}
+                       </div>`
+                }
+            </div>
+        ` : '';
+
+        return `
+            <div class="topic-item mb-2 p-2 border rounded bg-light" data-topic-index="${index}">
+                <div class="d-flex align-items-center gap-2 flex-wrap">
+                    <div class="d-flex flex-column gap-1">
+                        <button type="button" class="btn btn-xs btn-outline-secondary p-0 px-1"
+                            title="Subir" onclick="moveTopic(${index}, -1)" ${index === 0 ? 'disabled' : ''}>
+                            <i class="bi bi-chevron-up" style="font-size:0.65rem;"></i>
+                        </button>
+                        <button type="button" class="btn btn-xs btn-outline-secondary p-0 px-1"
+                            title="Bajar" onclick="moveTopic(${index}, 1)" ${index === currentEditingTopics.length - 1 ? 'disabled' : ''}>
+                            <i class="bi bi-chevron-down" style="font-size:0.65rem;"></i>
+                        </button>
+                    </div>
+                    <input type="text"
+                        class="form-control form-control-sm topic-name-input"
+                        value="${escapeHtml(topic.name)}"
+                        placeholder="Nombre del tema"
+                        onchange="renameTopic(${index}, this.value)"
+                        onblur="renameTopic(${index}, this.value)"
+                        style="max-width:240px;" />
+                    ${lessonBadge}
+                    ${projectBadge}
+                    <button type="button"
+                        class="btn btn-sm py-0 ${isExpanded ? 'btn-secondary' : 'btn-outline-secondary'} ms-1"
+                        title="${isExpanded ? 'Cerrar' : 'Lecciones y proyectos'}"
+                        onclick="toggleTopicExpanded(${index})">
+                        <i class="bi bi-${isExpanded ? 'chevron-up' : 'pencil-square'} me-1"></i>${isExpanded ? 'Cerrar' : 'Editar'}
+                    </button>
+                    <button type="button" class="btn btn-xs btn-outline-danger ms-auto" title="Eliminar tema"
+                        onclick="confirmDeleteTopic(${index})">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </div>
+                ${contentPanel}
+            </div>
+        `;
+    }).join('');
+}
+
+/**
+ * Agrega un tema vacio al final de la lista y re-renderiza.
+ */
+function addTopic() {
+    currentEditingTopics.push({
+        id:       generateTopicId(),
+        name:     '',
+        lessons:  [],
+        projects: [],
+    });
+    renderTopicsEditor();
+    // Foco en el ultimo input de nombre para que el usuario escriba directamente
+    const inputs = document.querySelectorAll('#topics-container .topic-name-input');
+    if (inputs.length > 0) inputs[inputs.length - 1].focus();
+}
+
+/**
+ * Actualiza el nombre de un tema en memoria. No persiste hasta "Guardar Modulo".
+ */
+function renameTopic(index, newName) {
+    if (!currentEditingTopics[index]) return;
+    currentEditingTopics[index].name = newName.trim();
+}
+
+/**
+ * Mueve un tema arriba (direction=-1) o abajo (direction=1) en la lista.
+ */
+function moveTopic(index, direction) {
+    const targetIndex = index + direction;
+    if (targetIndex < 0 || targetIndex >= currentEditingTopics.length) return;
+    const temp = currentEditingTopics[index];
+    currentEditingTopics[index] = currentEditingTopics[targetIndex];
+    currentEditingTopics[targetIndex] = temp;
+    renderTopicsEditor();
+}
+
+/**
+ * Muestra el modal de confirmacion de borrado para el tema en `index`.
+ */
+function confirmDeleteTopic(index) {
+    const topic = currentEditingTopics[index];
+    if (!topic) return;
+
+    const nameEl = document.getElementById('confirm-delete-topic-name');
+    const btn    = document.getElementById('confirm-delete-topic-btn');
+    if (nameEl) nameEl.textContent = topic.name || '(sin nombre)';
+    if (btn) {
+        // Reemplazar listener previo para evitar acumulacion de handlers
+        const newBtn = btn.cloneNode(true);
+        btn.parentNode.replaceChild(newBtn, btn);
+        newBtn.addEventListener('click', () => {
+            deleteTopic(index);
+            const modalEl = document.getElementById('confirmDeleteTopicModal');
+            if (modalEl) bootstrap.Modal.getInstance(modalEl)?.hide();
+        });
+    }
+
+    const modalEl = document.getElementById('confirmDeleteTopicModal');
+    if (modalEl) {
+        const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        modal.show();
+    }
+}
+
+/**
+ * Elimina el tema en `index` del estado en memoria y re-renderiza.
+ * No persiste hasta "Guardar Modulo".
+ */
+function deleteTopic(index) {
+    currentEditingTopics.splice(index, 1);
+    renderTopicsEditor();
+}
+
+// ── Gestion de lecciones dentro de un tema (TASK-RM-04) ──────────────────────
+
+/**
+ * Genera un id unico local para lecciones nuevas creadas en cliente.
+ */
+function generateLessonId() {
+    return 'lesson-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7);
+}
+
+/**
+ * Alterna el estado expandido/colapsado del panel de lecciones de un tema.
+ * Sincroniza los nombres de tema desde el DOM antes de re-renderizar para no
+ * perder texto que el usuario este escribiendo.
+ */
+function toggleTopicExpanded(index) {
+    // Sincronizar nombres desde DOM antes de re-renderizar
+    document.querySelectorAll('#topics-container .topic-name-input').forEach((input, i) => {
+        if (currentEditingTopics[i]) currentEditingTopics[i].name = input.value.trim();
+    });
+    if (!currentEditingTopics[index]) return;
+    currentEditingTopics[index]._expanded = !currentEditingTopics[index]._expanded;
+    renderTopicsEditor();
+}
+
+/**
+ * Agrega una leccion vacia al tema en `topicIndex` y expande el panel si no lo estaba.
+ */
+function addLesson(topicIndex) {
+    const topic = currentEditingTopics[topicIndex];
+    if (!topic) return;
+    if (!Array.isArray(topic.lessons)) topic.lessons = [];
+    // Sincronizar nombres antes de mutar
+    document.querySelectorAll('#topics-container .topic-name-input').forEach((input, i) => {
+        if (currentEditingTopics[i]) currentEditingTopics[i].name = input.value.trim();
+    });
+    topic.lessons.push({ id: generateLessonId(), title: '', type: 'teorica', links: [] });
+    topic._expanded = true;
+    renderTopicsEditor();
+    // Foco en el ultimo input de titulo de leccion del tema
+    const panels = document.querySelectorAll(`[data-topic-index="${topicIndex}"] .lesson-title-input`);
+    if (panels.length > 0) panels[panels.length - 1].focus();
+}
+
+/**
+ * Actualiza un campo (title | type) de una leccion en memoria.
+ * No persiste hasta "Guardar Modulo".
+ */
+function updateLesson(topicIndex, lessonIndex, field, value) {
+    const lesson = currentEditingTopics[topicIndex]?.lessons?.[lessonIndex];
+    if (!lesson) return;
+    if (field === 'title') lesson.title = value;
+    if (field === 'type' && (value === 'teorica' || value === 'workshop')) lesson.type = value;
+    // Actualizar solo el badge de tipo sin re-renderizar todo (optimizacion minima)
+    const lessonEl = document.querySelector(`[data-topic-index="${topicIndex}"] [data-lesson-index="${lessonIndex}"] .badge`);
+    if (field === 'type' && lessonEl) {
+        lessonEl.className = `badge ${value === 'workshop' ? 'bg-warning text-dark' : 'bg-secondary'}`;
+        lessonEl.textContent = value === 'workshop' ? 'Workshop' : 'Teórica';
+    }
+}
+
+/**
+ * Mueve una leccion arriba (direction=-1) o abajo (direction=1) dentro del tema.
+ */
+function moveLesson(topicIndex, lessonIndex, direction) {
+    const lessons = currentEditingTopics[topicIndex]?.lessons;
+    if (!lessons) return;
+    const targetIndex = lessonIndex + direction;
+    if (targetIndex < 0 || targetIndex >= lessons.length) return;
+    // Sincronizar titulos antes de reordenar
+    document.querySelectorAll(`[data-topic-index="${topicIndex}"] .lesson-title-input`).forEach((input, i) => {
+        if (lessons[i]) lessons[i].title = input.value;
+    });
+    const temp = lessons[lessonIndex];
+    lessons[lessonIndex] = lessons[targetIndex];
+    lessons[targetIndex] = temp;
+    renderTopicsEditor();
+}
+
+/**
+ * Elimina la leccion en `lessonIndex` del tema en `topicIndex`.
+ * No pide confirmacion (lecciones son elementos menores; el tema tiene confirmacion).
+ * No persiste hasta "Guardar Modulo".
+ */
+function deleteLesson(topicIndex, lessonIndex) {
+    const lessons = currentEditingTopics[topicIndex]?.lessons;
+    if (!lessons) return;
+    // Sincronizar antes de mutar
+    document.querySelectorAll(`[data-topic-index="${topicIndex}"] .lesson-title-input`).forEach((input, i) => {
+        if (lessons[i]) lessons[i].title = input.value;
+    });
+    lessons.splice(lessonIndex, 1);
+    renderTopicsEditor();
+}
+
+// ── Fin gestion de lecciones ──────────────────────────────────────────────────
+
+// ── Gestion de proyectos dentro de un tema (TASK-RM-05) ──────────────────────
+// Los proyectos de un tema son referencias a los proyectos ya definidos en
+// module.projects[]. Se asignan mediante checkboxes; no se crean desde aqui.
+
+/**
+ * Activa o desactiva la asignacion de un proyecto del modulo a un tema.
+ * `projId` es el id del proyecto en module.projects[].
+ * `checked` = true para asignar, false para quitar.
+ */
+function toggleTopicProject(topicIndex, projId, checked) {
+    const topic = currentEditingTopics[topicIndex];
+    if (!topic) return;
+    if (!Array.isArray(topic.projects)) topic.projects = [];
+    if (checked) {
+        if (!topic.projects.includes(projId)) topic.projects.push(projId);
+    } else {
+        topic.projects = topic.projects.filter(id => id !== projId);
+    }
+    // Actualizar solo el badge de conteo sin re-renderizar todo el panel
+    const topicEl = document.querySelector(`[data-topic-index="${topicIndex}"]`);
+    if (topicEl) {
+        const badge = topicEl.querySelector('.badge.bg-success, .badge.bg-light.text-muted.border:last-of-type');
+        // Re-renderizar para refrescar los badges correctamente
+        renderTopicsEditor();
+    }
+}
+
+// ── Fin gestion de proyectos de tema ─────────────────────────────────────────
+
+// ── Fin gestion de temas ──────────────────────────────────────────────────────
+
+// ══════════════════════════════════════════════════════════════════════════════
+// TASK-RM-05c — Planificador de Módulo
+// Lista ordenada y mezclada de Cursos, Proyectos y Lecciones.
+// Almacenada como module.plannerItems[] en el JSON de Promotion.modules.
+// ══════════════════════════════════════════════════════════════════════════════
+
+// Estado en memoria del planificador del modulo que se esta editando.
+// Se inicializa en editModule() y se resetea en openModuleModal().
+let currentPlannerItems = [];
+
+/**
+ * Genera un id unico local para items del planificador.
+ */
+function generatePlannerId() {
+    return 'pi-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7);
+}
+
+/**
+ * Construye la lista inicial del planificador a partir de los arrays legacy
+ * courses[] y projects[] del modulo. Se usa cuando el modulo no tiene plannerItems.
+ * El orden es: primero courses, luego projects.
+ * @param {object} module - Objeto del modulo con courses[] y/o projects[]
+ * @returns {Array} Array de plannerItems
+ */
+function buildInitialPlannerFromLegacy(module) {
+    const items = [];
+    (module.courses || []).forEach(c => {
+        const isObj = c && typeof c === 'object';
+        items.push({
+            id:          generatePlannerId(),
+            type:        'curso',
+            name:        isObj ? (c.name || '') : String(c),
+            url:         isObj ? (c.url  || '') : '',
+            duration:    isObj ? (Number(c.duration)    || 1) : 1,
+            startOffset: isObj ? (Number(c.startOffset) || 0) : 0,
+        });
+    });
+    (module.projects || []).forEach(p => {
+        const isObj = p && typeof p === 'object';
+        items.push({
+            id:            generatePlannerId(),
+            type:          'proyecto',
+            name:          isObj ? (p.name || '') : String(p),
+            url:           isObj ? (p.url  || '') : '',
+            duration:      isObj ? (Number(p.duration)    || 1) : 1,
+            startOffset:   isObj ? (Number(p.startOffset) || 0) : 0,
+            competenceIds: isObj ? (p.competenceIds || []) : [],
+        });
+    });
+    return items;
+}
+
+/**
+ * Configuracion visual por tipo de item del planificador.
+ */
+const PLANNER_TYPE_CONFIG = {
+    curso:    { icon: 'bi-book',   badgeClass: 'bg-primary',           label: 'Curso'    },
+    proyecto: { icon: 'bi-kanban', badgeClass: 'bg-success',           label: 'Proyecto' },
+    leccion:  { icon: 'bi-easel',  badgeClass: 'bg-warning text-dark', label: 'Lecci\u00f3n' },
+};
+
+/**
+ * Genera un id unico local para links de items del planificador.
+ */
+function generatePlannerLinkId() {
+    return 'pl-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7);
+}
+
+/**
+ * Devuelve el icono Bootstrap Icons segun el tipo de link.
+ */
+function plannerLinkIcon(type) {
+    if (type === 'repositorio') return 'bi-github';
+    if (type === 'presentacion') return 'bi-easel2';
+    return 'bi-file-earmark';
+}
+
+/**
+ * Renderiza la sublista de links de un item de leccion (o de cualquier tipo).
+ * Los links se muestran como hipervinculos clicables con icono segun tipo.
+ * Al pie hay un formulario inline para agregar uno nuevo.
+ * @param {object} item
+ * @returns {string} HTML
+ */
+function renderPlannerItemLinks(item) {
+    const links = item.links || [];
+    const linksHtml = links.length === 0
+        ? '<p class="text-muted small mb-1 fst-italic">Sin links a\u00fan.</p>'
+        : links.map(link => `
+            <div class="d-flex align-items-center gap-2 mb-1 planner-link-row" data-link-id="${link.id}">
+                <i class="bi ${plannerLinkIcon(link.type)} text-secondary"></i>
+                <a href="${escapeHtml(link.url)}" target="_blank" rel="noopener"
+                   class="small text-truncate" style="max-width:220px;" title="${escapeHtml(link.url)}">
+                   ${escapeHtml(link.label || link.url)}
+                </a>
+                <select class="form-select form-select-sm" style="width:130px;"
+                    onchange="updatePlannerLink('${item.id}', '${link.id}', 'type', this.value)">
+                    <option value="repositorio" ${link.type === 'repositorio' ? 'selected' : ''}>Repositorio</option>
+                    <option value="presentacion" ${link.type === 'presentacion' ? 'selected' : ''}>Presentaci&oacute;n</option>
+                    <option value="material"     ${link.type === 'material'     ? 'selected' : ''}>Material</option>
+                </select>
+                <button type="button" class="btn btn-xs btn-outline-danger py-0 px-1"
+                    title="Eliminar link" onclick="deletePlannerLink('${item.id}', '${link.id}')">
+                    <i class="bi bi-x"></i>
+                </button>
+            </div>`).join('');
+
+    return `
+        <div class="planner-links-panel mt-2 ps-2 border-start border-secondary-subtle w-100">
+            <div class="small fw-semibold text-secondary mb-1">
+                <i class="bi bi-link-45deg me-1"></i>Links
+            </div>
+            ${linksHtml}
+            <!-- Formulario inline para añadir link -->
+            <div class="d-flex flex-wrap gap-1 align-items-center mt-1">
+                <input type="text"
+                    class="form-control form-control-sm planner-new-link-label"
+                    placeholder="Etiqueta del link"
+                    style="min-width:130px; max-width:180px;" />
+                <input type="url"
+                    class="form-control form-control-sm planner-new-link-url"
+                    placeholder="https://..."
+                    style="min-width:160px; max-width:240px;" />
+                <select class="form-select form-select-sm planner-new-link-type" style="width:130px;">
+                    <option value="repositorio">Repositorio</option>
+                    <option value="presentacion">Presentaci&oacute;n</option>
+                    <option value="material">Material</option>
+                </select>
+                <button type="button" class="btn btn-sm btn-outline-secondary py-0"
+                    onclick="addPlannerLink('${item.id}', this)">
+                    <i class="bi bi-plus me-1"></i>A\u00f1adir link
+                </button>
+            </div>
+        </div>`;
+}
+
+/**
+ * Renderiza el selector de competencias inline para items de tipo proyecto.
+ * Incluye un boton que abre el picker existente (reutiliza openProjectCompetencePicker
+ * adaptado para el planificador).
+ * @param {object} item
+ * @returns {string} HTML
+ */
+function renderPlannerProjectCompetences(item) {
+    const ids = item.competenceIds || [];
+    return `
+        <div class="d-flex align-items-center gap-2 mt-1 w-100">
+            <button type="button" class="btn btn-xs btn-outline-warning py-0 px-2" style="font-size:0.75rem;"
+                onclick="openPlannerCompetencePicker('${item.id}', this)">
+                <i class="bi bi-award me-1"></i>Competencias
+                <span class="badge bg-warning text-dark ms-1 planner-comp-badge">${ids.length || 0}</span>
+            </button>
+            <small class="text-muted planner-comp-labels fst-italic">${_plannerCompetenceLabels(ids)}</small>
+            <input type="hidden" class="planner-comp-ids-hidden" value="${escapeHtml(JSON.stringify(ids))}">
+        </div>`;
+}
+
+/**
+ * Devuelve un string con los nombres de las competencias seleccionadas.
+ */
+function _plannerCompetenceLabels(ids) {
+    if (!ids || !ids.length) return '';
+    const programComps = window.ProgramCompetences ? window.ProgramCompetences.getCompetences() : (window._extendedInfoCompetences || []);
+    return ids.map(id => {
+        const c = programComps.find(c => c.id == id);
+        return c ? escapeHtml(c.name) : `#${id}`;
+    }).join(', ');
+}
+
+/**
+ * Abre el picker de competencias para un item de proyecto del planificador.
+ */
+function openPlannerCompetencePicker(itemId, btn) {
+    const item = currentPlannerItems.find(i => i.id === itemId);
+    if (!item) return;
+
+    document.getElementById('planner-comp-picker')?.remove();
+
+    const programComps = window.ProgramCompetences ? window.ProgramCompetences.getCompetences() : (window._extendedInfoCompetences || []);
+    if (!programComps.length) {
+        alert('No hay competencias a\u00f1adidas al programa. Ve a Contenido del Programa \u2192 Competencias para a\u00f1adirlas primero.');
+        return;
+    }
+
+    const currentIds = item.competenceIds || [];
+    const checkboxes = programComps.map((c, i) => {
+        const checked = currentIds.includes(c.id) ? 'checked' : '';
+        const safeId = `pcp2-${i}`;
+        return `<div class="form-check py-1 border-bottom">
+            <input class="form-check-input pcp2-check" type="checkbox" value="${escapeHtml(String(c.id))}" id="${safeId}" ${checked}>
+            <label class="form-check-label small" for="${safeId}">
+                <span class="badge bg-secondary me-1" style="font-size:.65rem;">${escapeHtml(c.area || '')}</span>
+                ${escapeHtml(c.name)}
+            </label>
+        </div>`;
+    }).join('');
+
+    const picker = document.createElement('div');
+    picker.id = 'planner-comp-picker';
+    picker.className = 'card shadow border position-absolute';
+    picker.style.cssText = 'z-index:9999; min-width:320px; max-width:400px; max-height:320px; overflow-y:auto;';
+    picker.innerHTML = `
+        <div class="card-header py-2 px-3 d-flex justify-content-between align-items-center bg-light">
+            <strong class="small"><i class="bi bi-award me-1"></i>Competencias del proyecto</strong>
+            <button type="button" class="btn-close btn-sm" onclick="document.getElementById('planner-comp-picker')?.remove()"></button>
+        </div>
+        <div class="card-body py-2 px-3">
+            <p class="text-muted small mb-2">Selecciona las competencias que se evaluar\u00e1n:</p>
+            ${checkboxes}
+        </div>
+        <div class="card-footer py-2 px-3 d-flex gap-2">
+            <button type="button" class="btn btn-sm btn-primary flex-grow-1"
+                onclick="savePlannerCompetencePicker('${itemId}')">
+                <i class="bi bi-check-lg me-1"></i>Aplicar
+            </button>
+            <button type="button" class="btn btn-sm btn-secondary"
+                onclick="document.getElementById('planner-comp-picker')?.remove()">Cancelar</button>
+        </div>`;
+
+    document.body.appendChild(picker);
+    const rect = btn.getBoundingClientRect();
+    const pickerH = 320;
+    const spaceBelow = window.innerHeight - rect.bottom;
+    const top = spaceBelow > pickerH ? rect.bottom + window.scrollY + 4 : rect.top + window.scrollY - pickerH - 4;
+    picker.style.top = `${top}px`;
+    picker.style.left = `${Math.min(rect.left + window.scrollX, window.innerWidth - 420)}px`;
+
+    setTimeout(() => {
+        document.addEventListener('click', _closePlannerCompPicker, { once: true });
+    }, 50);
+}
+
+function _closePlannerCompPicker(e) {
+    const picker = document.getElementById('planner-comp-picker');
+    if (picker && !picker.contains(e.target)) picker.remove();
+}
+
+function savePlannerCompetencePicker(itemId) {
+    const picker = document.getElementById('planner-comp-picker');
+    if (!picker) return;
+
+    const selectedIds = [...picker.querySelectorAll('.pcp2-check:checked')].map(cb => {
+        const n = parseInt(cb.value);
+        return isNaN(n) ? cb.value : n;
+    });
+
+    const item = currentPlannerItems.find(i => i.id === itemId);
+    if (item) item.competenceIds = selectedIds;
+
+    picker.remove();
+
+    // Actualizar badge y labels en el DOM sin re-renderizar todo
+    const itemEl = document.querySelector(`[data-planner-id="${itemId}"]`);
+    if (itemEl) {
+        const badge = itemEl.querySelector('.planner-comp-badge');
+        const labels = itemEl.querySelector('.planner-comp-labels');
+        const hidden = itemEl.querySelector('.planner-comp-ids-hidden');
+        if (badge)  badge.textContent = selectedIds.length;
+        if (labels) labels.innerHTML = _plannerCompetenceLabels(selectedIds);
+        if (hidden) hidden.value = JSON.stringify(selectedIds);
+    }
+}
+
+/**
+ * Añade un link a un item del planificador.
+ * Lee los valores del formulario inline del propio item.
+ * @param {string} itemId
+ * @param {HTMLElement} btn - boton "Añadir link" dentro del item
+ */
+function addPlannerLink(itemId, btn) {
+    const item = currentPlannerItems.find(i => i.id === itemId);
+    if (!item) return;
+
+    const panel = btn.closest('.planner-links-panel');
+    const labelInput = panel.querySelector('.planner-new-link-label');
+    const urlInput   = panel.querySelector('.planner-new-link-url');
+    const typeSelect = panel.querySelector('.planner-new-link-type');
+
+    const url = urlInput.value.trim();
+    if (!url) { urlInput.focus(); return; }
+
+    if (!Array.isArray(item.links)) item.links = [];
+    item.links.push({
+        id:    generatePlannerLinkId(),
+        label: labelInput.value.trim() || url,
+        url,
+        type:  typeSelect.value,
+    });
+
+    // Limpiar inputs
+    labelInput.value = '';
+    urlInput.value   = '';
+
+    // Re-renderizar solo el panel de links
+    const linksWrapper = btn.closest('.planner-links-panel');
+    if (linksWrapper) {
+        linksWrapper.outerHTML = renderPlannerItemLinks(item);
+    }
+}
+
+/**
+ * Elimina un link de un item del planificador.
+ */
+function deletePlannerLink(itemId, linkId) {
+    const item = currentPlannerItems.find(i => i.id === itemId);
+    if (!item || !Array.isArray(item.links)) return;
+    item.links = item.links.filter(l => l.id !== linkId);
+    // Re-renderizar solo el panel de links dentro del item
+    const itemEl = document.querySelector(`[data-planner-id="${itemId}"]`);
+    if (itemEl) {
+        const panel = itemEl.querySelector('.planner-links-panel');
+        if (panel) panel.outerHTML = renderPlannerItemLinks(item);
+    }
+}
+
+/**
+ * Actualiza un campo de un link de un item del planificador.
+ */
+function updatePlannerLink(itemId, linkId, field, value) {
+    const item = currentPlannerItems.find(i => i.id === itemId);
+    if (!item || !Array.isArray(item.links)) return;
+    const link = item.links.find(l => l.id === linkId);
+    if (!link) return;
+    link[field] = value;
+    // Actualizar el icono en el DOM sin re-renderizar
+    if (field === 'type') {
+        const rowEl = document.querySelector(`[data-link-id="${linkId}"] i`);
+        if (rowEl) {
+            rowEl.className = `bi ${plannerLinkIcon(value)} text-secondary`;
+        }
+    }
+}
+
+/**
+ * Renderiza los campos especificos segun el tipo del item.
+ * — curso / proyecto: nombre, URL (hipervínculo si rellena), semana inicio/final
+ * — proyecto: ademas selector de competencias
+ * — leccion: titulo, radio Teorica/Workshop, panel de links
+ * @param {object} item - Item del planificador
+ * @param {number} index - Indice en currentPlannerItems
+ * @returns {string} HTML de los campos
+ */
+function renderPlannerItemFields(item, index) {
+    if (item.type === 'leccion') {
+        const isTeorica  = item.lessonType !== 'workshop';
+        const isWorkshop = item.lessonType === 'workshop';
+        return `
+            <input type="text"
+                class="form-control form-control-sm planner-field-title"
+                value="${escapeHtml(item.title || '')}"
+                placeholder="T\u00edtulo de la lecci\u00f3n"
+                oninput="updatePlannerItem('${item.id}', 'title', this.value)"
+                onblur="updatePlannerItem('${item.id}', 'title', this.value)"
+                style="min-width:200px; max-width:300px;" />
+            <div class="btn-group btn-group-sm" role="group">
+                <input type="radio" class="btn-check" name="planner-lt-${index}"
+                    id="plt-teorica-${index}" autocomplete="off"
+                    ${isTeorica ? 'checked' : ''}
+                    onchange="updatePlannerItem('${item.id}', 'lessonType', 'teorica')">
+                <label class="btn btn-outline-secondary btn-sm" for="plt-teorica-${index}">
+                    <i class="bi bi-book me-1"></i>Te\u00f3rica
+                </label>
+                <input type="radio" class="btn-check" name="planner-lt-${index}"
+                    id="plt-workshop-${index}" autocomplete="off"
+                    ${isWorkshop ? 'checked' : ''}
+                    onchange="updatePlannerItem('${item.id}', 'lessonType', 'workshop')">
+                <label class="btn btn-outline-warning btn-sm" for="plt-workshop-${index}">
+                    <i class="bi bi-tools me-1"></i>Workshop
+                </label>
+            </div>
+            ${renderPlannerItemLinks(item)}`;
+    }
+
+    // curso y proyecto
+    const semanaInicio = Number(item.startOffset || 0) + 1;
+    const semanaFinal  = Number(item.startOffset || 0) + Number(item.duration || 1);
+
+    // URL: si está rellena se muestra como hipervínculo + botón editar; si está vacía se muestra input
+    const urlSection = item.url
+        ? `<div class="d-flex align-items-center gap-1">
+               <a href="${escapeHtml(item.url)}" target="_blank" rel="noopener"
+                  class="small text-truncate planner-url-link" style="max-width:200px;" title="${escapeHtml(item.url)}">
+                  <i class="bi bi-link-45deg me-1"></i>${escapeHtml(item.url)}
+               </a>
+               <button type="button" class="btn btn-xs btn-outline-secondary py-0 px-1"
+                   title="Editar URL" onclick="togglePlannerUrlEdit('${item.id}', this)">
+                   <i class="bi bi-pencil"></i>
+               </button>
+           </div>`
+        : `<input type="url"
+               class="form-control form-control-sm planner-field-url"
+               value=""
+               placeholder="URL (opcional)"
+               oninput="updatePlannerItem('${item.id}', 'url', this.value)"
+               onblur="updatePlannerItem('${item.id}', 'url', this.value)"
+               style="min-width:140px; max-width:220px;" />`;
+
+    const competencesSection = item.type === 'proyecto' ? renderPlannerProjectCompetences(item) : '';
+
+    return `
+        <input type="text"
+            class="form-control form-control-sm planner-field-name"
+            value="${escapeHtml(item.name || '')}"
+            placeholder="Nombre"
+            oninput="updatePlannerItem('${item.id}', 'name', this.value)"
+            onblur="updatePlannerItem('${item.id}', 'name', this.value)"
+            style="min-width:160px; max-width:240px;" />
+        ${urlSection}
+        <div class="d-flex align-items-center gap-1">
+            <label class="form-label form-label-sm mb-0 text-nowrap">Sem. inicio</label>
+            <input type="number"
+                class="form-control form-control-sm planner-field-start"
+                value="${semanaInicio}" min="1" style="width:70px;"
+                oninput="updatePlannerItemWeeks('${item.id}', this.value, null)"
+                onblur="updatePlannerItemWeeks('${item.id}', this.value, null)" />
+        </div>
+        <div class="d-flex align-items-center gap-1">
+            <label class="form-label form-label-sm mb-0 text-nowrap">Sem. final</label>
+            <input type="number"
+                class="form-control form-control-sm planner-field-end"
+                value="${semanaFinal}" min="1" style="width:70px;"
+                oninput="updatePlannerItemWeeks('${item.id}', null, this.value)"
+                onblur="updatePlannerItemWeeks('${item.id}', null, this.value)" />
+        </div>
+        ${competencesSection}`;
+}
+
+/**
+ * Alterna el campo URL entre modo vista (hipervinculo) y modo edicion (input).
+ * @param {string} id - id del item
+ * @param {HTMLElement} btn - boton lapiz que disparó la accion
+ */
+function togglePlannerUrlEdit(id, btn) {
+    const item = currentPlannerItems.find(i => i.id === id);
+    if (!item) return;
+
+    const container = btn.closest('.d-flex');
+    // Reemplazar el bloque actual con un input de edicion
+    container.outerHTML = `
+        <div class="d-flex align-items-center gap-1">
+            <input type="url"
+                class="form-control form-control-sm planner-field-url"
+                value="${escapeHtml(item.url || '')}"
+                placeholder="https://..."
+                style="min-width:140px; max-width:220px;"
+                oninput="updatePlannerItem('${id}', 'url', this.value)"
+                onblur="confirmPlannerUrlEdit('${id}', this)" />
+        </div>`;
+    // Foco en el input recien creado
+    const itemEl = document.querySelector(`[data-planner-id="${id}"]`);
+    if (itemEl) {
+        const input = itemEl.querySelector('.planner-field-url');
+        if (input) { input.focus(); input.select(); }
+    }
+}
+
+/**
+ * Al hacer blur en el input de URL editado, guarda el valor y vuelve a modo vista.
+ */
+function confirmPlannerUrlEdit(id, input) {
+    updatePlannerItem(id, 'url', input.value.trim());
+    // Re-renderizar solo el item para mostrar el hipervinculo actualizado
+    const idx = currentPlannerItems.findIndex(i => i.id === id);
+    if (idx === -1) return;
+    renderPlannerEditor();
+}
+
+/**
+ * Re-renderiza la lista del planificador a partir de currentPlannerItems.
+ * Se llama cada vez que el array cambia (excepto reordenamiento via Sortable,
+ * que actualiza el array en onEnd sin re-renderizar).
+ */
+function renderPlannerEditor() {
+    const container = document.getElementById('planner-container');
+    if (!container) return;
+
+    if (currentPlannerItems.length === 0) {
+        container.innerHTML = '<p class="text-muted small mb-0">No hay elementos todav\u00eda. A\u00f1ade un curso, proyecto o lecci\u00f3n.</p>';
+        return;
+    }
+
+    container.innerHTML = currentPlannerItems.map((item, index) => {
+        const cfg = PLANNER_TYPE_CONFIG[item.type] || PLANNER_TYPE_CONFIG.leccion;
+        return `
+            <div class="planner-item d-flex flex-wrap align-items-start gap-2 mb-2 p-2 rounded border bg-white"
+                data-planner-id="${item.id}">
+                <!-- Handle de drag -->
+                <span class="planner-drag-handle text-muted mt-1" title="Arrastrar para reordenar"
+                    style="cursor:grab; font-size:1.1rem;">
+                    <i class="bi bi-grip-vertical"></i>
+                </span>
+                <!-- Badge de tipo -->
+                <span class="badge ${cfg.badgeClass} mt-1" style="font-size:0.7rem; white-space:nowrap;">
+                    <i class="bi ${cfg.icon} me-1"></i>${cfg.label}
+                </span>
+                <!-- Campos segun tipo -->
+                ${renderPlannerItemFields(item, index)}
+                <!-- Boton eliminar -->
+                <button type="button" class="btn btn-xs btn-outline-danger mt-1 ms-auto"
+                    title="Eliminar" onclick="deletePlannerItem('${item.id}')">
+                    <i class="bi bi-trash"></i>
+                </button>
+            </div>`;
+    }).join('');
+
+    initPlannerSortable();
+}
+
+/**
+ * Inicializa (o reinicializa) Sortable.js en el contenedor del planificador.
+ * Actualiza currentPlannerItems al soltar un elemento.
+ */
+function initPlannerSortable() {
+    const el = document.getElementById('planner-container');
+    if (!el || !window.Sortable) return;
+    if (el._sortableInstance) el._sortableInstance.destroy();
+    el._sortableInstance = new Sortable(el, {
+        animation: 150,
+        handle: '.planner-drag-handle',
+        onEnd(evt) {
+            if (evt.oldIndex === evt.newIndex) return;
+            const moved = currentPlannerItems.splice(evt.oldIndex, 1)[0];
+            currentPlannerItems.splice(evt.newIndex, 0, moved);
+        }
+    });
+}
+
+function initPildorasSortable() {
+    const tbody = document.getElementById('pildoras-list-body');
+    if (!tbody || !window.Sortable) return;
+    if (tbody._sortableInstance) tbody._sortableInstance.destroy();
+    tbody._sortableInstance = new Sortable(tbody, {
+        animation: 150,
+        handle: '.pildora-drag-handle',
+        onEnd(evt) {
+            if (evt.oldIndex === evt.newIndex) return;
+
+            // Reordenar el array en memoria
+            const currentModule = promotionModules[currentModuleIndex];
+            if (!currentModule) return;
+            const modulePildoras = extendedInfoData.modulesPildoras?.find(mp => mp.moduleId === currentModule.id);
+            if (!modulePildoras || !modulePildoras.pildoras) return;
+
+            const moved = modulePildoras.pildoras.splice(evt.oldIndex, 1)[0];
+            modulePildoras.pildoras.splice(evt.newIndex, 0, moved);
+
+            // Actualizar data-index en todos los <tr> y data-pildora-index en checkboxes
+            const rows = tbody.querySelectorAll('tr');
+            rows.forEach((tr, i) => {
+                tr.dataset.index = i;
+                tr.querySelectorAll('.pildora-student-checkbox').forEach(cb => {
+                    cb.dataset.pildoraIndex = i;
+                });
+            });
+
+            // Persistir en servidor
+            savePildorasToServer(currentModule);
+        }
+    });
+}
+
+/**
+ * Guarda el contenido del editor de evaluación directamente en el servidor
+ * sin necesidad de pasar por el guardado general de la promoción.
+ */
+async function saveEvaluationFeedback() {
+    const evalEl = document.getElementById('evaluation-text');
+    if (!evalEl) return;
+    const html = evalEl.innerHTML;
+    extendedInfoData.evaluation = html;
+    const token = localStorage.getItem('token');
+    try {
+        const res = await fetch(`${API_URL}/api/promotions/${promotionId}/extended-info`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ evaluation: html })
+        });
+        if (!res.ok) throw new Error(await res.text());
+        window.showApiToast('Evaluación guardada', 'success');
+    } catch (err) {
+        console.error('saveEvaluationFeedback error:', err);
+        window.showApiToast('Error al guardar la evaluación', 'error');
+    }
+}
+
+/**
+ * TASK-EVAL-07 — Guarda la evaluación y la envía por email a todos los estudiantes activos
+ * de la promoción. Pide confirmación antes de enviar.
+ */
+async function sendEvaluationToAllStudents() {
+    // Contar estudiantes activos a partir del estado local
+    const activeCount = (window._evalState?.students || []).length;
+    const countLabel = activeCount > 0 ? `${activeCount} estudiante${activeCount !== 1 ? 's' : ''}` : 'los estudiantes activos';
+
+    const confirmed = window.confirm(
+        `¿Guardar y enviar la evaluación a ${countLabel}?\n\nEsta acción enviará un correo a cada estudiante activo de la promoción.`
+    );
+    if (!confirmed) return;
+
+    // Guardar primero para que el backend lea la versión más reciente
+    await saveEvaluationFeedback();
+
+    const token = localStorage.getItem('token');
+    try {
+        const res = await fetch(`${API_URL}/api/promotions/${promotionId}/send-evaluation`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data?.message || res.statusText);
+        const msg = `Evaluación enviada a ${data.sent} estudiante${data.sent !== 1 ? 's' : ''}` +
+            (data.failed > 0 ? ` (${data.failed} fallidos)` : '');
+        window.showApiToast(msg, data.failed > 0 ? 'warning' : 'success');
+    } catch (err) {
+        console.error('sendEvaluationToAllStudents error:', err);
+        window.showApiToast('Error al enviar la evaluación: ' + err.message, 'error');
+    }
+}
+
+/**
+ * Inserta un enlace (<a>) en la posición del cursor dentro del editor de evaluación.
+ * Usa insertHTML en lugar de createLink para poder configurar target="_blank".
+ */
+function insertEvalLink() {
+    const url = window.prompt('URL del enlace:');
+    if (!url || !url.trim()) return;
+
+    // Obtener el texto seleccionado; si no hay selección, pedir texto al usuario
+    const selection = window.getSelection();
+    const selectedText = selection && !selection.isCollapsed ? selection.toString() : null;
+    const linkText = selectedText || window.prompt('Texto del enlace:') || url;
+
+    const safeUrl = url.trim().replace(/"/g, '&quot;');
+    const safeText = linkText.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const anchorHtml = `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer">${safeText}</a>`;
+
+    // Restaurar foco al editor antes de ejecutar el comando
+    document.getElementById('evaluation-text').focus();
+    document.execCommand('insertHTML', false, anchorHtml);
+}
+
+/**
+ * Inserta una imagen (<img>) en la posición del cursor dentro del editor de evaluación.
+ * Solo soporta URL externa — la subida de archivo se documenta como deuda técnica (TD-11).
+ */
+function insertEvalImage() {
+    const url = window.prompt('URL de la imagen:');
+    if (!url || !url.trim()) return;
+
+    const altText = window.prompt('Texto alternativo (descripción):') || '';
+    const safeUrl = url.trim().replace(/"/g, '&quot;');
+    const safeAlt = altText.replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const imgHtml = `<img src="${safeUrl}" alt="${safeAlt}" style="max-width:100%;height:auto;display:block;margin:8px 0;">`;
+
+    // Restaurar foco al editor antes de ejecutar el comando
+    document.getElementById('evaluation-text').focus();
+    document.execCommand('insertHTML', false, imgHtml);
+}
+
+/**
+ * Inserta un enlace en el .eval-feedback-rte del panel de evaluación del docente.
+ * Se llama con onmousedown + event.preventDefault() para preservar la selección.
+ * @param {HTMLElement} btn - El botón que disparó el evento
+ */
+function _insertEvalFeedbackLink(btn) {
+    // Guardar la selección antes de que prompt() la destruya
+    const sel = window.getSelection();
+    let savedRange = null;
+    if (sel && sel.rangeCount > 0) {
+        savedRange = sel.getRangeAt(0).cloneRange();
+    }
+
+    const url = window.prompt('URL del enlace:');
+    if (!url || !url.trim()) return;
+
+    const selectedText = savedRange && !savedRange.collapsed ? savedRange.toString() : null;
+    const linkText = selectedText || window.prompt('Texto del enlace:') || url;
+
+    // Encontrar el RTE más cercano al botón
+    const rte = btn.closest('.border')?.querySelector('.eval-feedback-rte');
+    if (!rte) return;
+
+    // Restaurar selección
+    rte.focus();
+    if (savedRange) {
+        sel.removeAllRanges();
+        sel.addRange(savedRange);
+    }
+
+    const safeUrl = url.trim().replace(/"/g, '&quot;');
+    const safeText = linkText.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const anchorHtml = `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer">${safeText}</a>`;
+    document.execCommand('insertHTML', false, anchorHtml);
+}
+
+/**
+ * Inserta una imagen en el .eval-feedback-rte del panel de evaluación del docente.
+ * Se llama con onmousedown + event.preventDefault() para preservar el foco.
+ * @param {HTMLElement} btn - El botón que disparó el evento
+ */
+function _insertEvalFeedbackImage(btn) {
+    const url = window.prompt('URL de la imagen:');
+    if (!url || !url.trim()) return;
+
+    const altText = window.prompt('Texto alternativo (descripción):') || '';
+
+    const rte = btn.closest('.border')?.querySelector('.eval-feedback-rte');
+    if (!rte) return;
+
+    rte.focus();
+
+    const safeUrl = url.trim().replace(/"/g, '&quot;');
+    const safeAlt = altText.replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    const imgHtml = `<img src="${safeUrl}" alt="${safeAlt}" style="max-width:100%;height:auto;display:block;margin:8px 0;">`;
+    document.execCommand('insertHTML', false, imgHtml);
+}
+
+/**
+ * Anade un nuevo item vacio del tipo indicado al final de la lista.
+ * @param {'curso'|'proyecto'|'leccion'} type
+ */
+function addPlannerItem(type) {
+    const base = { id: generatePlannerId(), type };
+    if (type === 'leccion') {
+        base.title      = '';
+        base.lessonType = 'teorica';
+        base.links      = [];
+    } else {
+        base.name          = '';
+        base.url           = '';
+        base.duration      = 1;
+        base.startOffset   = 0;
+        if (type === 'proyecto') base.competenceIds = [];
+    }
+    currentPlannerItems.push(base);
+    renderPlannerEditor();
+    // Foco en el primer campo del item recien creado
+    const items = document.querySelectorAll('#planner-container .planner-item');
+    if (items.length > 0) {
+        const last = items[items.length - 1];
+        const firstInput = last.querySelector('input[type="text"], input[type="url"]');
+        if (firstInput) firstInput.focus();
+    }
+}
+
+/**
+ * Elimina el item con el id dado.
+ * @param {string} id
+ */
+function deletePlannerItem(id) {
+    currentPlannerItems = currentPlannerItems.filter(item => item.id !== id);
+    renderPlannerEditor();
+}
+
+/**
+ * Actualiza un campo de un item del planificador en memoria.
+ * @param {string} id
+ * @param {string} field
+ * @param {*} value
+ */
+function updatePlannerItem(id, field, value) {
+    const item = currentPlannerItems.find(i => i.id === id);
+    if (!item) return;
+    item[field] = value;
+}
+
+/**
+ * Actualiza startOffset y duration a partir de semana inicio y semana final.
+ * Uno de los dos parametros puede ser null (usa el valor actual del DOM para ese campo).
+ * @param {string} id
+ * @param {string|null} startWeekRaw  - valor del input de semana inicio (o null)
+ * @param {string|null} endWeekRaw    - valor del input de semana final (o null)
+ */
+function updatePlannerItemWeeks(id, startWeekRaw, endWeekRaw) {
+    const item = currentPlannerItems.find(i => i.id === id);
+    if (!item) return;
+    // Leer del DOM si no se pasa el valor
+    const el = document.querySelector(`[data-planner-id="${id}"]`);
+    const startInput = el ? el.querySelector('.planner-field-start') : null;
+    const endInput   = el ? el.querySelector('.planner-field-end')   : null;
+
+    const startWeek = parseInt(startWeekRaw !== null ? startWeekRaw : (startInput ? startInput.value : 1)) || 1;
+    const endWeek   = parseInt(endWeekRaw   !== null ? endWeekRaw   : (endInput   ? endInput.value   : 1)) || 1;
+
+    item.startOffset = Math.max(0, startWeek - 1);
+    item.duration    = Math.max(1, endWeek - startWeek + 1);
+}
+
+/**
+ * Sincroniza los campos editables del DOM hacia currentPlannerItems.
+ * Se llama antes de guardar para capturar texto escrito sin disparar onblur.
+ * TASK-RM-06b
+ */
+function _syncPlannerFromDom() {
+    document.querySelectorAll('#planner-container .planner-item').forEach(el => {
+        const pid  = el.dataset.plannerId;
+        const item = currentPlannerItems.find(i => i.id === pid);
+        if (!item) return;
+        if (item.type === 'leccion') {
+            const titleEl = el.querySelector('.planner-field-title');
+            if (titleEl) item.title = titleEl.value;
+        } else {
+            const nameEl  = el.querySelector('.planner-field-name');
+            const urlEl   = el.querySelector('.planner-field-url');
+            const startEl = el.querySelector('.planner-field-start');
+            const endEl   = el.querySelector('.planner-field-end');
+            if (nameEl)  item.name = nameEl.value;
+            if (urlEl)   item.url  = urlEl.value;
+            if (startEl && endEl) {
+                item.startOffset = Math.max(0, (parseInt(startEl.value) || 1) - 1);
+                item.duration    = Math.max(1, (parseInt(endEl.value) || 1) - (parseInt(startEl.value) || 1) + 1);
+            }
+        }
+    });
+}
+
+// ── Fin Planificador de Módulo (TASK-RM-05c / TASK-RM-06b) ────────────────────
+
+// LEGACY — TASK-RM-06b — Las secciones de cursos/proyectos del modal están ocultas.
+// El Planificador de Módulo es el único editor. Ver TECH_DEBT TD-8.
 function addCoursField(courseName = '', courseUrl = '', courseDuration = 1, courseOffset = 0) {
     const container = document.getElementById('courses-container');
     const courseItem = document.createElement('div');
@@ -5129,46 +6367,18 @@ function setupForms() {
         const name = document.getElementById('module-name').value;
         const duration = parseInt(document.getElementById('module-duration').value);
 
-        // Collect courses with URLs, duration, and offset (calculated from semana inicio/final)
-        const courses = [];
-        document.querySelectorAll('#courses-container .course-item').forEach(item => {
-            const courseName = item.querySelector('.course-name')?.value || '';
-            const courseUrl = item.querySelector('.course-url')?.value || '';
-            const valInicio = item.querySelector('.course-start-week')?.value;
-            const valFinal = item.querySelector('.course-end-week')?.value;
+        // TASK-RM-06b: courses y projects se reconstruyen desde el planificador
+        // (los contenedores DOM legacy estan ocultos y ya no se usan para entrada de datos)
+        // Primero sincronizamos el estado en memoria con el DOM del planificador
+        _syncPlannerFromDom();
 
-            const semanaInicio = parseInt(valInicio) || 1;
-            const semanaFinal = parseInt(valFinal) || 1;
+        const courses  = currentPlannerItems
+            .filter(i => i.type === 'curso' && i.name)
+            .map(i => ({ name: i.name, url: i.url || '', duration: Number(i.duration) || 1, startOffset: Number(i.startOffset) || 0 }));
 
-            const startOffset = Math.max(0, semanaInicio - 1);
-            const duration = Math.max(1, semanaFinal - semanaInicio + 1);
-
-            if (courseName) {
-                courses.push({ name: courseName, url: courseUrl, duration: Number(duration), startOffset: Number(startOffset) });
-            }
-        });
-
-        // Collect projects with URLs, duration, and offset
-        const projects = [];
-        document.querySelectorAll('#projects-container .project-item').forEach(item => {
-            const projectName = item.querySelector('.project-name')?.value || '';
-            const projectUrl = item.querySelector('.project-url')?.value || '';
-            const valInicio = item.querySelector('.project-start-week')?.value;
-            const valFinal = item.querySelector('.project-end-week')?.value;
-
-            const semanaInicio = parseInt(valInicio) || 1;
-            const semanaFinal = parseInt(valFinal) || 1;
-
-            const startOffset = Math.max(0, semanaInicio - 1);
-            const duration = Math.max(1, semanaFinal - semanaInicio + 1);
-
-            let competenceIds = [];
-            try { competenceIds = JSON.parse(item.querySelector('.project-competence-ids')?.value || '[]'); } catch (e) { competenceIds = []; }
-
-            if (projectName) {
-                projects.push({ name: projectName, url: projectUrl, duration: Number(duration), startOffset: Number(startOffset), competenceIds });
-            }
-        });
+        const projects = currentPlannerItems
+            .filter(i => i.type === 'proyecto' && i.name)
+            .map(i => ({ name: i.name, url: i.url || '', duration: Number(i.duration) || 1, startOffset: Number(i.startOffset) || 0, competenceIds: i.competenceIds || [] }));
 
         const token = localStorage.getItem('token');
 
@@ -5181,7 +6391,7 @@ function setupForms() {
                 });
 
                 if (!promotionResponse.ok) {
-                    alert('Error loading promotion data');
+                    window.showApiToast('Error loading promotion data', 'danger');
                     return;
                 }
 
@@ -5189,9 +6399,33 @@ function setupForms() {
                 const moduleIndex = promotion.modules.findIndex(m => m.id === currentEditingModuleId);
 
                 if (moduleIndex === -1) {
-                    alert('Module not found');
+                    window.showApiToast('Module not found', 'warning');
                     return;
                 }
+
+                // Leer nombres finales de los inputs antes de construir el payload
+                // (el usuario puede haber escrito sin disparar onblur)
+                document.querySelectorAll('#topics-container .topic-name-input').forEach((input, i) => {
+                    if (currentEditingTopics[i]) currentEditingTopics[i].name = input.value.trim();
+                });
+                // Sincronizar titulos de lecciones que puedan estar en el DOM
+                currentEditingTopics.forEach((topic, ti) => {
+                    if (!topic._expanded) return;
+                    document.querySelectorAll(`[data-topic-index="${ti}"] .lesson-title-input`).forEach((input, li) => {
+                        if (topic.lessons?.[li]) topic.lessons[li].title = input.value;
+                    });
+                });
+                // Preparar topics sin los campos de UI (_expanded)
+                // que no pertenecen al schema del backend
+                const topicsPayload = currentEditingTopics
+                    .filter(t => t.name)
+                    .map(({ _expanded, ...t }) => ({
+                        ...t,
+                        lessons:  (t.lessons  || []).filter(l => l.title),
+                        projects: (t.projects || []),   // ya son string[] de IDs de module.projects
+                    }));
+
+                // La sincronizacion del planificador ya fue hecha por _syncPlannerFromDom() arriba
 
                 // Update the module while preserving its ID and creation date
                 promotion.modules[moduleIndex] = {
@@ -5199,7 +6433,9 @@ function setupForms() {
                     name,
                     duration,
                     courses,
-                    projects
+                    projects,
+                    topics: topicsPayload,
+                    plannerItems: currentPlannerItems,
                 };
 
                 const updateResponse = await fetch(`${API_URL}/api/promotions/${promotionId}`, {
@@ -5215,12 +6451,14 @@ function setupForms() {
                     moduleModal.hide();
                     document.getElementById('module-form').reset();
                     currentEditingModuleId = null;
+                    currentEditingTopics = [];
+                    currentPlannerItems = [];
                     loadModules();
                     loadPromotion();
-                    alert('Module updated successfully');
+                    window.showApiToast('Module updated successfully', 'success');
                 } else {
                     const error = await updateResponse.json();
-                    alert(`Error: ${error.error || 'Failed to update module'}`);
+                    window.showApiToast(`Error: ${error.error || 'Failed to update module'}`, 'danger');
                 }
             } else {
                 // Create new module
@@ -5230,24 +6468,25 @@ function setupForms() {
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${token}`
                     },
-                    body: JSON.stringify({ name, duration, courses, projects })
+                    body: JSON.stringify({ name, duration, courses, projects, plannerItems: currentPlannerItems })
                 });
 
                 if (response.ok) {
                     moduleModal.hide();
                     document.getElementById('module-form').reset();
                     currentEditingModuleId = null;
+                    currentEditingTopics = [];
                     loadModules();
                     loadPromotion();
-                    alert('Module created successfully');
+                    window.showApiToast('Module created successfully', 'success');
                 } else {
                     const error = await response.json();
-                    alert(`Error: ${error.error || 'Failed to save module'}`);
+                    window.showApiToast(`Error: ${error.error || 'Failed to save module'}`, 'danger');
                 }
             }
         } catch (error) {
             console.error('Error saving module:', error);
-            alert('Error saving module');
+            window.showApiToast('Error saving module', 'danger');
         }
     });
 
@@ -5401,36 +6640,35 @@ function setupForms() {
                 delete document.getElementById('student-form').dataset.editingStudentId;
                 loadStudents();
 
-                const action = editingStudentId ? 'updated' : 'added';
-                alert(`Student ${action} successfully!`);
+                const action = editingStudentId ? 'actualizado' : 'añadido';
+                window.showApiToast(`Estudiante ${action} correctamente.`, 'success');
             } else {
                 console.error('Response status:', response.status);
                 console.error('Response headers:', response.headers);
-                let errorMessage = 'Unknown error';
 
                 // Clone the response so we can read it multiple times if needed
                 const responseClone = response.clone();
 
+                let json = null;
                 try {
-                    const errorData = await response.json();
-                    errorMessage = errorData.error || errorMessage;
+                    json = await response.json();
                 } catch (e) {
-                    // If response is not JSON (like HTML error page), get text from the clone
                     try {
                         const errorText = await responseClone.text();
                         console.error('Error response text:', errorText.substring(0, 200));
-                        errorMessage = `HTTP ${response.status}: ${response.statusText}`;
                     } catch (textError) {
                         console.error('Could not read response text:', textError);
-                        errorMessage = `HTTP ${response.status}: ${response.statusText}`;
                     }
                 }
 
-                alert(`Error ${editingStudentId ? 'updating' : 'adding'} student: ${errorMessage}`);
+                const verb = editingStudentId ? 'actualizar' : 'añadir';
+                const msg = window.apiErrorMessage(response, json, `Error al ${verb} el estudiante`);
+                window.showApiToast(msg, 'danger');
             }
         } catch (error) {
             console.error(`Error ${editingStudentId ? 'updating' : 'adding'} student:`, error);
-            alert(`Error ${editingStudentId ? 'updating' : 'adding'} student`);
+            const verb = editingStudentId ? 'actualizar' : 'añadir';
+            window.showApiToast(`Error de red al ${verb} el estudiante.`, 'danger');
         }
     });
 }
@@ -5744,16 +6982,24 @@ function editStudent(studentId) {
 // Export all students as CSV
 // ── Export students to Excel ───────────────────────────────────────────
 // ── Export students to Excel ───────────────────────────────────────────
-async function downloadStudentsExcel(students, filenamePrefix = 'estudiantes') {
+async function downloadStudentsExcel(students, filenamePrefix = 'estudiantes', triggerBtn = null) {
     if (!students || students.length === 0) {
-        alert('No hay estudiantes para exportar.');
+        window.showApiToast('No hay estudiantes para exportar.', 'warning');
         return;
     }
 
     const token = localStorage.getItem('token');
     if (!token) {
-        alert('Sesión expirada. Por favor, inicie sesión.');
+        window.showApiToast('Sesión expirada. Por favor, inicie sesión.', 'warning');
         return;
+    }
+
+    // Estado de carga en el botón disparador (si se pasa)
+    let originalContent = null;
+    if (triggerBtn) {
+        originalContent = triggerBtn.innerHTML;
+        triggerBtn.disabled = true;
+        triggerBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Exportando...';
     }
 
     try {
@@ -5762,7 +7008,12 @@ async function downloadStudentsExcel(students, filenamePrefix = 'estudiantes') {
             headers: { 'Authorization': `Bearer ${token}` }
         });
 
-        if (!response.ok) throw new Error('Error al generar el archivo Excel');
+        if (!response.ok) {
+            let json = null;
+            try { json = await response.json(); } catch (_) { /* no-op */ }
+            const msg = window.apiErrorMessage(response, json, 'Error al generar el archivo Excel');
+            throw new Error(msg);
+        }
 
         const blob = await response.blob();
         const url = window.URL.createObjectURL(blob);
@@ -5775,7 +7026,13 @@ async function downloadStudentsExcel(students, filenamePrefix = 'estudiantes') {
         document.body.removeChild(a);
     } catch (error) {
         console.error('Error exporting students to Excel:', error);
-        alert('Error al exportar a Excel: ' + error.message);
+        window.showApiToast('Error al exportar a Excel: ' + error.message, 'danger');
+    } finally {
+        // Restaurar el botón siempre, tanto en éxito como en error
+        if (triggerBtn && originalContent !== null) {
+            triggerBtn.disabled = false;
+            triggerBtn.innerHTML = originalContent;
+        }
     }
 }
 
@@ -5789,7 +7046,7 @@ async function exportSelectedStudentsExcel() {
     const selectedStudentIds = Array.from(selectedCheckboxes).map(cb => cb.dataset.studentId);
 
     if (selectedStudentIds.length === 0) {
-        alert('No hay estudiantes seleccionados para exportar.');
+        window.showApiToast('No hay estudiantes seleccionados para exportar.', 'warning');
         return;
     }
 
@@ -5874,11 +7131,11 @@ function openModuleModal() {
     document.getElementById('courses-container').innerHTML = '';
     document.getElementById('projects-container').innerHTML = '';
     currentEditingModuleId = null;
-
-    // Add one empty course field to start
-    addCoursField();
-    // Add one empty project field to start
-    addProjectField();
+    currentEditingTopics = [];
+    currentEditingModuleProjects = [];
+    currentPlannerItems = [];
+    renderTopicsEditor();
+    renderPlannerEditor();
 
     moduleModal.show();
 }
@@ -8767,10 +10024,13 @@ function nextAttendanceMonth() {
 
 // Export attendance to Excel for the entire promotion period
 async function exportAttendanceToExcel() {
+    const exportBtn = document.querySelector('[onclick="exportAttendanceToExcel()"]');
+    const originalBtnHtml = exportBtn ? exportBtn.innerHTML : '';
+
     try {
         const token = localStorage.getItem('token');
         if (!token) {
-            alert('No se encontró token de autenticación. Por favor, inicie sesión nuevamente.');
+            showApiToast('Sesión expirada. Por favor, inicia sesión nuevamente.', 'warning');
             return;
         }
 
@@ -8788,11 +10048,9 @@ async function exportAttendanceToExcel() {
             return;
         }
 
-        // Show loading state
-        const exportBtn = document.querySelector('[onclick="exportAttendanceToExcel()"]');
-        const originalText = exportBtn ? exportBtn.innerHTML : '';
+        // Mostrar spinner en el botón
         if (exportBtn) {
-            exportBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Exportando...';
+            exportBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Exportando...';
             exportBtn.disabled = true;
         }
 
@@ -8805,7 +10063,9 @@ async function exportAttendanceToExcel() {
 
         if (!response.ok) {
             const errorData = await response.json().catch(() => ({}));
-            throw new Error(errorData.error || `Error del servidor: ${response.status}`);
+            const msg = apiErrorMessage(response, errorData, 'Error al exportar la asistencia.');
+            showApiToast(msg, 'danger');
+            return;
         }
 
         // Get the blob and create download
@@ -8828,18 +10088,82 @@ async function exportAttendanceToExcel() {
         window.URL.revokeObjectURL(url);
         document.body.removeChild(a);
 
-        // Show success message
-        alert('✅ Asistencia exportada exitosamente.\n\nEl archivo Excel incluye:\n• Una pestaña por cada mes del programa\n• Todos los estudiantes en cada mes\n• Solo días laborables (L-V)\n• Estados: P=Presente, A=Ausente, T=Tardanza, J=Justificado\n• Leyenda en cada pestaña');
+        showApiToast('Asistencia exportada correctamente.', 'success');
 
     } catch (error) {
         console.error('Error exporting attendance:', error);
-        alert(`❌ Error al exportar la asistencia: ${error.message}`);
+        showApiToast('Error de red al exportar la asistencia. Inténtalo de nuevo.', 'danger');
     } finally {
-        // Restore button state
-        const exportBtn = document.querySelector('[onclick="exportAttendanceToExcel()"]');
+        // Restaurar estado del botón
         if (exportBtn) {
-            exportBtn.innerHTML = '<i class="bi bi-file-earmark-spreadsheet me-2"></i>Export Excel';
+            exportBtn.innerHTML = originalBtnHtml;
             exportBtn.disabled = false;
+        }
+    }
+}
+
+// Exportar asistencia completa en formato CSV
+async function exportAttendanceCsv() {
+    const btn = document.getElementById('btn-export-attendance-csv');
+    const originalBtnHtml = btn ? btn.innerHTML : '';
+
+    try {
+        const token = localStorage.getItem('token');
+        if (!token) {
+            showApiToast('Sesión expirada. Por favor, inicia sesión nuevamente.', 'warning');
+            return;
+        }
+
+        // Mostrar spinner en el botón
+        if (btn) {
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Exportando...';
+            btn.disabled = true;
+        }
+
+        const response = await fetch(`${API_URL}/api/promotions/${promotionId}/reports/attendance?format=csv`, {
+            method: 'GET',
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => ({}));
+            const msg = apiErrorMessage(response, errorData, 'Error al exportar la asistencia en CSV.');
+            showApiToast(msg, 'danger');
+            return;
+        }
+
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+
+        // Nombre del archivo: asistencia-[nombre-promo].csv
+        const promoName = (window.currentPromotion && window.currentPromotion.name)
+            ? window.currentPromotion.name.replace(/\s+/g, '-').toLowerCase()
+            : promotionId;
+
+        const disposition = response.headers.get('Content-Disposition');
+        let filename = `asistencia-${promoName}.csv`;
+        if (disposition && disposition.includes('filename=')) {
+            filename = disposition.split('filename=')[1].replace(/"/g, '');
+        }
+
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+
+        showApiToast('CSV de asistencia exportado correctamente.', 'success');
+
+    } catch (error) {
+        console.error('Error exporting attendance CSV:', error);
+        showApiToast('Error de red al exportar el CSV. Inténtalo de nuevo.', 'danger');
+    } finally {
+        if (btn) {
+            btn.innerHTML = originalBtnHtml;
+            btn.disabled = false;
         }
     }
 }
@@ -9044,12 +10368,59 @@ async function loadEvaluation() {
 
         initVirtualClassroomPanel(ext, promo);
         renderEvaluationTab();
+        // Register the keyboard handler for .eval-feedback-rte elements once evaluation is loaded.
+        // Uses event delegation so it covers dynamically injected RTEs.
+        _initEvalFeedbackRteKeyHandler();
     } catch (err) {
         console.error('Error loading evaluation data:', err);
         if (container) {
             container.innerHTML = `<div class="alert alert-danger">Error al cargar los proyectos: ${err.message}</div>`;
         }
     }
+}
+
+/**
+ * TASK-EVAL-05 — Auditoría y normalización del comportamiento de Enter en .eval-feedback-rte.
+ *
+ * Contexto:
+ *   Los editores `.eval-feedback-rte` son `<div contenteditable>` inyectados dinámicamente
+ *   en `#eval-right-body` y `#student-eval-panel-body`. Ninguno de estos contenedores está
+ *   dentro de un `<form>`, por lo que Enter NUNCA actúa como submit — el comportamiento es
+ *   libre por diseño.
+ *
+ * Comportamiento estándar de contenteditable (browsers modernos):
+ *   - Enter simple    → inserta un nuevo bloque: <div> en Chrome/Edge, <p> en Firefox.
+ *   - Shift+Enter     → inserta <br> (salto de línea suave) en todos los browsers.
+ *
+ * Normalización aplicada:
+ *   - Shift+Enter se normaliza a <br> explícito mediante execCommand('insertLineBreak').
+ *     Esto garantiza comportamiento consistente en Chrome, Firefox y Safari.
+ *   - Enter simple se deja al comportamiento por defecto del browser (bloque nuevo).
+ *     No se normaliza a <br> porque la semántica de párrafos es más apropiada para
+ *     un editor de feedback con texto largo.
+ *
+ * Implementación con delegación de eventos sobre #teacher-area-evaluation para cubrir
+ * RTEs generados dinámicamente (split-view, grupal, legacy panel).
+ */
+function _initEvalFeedbackRteKeyHandler() {
+    const evalTab = document.getElementById('teacher-area-evaluation');
+    if (!evalTab || evalTab.dataset.rteKeyHandlerBound) return; // prevent duplicate binding
+    evalTab.dataset.rteKeyHandlerBound = '1';
+
+    evalTab.addEventListener('keydown', function (e) {
+        // Only act on .eval-feedback-rte elements
+        if (!e.target.classList.contains('eval-feedback-rte')) return;
+
+        if (e.key === 'Enter' && e.shiftKey) {
+            // Shift+Enter: insert <br> for consistent soft line break across all browsers.
+            // Chrome/Edge and Firefox both honour execCommand('insertLineBreak') here.
+            e.preventDefault();
+            document.execCommand('insertLineBreak');
+        }
+        // Enter alone: let the browser insert its default block element (<div> or <p>).
+        // This is intentional — do not convert to <br> as paragraph-level breaks are
+        // semantically correct for multi-paragraph feedback text.
+    }, false);
 }
 
 // ==================== AULA VIRTUAL – PANEL PROFESOR ====================
@@ -10965,9 +12336,29 @@ function selectEvalTarget(targetId) {
         </div>
         <div class="mt-3 mb-4">
             <label class="form-label small fw-semibold"><i class="bi bi-chat-text me-1"></i>Feedback</label>
-            <textarea class="form-control" rows="3" placeholder="Comentarios de feedback para el informe..."
-                data-target-type="${isGrupal ? 'group' : 'individual'}"
-                data-target-id="${escapeHtml(String(targetId))}">${escapeHtml(savedFeedback)}</textarea>
+            <div class="border rounded" style="overflow:hidden;">
+                <div class="eval-feedback-toolbar d-flex flex-wrap gap-1 p-1 bg-light border-bottom">
+                    <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1" title="Negrita" onclick="document.execCommand('bold');this.closest('.border').querySelector('.eval-feedback-rte').focus()"><i class="bi bi-type-bold"></i></button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1" title="Cursiva" onclick="document.execCommand('italic');this.closest('.border').querySelector('.eval-feedback-rte').focus()"><i class="bi bi-type-italic"></i></button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1" title="Subrayado" onclick="document.execCommand('underline');this.closest('.border').querySelector('.eval-feedback-rte').focus()"><i class="bi bi-type-underline"></i></button>
+                    <div style="width:1px;background:#ced4da;margin:0 2px;"></div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1" title="Lista viñetas" onclick="document.execCommand('insertUnorderedList');this.closest('.border').querySelector('.eval-feedback-rte').focus()"><i class="bi bi-list-ul"></i></button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1" title="Lista numerada" onclick="document.execCommand('insertOrderedList');this.closest('.border').querySelector('.eval-feedback-rte').focus()"><i class="bi bi-list-ol"></i></button>
+                    <div style="width:1px;background:#ced4da;margin:0 2px;"></div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1" title="Deshacer" onclick="document.execCommand('undo');this.closest('.border').querySelector('.eval-feedback-rte').focus()"><i class="bi bi-arrow-counterclockwise"></i></button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1" title="Rehacer" onclick="document.execCommand('redo');this.closest('.border').querySelector('.eval-feedback-rte').focus()"><i class="bi bi-arrow-clockwise"></i></button>
+                    <div style="width:1px;background:#ced4da;margin:0 2px;"></div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1" title="Insertar enlace" onmousedown="event.preventDefault();_insertEvalFeedbackLink(this)"><i class="bi bi-link-45deg"></i></button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1" title="Insertar imagen" onmousedown="event.preventDefault();_insertEvalFeedbackImage(this)"><i class="bi bi-image"></i></button>
+                </div>
+                <div class="eval-feedback-rte"
+                    contenteditable="true"
+                    data-target-type="${isGrupal ? 'group' : 'individual'}"
+                    data-target-id="${escapeHtml(String(targetId))}"
+                    data-placeholder="Comentarios de feedback para el informe..."
+                    style="min-height:90px;padding:8px 10px;outline:none;font-size:0.88rem;line-height:1.5;"
+                >${savedFeedback ? (/<[a-z][\s\S]*>/i.test(savedFeedback) ? savedFeedback : savedFeedback.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>')) : ''}</div>
+            </div>
         </div>`;
     }
 
@@ -11688,8 +13079,26 @@ function openEvaluationModal(mIdx, pIdx) {
                         </div>
                         <div class="mt-2">
                             <label class="form-label small fw-semibold"><i class="bi bi-chat-text me-1"></i>Feedback del grupo</label>
-                            <textarea class="form-control form-control-sm" rows="2" placeholder="Comentarios de feedback..."
-                                data-target-type="group" data-target-id="${escapeHtml(grp.groupName)}">${escapeHtml(savedFeedback)}</textarea>
+                            <div class="border rounded" style="overflow:hidden;">
+                                <div class="eval-feedback-toolbar d-flex flex-wrap gap-1 p-1 bg-light border-bottom">
+                                    <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1" title="Negrita" onclick="document.execCommand('bold');this.closest('.border').querySelector('.eval-feedback-rte').focus()"><i class="bi bi-type-bold"></i></button>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1" title="Cursiva" onclick="document.execCommand('italic');this.closest('.border').querySelector('.eval-feedback-rte').focus()"><i class="bi bi-type-italic"></i></button>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1" title="Subrayado" onclick="document.execCommand('underline');this.closest('.border').querySelector('.eval-feedback-rte').focus()"><i class="bi bi-type-underline"></i></button>
+                                    <div style="width:1px;background:#ced4da;margin:0 2px;"></div>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1" title="Lista viñetas" onclick="document.execCommand('insertUnorderedList');this.closest('.border').querySelector('.eval-feedback-rte').focus()"><i class="bi bi-list-ul"></i></button>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1" title="Lista numerada" onclick="document.execCommand('insertOrderedList');this.closest('.border').querySelector('.eval-feedback-rte').focus()"><i class="bi bi-list-ol"></i></button>
+                                    <div style="width:1px;background:#ced4da;margin:0 2px;"></div>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1" title="Insertar enlace" onmousedown="event.preventDefault();_insertEvalFeedbackLink(this)"><i class="bi bi-link-45deg"></i></button>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1" title="Insertar imagen" onmousedown="event.preventDefault();_insertEvalFeedbackImage(this)"><i class="bi bi-image"></i></button>
+                                </div>
+                                <div class="eval-feedback-rte"
+                                    contenteditable="true"
+                                    data-target-type="group"
+                                    data-target-id="${escapeHtml(grp.groupName)}"
+                                    data-placeholder="Comentarios de feedback..."
+                                    style="min-height:60px;padding:8px 10px;outline:none;font-size:0.85rem;line-height:1.5;"
+                                >${savedFeedback ? (/<[a-z][\s\S]*>/i.test(savedFeedback) ? savedFeedback : savedFeedback.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>')) : ''}</div>
+                            </div>
                         </div>
                     </div>
                 </div>`;
@@ -12096,8 +13505,29 @@ function _openStudentEvalSubModalFor(studentId) {
         </div>
         <div class="mt-3">
             <label class="form-label small fw-semibold"><i class="bi bi-chat-text me-1"></i>Feedback</label>
-            <textarea class="form-control form-control-sm" rows="2" placeholder="Comentarios de feedback para el informe..."
-                data-target-type="individual" data-target-id="${escapeHtml(studentId)}">${escapeHtml(savedFeedback)}</textarea>
+            <div class="border rounded" style="overflow:hidden;">
+                <div class="eval-feedback-toolbar d-flex flex-wrap gap-1 p-1 bg-light border-bottom">
+                    <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1" title="Negrita" onclick="document.execCommand('bold');this.closest('.border').querySelector('.eval-feedback-rte').focus()"><i class="bi bi-type-bold"></i></button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1" title="Cursiva" onclick="document.execCommand('italic');this.closest('.border').querySelector('.eval-feedback-rte').focus()"><i class="bi bi-type-italic"></i></button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1" title="Subrayado" onclick="document.execCommand('underline');this.closest('.border').querySelector('.eval-feedback-rte').focus()"><i class="bi bi-type-underline"></i></button>
+                    <div style="width:1px;background:#ced4da;margin:0 2px;"></div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1" title="Lista viñetas" onclick="document.execCommand('insertUnorderedList');this.closest('.border').querySelector('.eval-feedback-rte').focus()"><i class="bi bi-list-ul"></i></button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1" title="Lista numerada" onclick="document.execCommand('insertOrderedList');this.closest('.border').querySelector('.eval-feedback-rte').focus()"><i class="bi bi-list-ol"></i></button>
+                    <div style="width:1px;background:#ced4da;margin:0 2px;"></div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1" title="Deshacer" onclick="document.execCommand('undo');this.closest('.border').querySelector('.eval-feedback-rte').focus()"><i class="bi bi-arrow-counterclockwise"></i></button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1" title="Rehacer" onclick="document.execCommand('redo');this.closest('.border').querySelector('.eval-feedback-rte').focus()"><i class="bi bi-arrow-clockwise"></i></button>
+                    <div style="width:1px;background:#ced4da;margin:0 2px;"></div>
+                    <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1" title="Insertar enlace" onmousedown="event.preventDefault();_insertEvalFeedbackLink(this)"><i class="bi bi-link-45deg"></i></button>
+                    <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-1" title="Insertar imagen" onmousedown="event.preventDefault();_insertEvalFeedbackImage(this)"><i class="bi bi-image"></i></button>
+                </div>
+                <div class="eval-feedback-rte"
+                    contenteditable="true"
+                    data-target-type="individual"
+                    data-target-id="${escapeHtml(studentId)}"
+                    data-placeholder="Comentarios de feedback para el informe..."
+                    style="min-height:72px;padding:8px 10px;outline:none;font-size:0.88rem;line-height:1.5;"
+                >${savedFeedback ? (/<[a-z][\s\S]*>/i.test(savedFeedback) ? savedFeedback : savedFeedback.replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>')) : ''}</div>
+            </div>
         </div>`;
 
     // ── Show the inline eval panel (within the page, sidebar + navbar still visible) ──
@@ -12276,9 +13706,11 @@ async function saveIndividualStudentEval() {
 
     try {
         // Collect feedback from whichever panel is active
+        // Supports both legacy <textarea> and new RTE <div contenteditable class="eval-feedback-rte">
         const searchRoot = inSplitView ? document.getElementById('eval-right-body') : legacyPanel;
-        const ta = searchRoot ? searchRoot.querySelector(`textarea[data-target-id="${CSS.escape(studentId)}"]`) : null;
-        const feedback = ta ? ta.value : '';
+        const rte = searchRoot ? searchRoot.querySelector(`.eval-feedback-rte[data-target-id="${CSS.escape(studentId)}"]`) : null;
+        const ta  = !rte && searchRoot ? searchRoot.querySelector(`textarea[data-target-id="${CSS.escape(studentId)}"]`) : null;
+        const feedback = rte ? rte.innerHTML : (ta ? ta.value : '');
 
         let evalEntry = (saved.evaluations || []).find(e => e.targetId === studentId);
         if (!evalEntry) {
@@ -12416,6 +13848,82 @@ async function sendEvaluationByEmail() {
     } finally {
         if (sendBtn) { sendBtn.disabled = false; sendBtn.innerHTML = originalHtml; }
     }
+}
+
+/**
+ * Sends the individual evaluation report to ALL evaluated students in the current project.
+ * Uses the same flow as sendEvaluationByEmail() but iterates over every student
+ * that has been graded (evaluatedAt is set) in the active project split-view.
+ */
+async function sendEvaluationToAllInProject() {
+    const saved = window._evalCurrentSaved;
+    if (!saved) { showToast('Abre un proyecto primero', 'danger'); return; }
+
+    const mIdx = window._evalState?.currentModuleIdx;
+    const pIdx = window._evalState?.currentProjectIdx;
+    const modules = window._evalState?.modules || [];
+    const mod = modules[mIdx];
+    const proj = mod?.projects[pIdx];
+
+    // Solo enviar a estudiantes realmente evaluados (tienen evaluatedAt)
+    const evaluatedEntries = (saved.evaluations || []).filter(e => e.evaluatedAt && !e.isGroup);
+    if (evaluatedEntries.length === 0) {
+        showToast('No hay estudiantes evaluados en este proyecto', 'warning');
+        return;
+    }
+
+    const confirmed = window.confirm(
+        `¿Enviar el informe de evaluación a ${evaluatedEntries.length} estudiante${evaluatedEntries.length !== 1 ? 's' : ''} evaluados en "${proj?.name || saved.projectName}"?\n\nSe enviará un correo individual a cada uno.`
+    );
+    if (!confirmed) return;
+
+    // Capturamos los datos necesarios ANTES de ceder el hilo,
+    // ya que el estado global puede cambiar si el usuario navega.
+    const token = localStorage.getItem('token');
+    const students = window._evalState?.allStudents || window._evalState?.students || [];
+    const projectName = proj?.name || saved.projectName;
+    const total = evaluatedEntries.length;
+
+    // Iniciar badge de progreso — no bloqueamos la UI
+    const taskId = _bgTaskManager.start(`Enviando informes 0/${total}...`);
+
+    // Lanzar el bucle de envío en background (cede el control al event loop antes de empezar)
+    setTimeout(async function _doSendAll() {
+        let sent = 0, failed = 0;
+
+        for (const entry of evaluatedEntries) {
+            try {
+                const studentId = String(entry.targetId);
+                const student = students.find(s => String(s.id || s._id) === studentId);
+                const studentEmail = student?.email || '';
+                if (!studentEmail) { failed++; _bgTaskManager.update(taskId, `Enviando informes ${sent + failed}/${total}...`); continue; }
+
+                // Cargar tracking del estudiante para resolver el teamIndex
+                const stuRes = await fetch(`${API_URL}/api/promotions/${promotionId}/students/${studentId}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (!stuRes.ok) { failed++; _bgTaskManager.update(taskId, `Enviando informes ${sent + failed}/${total}...`); continue; }
+                const stuData = await stuRes.json();
+                const teams = stuData.technicalTracking?.teams || [];
+                let teamIndex = teams.findIndex(t => t.teamName === projectName);
+                if (teamIndex < 0) teamIndex = 0;
+
+                await window.Reports.sendProjectReportByEmail(teamIndex, studentId, promotionId, studentEmail, { silent: true });
+                sent++;
+            } catch (err) {
+                console.error('[sendEvaluationToAllInProject] student error:', entry.targetId, err);
+                failed++;
+            }
+            _bgTaskManager.update(taskId, `Enviando informes ${sent + failed}/${total}...`);
+        }
+
+        // Finalizar: eliminar badge y mostrar toast de resumen
+        _bgTaskManager.finish(taskId);
+        const msg = failed === 0
+            ? `Informes enviados a ${sent} estudiante${sent !== 1 ? 's' : ''} correctamente`
+            : `Informes enviados: ${sent}. Fallidos: ${failed}`;
+        showToast(msg, failed > 0 ? 'warning' : 'success');
+    }, 0);
 }
 
 /** Called by the "Cancelar" / "Volver" buttons in the inline eval panel or split view. */
@@ -12910,6 +14418,101 @@ async function _persistEvaluations() {
         console.error('Error persisting evaluations:', err);
     }
 }
+
+// ==================== BACKGROUND TASK MANAGER ====================
+
+/**
+ * Gestor de tareas en background.
+ * Muestra un badge flotante en la esquina inferior derecha para tareas de larga duración
+ * que se ejecutan sin bloquear la UI (ej. envío masivo de informes).
+ *
+ * Uso:
+ *   const taskId = _bgTaskManager.start('Enviando informes 0/10...');
+ *   _bgTaskManager.update(taskId, 'Enviando informes 5/10...');
+ *   _bgTaskManager.finish(taskId);
+ */
+const _bgTaskManager = (() => {
+    // Map de taskId → { el: HTMLElement }
+    const _tasks = new Map();
+    const _CONTAINER_ID = 'bg-task-badge-container';
+
+    function _getOrCreateContainer() {
+        let container = document.getElementById(_CONTAINER_ID);
+        if (!container) {
+            container = document.createElement('div');
+            container.id = _CONTAINER_ID;
+            // Posicionado justo encima del área de toasts de Bootstrap (bottom: 0 end: 0)
+            container.style.cssText = [
+                'position:fixed',
+                'bottom:80px',
+                'right:20px',
+                'z-index:10000',
+                'display:flex',
+                'flex-direction:column',
+                'gap:8px',
+                'align-items:flex-end',
+                'pointer-events:none',
+            ].join(';');
+            document.body.appendChild(container);
+        }
+        return container;
+    }
+
+    function _removeContainerIfEmpty() {
+        const container = document.getElementById(_CONTAINER_ID);
+        if (container && container.childElementCount === 0) {
+            container.remove();
+        }
+    }
+
+    /**
+     * Inicia una tarea en background y muestra el badge.
+     * @param {string} label - Texto inicial del badge
+     * @returns {string} taskId — pásalo a update() y finish()
+     */
+    function start(label) {
+        const taskId = `bgt-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
+        const container = _getOrCreateContainer();
+
+        const el = document.createElement('div');
+        el.id = taskId;
+        el.style.cssText = 'pointer-events:auto;';
+        el.innerHTML = `
+            <span class="badge bg-primary d-flex align-items-center gap-2 px-3 py-2 shadow" style="font-size:.8rem;white-space:nowrap;">
+                <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
+                <span class="bg-task-label">${escapeHtml(label)}</span>
+            </span>`;
+        container.appendChild(el);
+        _tasks.set(taskId, { el });
+        return taskId;
+    }
+
+    /**
+     * Actualiza el texto del badge de una tarea activa.
+     * @param {string} taskId
+     * @param {string} label
+     */
+    function update(taskId, label) {
+        const task = _tasks.get(taskId);
+        if (!task) return;
+        const labelEl = task.el.querySelector('.bg-task-label');
+        if (labelEl) labelEl.textContent = label;
+    }
+
+    /**
+     * Finaliza una tarea y elimina su badge.
+     * @param {string} taskId
+     */
+    function finish(taskId) {
+        const task = _tasks.get(taskId);
+        if (!task) return;
+        task.el.remove();
+        _tasks.delete(taskId);
+        _removeContainerIfEmpty();
+    }
+
+    return { start, update, finish };
+})();
 
 function showToast(message, type = 'info') {
     // Create a simple Bootstrap toast
