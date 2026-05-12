@@ -446,6 +446,165 @@
             });
     }
 
+    /**
+     * Builds the "Competencias Trabajadas" HTML block for a project report.
+     * Used in both printProjectReport (preview) and sendProjectReportByEmail (email PDF).
+     * @param {Array} comps - Array of competence objects from t.competences
+     * @returns {string} HTML string
+     */
+    function _buildCompetencesHtml(comps) {
+        const PROJ_LEVEL_LABELS = { 0: 'Sin nivel', 1: 'Básico', 2: 'Medio', 3: 'Avanzado' };
+        const TOOL_LEVEL_LABELS = { 1: 'Básico', 2: 'Medio', 3: 'Avanzado' };
+
+        if (!comps || !comps.length) {
+            return `<p class="empty-note">No se registraron competencias para este proyecto.</p>`;
+        }
+
+        /**
+         * Builds the indicators block HTML from a list of tool groups.
+         * toolGroups: [{ name, level, byLevel: { [lvl]: [{name}] } }]
+         * compInds:   [{ name, levelId }]  — competence-level indicators
+         */
+        function _renderIndicatorGroups(toolGroups, compInds) {
+            if (!toolGroups.length && !compInds.length) return '';
+            let h = `<div style="margin-top:6pt; border-top:1px solid #e8e8e8; padding-top:6pt;">`;
+
+            toolGroups.forEach(tg => {
+                h += `<div style="margin-bottom:6pt;">`;
+                h += `<div style="font-size:9pt; font-weight:600; margin-bottom:2pt;">`;
+                h += _esc(tg.name || '—');
+                if (tg.level > 0) {
+                    h += ` <span style="font-weight:400; color:#555;">— ${_esc(TOOL_LEVEL_LABELS[tg.level] || '')}</span>`;
+                }
+                h += `</div>`;
+                [1, 2, 3].forEach(lvl => {
+                    const inds = tg.byLevel[lvl];
+                    if (!inds || !inds.length) return;
+                    h += `<div style="font-size:8.5pt; color:#444; margin-left:8pt; margin-bottom:1pt;">`;
+                    h += `<em>${_esc(TOOL_LEVEL_LABELS[lvl] || '')}:</em>`;
+                    h += `<ul style="margin:1pt 0 2pt 12pt;">`;
+                    inds.forEach(ind => { h += `<li>${_esc(ind.name || '')}</li>`; });
+                    h += `</ul></div>`;
+                });
+                h += `</div>`;
+            });
+
+            // Competence-level indicators (grouped by levelId)
+            if (compInds.length) {
+                const byLvl = {};
+                compInds.forEach(ind => {
+                    const lvl = ind.levelId || 0;
+                    if (!byLvl[lvl]) byLvl[lvl] = [];
+                    byLvl[lvl].push(ind);
+                });
+                h += `<div style="margin-bottom:6pt;">`;
+                h += `<div style="font-size:9pt; font-weight:600; margin-bottom:2pt;">Indicadores de competencia</div>`;
+                [1, 2, 3].forEach(lvl => {
+                    const inds = byLvl[lvl];
+                    if (!inds || !inds.length) return;
+                    h += `<div style="font-size:8.5pt; color:#444; margin-left:8pt; margin-bottom:1pt;">`;
+                    h += `<em>${_esc(TOOL_LEVEL_LABELS[lvl] || '')}:</em>`;
+                    h += `<ul style="margin:1pt 0 2pt 12pt;">`;
+                    inds.forEach(ind => { h += `<li>${_esc(ind.name || '')}</li>`; });
+                    h += `</ul></div>`;
+                });
+                h += `</div>`;
+            }
+
+            h += `</div>`;
+            return h;
+        }
+
+        let html = `<div style="margin-top:6pt;">`;
+        comps.forEach(c => {
+            const levelLabel = PROJ_LEVEL_LABELS[c.level] ?? `Nv.${c.level}`;
+            const tools = (c.toolsUsed || []);
+
+            // ── Path A: live session data (checkedIndicators + toolsWithIndicators) ──
+            const checkedMap          = c.checkedIndicators    || {};
+            const toolsWithIndicators = c.toolsWithIndicators  || [];
+            const hasCheckedPath      = toolsWithIndicators.some(tool =>
+                (tool.indicators || []).some(ind =>
+                    checkedMap[`tool-${tool.id}-${ind.id}`] === true
+                )
+            );
+
+            // ── Path B: persisted data (achievedIndicators array) ──
+            const achievedIndicators = c.achievedIndicators || [];
+            const hasAchievedPath    = achievedIndicators.length > 0;
+
+            let indicatorsHtml = '';
+
+            if (hasCheckedPath) {
+                // Build tool groups from checkedMap + toolsWithIndicators
+                const toolGroups = [];
+                toolsWithIndicators.forEach(tool => {
+                    const checkedInds = (tool.indicators || []).filter(ind =>
+                        checkedMap[`tool-${tool.id}-${ind.id}`] === true
+                    );
+                    if (!checkedInds.length) return;
+
+                    let toolLevel = 0;
+                    for (let l = 1; l <= 3; l++) {
+                        const levelInds = (tool.indicators || []).filter(ind => ind.levelId === l);
+                        if (levelInds.length > 0 && levelInds.every(ind =>
+                                checkedMap[`tool-${tool.id}-${ind.id}`] === true)) {
+                            toolLevel = l;
+                        } else { break; }
+                    }
+                    const byLevel = {};
+                    checkedInds.forEach(ind => {
+                        const lvl = ind.levelId || 0;
+                        if (!byLevel[lvl]) byLevel[lvl] = [];
+                        byLevel[lvl].push(ind);
+                    });
+                    toolGroups.push({ name: tool.name, level: toolLevel, byLevel });
+                });
+                indicatorsHtml = _renderIndicatorGroups(toolGroups, []);
+
+            } else if (hasAchievedPath) {
+                // Build tool groups from achievedIndicators (persisted format)
+                const toolMap = {};
+                const compInds = [];
+                achievedIndicators.forEach(ai => {
+                    if (ai.type === 'tool' && ai.toolName) {
+                        if (!toolMap[ai.toolName]) toolMap[ai.toolName] = {};
+                        const lvl = ai.levelId || 0;
+                        if (!toolMap[ai.toolName][lvl]) toolMap[ai.toolName][lvl] = [];
+                        toolMap[ai.toolName][lvl].push({ name: ai.indicatorName });
+                    } else if (ai.type === 'competence') {
+                        compInds.push({ name: ai.indicatorName, levelId: ai.levelId || 0 });
+                    }
+                });
+
+                const toolGroups = Object.entries(toolMap).map(([toolName, byLevel]) => {
+                    // Auto-level: highest consecutive level where ALL that level's inds are present
+                    // Since we only stored achieved ones, max consecutive levelId present
+                    let toolLevel = 0;
+                    for (let l = 1; l <= 3; l++) {
+                        if (byLevel[l] && byLevel[l].length > 0) toolLevel = l;
+                        else break;
+                    }
+                    return { name: toolName, level: toolLevel, byLevel };
+                });
+                indicatorsHtml = _renderIndicatorGroups(toolGroups, compInds);
+            }
+
+            html += `<div class="section-box no-break" style="margin-bottom:8pt; padding:8pt 10pt; border:1px solid #e0e0e0; border-radius:4pt;">
+                <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:3pt;">
+                    <strong style="font-size:10pt;">${_esc(c.competenceName || '—')}</strong>
+                    <span style="font-size:9pt; font-weight:600; color:#333;">${_esc(levelLabel)}</span>
+                </div>
+                ${tools.length ? `<div style="font-size:9pt; color:#555; margin-top:2pt;">
+                    <strong>Herramientas:</strong> ${tools.map(tl => _esc(tl)).join(', ')}
+                </div>` : ''}
+                ${indicatorsHtml}
+            </div>`;
+        });
+        html += `</div>`;
+        return html;
+    }
+
     function _fmtDate(d) {
         if (!d) return '—';
         try { return new Date(d).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' }); }
@@ -1387,48 +1546,7 @@ async function printActaInicio(promotionId) {
 
         // ── Competencias trabajadas ──
         html += `<h3>Competencias Trabajadas</h3>`;
-        const comps = t.competences || [];
-        if (comps.length) {
-            html += `<table>
-                <thead><tr><th>Competencia</th><th>Nivel alcanzado</th><th>Herramientas</th></tr></thead>
-                <tbody>`;
-            comps.forEach(c => {
-                const lvlColor = PROJ_LEVEL_COLORS[c.level] ?? 'grey';
-                const lvlLabel = PROJ_LEVEL_LABELS[c.level] ?? `Nv.${c.level}`;
-                const tools = (c.toolsUsed || [])
-                    .map(tl => `<span class="badge badge-light">${_esc(tl)}</span>`)
-                    .join(' ');
-                html += `<tr>
-                    <td><strong>${_esc(c.competenceName || '—')}</strong></td>
-                    <td>${_levelBadge(c.level)}</td>
-                    <td>${tools || '<span style="color:#aaa;">—</span>'}</td>
-                </tr>`;
-            });
-            html += `</tbody></table>`;
-
-            // Visual summary: one big card per competence with level bar
-            html += `<div style="margin-top:10pt;">`;
-            comps.forEach(c => {
-                const pct = Math.round((c.level / 3) * 100);
-                const barColor = c.level === 3 ? '#198754' : c.level === 2 ? '#ffc107' : c.level === 1 ? '#dc3545' : '#aaa';
-                const tools = (c.toolsUsed || [])
-                    .map(tl => `<span class="badge badge-light">${_esc(tl)}</span>`)
-                    .join(' ');
-                html += `<div class="section-box no-break" style="margin-bottom:7pt;">
-                    <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:4pt;">
-                        <strong>${_esc(c.competenceName)}</strong>
-                        <span style="font-size:9pt; color:#888;">${PROJ_LEVEL_LABELS[c.level] ?? ''}</span>
-                    </div>
-                    <div style="background:#eee; border-radius:4pt; height:8pt; overflow:hidden; margin-bottom:5pt;">
-                        <div style="width:${pct}%; height:100%; background:${barColor}; border-radius:4pt;"></div>
-                    </div>
-                    ${tools ? `<div class="pill-row">${tools}</div>` : ''}
-                </div>`;
-            });
-            html += `</div>`;
-        } else {
-            html += `<p class="empty-note">No se registraron competencias para este proyecto.</p>`;
-        }
+        html += _buildCompetencesHtml(t.competences || []);
 
         const filename = `proyecto_${(t.teamName||'proyecto').replace(/\s+/g,'-')}_${(fullName).replace(/\s+/g,'-')}.pdf`;
         _previewWindow(html, filename);
@@ -1500,100 +1618,7 @@ async function printActaInicio(promotionId) {
         }
 
         html += `<h3>Competencias Trabajadas</h3>`;
-        const comps = t.competences || [];
-        if (comps.length) {
-            // Etiquetas de nivel para indicadores de herramienta
-            const TOOL_LEVEL_LABELS = { 1: 'Básico', 2: 'Medio', 3: 'Avanzado' };
-
-            html += `<div style="margin-top:6pt;">`;
-            comps.forEach(c => {
-                const levelLabel = PROJ_LEVEL_LABELS[c.level] ?? `Nv.${c.level}`;
-                const tools = (c.toolsUsed || []);
-
-                // ── Indicadores de herramienta (TASK-RPT-04) ──────────────────────────
-                // checkedIndicators: { 'tool-{toolId}-{indId}': true }
-                // toolsWithIndicators: [{ id, name, indicators: [{ id, levelId, name }] }]
-                const checkedMap         = c.checkedIndicators    || {};
-                const toolsWithIndicators = c.toolsWithIndicators  || [];
-
-                // Solo renderizar la sección si al menos un indicador está marcado
-                const hasAnyChecked = toolsWithIndicators.some(tool =>
-                    (tool.indicators || []).some(ind =>
-                        checkedMap[`tool-${tool.id}-${ind.id}`] === true
-                    )
-                );
-
-                let indicatorsHtml = '';
-                if (hasAnyChecked) {
-                    indicatorsHtml += `<div style="margin-top:6pt; border-top:1px solid #e8e8e8; padding-top:6pt;">`;
-
-                    toolsWithIndicators.forEach(tool => {
-                        // Solo herramientas con al menos un indicador marcado
-                        const checkedInds = (tool.indicators || []).filter(ind =>
-                            checkedMap[`tool-${tool.id}-${ind.id}`] === true
-                        );
-                        if (!checkedInds.length) return;
-
-                        // toolAutoLevel: acumulativo desde nivel 1; se detiene cuando un nivel no está completo
-                        let toolLevel = 0;
-                        for (let l = 1; l <= 3; l++) {
-                            const levelInds = (tool.indicators || []).filter(ind => ind.levelId === l);
-                            if (levelInds.length > 0 && levelInds.every(ind =>
-                                    checkedMap[`tool-${tool.id}-${ind.id}`] === true)) {
-                                toolLevel = l;
-                            } else {
-                                break;
-                            }
-                        }
-
-                        // Agrupar indicadores marcados por levelId
-                        const byLevel = {};
-                        checkedInds.forEach(ind => {
-                            const lvl = ind.levelId || 0;
-                            if (!byLevel[lvl]) byLevel[lvl] = [];
-                            byLevel[lvl].push(ind);
-                        });
-
-                        indicatorsHtml += `<div style="margin-bottom:6pt;">`;
-                        indicatorsHtml += `<div style="font-size:9pt; font-weight:600; margin-bottom:2pt;">`;
-                        indicatorsHtml += _esc(tool.name || '—');
-                        if (toolLevel > 0) {
-                            indicatorsHtml += ` <span style="font-weight:400; color:#555;">— ${_esc(TOOL_LEVEL_LABELS[toolLevel] || '')}</span>`;
-                        }
-                        indicatorsHtml += `</div>`;
-
-                        [1, 2, 3].forEach(lvl => {
-                            if (!byLevel[lvl] || !byLevel[lvl].length) return;
-                            indicatorsHtml += `<div style="font-size:8.5pt; color:#444; margin-left:8pt; margin-bottom:1pt;">`;
-                            indicatorsHtml += `<em>${_esc(TOOL_LEVEL_LABELS[lvl] || '')}:</em>`;
-                            indicatorsHtml += `<ul style="margin:1pt 0 2pt 12pt;">`;
-                            byLevel[lvl].forEach(ind => {
-                                indicatorsHtml += `<li>${_esc(ind.name || '')}</li>`;
-                            });
-                            indicatorsHtml += `</ul></div>`;
-                        });
-
-                        indicatorsHtml += `</div>`;
-                    });
-
-                    indicatorsHtml += `</div>`;
-                }
-
-                html += `<div class="section-box no-break" style="margin-bottom:8pt; padding:8pt 10pt; border:1px solid #e0e0e0; border-radius:4pt;">
-                    <div style="display:flex; justify-content:space-between; align-items:baseline; margin-bottom:3pt;">
-                        <strong style="font-size:10pt;">${_esc(c.competenceName || '—')}</strong>
-                        <span style="font-size:9pt; font-weight:600; color:#333;">${_esc(levelLabel)}</span>
-                    </div>
-                    ${tools.length ? `<div style="font-size:9pt; color:#555; margin-top:2pt;">
-                        <strong>Herramientas:</strong> ${tools.map(tl => _esc(tl)).join(', ')}
-                    </div>` : ''}
-                    ${indicatorsHtml}
-                </div>`;
-            });
-            html += `</div>`;
-        } else {
-            html += `<p class="empty-note">No se registraron competencias para este proyecto.</p>`;
-        }
+        html += _buildCompetencesHtml(t.competences || []);
 
         const filename = `evaluacion_${(t.teamName||'proyecto').replace(/\s+/g,'-')}_${fullName.replace(/\s+/g,'-')}.pdf`;
 
