@@ -2621,7 +2621,9 @@ async function printActaInicio(promotionId) {
                 _hideSaving();
                 const studentsResult = await studentsRes.json();
                 if (studentsRes.ok) {
-                    alert(`✉ ${studentsResult.sent} enviados${studentsResult.failed > 0 ? ` · ${studentsResult.failed} sin email` : ''}`);
+                    const msg = `✉ ${studentsResult.sent} enviados${studentsResult.failed > 0 ? ` · ${studentsResult.failed} sin email` : ''}`;
+                    if (window.showToast) window.showToast(msg, studentsResult.failed > 0 ? 'warning' : 'success');
+                    else alert(msg);
                 } else {
                     throw new Error(studentsResult.error || 'Error al enviar');
                 }

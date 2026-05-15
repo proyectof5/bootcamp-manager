@@ -11672,9 +11672,67 @@ async function sendTeamEmailsForProject(gProjectIdx) {
     const noEmail = gp.groups.flatMap(grp => (grp.studentIds || []).map(id => studentMap.get(String(id))))
         .filter(Boolean).filter(s => !s.email).length;
 
-    const taskId = `send-team-${gp.projName}-${Date.now()}`;
-    _bgTaskManager.start(taskId, `Notificando equipos: ${gp.projName}…`);
+    const taskId = _bgTaskManager.start(`Notificando equipos: ${gp.projName}…`);
 
+    try {
+        const token = localStorage.getItem('token');
+        const res = await fetch(`${API_URL}/api/promotions/${promotionId}/send-team-email`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ recipients })
+        });
+        const result = await res.json();
+        _bgTaskManager.finish(taskId);
+        if (res.ok) {
+            const msg = `✉ ${result.sent} correos enviados${noEmail > 0 ? ` · ${noEmail} sin email` : ''}`;
+            showToast(msg, result.failed > 0 ? 'warning' : 'success');
+        } else {
+            showToast(`Error al enviar emails: ${result.error}`, 'danger');
+        }
+    } catch (err) {
+        _bgTaskManager.finish(taskId);
+        showToast('Error de red al enviar emails de equipos', 'danger');
+    }
+}
+
+/**
+ * Sends team assignment emails from inside the groups modal.
+ * Reads groups from window._evalCurrentSaved (already populated when the modal is open).
+ */
+async function sendTeamEmailsFromGroupsModal() {
+    const saved = window._evalCurrentSaved;
+    if (!saved || !saved.groups || saved.groups.length === 0) {
+        showToast('Guarda los grupos primero antes de notificar', 'warning');
+        return;
+    }
+
+    const allStudents = window._evalState?.students || [];
+    const studentMap = new Map(allStudents.map(s => [String(s.id || s._id), s]));
+
+    const recipients = [];
+    saved.groups.forEach(grp => {
+        const memberObjs = (grp.studentIds || []).map(id => studentMap.get(String(id))).filter(Boolean);
+        memberObjs.forEach(student => {
+            if (!student.email) return;
+            recipients.push({
+                studentEmail: student.email,
+                studentName: `${student.name || ''} ${student.lastname || ''}`.trim(),
+                projectName: saved.projectName,
+                groupName: grp.groupName || `Grupo ${saved.groups.indexOf(grp) + 1}`,
+                members: memberObjs.map(m => ({ name: m.name || '', lastname: m.lastname || '' }))
+            });
+        });
+    });
+
+    const noEmail = saved.groups.flatMap(grp => (grp.studentIds || []).map(id => studentMap.get(String(id))))
+        .filter(Boolean).filter(s => !s.email).length;
+
+    if (recipients.length === 0) {
+        showToast('Ningún estudiante de este proyecto tiene email registrado', 'warning');
+        return;
+    }
+
+    const taskId = _bgTaskManager.start(`Notificando equipos: ${saved.projectName}…`);
     try {
         const token = localStorage.getItem('token');
         const res = await fetch(`${API_URL}/api/promotions/${promotionId}/send-team-email`, {
@@ -11942,6 +12000,9 @@ function openGroupsModal(mIdx, pIdx) {
                 <div class="modal-body" id="groups-modal-body"></div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-outline-warning" onclick="sendTeamEmailsFromGroupsModal()">
+                        <i class="bi bi-envelope me-1"></i>Notificar equipos
+                    </button>
                     <button type="button" class="btn btn-primary" onclick="saveGroups()"
                         style="background:#0ea5e9;border-color:#0ea5e9;">
                         <i class="bi bi-save me-1"></i>Guardar grupos
@@ -12545,7 +12606,7 @@ function selectEvalTarget(targetId) {
             <div class="small fw-semibold text-secondary mb-2"><i class="bi bi-award me-1"></i>Competencias</div>
             ${compHtml}
         </div>
-        <div class="mt-3 mb-4">
+        <div class="mt-3" style="margin-bottom: 10rem;">
             <label class="form-label small fw-semibold"><i class="bi bi-chat-text me-1"></i>Feedback</label>
             <div class="border rounded" style="overflow:hidden;">
                 <div class="eval-feedback-toolbar d-flex flex-wrap gap-1 p-1 bg-light border-bottom">
@@ -13361,6 +13422,11 @@ function openEvaluationModal(mIdx, pIdx) {
                                 ${ev.studentComment ? `<div class="text-primary small mt-1"><i class="bi bi-chat-right-text me-1"></i>"${escapeHtml(ev.studentComment)}"</div>` : ''}
                             </div>
                             <div class="d-flex flex-column gap-1 flex-shrink-0">
+                                <button class="btn btn-sm btn-outline-secondary py-0 px-2" style="font-size:.75rem;"
+                                    title="Preview informe PDF"
+                                    onclick="previewStudentEvalReport('${escapeHtml(String(ev.targetId))}')">
+                                    <i class="bi bi-eye"></i>
+                                </button>
                                 <button class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size:.75rem;"
                                     onclick="editStudentEvaluation('${escapeHtml(String(ev.targetId))}')">
                                     <i class="bi bi-pencil"></i>
@@ -14059,6 +14125,43 @@ async function sendEvaluationByEmail() {
         showToast('Error al enviar el informe: ' + err.message, 'danger');
     } finally {
         if (sendBtn) { sendBtn.disabled = false; sendBtn.innerHTML = originalHtml; }
+    }
+}
+
+/**
+ * Opens a preview window of the project evaluation PDF for a given student.
+ * Resolves the team index via technicalTracking.teams matching the current project name.
+ */
+async function previewStudentEvalReport(studentId) {
+    if (!window.Reports?.printProjectReport) {
+        showToast('La librería de informes no está disponible', 'danger');
+        return;
+    }
+    if (!studentId) {
+        showToast('Selecciona un estudiante primero', 'warning');
+        return;
+    }
+    const saved = window._evalCurrentSaved;
+    // Groups don't have individual evaluation reports — only individual projects do
+    if (saved?.type === 'grupal') {
+        showToast('El preview de informe sólo está disponible para evaluaciones individuales', 'info');
+        return;
+    }
+    const projectName = saved?.projectName || '';
+
+    const token = localStorage.getItem('token');
+    try {
+        const stuRes = await fetch(`${API_URL}/api/promotions/${promotionId}/students/${studentId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!stuRes.ok) throw new Error('No se pudo cargar el estudiante');
+        const stuData = await stuRes.json();
+        const teams = stuData.technicalTracking?.teams || [];
+        let teamIndex = teams.findIndex(t => t.teamName === projectName);
+        if (teamIndex < 0) teamIndex = 0;
+        window.Reports.printProjectReport(teamIndex, studentId, promotionId);
+    } catch (err) {
+        showToast('Error al cargar los datos del informe: ' + err.message, 'danger');
     }
 }
 
