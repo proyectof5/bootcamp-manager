@@ -1141,16 +1141,11 @@ function deletePildoraRow(index) {
 
     if (index < 0 || index >= modulePildoras.pildoras.length) return;
 
-    if (!confirm('Are you sure you want to delete this píldora?')) return;
-
-    // Remove from local data
-    modulePildoras.pildoras.splice(index, 1);
-
-    // Save changes to server
-    savePildorasToServer(currentModule);
-
-    // Update display
-    displayPildoras();
+    _showConfirmModal('¿Eliminar esta píldora?', () => {
+        modulePildoras.pildoras.splice(index, 1);
+        savePildorasToServer(currentModule);
+        displayPildoras();
+    }, 'Eliminar', 'btn-danger');
 }
 
 // Save píldoras changes to server
@@ -1591,10 +1586,10 @@ function addTeamMember() {
 }
 
 function deleteTeamMember(index) {
-    if (confirm('¿Eliminar este miembro del equipo?')) {
+    _showConfirmModal('¿Eliminar este miembro del equipo?', () => {
         extendedInfoData.team.splice(index, 1);
         displayTeam();
-    }
+    });
 }
 
 function openEditTeamModal(index) {
@@ -1895,12 +1890,11 @@ function removeResourceFromCatalog(resourceId) {
 function addResource() { /* replaced by addResourceFromCatalog */ }
 
 function deleteResource(index) {
-    if (confirm('¿Eliminar este recurso?')) {
+    _showConfirmModal('¿Eliminar este recurso?', () => {
         extendedInfoData.resources.splice(index, 1);
         displayResources();
-        // Invalidate catalog rendering so that "Ya agregado" state refreshes on next open
         if (_resourceCatalogAll.length) _renderResourceCatalog();
-    }
+    });
 }
 
 let employabilityModal;
@@ -2006,10 +2000,8 @@ async function saveEmployabilityItem() {
 }
 
 async function deleteEmployabilityItem(index) {
-    if (!confirm('Delete this employability item?')) return;
-
+    _showConfirmModal('¿Eliminar este elemento de empleabilidad?', async () => {
     const token = localStorage.getItem('token');
-
     try {
         const response = await fetch(`${API_URL}/api/promotions/${promotionId}`, {
             headers: { 'Authorization': `Bearer ${token}` }
@@ -2044,6 +2036,7 @@ async function deleteEmployabilityItem(index) {
         console.error('Error deleting employability item:', error);
         window.showApiToast('Error deleting employability item', 'danger');
     }
+    }, 'Eliminar', 'btn-danger');
 }
 
 async function saveExtendedInfo() {
@@ -3824,8 +3817,7 @@ async function editModule(moduleId) {
 }
 
 async function deleteModule(moduleId) {
-    if (!confirm('Are you sure you want to delete this module? This action cannot be undone.')) return;
-
+    _showConfirmModal('¿Eliminar este módulo? Esta acción no se puede deshacer.', async () => {
     const token = localStorage.getItem('token');
     try {
         const response = await fetch(`${API_URL}/api/promotions/${promotionId}`, {
@@ -3863,11 +3855,11 @@ async function deleteModule(moduleId) {
         console.error('Error deleting module:', error);
         window.showApiToast('Error deleting module', 'danger');
     }
+    }, 'Eliminar', 'btn-danger');
 }
 
 async function deleteCourseFromModule(moduleId, courseIndex) {
-    if (!confirm('Delete this course?')) return;
-
+    _showConfirmModal('¿Eliminar este curso?', async () => {
     const token = localStorage.getItem('token');
     try {
         const response = await fetch(`${API_URL}/api/promotions/${promotionId}`, {
@@ -3906,11 +3898,11 @@ async function deleteCourseFromModule(moduleId, courseIndex) {
         console.error('Error deleting course:', error);
         window.showApiToast('Error deleting course', 'danger');
     }
+    }, 'Eliminar', 'btn-danger');
 }
 
 async function deleteProjectFromModule(moduleId, projectIndex) {
-    if (!confirm('Delete this project?')) return;
-
+    _showConfirmModal('¿Eliminar este proyecto?', async () => {
     const token = localStorage.getItem('token');
     try {
         const response = await fetch(`${API_URL}/api/promotions/${promotionId}`, {
@@ -3949,6 +3941,7 @@ async function deleteProjectFromModule(moduleId, projectIndex) {
         console.error('Error deleting project:', error);
         window.showApiToast('Error deleting project', 'danger');
     }
+    }, 'Eliminar', 'btn-danger');
 }
 
 async function loadQuickLinks() {
@@ -4556,7 +4549,7 @@ async function submitPromoResource(e) {
             await loadPromoResources();
         } else {
             const err = await res.json();
-            alert('Error: ' + (err.error || 'Unknown error'));
+            showToast('Error: ' + (err.error || 'Error desconocido'), 'danger');
         }
     } catch (err) {
         console.error('[submitPromoResource] Error:', err);
@@ -4594,7 +4587,7 @@ async function unpublishPromoResource(resourceId) {
 }
 
 async function deletePromoResource(resourceId) {
-    if (!confirm('¿Eliminar este recurso? Esta acción no se puede deshacer.')) return;
+    _showConfirmModal('¿Eliminar este recurso? Esta acción no se puede deshacer.', async () => {
     const token = localStorage.getItem('token');
     try {
         const res = await fetch(`${API_URL}/api/promotions/${promotionId}/promotion-resources/${resourceId}`, {
@@ -4603,6 +4596,7 @@ async function deletePromoResource(resourceId) {
         });
         if (res.ok) await loadPromoResources();
     } catch (err) { console.error(err); }
+    }, 'Eliminar', 'btn-danger');
 }
 
 // Load calendar ID from backend for Overview preview
@@ -5509,7 +5503,7 @@ function openPlannerCompetencePicker(itemId, btn) {
 
     const programComps = window.ProgramCompetences ? window.ProgramCompetences.getCompetences() : (window._extendedInfoCompetences || []);
     if (!programComps.length) {
-        alert('No hay competencias a\u00f1adidas al programa. Ve a Contenido del Programa \u2192 Competencias para a\u00f1adirlas primero.');
+        showToast('No hay competencias añadidas al programa. Ve a Contenido del Programa → Competencias para añadirlas primero.', 'warning');
         return;
     }
 
@@ -5611,9 +5605,11 @@ function addPlannerLink(itemId, btn) {
     if (!url) { urlInput.focus(); return; }
 
     if (!Array.isArray(item.links)) item.links = [];
+    const _linkTypeLabels = { repositorio: 'Repositorio', presentacion: 'Presentación', material: 'Material', video: 'Video', otro: 'Enlace' };
+    const _autoLabel = `${item.title || 'Lección'} - ${_linkTypeLabels[typeSelect.value] || typeSelect.value}`;
     item.links.push({
         id:    generatePlannerLinkId(),
-        label: labelInput.value.trim() || url,
+        label: labelInput.value.trim() || _autoLabel,
         url,
         type:  typeSelect.value,
     });
@@ -5926,11 +5922,9 @@ async function sendEvaluationToAllStudents() {
     const activeCount = (window._evalState?.students || []).length;
     const countLabel = activeCount > 0 ? `${activeCount} estudiante${activeCount !== 1 ? 's' : ''}` : 'los estudiantes activos';
 
-    const confirmed = window.confirm(
-        `¿Guardar y enviar la evaluación a ${countLabel}?\n\nEsta acción enviará un correo a cada estudiante activo de la promoción.`
-    );
-    if (!confirmed) return;
-
+    _showConfirmModal(
+        `¿Guardar y enviar la evaluación a <strong>${escapeHtml(countLabel)}</strong>?<br><small class="text-muted">Esta acción enviará un correo a cada estudiante activo de la promoción.</small>`,
+        async () => {
     // Guardar primero para que el backend lea la versión más reciente
     await saveEvaluationFeedback();
 
@@ -5949,6 +5943,59 @@ async function sendEvaluationToAllStudents() {
         console.error('sendEvaluationToAllStudents error:', err);
         window.showApiToast('Error al enviar la evaluación: ' + err.message, 'error');
     }
+    }, 'Enviar', 'btn-primary');
+}
+
+/**
+ * Shows a Bootstrap input modal (replaces native prompt()).
+ * @param {Array<{id,label,placeholder,value}>} fields - Input field descriptors
+ * @param {string} title - Modal title
+ * @param {Function} onConfirm - Callback({ fieldId: value, ... }) on confirm
+ * @param {string} [confirmLabel='Aceptar']
+ */
+function _showInputModal(fields, title, onConfirm, confirmLabel = 'Aceptar') {
+    const existingModal = document.getElementById('_globalInputModal');
+    if (existingModal) existingModal.remove();
+    const id = '_globalInputModal';
+    const fieldsHtml = fields.map(f => `
+        <div class="mb-3">
+            <label class="form-label small fw-semibold" for="${id}-${f.id}">${escapeHtml(f.label)}</label>
+            <input type="${f.type || 'text'}" class="form-control form-control-sm" id="${id}-${f.id}"
+                placeholder="${escapeHtml(f.placeholder || '')}" value="${escapeHtml(f.value || '')}">
+        </div>`).join('');
+    const html = `
+    <div class="modal fade" id="${id}" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header py-2 px-3 border-bottom">
+            <span class="fw-semibold small">${escapeHtml(title)}</span>
+            <button type="button" class="btn-close btn-sm" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body py-3 px-3">${fieldsHtml}</div>
+          <div class="modal-footer border-0 pt-0">
+            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+            <button type="button" class="btn btn-primary btn-sm" id="${id}-confirm">${escapeHtml(confirmLabel)}</button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+    document.body.insertAdjacentHTML('beforeend', html);
+    const modalEl = document.getElementById(id);
+    const modal = new bootstrap.Modal(modalEl);
+    document.getElementById(`${id}-confirm`).addEventListener('click', () => {
+        const values = {};
+        fields.forEach(f => { values[f.id] = document.getElementById(`${id}-${f.id}`)?.value || ''; });
+        modal.hide();
+        onConfirm(values);
+    });
+    // Submit on Enter in inputs
+    modalEl.querySelectorAll('input').forEach(inp => {
+        inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); document.getElementById(`${id}-confirm`).click(); } });
+    });
+    modalEl.addEventListener('hidden.bs.modal', () => modalEl.remove());
+    modal.show();
+    // Focus first input
+    modalEl.addEventListener('shown.bs.modal', () => { document.getElementById(`${id}-${fields[0]?.id}`)?.focus(); }, { once: true });
 }
 
 /**
@@ -5956,39 +6003,50 @@ async function sendEvaluationToAllStudents() {
  * Usa insertHTML en lugar de createLink para poder configurar target="_blank".
  */
 function insertEvalLink() {
-    const url = window.prompt('URL del enlace:');
-    if (!url || !url.trim()) return;
-
-    // Obtener el texto seleccionado; si no hay selección, pedir texto al usuario
     const selection = window.getSelection();
-    const selectedText = selection && !selection.isCollapsed ? selection.toString() : null;
-    const linkText = selectedText || window.prompt('Texto del enlace:') || url;
+    const selectedText = selection && !selection.isCollapsed ? selection.toString() : '';
+    const evalEl = document.getElementById('evaluation-text');
+    let savedRange = null;
+    if (selection && selection.rangeCount > 0) savedRange = selection.getRangeAt(0).cloneRange();
 
-    const safeUrl = url.trim().replace(/"/g, '&quot;');
-    const safeText = linkText.replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    const anchorHtml = `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer">${safeText}</a>`;
-
-    // Restaurar foco al editor antes de ejecutar el comando
-    document.getElementById('evaluation-text').focus();
-    document.execCommand('insertHTML', false, anchorHtml);
+    _showInputModal(
+        [
+            { id: 'url', label: 'URL del enlace', placeholder: 'https://...', type: 'url' },
+            { id: 'text', label: 'Texto del enlace', placeholder: 'Texto visible', value: selectedText }
+        ],
+        'Insertar enlace',
+        ({ url, text }) => {
+            if (!url?.trim()) return;
+            const safeUrl = url.trim().replace(/"/g, '&quot;');
+            const safeText = (text || url).replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            const anchorHtml = `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer">${safeText}</a>`;
+            evalEl?.focus();
+            if (savedRange && selection) { selection.removeAllRanges(); selection.addRange(savedRange); }
+            document.execCommand('insertHTML', false, anchorHtml);
+        }
+    );
 }
 
 /**
  * Inserta una imagen (<img>) en la posición del cursor dentro del editor de evaluación.
- * Solo soporta URL externa — la subida de archivo se documenta como deuda técnica (TD-11).
  */
 function insertEvalImage() {
-    const url = window.prompt('URL de la imagen:');
-    if (!url || !url.trim()) return;
-
-    const altText = window.prompt('Texto alternativo (descripción):') || '';
-    const safeUrl = url.trim().replace(/"/g, '&quot;');
-    const safeAlt = altText.replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    const imgHtml = `<img src="${safeUrl}" alt="${safeAlt}" style="max-width:100%;height:auto;display:block;margin:8px 0;">`;
-
-    // Restaurar foco al editor antes de ejecutar el comando
-    document.getElementById('evaluation-text').focus();
-    document.execCommand('insertHTML', false, imgHtml);
+    const evalEl = document.getElementById('evaluation-text');
+    _showInputModal(
+        [
+            { id: 'url', label: 'URL de la imagen', placeholder: 'https://...', type: 'url' },
+            { id: 'alt', label: 'Texto alternativo (descripción)', placeholder: 'Descripción de la imagen' }
+        ],
+        'Insertar imagen',
+        ({ url, alt }) => {
+            if (!url?.trim()) return;
+            const safeUrl = url.trim().replace(/"/g, '&quot;');
+            const safeAlt = (alt || '').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            const imgHtml = `<img src="${safeUrl}" alt="${safeAlt}" style="max-width:100%;height:auto;display:block;margin:8px 0;">`;
+            evalEl?.focus();
+            document.execCommand('insertHTML', false, imgHtml);
+        }
+    );
 }
 
 /**
@@ -5997,34 +6055,27 @@ function insertEvalImage() {
  * @param {HTMLElement} btn - El botón que disparó el evento
  */
 function _insertEvalFeedbackLink(btn) {
-    // Guardar la selección antes de que prompt() la destruya
-    const sel = window.getSelection();
-    let savedRange = null;
-    if (sel && sel.rangeCount > 0) {
-        savedRange = sel.getRangeAt(0).cloneRange();
-    }
-
-    const url = window.prompt('URL del enlace:');
-    if (!url || !url.trim()) return;
-
-    const selectedText = savedRange && !savedRange.collapsed ? savedRange.toString() : null;
-    const linkText = selectedText || window.prompt('Texto del enlace:') || url;
-
-    // Encontrar el RTE más cercano al botón
     const rte = btn.closest('.border')?.querySelector('.eval-feedback-rte');
     if (!rte) return;
+    const sel = window.getSelection();
+    const selectedText = sel && !sel.isCollapsed ? sel.toString() : '';
+    let savedRange = sel && sel.rangeCount > 0 ? sel.getRangeAt(0).cloneRange() : null;
 
-    // Restaurar selección
-    rte.focus();
-    if (savedRange) {
-        sel.removeAllRanges();
-        sel.addRange(savedRange);
-    }
-
-    const safeUrl = url.trim().replace(/"/g, '&quot;');
-    const safeText = linkText.replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    const anchorHtml = `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer">${safeText}</a>`;
-    document.execCommand('insertHTML', false, anchorHtml);
+    _showInputModal(
+        [
+            { id: 'url', label: 'URL del enlace', placeholder: 'https://...', type: 'url' },
+            { id: 'text', label: 'Texto del enlace', placeholder: 'Texto visible', value: selectedText }
+        ],
+        'Insertar enlace',
+        ({ url, text }) => {
+            if (!url?.trim()) return;
+            rte.focus();
+            if (savedRange && sel) { sel.removeAllRanges(); sel.addRange(savedRange); }
+            const safeUrl = url.trim().replace(/"/g, '&quot;');
+            const safeText = (text || url).replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            document.execCommand('insertHTML', false, `<a href="${safeUrl}" target="_blank" rel="noopener noreferrer">${safeText}</a>`);
+        }
+    );
 }
 
 /**
@@ -6033,20 +6084,23 @@ function _insertEvalFeedbackLink(btn) {
  * @param {HTMLElement} btn - El botón que disparó el evento
  */
 function _insertEvalFeedbackImage(btn) {
-    const url = window.prompt('URL de la imagen:');
-    if (!url || !url.trim()) return;
-
-    const altText = window.prompt('Texto alternativo (descripción):') || '';
-
     const rte = btn.closest('.border')?.querySelector('.eval-feedback-rte');
     if (!rte) return;
 
-    rte.focus();
-
-    const safeUrl = url.trim().replace(/"/g, '&quot;');
-    const safeAlt = altText.replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    const imgHtml = `<img src="${safeUrl}" alt="${safeAlt}" style="max-width:100%;height:auto;display:block;margin:8px 0;">`;
-    document.execCommand('insertHTML', false, imgHtml);
+    _showInputModal(
+        [
+            { id: 'url', label: 'URL de la imagen', placeholder: 'https://...', type: 'url' },
+            { id: 'alt', label: 'Texto alternativo (descripción)', placeholder: 'Descripción de la imagen' }
+        ],
+        'Insertar imagen',
+        ({ url, alt }) => {
+            if (!url?.trim()) return;
+            rte.focus();
+            const safeUrl = url.trim().replace(/"/g, '&quot;');
+            const safeAlt = (alt || '').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            document.execCommand('insertHTML', false, `<img src="${safeUrl}" alt="${safeAlt}" style="max-width:100%;height:auto;display:block;margin:8px 0;">`);
+        }
+    );
 }
 
 /**
@@ -6283,7 +6337,7 @@ function openProjectCompetencePicker(btn) {
     const programComps = window.ProgramCompetences ? window.ProgramCompetences.getCompetences() : (window._extendedInfoCompetences || []);
 
     if (!programComps.length) {
-        alert('No hay competencias añadidas al programa. Ve a Contenido del Programa → Competencias para añadirlas primero.');
+        showToast('No hay competencias añadidas al programa. Ve a Contenido del Programa → Competencias para añadirlas primero.', 'warning');
         return;
     }
 
@@ -6558,7 +6612,7 @@ function setupForms() {
         const googleCalendarId = document.getElementById('google-calendar-id').value;
 
         if (!googleCalendarId) {
-            alert('Please enter a Google Calendar ID');
+            showToast('Por favor, introduce un Google Calendar ID', 'warning');
             return;
         }
 
@@ -6576,7 +6630,7 @@ function setupForms() {
 
             if (response.ok) {
                 displayCalendar(googleCalendarId);
-                alert('Calendar saved successfully!');
+                showToast('Calendario guardado correctamente', 'success');
             }
         } catch (error) {
             console.error('Error saving calendar:', error);
@@ -6708,21 +6762,23 @@ async function importStudentsFromExcel(input) {
             if (errors  > 0) lines.push(`❌ ${errors} fila(s) con error`);
 
             if (created === 0 && skipped > 0 && errors === 0) {
-                lines.push('\nTodos los estudiantes del archivo ya estaban registrados en esta promoción.');
+                lines.push('Todos los estudiantes del archivo ya estaban registrados en esta promoción.');
             }
 
+            const summaryHtml = lines.map(l => `<div>${escapeHtml(l)}</div>`).join('');
             if (result.errors && result.errors.length) {
-                lines.push('\nDetalle de errores:\n' + result.errors.join('\n'));
+                const errDetail = result.errors.slice(0, 3).map(e => escapeHtml(e)).join('; ');
+                showToast(`Importación: ${created} importados, ${skipped} omitidos, ${errors} errores. ${errDetail}`, errors > 0 ? 'warning' : 'success');
+            } else {
+                showToast(lines.join(' · '), created > 0 ? 'success' : 'warning');
             }
-
-            alert(lines.join('\n'));
             if (created > 0) loadStudents();
         } else {
-            alert(`Error al importar: ${result.error || 'Error desconocido'}`);
+            showToast(`Error al importar: ${result.error || 'Error desconocido'}`, 'danger');
         }
     } catch (error) {
         console.error('Error importing students:', error);
-        alert('Error al importar estudiantes desde Excel');
+        showToast('Error al importar estudiantes desde Excel', 'danger');
     } finally {
         btn.disabled = false;
         btn.innerHTML = originalBtnContent;
@@ -6917,12 +6973,12 @@ function displayStudents(students) {
                     <button class="btn btn-sm btn-outline-success" onclick="window.StudentTracking?.openFicha('${student.id}')" title="Ficha de Seguimiento">
                         <i class="bi bi-person-lines-fill"></i>
                     </button>
-                    <button class="btn btn-sm btn-outline-secondary" onclick="if(window.Reports){ window.Reports.printTechnical('${student.id}', promotionId) } else { alert('La librería de informes no está cargada.') }" title="PDF Seguimiento Técnico">
+                    <button class="btn btn-sm btn-outline-secondary" onclick="if(window.Reports){ window.Reports.printTechnical('${student.id}', promotionId) } else { showToast('La librería de informes no está cargada.', 'danger') }" title="PDF Seguimiento Técnico">
                         <i class="bi bi-file-earmark-bar-graph"></i>
                     </button>
-                    ${!student.isWithdrawn ? `<button class="btn btn-sm btn-outline-danger" onclick="deleteStudent('${student.id}', '${student.email}')" title="Delete">
-                        <i class="bi bi-trash"></i>
-                    </button>` : ''}
+                    ${!student.isWithdrawn ? (getUserRole() === 'superadmin'
+                        ? `<button class="btn btn-sm btn-outline-danger" onclick="deleteStudent('${student.id}', '${student.email}')" title="Eliminar estudiante"><i class="bi bi-trash"></i></button>`
+                        : `<button class="btn btn-sm btn-outline-warning" onclick="requestStudentDeletion('${student.id}', '${student.email}')" title="Solicitar borrado"><i class="bi bi-trash"></i></button>`) : ''}
                 </div>
             </td>
         </tr>`;
@@ -6932,34 +6988,45 @@ function displayStudents(students) {
     updateSelectionState();
 }
 
-// Delete individual student
+// Delete individual student (superadmin only)
 async function deleteStudent(studentId, studentEmail) {
-    if (!confirm(`Are you sure you want to delete student ${studentEmail}?`)) return;
-
-    try {
-        const token = localStorage.getItem('token');
-        const response = await fetch(`${API_URL}/api/promotions/${promotionId}/students/${studentId}`, {
-            method: 'DELETE',
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-
-        if (response.ok) {
-            alert('Student deleted successfully');
-            loadStudents();
-        } else {
-            alert('Error deleting student');
-        }
-    } catch (error) {
-        console.error('Error deleting student:', error);
-        alert('Error deleting student');
+    if (getUserRole() !== 'superadmin') {
+        showToast('No tienes permisos para eliminar estudiantes', 'danger');
+        return;
     }
+    _showConfirmModal(
+        `¿Eliminar al estudiante <strong>${escapeHtml(studentEmail)}</strong>? Esta acción no se puede deshacer.`,
+        async () => {
+            try {
+                const token = localStorage.getItem('token');
+                const response = await fetch(`${API_URL}/api/promotions/${promotionId}/students/${studentId}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (response.ok) {
+                    showToast('Estudiante eliminado correctamente', 'success');
+                    loadStudents();
+                } else {
+                    showToast('Error al eliminar el estudiante', 'danger');
+                }
+            } catch (error) {
+                console.error('Error deleting student:', error);
+                showToast('Error al eliminar el estudiante', 'danger');
+            }
+        }
+    );
+}
+
+// Request deletion (for non-superadmin roles)
+function requestStudentDeletion(studentId, studentEmail) {
+    showToast(`Para eliminar a ${studentEmail}, contacta con un administrador.`, 'warning', 6000);
 }
 
 // Edit student - populate form with existing data
 function editStudent(studentId) {
     const student = window.currentStudents?.find(s => s.id === studentId);
     if (!student) {
-        alert('Student not found');
+        showToast('Estudiante no encontrado', 'danger');
         return;
     }
 
@@ -7096,7 +7163,7 @@ function exportStudentsToCSV(students, filename) {
 function exportAllStudentsCSV() {
     const students = window.currentStudents || [];
     if (students.length === 0) {
-        alert('No students to export.');
+        showToast('No hay estudiantes para exportar.', 'warning');
         return;
     }
     exportStudentsToCSV(students, `all-students-promotion-${promotionId}.csv`);
@@ -7166,10 +7233,8 @@ function openStudentModal() {
 }
 
 async function deleteQuickLink(linkId) {
-    if (!confirm('Are you sure?')) return;
-
+    _showConfirmModal('¿Eliminar este enlace rápido?', async () => {
     const token = localStorage.getItem('token');
-
     try {
         await fetch(`${API_URL}/api/promotions/${promotionId}/quick-links/${linkId}`, {
             method: 'DELETE',
@@ -7180,6 +7245,7 @@ async function deleteQuickLink(linkId) {
     } catch (error) {
         console.error('Error deleting link:', error);
     }
+    }, 'Eliminar', 'btn-danger');
 }
 
 // ==================== EDIT PROMOTION ====================
@@ -7189,7 +7255,7 @@ let _editPromotionModal = null;
 function openEditPromotionModal() {
     const promotion = window.currentPromotion;
     if (!promotion) {
-        alert('No se pudieron cargar los datos de la promoción.');
+        showToast('No se pudieron cargar los datos de la promoción.', 'danger');
         return;
     }
 
@@ -7314,7 +7380,7 @@ function openDeletePromotionModal() {
 async function confirmDeletePromotion() {
     const input = document.getElementById('delete-promotion-confirm-input');
     if (!input || input.value.trim().toUpperCase() !== 'ELIMINAR') {
-        alert('Para confirmar, escribe exactamente "ELIMINAR".');
+        showToast('Para confirmar, escribe exactamente "ELIMINAR".', 'warning');
         return;
     }
 
@@ -7326,24 +7392,20 @@ async function confirmDeletePromotion() {
         });
 
         if (response.ok) {
-            if (deletePromotionModal) {
-                deletePromotionModal.hide();
-            }
+            if (deletePromotionModal) deletePromotionModal.hide();
             window.location.href = 'dashboard.html';
         } else {
-            alert('Error al eliminar la promoción');
+            showToast('Error al eliminar la promoción', 'danger');
         }
     } catch (error) {
         console.error('Error deleting promotion:', error);
-        alert('Error al eliminar la promoción');
+        showToast('Error al eliminar la promoción', 'danger');
     }
 }
 
 async function deleteSection(sectionId) {
-    if (!confirm('Are you sure?')) return;
-
+    _showConfirmModal('¿Eliminar esta sección?', async () => {
     const token = localStorage.getItem('token');
-
     try {
         await fetch(`${API_URL}/api/promotions/${promotionId}/sections/${sectionId}`, {
             method: 'DELETE',
@@ -7354,6 +7416,7 @@ async function deleteSection(sectionId) {
     } catch (error) {
         console.error('Error deleting section:', error);
     }
+    }, 'Eliminar', 'btn-danger');
 }
 
 /**
@@ -7603,11 +7666,11 @@ async function saveCollaboratorModules() {
             }
         } else {
             const data = await response.json();
-            alert(data.error || 'Error guardando módulos');
+            showToast(data.error || 'Error guardando módulos', 'danger');
         }
     } catch (error) {
         console.error('Error in saveCollaboratorModules:', error);
-        alert('Error de conexión');
+        showToast('Error de conexión al guardar módulos del colaborador', 'danger');
     }
 }
 
@@ -7701,7 +7764,7 @@ function onCollaboratorSelected() {
 async function addCollaboratorById() {
     const teacherId = document.getElementById('collaborator-select').value;
     if (!teacherId) {
-        alert('Please select a user');
+        showToast('Por favor, selecciona un usuario', 'warning');
         return;
     }
     const checked = document.querySelectorAll('#collaborator-module-checklist .form-check-input:checked');
@@ -7736,19 +7799,18 @@ async function addCollaboratorById() {
             await loadCollaborators();
         } else {
             console.error('[addCollaboratorById] Server error:', response.status, data);
-            alert(data.error || 'Failed to add collaborator');
+            showToast(data.error || 'Error al agregar colaborador', 'danger');
             if (addBtn) { addBtn.disabled = false; addBtn.textContent = 'Agregar Colaborador'; }
         }
     } catch (error) {
         console.error('Error adding collaborator:', error);
-        alert('Connection error');
+        showToast('Error de conexión al agregar colaborador', 'danger');
         if (addBtn) { addBtn.disabled = false; addBtn.textContent = 'Agregar Colaborador'; }
     }
 }
 
 async function removeCollaborator(teacherId) {
-    if (!confirm('¿Estás seguro de que deseas quitar a este colaborador del programa?')) return;
-
+    _showConfirmModal('¿Quitar a este colaborador del programa?', async () => {
     const token = localStorage.getItem('token');
     try {
         const response = await fetch(`${API_URL}/api/promotions/${promotionId}/collaborators/${teacherId}`, {
@@ -7757,22 +7819,19 @@ async function removeCollaborator(teacherId) {
         });
 
         if (response.ok) {
-            // Also remove from team list if present
             const tIdx = (extendedInfoData.team || []).findIndex(m => m.collaboratorId === teacherId);
-            if (tIdx !== -1) {
-                extendedInfoData.team.splice(tIdx, 1);
-            }
-            // Better to reload or just refresh lists
+            if (tIdx !== -1) extendedInfoData.team.splice(tIdx, 1);
             await loadCollaborators();
             displayTeam();
         } else {
             const data = await response.json();
-            alert(data.error || 'No se pudo quitar al colaborador');
+            showToast(data.error || 'No se pudo quitar al colaborador', 'danger');
         }
     } catch (error) {
         console.error('Error removing collaborator:', error);
-        alert('Error de conexión');
+        showToast('Error de conexión', 'danger');
     }
+    }, 'Quitar colaborador', 'btn-danger');
 }
 
 // ==================== ACCESS SETTINGS ====================
@@ -7906,9 +7965,9 @@ function copyAccessLink(source = 'default') {
             accessLinkInput.setSelectionRange(0, 99999);
             try {
                 document.execCommand('copy');
-                alert('Link copied to clipboard!');
+                showToast('Enlace copiado al portapapeles', 'success');
             } catch (fallbackErr) {
-                alert('Could not copy link. Please copy manually.');
+                showToast('No se pudo copiar el enlace. Cópialo manualmente.', 'warning');
             }
         });
     }
@@ -8046,10 +8105,7 @@ async function updateTeachingContent(source = 'default') {
 async function removeTeachingContent(source = 'default') {
     if (!isTeacherOrAdmin()) return;
 
-    if (!confirm('Are you sure you want to remove the teaching content link?')) {
-        return;
-    }
-
+    _showConfirmModal('¿Eliminar el enlace de contenido docente?', async () => {
     const token = localStorage.getItem('token');
     try {
         const response = await fetch(`${API_URL}/api/promotions/${promotionId}/teaching-content`, {
@@ -8064,13 +8120,8 @@ async function removeTeachingContent(source = 'default') {
                 alertEl.className = 'alert alert-success';
                 alertEl.textContent = 'Teaching content link removed successfully!';
                 alertEl.classList.remove('hidden');
-
-                setTimeout(() => {
-                    alertEl.classList.add('hidden');
-                }, 5000);
+                setTimeout(() => { alertEl.classList.add('hidden'); }, 5000);
             }
-
-            // Update the UI
             if (source === 'teacher-area') {
                 await _loadTeachingContentInTeacherArea();
             } else {
@@ -8078,12 +8129,13 @@ async function removeTeachingContent(source = 'default') {
             }
         } else {
             const data = await response.json();
-            alert(data.error || 'Error removing teaching content');
+            showToast(data.error || 'Error al eliminar el contenido docente', 'danger');
         }
     } catch (error) {
         console.error('Error removing teaching content:', error);
-        alert('Connection error. Please try again.');
+        showToast('Error de conexión. Por favor, intenta de nuevo.', 'danger');
     }
+    }, 'Eliminar', 'btn-danger');
 }
 
 // ==================== ASANA WORKSPACE ACCESS ====================
@@ -8225,10 +8277,7 @@ async function updateAsanaWorkspace(source = 'default') {
 async function removeAsanaWorkspace(source = 'default') {
     if (!isTeacherOrAdmin()) return;
 
-    if (!confirm('¿Estás seguro de que deseas eliminar el enlace de Asana?')) {
-        return;
-    }
-
+    _showConfirmModal('¿Eliminar el enlace de Asana?', async () => {
     const token = localStorage.getItem('token');
     try {
         const response = await fetch(`${API_URL}/api/promotions/${promotionId}/asana-workspace`, {
@@ -8243,13 +8292,8 @@ async function removeAsanaWorkspace(source = 'default') {
                 alertEl.className = 'alert alert-success';
                 alertEl.textContent = '¡Enlace de Asana eliminado exitosamente!';
                 alertEl.classList.remove('hidden');
-
-                setTimeout(() => {
-                    alertEl.classList.add('hidden');
-                }, 5000);
+                setTimeout(() => { alertEl.classList.add('hidden'); }, 5000);
             }
-
-            // Update the UI
             if (source === 'teacher-area') {
                 await _loadAsanaWorkspaceInTeacherArea();
             } else {
@@ -8257,12 +8301,13 @@ async function removeAsanaWorkspace(source = 'default') {
             }
         } else {
             const data = await response.json();
-            alert(data.error || 'Error al eliminar el enlace de Asana');
+            showToast(data.error || 'Error al eliminar el enlace de Asana', 'danger');
         }
     } catch (error) {
         console.error('Error removing Asana workspace:', error);
-        alert('Error de conexión. Por favor, intenta de nuevo.');
+        showToast('Error de conexión. Por favor, intenta de nuevo.', 'danger');
     }
+    }, 'Eliminar', 'btn-danger');
 }
 
 // ==================== STUDENT SELECTION FUNCTIONS ====================
@@ -8273,7 +8318,7 @@ function generateSelectedStudentsPDF() {
     const selectedStudentIds = Array.from(selectedCheckboxes).map(cb => cb.dataset.studentId);
 
     if (selectedStudentIds.length === 0) {
-        alert('Por favor, selecciona al menos un estudiante para generar los informes.');
+        showToast('Por favor, selecciona al menos un estudiante para generar los informes.', 'warning');
         return;
     }
 
@@ -8281,7 +8326,7 @@ function generateSelectedStudentsPDF() {
         window.Reports.printBulkTechnical(selectedStudentIds, promotionId);
     } else {
         console.error('Reports library not loaded');
-        alert('La librería de informes no está cargada. Por favor, recarga la página.');
+        showToast('La librería de informes no está cargada. Por favor, recarga la página.', 'danger');
     }
 }
 
@@ -8429,23 +8474,22 @@ window._bulkReportTechnical = function () {
     const ids = _getSelectedStudentIds();
     //console.log('[Reports] Selected student IDs:', ids);
     if (!ids.length) {
-        alert('Selecciona al menos un estudiante.');
+        showToast('Selecciona al menos un estudiante.', 'warning');
         return;
     }
     if (!window.Reports) {
         console.error('[Reports] window.Reports library is not defined!');
-        alert('La librería de informes no está disponible. Por favor, recarga la página.');
+        showToast('La librería de informes no está disponible. Por favor, recarga la página.', 'danger');
         return;
     }
     window.Reports.printBulkTechnical(ids, promotionId);
 }
 
 window._bulkReportTransversal = function () {
-    //console.log('[Reports] _bulkReportTransversal triggered');
     const ids = _getSelectedStudentIds();
-    if (!ids.length) { alert('Selecciona al menos un estudiante.'); return; }
+    if (!ids.length) { showToast('Selecciona al menos un estudiante.', 'warning'); return; }
     if (!window.Reports) {
-        alert('La librería de informes no está disponible.');
+        showToast('La librería de informes no está disponible.', 'danger');
         return;
     }
     window.Reports.printBulkTransversal(ids, promotionId);
@@ -8495,7 +8539,7 @@ window._bulkReportByProject = async function () {
         document.getElementById('_project-picker-modal')?.remove();
 
         if (!allProjects.length) {
-            alert('No hay proyectos definidos en el roadmap de esta promoción.');
+            showToast('No hay proyectos definidos en el roadmap de esta promoción.', 'warning');
             return;
         }
 
@@ -8574,7 +8618,7 @@ window._bulkReportByProject = async function () {
     } catch (err) {
         document.getElementById('_project-picker-modal')?.remove();
         console.error('[BulkByProject] Error cargando proyectos:', err);
-        alert('Error al cargar los proyectos: ' + err.message);
+        showToast('Error al cargar los proyectos: ' + err.message, 'danger');
     }
 }
 
@@ -8595,15 +8639,13 @@ async function deleteSelectedStudents() {
     const selectedStudentIds = Array.from(selectedCheckboxes).map(cb => cb.dataset.studentId);
 
     if (selectedStudentIds.length === 0) {
-        alert('No students selected for deletion.');
+        showToast('No hay estudiantes seleccionados para eliminar.', 'warning');
         return;
     }
 
-    const confirmMessage = `Are you sure you want to delete ${selectedStudentIds.length} selected student(s)? This action cannot be undone.`;
-    if (!confirm(confirmMessage)) {
-        return;
-    }
-
+    _showConfirmModal(
+        `¿Eliminar <strong>${selectedStudentIds.length}</strong> estudiante${selectedStudentIds.length !== 1 ? 's' : ''} seleccionado${selectedStudentIds.length !== 1 ? 's' : ''}? Esta acción no se puede deshacer.`,
+        async () => {
     try {
         const token = localStorage.getItem('token');
         const deletePromises = selectedStudentIds.map(studentId =>
@@ -8612,15 +8654,15 @@ async function deleteSelectedStudents() {
                 headers: { 'Authorization': `Bearer ${token}` }
             })
         );
-
         await Promise.all(deletePromises);
-
-        alert(`Successfully deleted ${selectedStudentIds.length} student(s).`);
-        loadStudents(); // Reload the students list
+        showToast(`${selectedStudentIds.length} estudiante${selectedStudentIds.length !== 1 ? 's' : ''} eliminado${selectedStudentIds.length !== 1 ? 's' : ''} correctamente.`, 'success');
+        loadStudents();
     } catch (error) {
         console.error('Error deleting selected students:', error);
-        alert('Error deleting students. Please try again.');
+        showToast('Error al eliminar los estudiantes. Inténtalo de nuevo.', 'danger');
     }
+        }, 'Eliminar', 'btn-danger'
+    );
 }
 
 // Attendance Control Functions
@@ -9347,10 +9389,8 @@ function closeDateContextMenu() {
  */
 async function clearDayAttendance(dateKey) {
     // Confirmation dialog
-    const confirmMsg = `¿Estás seguro de que deseas limpiar la asistencia de todos los estudiantes para el día ${dateKey}? Esta acción no se puede deshacer.`;
-    if (!confirm(confirmMsg)) {
-        return;
-    }
+    const confirmMsg = `¿Limpiar la asistencia de todos los estudiantes para el día ${dateKey}? Esta acción no se puede deshacer.`;
+    _showConfirmModal(escapeHtml(confirmMsg), async () => {
 
     // Find all cells for this date
     const cells = document.querySelectorAll(`[data-date="${dateKey}"]`);
@@ -9383,6 +9423,7 @@ async function clearDayAttendance(dateKey) {
     if (clearCount > 0) {
         console.log(`✓ Limpied ${clearCount} attendance records for ${dateKey}`);
     }
+    }, 'Limpiar', 'btn-warning');
 }
 
 // Sends the actual network request for a single cell save (called after debounce)
@@ -9719,7 +9760,7 @@ async function exportStudentAttendancePdf(mode) {
     }
 
     if (!records.length) {
-        alert('No hay registros de asistencia para este estudiante' + (mode === 'month' ? ' en este mes.' : '.'));
+        showToast('No hay registros de asistencia para este estudiante' + (mode === 'month' ? ' en este mes.' : '.'), 'warning');
         return;
     }
 
@@ -10039,15 +10080,12 @@ async function exportAttendanceToExcel() {
         let confirmMessage = 'Se exportará la asistencia completa del programa';
 
         if (promotionData && promotionData.startDate && promotionData.endDate) {
-            confirmMessage = `Se exportará la asistencia desde ${promotionData.startDate} hasta ${promotionData.endDate} (solo días laborables L-V).\n\nEl archivo Excel tendrá una pestaña por cada mes con datos de asistencia.\n\n¿Desea continuar?`;
+            confirmMessage = `Se exportará la asistencia desde ${promotionData.startDate} hasta ${promotionData.endDate} (solo días laborables L-V). El archivo Excel tendrá una pestaña por cada mes.`;
         } else {
-            confirmMessage += ' para el período completo del programa.\n\nEl archivo Excel tendrá una pestaña por cada mes con datos de asistencia.\n\n¿Desea continuar?';
+            confirmMessage += ' para el período completo del programa. El archivo Excel tendrá una pestaña por cada mes.';
         }
 
-        if (!confirm(confirmMessage)) {
-            return;
-        }
-
+        _showConfirmModal(escapeHtml(confirmMessage) + '<br><small class="text-muted">¿Desea continuar?</small>', async () => {
         // Mostrar spinner en el botón
         if (exportBtn) {
             exportBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Exportando...';
@@ -10090,6 +10128,7 @@ async function exportAttendanceToExcel() {
 
         showApiToast('Asistencia exportada correctamente.', 'success');
 
+        }, 'Exportar', 'btn-primary');
     } catch (error) {
         console.error('Error exporting attendance:', error);
         showApiToast('Error de red al exportar la asistencia. Inténtalo de nuevo.', 'danger');
@@ -12405,10 +12444,11 @@ function _buildEvalCompetencesHtmlForTarget(targetId, savedEval, projCompetences
             || {};
 
         const removed_sv = window._evalRemovedTools?.[String(targetId)]?.[String(comp.id)] || [];
-        // Determine the active tool names for this competence in this project
+        // Determine the active tool names for this competence in this project.
+        // If no tools were explicitly selected for this project, show nothing (empty) — do NOT fall back to allTools.
         const activeTool_sv = (comp.selectedTools && comp.selectedTools.length > 0)
             ? comp.selectedTools
-            : (comp.allTools && comp.allTools.length > 0 ? comp.allTools : []);
+            : [];
         const activeNames_sv = new Set(activeTool_sv.filter(n => !removed_sv.includes(n)));
 
         // All tool objects (with or without indicators) — keyed by name for lookup
@@ -12416,7 +12456,7 @@ function _buildEvalCompetencesHtmlForTarget(targetId, savedEval, projCompetences
         // Active tools that DO have indicators → shown as accordion checkboxes
         const activeToolsWithInds = activeNames_sv.size > 0
             ? allToolObjs_sv.filter(t => activeNames_sv.has(t.name) && t.indicators && t.indicators.length > 0)
-            : allToolObjs_sv.filter(t => t.indicators && t.indicators.length > 0);
+            : [];
         // Active tools that have NO indicators → shown as a warning notice
         const activeToolsNoInds = activeNames_sv.size > 0
             ? activeTool_sv.filter(n => !removed_sv.includes(n) && !allToolObjs_sv.find(t => t.name === n && t.indicators && t.indicators.length > 0))
@@ -12808,13 +12848,13 @@ function openEvaluationModal(mIdx, pIdx) {
             const removed_modal = window._evalRemovedTools?.[String(targetId)]?.[String(comp.id)] || [];
             const activeTool_modal = (comp.selectedTools && comp.selectedTools.length > 0)
                 ? comp.selectedTools
-                : (comp.allTools && comp.allTools.length > 0 ? comp.allTools : []);
+                : [];
             const activeNames_modal = new Set(activeTool_modal.filter(n => !removed_modal.includes(n)));
             const allToolObjs_modal = comp.toolsWithIndicators || [];
             // Active tools that DO have indicators → shown as accordion checkboxes
             const activeToolsWithInds = activeNames_modal.size > 0
                 ? allToolObjs_modal.filter(t => activeNames_modal.has(t.name) && t.indicators && t.indicators.length > 0)
-                : allToolObjs_modal.filter(t => t.indicators && t.indicators.length > 0);
+                : [];
             // Active tools that have NO indicators → shown as a warning notice
             const activeToolsNoInds_modal = activeNames_modal.size > 0
                 ? activeTool_modal.filter(n => !removed_modal.includes(n) && !allToolObjs_modal.find(t => t.name === n && t.indicators && t.indicators.length > 0))
@@ -13266,12 +13306,12 @@ function _openStudentEvalSubModalFor(studentId) {
             const removed_t3 = window._evalRemovedTools?.[String(targetId)]?.[String(comp.id)] || [];
             const activeTool_t3 = (comp.selectedTools && comp.selectedTools.length > 0)
                 ? comp.selectedTools
-                : (comp.allTools && comp.allTools.length > 0 ? comp.allTools : []);
+                : [];
             const activeNames_t3 = new Set(activeTool_t3.filter(n => !removed_t3.includes(n)));
             // Active tools that DO have indicators → shown as accordion checkboxes
             const activeToolsWithInds = activeNames_t3.size > 0
                 ? toolsWithInds_t3.filter(t => activeNames_t3.has(t.name) && t.indicators && t.indicators.length > 0)
-                : toolsWithInds_t3.filter(t => t.indicators && t.indicators.length > 0);
+                : [];
             // Active tools that have NO indicators → shown as a warning notice
             const activeToolsNoInds_t3 = activeNames_t3.size > 0
                 ? activeTool_t3.filter(n => !removed_t3.includes(n) && !toolsWithInds_t3.find(t => t.name === n && t.indicators && t.indicators.length > 0))
@@ -13840,7 +13880,7 @@ async function sendEvaluationByEmail() {
             return;
         }
 
-        await window.Reports.sendProjectReportByEmail(teamIndex, studentId, promotionId, studentEmail);
+        await window.Reports.sendProjectReportByEmail(teamIndex, studentId, promotionId, studentEmail, { silent: true });
         showToast('Informe de evaluación enviado correctamente', 'success');
     } catch (err) {
         console.error('[sendEvaluationByEmail]', err);
@@ -13872,17 +13912,17 @@ async function sendEvaluationToAllInProject() {
         return;
     }
 
-    const confirmed = window.confirm(
-        `¿Enviar el informe de evaluación a ${evaluatedEntries.length} estudiante${evaluatedEntries.length !== 1 ? 's' : ''} evaluados en "${proj?.name || saved.projectName}"?\n\nSe enviará un correo individual a cada uno.`
-    );
-    if (!confirmed) return;
-
+    const nEval = evaluatedEntries.length;
+    const projName = proj?.name || saved.projectName;
+    _showConfirmModal(
+        `¿Enviar el informe de evaluación a <strong>${nEval}</strong> estudiante${nEval !== 1 ? 's' : ''} evaluados en <em>"${escapeHtml(projName)}"</em>?<br><small class="text-muted">Se enviará un correo individual a cada uno.</small>`,
+        async () => {
     // Capturamos los datos necesarios ANTES de ceder el hilo,
     // ya que el estado global puede cambiar si el usuario navega.
     const token = localStorage.getItem('token');
     const students = window._evalState?.allStudents || window._evalState?.students || [];
-    const projectName = proj?.name || saved.projectName;
-    const total = evaluatedEntries.length;
+    const projectName = projName;
+    const total = nEval;
 
     // Iniciar badge de progreso — no bloqueamos la UI
     const taskId = _bgTaskManager.start(`Enviando informes 0/${total}...`);
@@ -13924,6 +13964,7 @@ async function sendEvaluationToAllInProject() {
             : `Informes enviados: ${sent}. Fallidos: ${failed}`;
         showToast(msg, failed > 0 ? 'warning' : 'success');
     }, 0);
+        }, 'Enviar', 'btn-primary');
 }
 
 /** Called by the "Cancelar" / "Volver" buttons in the inline eval panel or split view. */
@@ -14363,8 +14404,7 @@ async function _syncEvaluationsToStudentTracking(saved, mod, proj, students) {
 window.deleteStudentEvaluation = function (targetId) {
     const saved = window._evalCurrentSaved;
     if (!saved) return;
-    if (!confirm('¿Eliminar la evaluación de este estudiante?')) return;
-
+    _showConfirmModal('¿Eliminar la evaluación de este estudiante?', () => {
     saved.evaluations = (saved.evaluations || []).filter(e => String(e.targetId) !== String(targetId));
 
     // Remove from DOM immediately
@@ -14379,6 +14419,7 @@ window.deleteStudentEvaluation = function (targetId) {
     const mIdx = window._evalState.currentModuleIdx;
     const pIdx = window._evalState.currentProjectIdx;
     openEvaluationModal(mIdx, pIdx);
+    }, 'Eliminar', 'btn-danger');
 };
 
 /** Loads a student's existing evaluation into the sub-modal for editing */
@@ -14514,6 +14555,41 @@ const _bgTaskManager = (() => {
     return { start, update, finish };
 })();
 
+/**
+ * Shows a Bootstrap confirmation modal (replaces native confirm()).
+ * @param {string} htmlMessage - HTML content for the modal body
+ * @param {Function} onConfirm - Callback executed when the user confirms
+ * @param {string} [confirmLabel='Confirmar'] - Text for the confirm button
+ * @param {string} [confirmClass='btn-danger'] - Bootstrap class for the confirm button
+ */
+function _showConfirmModal(htmlMessage, onConfirm, confirmLabel = 'Confirmar', confirmClass = 'btn-danger') {
+    const existingModal = document.getElementById('_globalConfirmModal');
+    if (existingModal) existingModal.remove();
+
+    const id = '_globalConfirmModal';
+    const html = `
+    <div class="modal fade" id="${id}" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-body py-4 px-4">${htmlMessage}</div>
+          <div class="modal-footer border-0 pt-0">
+            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
+            <button type="button" class="btn ${confirmClass} btn-sm" id="${id}-confirm">${confirmLabel}</button>
+          </div>
+        </div>
+      </div>
+    </div>`;
+    document.body.insertAdjacentHTML('beforeend', html);
+    const modalEl = document.getElementById(id);
+    const modal = new bootstrap.Modal(modalEl);
+    document.getElementById(`${id}-confirm`).addEventListener('click', () => {
+        modal.hide();
+        onConfirm();
+    });
+    modalEl.addEventListener('hidden.bs.modal', () => modalEl.remove());
+    modal.show();
+}
+
 function showToast(message, type = 'info') {
     // Create a simple Bootstrap toast
     const id = 'toast-' + Date.now();
@@ -14540,11 +14616,11 @@ function showToast(message, type = 'info') {
 function downloadPromotionSyllabus() {
     const promotion = window.currentPromotion;
     if (!promotion) {
-        alert('Aún no se han cargado los datos de la promoción. Espera un momento e inténtalo de nuevo.');
+        showToast('Aún no se han cargado los datos de la promoción. Espera un momento e inténtalo de nuevo.', 'warning');
         return;
     }
     if (!window.SyllabusPDF) {
-        alert('El módulo de generación no está disponible. Recarga la página.');
+        showToast('El módulo de generación no está disponible. Recarga la página.', 'danger');
         return;
     }
 
