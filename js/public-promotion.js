@@ -1232,6 +1232,21 @@ async function loadVirtualClassroom() {
             }
         }
 
+        // Mostrar fecha de entrega si está definida
+        const dueDateSection = document.getElementById('aula-virtual-due-date-section');
+        const dueDateDisplay = document.getElementById('aula-virtual-due-date-display');
+        if (dueDateSection && dueDateDisplay) {
+            if (data.dueDate) {
+                const formatted = new Date(data.dueDate + 'T00:00:00').toLocaleDateString('es-ES', {
+                    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+                });
+                dueDateDisplay.textContent = formatted;
+                dueDateSection.classList.remove('d-none');
+            } else {
+                dueDateSection.classList.add('d-none');
+            }
+        }
+
         const compContainer = document.getElementById('aula-virtual-competences');
         if (compContainer) {
             const comps = Array.isArray(data.competences) ? data.competences : [];

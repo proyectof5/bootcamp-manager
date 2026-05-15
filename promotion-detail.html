@@ -779,7 +779,77 @@
                                                 </div>
                                             </div>
                                         </div>
-                                    </div>
+
+                                        <!-- Zoom Credentials Card -->
+                                        <div class="col-lg-6">
+                                            <div class="card h-100 border-0 shadow-sm">
+                                                <div class="card-header"
+                                                    style="background: linear-gradient(135deg, #2D8CFF 0%, #4FA9FF 100%);">
+                                                    <h6 class="mb-0 text-white"><i class="bi bi-camera-video me-2"></i>Zoom</h6>
+                                                </div>
+                                                <div class="card-body">
+                                                    <div class="mb-2">
+                                                        <label for="teacher-area-zoom-meeting-url" class="form-label small fw-bold">URL de la reunión</label>
+                                                        <input type="url" class="form-control form-control-sm" id="teacher-area-zoom-meeting-url"
+                                                            placeholder="https://us06web.zoom.us/j/..." />
+                                                    </div>
+                                                    <div class="row g-2 mb-3">
+                                                        <div class="col-6">
+                                                            <label for="teacher-area-zoom-meeting-id" class="form-label small fw-bold">ID de reunión</label>
+                                                            <input type="text" class="form-control form-control-sm" id="teacher-area-zoom-meeting-id"
+                                                                placeholder="123 456 7890" />
+                                                        </div>
+                                                        <div class="col-6">
+                                                            <label for="teacher-area-zoom-passcode" class="form-label small fw-bold">Código de acceso</label>
+                                                            <input type="text" class="form-control form-control-sm" id="teacher-area-zoom-passcode"
+                                                                placeholder="abc123" />
+                                                        </div>
+                                                        <div class="col-12">
+                                                            <label for="teacher-area-zoom-host-key" class="form-label small fw-bold">Host Key <span class="text-muted fw-normal">(opcional)</span></label>
+                                                            <input type="text" class="form-control form-control-sm" id="teacher-area-zoom-host-key"
+                                                                placeholder="123456" />
+                                                        </div>
+                                                        <div class="col-6">
+                                                            <label for="teacher-area-zoom-email" class="form-label small fw-bold">Email de la cuenta <span class="text-muted fw-normal">(opcional)</span></label>
+                                                            <input type="email" class="form-control form-control-sm" id="teacher-area-zoom-email"
+                                                                placeholder="docente@ejemplo.com" autocomplete="off" />
+                                                        </div>
+                                                        <div class="col-6">
+                                                            <label for="teacher-area-zoom-password" class="form-label small fw-bold">Contraseña de la cuenta <span class="text-muted fw-normal">(opcional)</span></label>
+                                                            <div class="password-input-group">
+                                                                <input type="password" class="form-control form-control-sm" id="teacher-area-zoom-password"
+                                                                    placeholder="••••••••" autocomplete="current-password" />
+                                                                <button type="button" class="password-toggle"
+                                                                    onclick="togglePasswordVisibility('teacher-area-zoom-password')">
+                                                                    <i class="bi bi-eye"></i>
+                                                                </button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                    <button class="btn btn-sm w-100"
+                                                        style="background-color: #2D8CFF; color: white; border: none; font-weight: 600;"
+                                                        onclick="saveZoomCredentials()">
+                                                        <i class="bi bi-save me-1"></i>Guardar credenciales
+                                                    </button>
+                                                </div>
+                                                <div class="card-footer bg-light border-top p-2">
+                                                    <small class="text-muted d-block mb-2">Estado:</small>
+                                                    <div class="d-flex gap-1 align-items-center">
+                                                        <a id="teacher-area-zoom-preview-btn" href="#"
+                                                            class="btn btn-sm btn-outline-primary hidden" target="_blank">
+                                                            <i class="bi bi-camera-video me-1"></i>Abrir Zoom
+                                                        </a>
+                                                        <button class="btn btn-sm btn-outline-danger" onclick="removeZoomCredentials()"
+                                                            id="teacher-area-remove-zoom-btn" style="display:none;">
+                                                            <i class="bi bi-trash"></i>
+                                                        </button>
+                                                        <small class="text-muted ms-1" id="teacher-area-no-zoom-message">No configurado</small>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                    </div><!-- /.row -->
                                 </div>
                             </div>
                         </div> <!-- End #teacher-area-subtabs-content -->
@@ -1460,6 +1530,18 @@
                                                 placeholder="https://github.com/organizacion/briefing-proyecto">
                                             <div id="vc-briefing-hint" class="form-text small text-muted d-none">
                                                 URL definida en el roadmap. Puedes editarla manualmente si lo necesitas.
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="row g-3 align-items-end mt-1">
+                                        <div class="col-md-3">
+                                            <label for="vc-due-date" class="form-label small fw-semibold text-muted">
+                                                <i class="bi bi-calendar-event me-1"></i>Fecha de entrega
+                                                <span class="text-muted fw-normal">(opcional)</span>
+                                            </label>
+                                            <input type="date" id="vc-due-date" class="form-control form-control-sm">
+                                            <div class="form-text small text-muted">
+                                                Se mostrará de forma destacada en el Aula Virtual pública.
                                             </div>
                                         </div>
                                     </div>
@@ -3112,6 +3194,7 @@ ISECR2 Finalizar cada programa con un máximo de bajas de 10%.</textarea>
             </div>
         </div>
     </div>
+
 </body>
 
 </html>

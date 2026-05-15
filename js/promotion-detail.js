@@ -2812,7 +2812,8 @@ async function loadAccessSettingsInTeacherArea() {
         // Load teaching content and asana workspace in parallel
         await Promise.all([
             _loadTeachingContentInTeacherArea(),
-            _loadAsanaWorkspaceInTeacherArea()
+            _loadAsanaWorkspaceInTeacherArea(),
+            _loadZoomCredentialsInTeacherArea()
         ]);
 
     } catch (error) {
@@ -2879,8 +2880,7 @@ async function _loadTeachingContentInTeacherArea() {
 /**
  * Load Asana workspace and display in teacher area accesos tab
  */
-async function _loadAsanaWorkspaceInTeacherArea() {
-    const token = localStorage.getItem('token');
+async function _loadAsanaWorkspaceInTeacherArea() {    const token = localStorage.getItem('token');
     try {
         const response = await fetch(`${API_URL}/api/promotions/${promotionId}/asana-workspace`, {
             headers: { 'Authorization': `Bearer ${token}` }
@@ -2930,6 +2930,106 @@ async function _loadAsanaWorkspaceInTeacherArea() {
     } catch (error) {
         console.error('Error loading Asana workspace in teacher area:', error);
     }
+}
+
+/**
+ * Carga las credenciales de Zoom y las muestra en la pestaña Accesos del Área del Docente
+ */
+async function _loadZoomCredentialsInTeacherArea() {
+    const token = localStorage.getItem('token');
+    try {
+        const response = await fetch(`${API_URL}/api/promotions/${promotionId}/zoom-credentials`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!response.ok) return;
+
+        const data = await response.json();
+        const urlInput = document.getElementById('teacher-area-zoom-meeting-url');
+        const idInput = document.getElementById('teacher-area-zoom-meeting-id');
+        const passcodeInput = document.getElementById('teacher-area-zoom-passcode');
+        const hostKeyInput = document.getElementById('teacher-area-zoom-host-key');
+        const emailInput = document.getElementById('teacher-area-zoom-email');
+        const passwordInput = document.getElementById('teacher-area-zoom-password');
+        const previewBtn = document.getElementById('teacher-area-zoom-preview-btn');
+        const noZoomMsg = document.getElementById('teacher-area-no-zoom-message');
+        const removeBtn = document.getElementById('teacher-area-remove-zoom-btn');
+
+        if (data && data.meetingUrl) {
+            if (urlInput) urlInput.value = data.meetingUrl || '';
+            if (idInput) idInput.value = data.meetingId || '';
+            if (passcodeInput) passcodeInput.value = data.passcode || '';
+            if (hostKeyInput) hostKeyInput.value = data.hostKey || '';
+            if (emailInput) emailInput.value = data.accountEmail || '';
+            if (passwordInput) passwordInput.value = data.accountPassword || '';
+            if (previewBtn) { previewBtn.href = data.meetingUrl; previewBtn.classList.remove('hidden'); }
+            if (noZoomMsg) noZoomMsg.style.display = 'none';
+            if (removeBtn) removeBtn.style.display = 'inline-block';
+        } else {
+            if (urlInput) urlInput.value = '';
+            if (idInput) idInput.value = '';
+            if (passcodeInput) passcodeInput.value = '';
+            if (hostKeyInput) hostKeyInput.value = '';
+            if (emailInput) emailInput.value = '';
+            if (passwordInput) passwordInput.value = '';
+            if (previewBtn) previewBtn.classList.add('hidden');
+            if (noZoomMsg) noZoomMsg.style.display = 'inline';
+            if (removeBtn) removeBtn.style.display = 'none';
+        }
+    } catch (error) {
+        console.error('Error loading Zoom credentials:', error);
+    }
+}
+
+async function saveZoomCredentials() {
+    const meetingUrl = document.getElementById('teacher-area-zoom-meeting-url')?.value?.trim();
+    const meetingId = document.getElementById('teacher-area-zoom-meeting-id')?.value?.trim();
+    const passcode = document.getElementById('teacher-area-zoom-passcode')?.value?.trim();
+    const hostKey = document.getElementById('teacher-area-zoom-host-key')?.value?.trim();
+    const accountEmail = document.getElementById('teacher-area-zoom-email')?.value?.trim();
+    const accountPassword = document.getElementById('teacher-area-zoom-password')?.value || null;
+
+    if (!meetingUrl && !meetingId) {
+        showToast('Introduce al menos la URL de reunión o el ID de reunión', 'warning');
+        return;
+    }
+
+    const token = localStorage.getItem('token');
+    try {
+        const res = await fetch(`${API_URL}/api/promotions/${promotionId}/zoom-credentials`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ meetingUrl, meetingId, passcode, hostKey, accountEmail: accountEmail || null, accountPassword })
+        });
+        if (res.ok) {
+            showToast('Credenciales de Zoom guardadas', 'success');
+            _loadZoomCredentialsInTeacherArea();
+        } else {
+            const err = await res.json().catch(() => ({}));
+            showToast(`Error: ${err.error || 'No se pudo guardar'}`, 'danger');
+        }
+    } catch (err) {
+        showToast('Error de red al guardar credenciales de Zoom', 'danger');
+    }
+}
+
+async function removeZoomCredentials() {
+    _showConfirmModal('¿Eliminar las credenciales de Zoom de esta promoción?', async () => {
+        const token = localStorage.getItem('token');
+        try {
+            const res = await fetch(`${API_URL}/api/promotions/${promotionId}/zoom-credentials`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) {
+                showToast('Credenciales de Zoom eliminadas', 'success');
+                _loadZoomCredentialsInTeacherArea();
+            } else {
+                showToast('Error al eliminar las credenciales de Zoom', 'danger');
+            }
+        } catch (err) {
+            showToast('Error de red al eliminar credenciales de Zoom', 'danger');
+        }
+    }, 'Eliminar', 'btn-danger');
 }
 
 // Load teacher quick actions overview
@@ -10553,6 +10653,10 @@ function initVirtualClassroomPanel(ext, promo) {
         _setBriefingSourceBadge(false);
     }
 
+    // Fill due date
+    const dueDateEl = document.getElementById('vc-due-date');
+    if (dueDateEl) dueDateEl.value = vc.dueDate || '';
+
     // Update status UI
     if (vc.isActive && activeValue) {
         statusBadge.textContent = `Proyecto activo: ${vc.projectName}`;
@@ -10754,6 +10858,7 @@ async function saveVirtualClassroom(isActive) {
     const selectEl = document.getElementById('vc-project-select');
     const repoBaseEl = document.getElementById('vc-repo-base');
     const briefingEl = document.getElementById('vc-briefing-url');
+    const dueDateEl = document.getElementById('vc-due-date');
     const statusBadge = document.getElementById('vc-status-badge');
     const deactivateBtn = document.getElementById('vc-deactivate-btn');
     const activateBtn = document.getElementById('vc-activate-btn');
@@ -10792,7 +10897,8 @@ async function saveVirtualClassroom(isActive) {
             projectName,
             projectType,
             repoBaseUrl: repoBaseEl.value || '',
-            briefingUrl: briefingEl.value || ''
+            briefingUrl: briefingEl.value || '',
+            dueDate: (dueDateEl && dueDateEl.value) ? dueDateEl.value : null
         }
     };
 
@@ -11507,6 +11613,9 @@ function openTeamHistoryView() {
 
     historyBody.innerHTML = _renderTeamHistoryBody(grupalProjects, allStudentIds, studentMap, studentPartners, allGrupalForSelect);
 
+    // Guardar datos para sendTeamEmailsForProject
+    window._teamHistoryData = { grupalProjects };
+
     // Wire up the "open groups" button
     const btn = historyBody.querySelector('#th-open-groups-btn');
     if (btn) {
@@ -11525,6 +11634,66 @@ function closeTeamHistoryView() {
     const historyPanel = document.getElementById('team-history-panel');
     if (historyPanel) historyPanel.classList.add('hidden');
     if (evalTabView) evalTabView.classList.remove('hidden');
+}
+
+/**
+ * Envía por email a cada estudiante de los grupos de un proyecto su asignación de equipo.
+ * @param {number} gProjectIdx - Índice en el array `grupalProjects` almacenado en window._teamHistoryData
+ */
+async function sendTeamEmailsForProject(gProjectIdx) {
+    const data = window._teamHistoryData;
+    if (!data) { showToast('No hay datos de equipos disponibles', 'warning'); return; }
+    const gp = data.grupalProjects[gProjectIdx];
+    if (!gp) return;
+
+    const allStudents = window._evalState?.students || [];
+    const studentMap = new Map(allStudents.map(s => [String(s.id || s._id), s]));
+
+    const recipients = [];
+    gp.groups.forEach(grp => {
+        const memberObjs = (grp.studentIds || []).map(id => studentMap.get(String(id))).filter(Boolean);
+        memberObjs.forEach(student => {
+            if (!student.email) return;
+            recipients.push({
+                studentEmail: student.email,
+                studentName: `${student.name || ''} ${student.lastname || ''}`.trim(),
+                projectName: gp.projName,
+                groupName: grp.groupName || `Grupo ${gp.groups.indexOf(grp) + 1}`,
+                members: memberObjs.map(m => ({ name: m.name || '', lastname: m.lastname || '' }))
+            });
+        });
+    });
+
+    if (recipients.length === 0) {
+        showToast('Ningún estudiante de este proyecto tiene email registrado', 'warning');
+        return;
+    }
+
+    const noEmail = gp.groups.flatMap(grp => (grp.studentIds || []).map(id => studentMap.get(String(id))))
+        .filter(Boolean).filter(s => !s.email).length;
+
+    const taskId = `send-team-${gp.projName}-${Date.now()}`;
+    _bgTaskManager.start(taskId, `Notificando equipos: ${gp.projName}…`);
+
+    try {
+        const token = localStorage.getItem('token');
+        const res = await fetch(`${API_URL}/api/promotions/${promotionId}/send-team-email`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ recipients })
+        });
+        const result = await res.json();
+        _bgTaskManager.finish(taskId);
+        if (res.ok) {
+            const msg = `✉ ${result.sent} correos enviados${noEmail > 0 ? ` · ${noEmail} sin email` : ''}`;
+            showToast(msg, result.failed > 0 ? 'warning' : 'success');
+        } else {
+            showToast(`Error al enviar emails: ${result.error}`, 'danger');
+        }
+    } catch (err) {
+        _bgTaskManager.finish(taskId);
+        showToast('Error de red al enviar emails de equipos', 'danger');
+    }
 }
 
 // Keep backward compat alias used by button onclick
@@ -11588,10 +11757,13 @@ function _renderTeamHistoryBody(grupalProjects, allStudentIds, studentMap, stude
         html += `<div class="accordion-item">
             <h2 class="accordion-header" id="heading-${itemId}">
                 <button class="accordion-button collapsed py-2" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-${itemId}" aria-expanded="false" aria-controls="collapse-${itemId}" style="background: #fff;">
-                    <div class="d-flex flex-column text-start">
+                    <div class="d-flex flex-column text-start flex-grow-1">
                         <span class="text-primary fw-bold small" style="color:#E85D26 !important; font-size:0.7rem; line-height:1;">${escapeHtml(gp.modName)}</span>
                         <span class="fw-bold mt-1" style="color:#1A1A2E; font-size:0.9rem;">${escapeHtml(gp.projName)}</span>
                     </div>
+                    <button class="btn btn-sm btn-outline-warning me-2 flex-shrink-0" style="font-size:0.75rem;" onclick="event.stopPropagation(); sendTeamEmailsForProject(${idx})" title="Enviar asignación de equipo por correo">
+                        <i class="bi bi-envelope me-1"></i>Notificar
+                    </button>
                 </button>
             </h2>
             <div id="collapse-${itemId}" class="accordion-collapse collapse" aria-labelledby="heading-${itemId}" data-bs-parent="#projectTeamsAccordion">
