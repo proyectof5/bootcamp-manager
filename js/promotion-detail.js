@@ -8596,8 +8596,9 @@ window._bulkReportTransversal = function () {
 }
 
 window._bulkReportByProject = async function () {
-    // ... rest of the function remains the same but attached to window
-    // I'll just change the start of the function in SearchReplace
+    // Capture selection BEFORE any await so re-renders can't clear checkboxes
+    window._pendingBulkProjectIds = _getSelectedStudentIds();
+
     // Remove any existing modal
     document.getElementById('_project-picker-modal')?.remove();
 
@@ -8648,8 +8649,8 @@ window._bulkReportByProject = async function () {
             `<option value="${name.replace(/"/g, '&quot;')}" data-module="${moduleName.replace(/"/g, '&quot;')}">${name}</option>`
         ).join('');
 
-        // Get selected student IDs to know how many PDFs will be generated
-        const selectedIds = _getSelectedStudentIds();
+        // Use the IDs captured before the async fetch (prevents losing selection after re-render)
+        const selectedIds = window._pendingBulkProjectIds || [];
 
         // Build the picker modal
         const modal = document.createElement('div');
@@ -8727,8 +8728,9 @@ function _confirmBulkProjectDownload() {
     const projectName = sel?.value;
     if (!projectName) return;
     document.getElementById('_project-picker-modal')?.remove();
-    // Pass the currently selected student IDs (or null = all students)
-    const selectedIds = _getSelectedStudentIds();
+    // Use IDs captured before the modal was opened (safe against re-renders during async fetch)
+    const selectedIds = window._pendingBulkProjectIds || [];
+    window._pendingBulkProjectIds = null;
     window.Reports?.printBulkByProject(projectName, promotionId, selectedIds.length ? selectedIds : null);
 }
 // ── /Bulk PDF Report helpers ──────────────────────────────────────────────────
@@ -12470,6 +12472,9 @@ function _renderEvalTargetsList(saved, students) {
         if (isEvaluated) {
             statusIcons += `<i class="bi bi-check-circle-fill eval-target-check" title="Evaluado" style="font-size: 0.9rem; margin-top: 2px;"></i>`;
         }
+        if (evalEntry && evalEntry.reportSentAt) {
+            statusIcons += `<i class="bi bi-envelope-check-fill text-success" title="Informe enviado el ${new Date(evalEntry.reportSentAt).toLocaleDateString('es-ES')}" style="font-size: 0.9rem; margin-top: 2px;"></i>`;
+        }
 
         const withdrawnBadge = t.isWithdrawn
             ? `<span class="badge bg-danger ms-1" style="font-size:0.6rem;vertical-align:middle;">BAJA</span>`
@@ -14119,6 +14124,16 @@ async function sendEvaluationByEmail() {
         }
 
         await window.Reports.sendProjectReportByEmail(teamIndex, studentId, promotionId, studentEmail, { silent: true });
+
+        // Mark the evaluation entry as sent and persist
+        const savedForMark = window._evalCurrentSaved;
+        if (savedForMark) {
+            const entryToMark = (savedForMark.evaluations || []).find(e => String(e.targetId) === String(studentId));
+            if (entryToMark) entryToMark.reportSentAt = new Date().toISOString();
+            await _persistEvaluations();
+            _renderEvalTargetsList(savedForMark, window._evalState.allStudents || window._evalState.students);
+        }
+
         showToast('Informe de evaluación enviado correctamente', 'success');
     } catch (err) {
         console.error('[sendEvaluationByEmail]', err);
@@ -14180,10 +14195,16 @@ async function sendEvaluationToAllInProject() {
     const mod = modules[mIdx];
     const proj = mod?.projects[pIdx];
 
-    // Solo enviar a estudiantes realmente evaluados (tienen evaluatedAt)
-    const evaluatedEntries = (saved.evaluations || []).filter(e => e.evaluatedAt && !e.isGroup);
+    // Solo enviar a estudiantes realmente evaluados (tienen evaluatedAt) y cuyo informe no se haya enviado aún
+    const allEvaluatedEntries = (saved.evaluations || []).filter(e => e.evaluatedAt && !e.isGroup);
+    const evaluatedEntries = allEvaluatedEntries.filter(e => !e.reportSentAt);
     if (evaluatedEntries.length === 0) {
-        showToast('No hay estudiantes evaluados en este proyecto', 'warning');
+        const alreadySentCount = allEvaluatedEntries.filter(e => e.reportSentAt).length;
+        if (alreadySentCount > 0) {
+            showToast('Todos los informes ya han sido enviados anteriormente', 'info');
+        } else {
+            showToast('No hay estudiantes evaluados en este proyecto', 'warning');
+        }
         return;
     }
 
@@ -14224,6 +14245,7 @@ async function sendEvaluationToAllInProject() {
                 if (teamIndex < 0) teamIndex = 0;
 
                 await window.Reports.sendProjectReportByEmail(teamIndex, studentId, promotionId, studentEmail, { silent: true });
+                entry.reportSentAt = new Date().toISOString();
                 sent++;
             } catch (err) {
                 console.error('[sendEvaluationToAllInProject] student error:', entry.targetId, err);
@@ -14238,6 +14260,10 @@ async function sendEvaluationToAllInProject() {
             ? `Informes enviados a ${sent} estudiante${sent !== 1 ? 's' : ''} correctamente`
             : `Informes enviados: ${sent}. Fallidos: ${failed}`;
         showToast(msg, failed > 0 ? 'warning' : 'success');
+        // Persist all reportSentAt stamps in one go and refresh the list
+        await _persistEvaluations();
+        const savedAfter = window._evalCurrentSaved;
+        if (savedAfter) _renderEvalTargetsList(savedAfter, window._evalState.allStudents || window._evalState.students);
     }, 0);
         }, 'Enviar', 'btn-primary');
 }
