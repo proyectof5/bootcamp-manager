@@ -916,11 +916,14 @@ function displayPildoras() {
             </td>
             <td>
                 <div class="dropdown pildora-students-dropdown">
-                    <button class="btn btn-outline-secondary btn-sm dropdown-toggle w-100 text-start" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    <button class="btn btn-outline-secondary btn-sm dropdown-toggle w-100 text-start text-truncate"
+                            type="button" data-bs-toggle="dropdown" aria-expanded="false"
+                            style="max-width:100%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;"
+                            title="${selectedIds.length > 0
+                        ? selectedIds.map(id => { const s = students.find(x => x.id === id); return s ? `${s.name || ''} ${s.lastname || ''}`.trim() : id; }).join(', ')
+                        : 'Seleccionar estudiantes'}">
                         ${selectedIds.length > 0
-                ? (selectedIds.length === 1
-                    ? students.find(s => s.id === selectedIds[0])?.name + ' ' + (students.find(s => s.id === selectedIds[0])?.lastname || '')
-                    : `${selectedIds.length} estudiantes seleccionados`)
+                ? selectedIds.map(id => { const s = students.find(x => x.id === id); return s ? `${s.name || ''} ${s.lastname || ''}`.trim() : id; }).join(', ')
                 : 'Seleccionar estudiantes'}
                     </button>
                     <ul class="dropdown-menu w-100" style="max-height: 300px; overflow-y: auto;">
@@ -929,7 +932,9 @@ function displayPildoras() {
                 : students.map(s => {
                     const value = s.id || '';
                     const label = `${s.name || ''} ${s.lastname || ''}`.trim() || value;
-                    const checked = selectedIds.includes(value) ? 'checked' : '';
+                    const isChecked = selectedIds.includes(value);
+                    const checked = isChecked ? 'checked' : '';
+                    const labelStyle = isChecked ? 'color:#adb5bd;' : '';
                     const inputId = `pild-${index}-${escapeHtml(value)}`;
                     return `
                                     <li class="dropdown-item-custom">
@@ -940,7 +945,7 @@ function displayPildoras() {
                                                    id="${inputId}" 
                                                    ${checked}
                                                    data-pildora-index="${index}">
-                                            <label class="form-check-label" for="${inputId}">${escapeHtml(label)}</label>
+                                            <label class="form-check-label" for="${inputId}" style="${labelStyle}">${escapeHtml(label)}</label>
                                         </div>
                                     </li>
                                 `;
@@ -972,6 +977,9 @@ function displayPildoras() {
     document.querySelectorAll('.pildora-student-checkbox').forEach(checkbox => {
         checkbox.addEventListener('change', function () {
             updatePildoraStudentSelection(parseInt(this.dataset.pildoraIndex), this.value, this.checked);
+            // Update the label color to reflect checked state
+            const label = this.closest('.form-check')?.querySelector('.form-check-label');
+            if (label) label.style.color = this.checked ? '#adb5bd' : '';
             // Persist changes to server
             const currentModule = promotionModules[currentModuleIndex];
             if (currentModule) {
@@ -1337,20 +1345,20 @@ function updatePildoraStudentSelection(pildoraIndex, studentId, isChecked) {
         pildora.students = pildora.students.filter(s => s.id !== studentId);
     }
 
-    // Update dropdown button text
+    // Update dropdown button text with real names
     const checkbox = document.querySelector(`input[data-pildora-index="${pildoraIndex}"][value="${studentId}"]`);
     if (checkbox) {
         const dropdown = checkbox.closest('.dropdown');
-        const button = dropdown.querySelector('.dropdown-toggle');
+        const button = dropdown?.querySelector('.dropdown-toggle');
         const selectedStudents = pildora.students || [];
 
         if (selectedStudents.length === 0) {
             button.textContent = 'Seleccionar estudiantes';
-        } else if (selectedStudents.length === 1) {
-            const student = selectedStudents[0];
-            button.textContent = studentFullName(student);
+            button.title = '';
         } else {
-            button.textContent = `${selectedStudents.length} estudiantes seleccionados`;
+            const names = selectedStudents.map(s => `${s.name || ''} ${s.lastname || ''}`.trim()).join(', ');
+            button.textContent = names;
+            button.title = names;
         }
     }
 }
@@ -6744,10 +6752,8 @@ function setupForms() {
         const name = document.getElementById('student-name').value;
         const lastname = document.getElementById('student-lastname').value;
         const email = document.getElementById('student-email').value;
-        // const englishLevel = document.getElementById('student-english-level')?.value;
-        // const educationLevel = document.getElementById('student-education-level')?.value;
-        // const profession = document.getElementById('student-profession')?.value;
-        // const community = document.getElementById('student-community')?.value;
+        const githubUser = document.getElementById('student-github')?.value?.trim() || '';
+        const laptopLoan = document.getElementById('student-laptop-loan')?.checked || false;
 
         // Check if we're editing an existing student
         const editingStudentId = document.getElementById('student-form').dataset.editingStudentId;
@@ -6757,7 +6763,9 @@ function setupForms() {
         const studentData = {
             name,
             lastname,
-            email
+            email,
+            githubUser,
+            laptopLoan
         };
 
         //console.log('Sending student data:', studentData);
@@ -7134,13 +7142,17 @@ function editStudent(studentId) {
     document.getElementById('student-name').value = student.name || '';
     document.getElementById('student-lastname').value = student.lastname || '';
     document.getElementById('student-email').value = student.email || '';
+    const githubInput = document.getElementById('student-github');
+    if (githubInput) githubInput.value = student.githubUser || '';
+    const laptopInput = document.getElementById('student-laptop-loan');
+    if (laptopInput) laptopInput.checked = !!student.laptopLoan;
 
     // Store the student ID for updating
     document.getElementById('student-form').dataset.editingStudentId = studentId;
 
     // Update modal title
     const modalTitle = document.querySelector('#studentModal .modal-title');
-    if (modalTitle) modalTitle.textContent = 'Edit Student';
+    if (modalTitle) modalTitle.textContent = 'Editar Estudiante';
 
     // Show the modal
     studentModal.show();
