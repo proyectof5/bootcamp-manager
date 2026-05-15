@@ -1764,9 +1764,13 @@ th, td {
 }
 
 #eval-right-body {
-    overflow: scroll;
-    height: 100vh;
-    margin-bottom: 6rem;
+    flex: 1;
+    overflow-y: auto;
+    min-height: 0;
+}
+
+#eval-right-header {
+    flex-shrink: 0;
 }
 
 .eval-comp-card:hover {
