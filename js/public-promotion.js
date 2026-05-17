@@ -860,27 +860,34 @@ function updateSidebarWithExtendedInfo(info) {
     // Add Píldoras right after Roadmap if they exist
     if ((Array.isArray(info.pildoras) && info.pildoras.length > 0) ||
         (Array.isArray(info.modulesPildoras) && info.modulesPildoras.some(mp => Array.isArray(mp.pildoras) && mp.pildoras.length > 0))) {
-        //console.log('Adding pildoras section to sidebar right after roadmap');
-        const pildorasLi = document.createElement('li');
-        pildorasLi.className = 'nav-item';
-        pildorasLi.innerHTML = '<a class="nav-link" href="#pildoras-wrapper" onclick="switchPublicTab(\'progreso\')"><i class="bi bi-lightbulb me-2"></i>Píldoras</a>';
+        if (!nav.querySelector('a[href="#pildoras-wrapper"]')) {
+            const pildorasLi = document.createElement('li');
+            pildorasLi.className = 'nav-item';
+            pildorasLi.innerHTML = '<a class="nav-link" href="#pildoras-wrapper" onclick="switchPublicTab(\'progreso\')"><i class="bi bi-lightbulb me-2"></i>Píldoras</a>';
 
-        if (roadmapItem) {
-            roadmapItem.insertAdjacentElement('afterend', pildorasLi);
-        } else if (quickLinksItem) {
-            nav.insertBefore(pildorasLi, quickLinksItem);
-        } else {
-            nav.appendChild(pildorasLi);
+            if (roadmapItem) {
+                roadmapItem.insertAdjacentElement('afterend', pildorasLi);
+            } else if (quickLinksItem) {
+                nav.insertBefore(pildorasLi, quickLinksItem);
+            } else {
+                nav.appendChild(pildorasLi);
+            }
         }
 
         // Add Calendar right after Píldoras, but only if a Google Calendar was configured
-        if (window._calendarConfigured) {
+        if (window._calendarConfigured && !nav.querySelector('a[href="#calendar"]')) {
+            const pildorasAnchor = nav.querySelector('a[href="#pildoras-wrapper"]');
+            const pildorasInsertRef = pildorasAnchor ? pildorasAnchor.parentElement : null;
             const calendarLi = document.createElement('li');
             calendarLi.className = 'nav-item';
             calendarLi.innerHTML = '<a class="nav-link" href="#calendar" onclick="switchPublicTab(\'progreso\')"><i class="bi bi-calendar me-2"></i>Calendario</a>';
-            pildorasLi.insertAdjacentElement('afterend', calendarLi);
+            if (pildorasInsertRef) {
+                pildorasInsertRef.insertAdjacentElement('afterend', calendarLi);
+            } else {
+                nav.appendChild(calendarLi);
+            }
         }
-    } else if (window._calendarConfigured) {
+    } else if (window._calendarConfigured && !nav.querySelector('a[href="#calendar"]')) {
         // No pildoras but calendar exists — insert after Roadmap or at top
         const calendarLi = document.createElement('li');
         calendarLi.className = 'nav-item';
@@ -897,69 +904,39 @@ function updateSidebarWithExtendedInfo(info) {
     // Aula Virtual sidebar entry is added later by loadVirtualClassroom() only when there is an active project
 
     // Add other Program Info sections before Quick Links
-    if (info.schedule && hasScheduleData(info.schedule)) {
-        //console.log('Adding schedule section to sidebar');
+    if (info.schedule && hasScheduleData(info.schedule) && !nav.querySelector('a[href="#horario-wrapper"]')) {
         const li = document.createElement('li');
         li.className = 'nav-item';
         li.innerHTML = '<a class="nav-link" href="#horario-wrapper" onclick="switchPublicTab(\'info\')"><i class="bi bi-clock me-2"></i>Horario</a>';
-
-        if (quickLinksItem) {
-            nav.insertBefore(li, quickLinksItem);
-        } else {
-            nav.appendChild(li);
-        }
+        if (quickLinksItem) { nav.insertBefore(li, quickLinksItem); } else { nav.appendChild(li); }
     }
 
-    if (info.team && info.team.length > 0) {
-        //console.log('Adding team section to sidebar');
+    if (info.team && info.team.length > 0 && !nav.querySelector('a[href="#equipo-wrapper"]')) {
         const li = document.createElement('li');
         li.className = 'nav-item';
         li.innerHTML = '<a class="nav-link" href="#equipo-wrapper" onclick="switchPublicTab(\'info\')"><i class="bi bi-people me-2"></i>Equipo</a>';
-
-        if (quickLinksItem) {
-            nav.insertBefore(li, quickLinksItem);
-        } else {
-            nav.appendChild(li);
-        }
+        if (quickLinksItem) { nav.insertBefore(li, quickLinksItem); } else { nav.appendChild(li); }
     }
 
-    if (info.evaluation && info.evaluation.trim()) {
-        //console.log('Adding evaluation section to sidebar');
+    if (info.evaluation && info.evaluation.trim() && !nav.querySelector('a[href="#evaluacion-wrapper"]')) {
         const li = document.createElement('li');
         li.className = 'nav-item';
         li.innerHTML = '<a class="nav-link" href="#evaluacion-wrapper" onclick="switchPublicTab(\'info\')"><i class="bi bi-clipboard-check me-2"></i>Evaluación</a>';
-
-        if (quickLinksItem) {
-            nav.insertBefore(li, quickLinksItem);
-        } else {
-            nav.appendChild(li);
-        }
+        if (quickLinksItem) { nav.insertBefore(li, quickLinksItem); } else { nav.appendChild(li); }
     }
 
-    if (info.resources && info.resources.length > 0) {
-        //console.log('Adding resources section to sidebar');
+    if (info.resources && info.resources.length > 0 && !nav.querySelector('a[href="#recursos-wrapper"]')) {
         const li = document.createElement('li');
         li.className = 'nav-item';
         li.innerHTML = '<a class="nav-link" href="#recursos-wrapper" onclick="switchPublicTab(\'progreso\'); expandProgramInfoResourcesIfPresent();"><i class="bi bi-tools me-2"></i>Recursos</a>';
-
-        if (quickLinksItem) {
-            nav.insertBefore(li, quickLinksItem);
-        } else {
-            nav.appendChild(li);
-        }
+        if (quickLinksItem) { nav.insertBefore(li, quickLinksItem); } else { nav.appendChild(li); }
     }
 
-    if (Array.isArray(info.competences) && info.competences.length > 0) {
-        //console.log('Adding competences section to sidebar');
+    if (Array.isArray(info.competences) && info.competences.length > 0 && !nav.querySelector('a[href="#competences-section"]')) {
         const li = document.createElement('li');
         li.className = 'nav-item';
         li.innerHTML = '<a class="nav-link" href="#competences-section" onclick="switchPublicTab(\'info\')"><i class="bi bi-award me-2"></i>Competencias</a>';
-
-        if (quickLinksItem) {
-            nav.insertBefore(li, quickLinksItem);
-        } else {
-            nav.appendChild(li);
-        }
+        if (quickLinksItem) { nav.insertBefore(li, quickLinksItem); } else { nav.appendChild(li); }
     }
 }
 
@@ -1147,6 +1124,36 @@ async function loadExtendedInfo() {
             displayExtendedInfo(info);
             displayPublicCompetences(info);
             await loadVirtualClassroom();
+
+            // ── Polling setup (only once) ─────────────────────────────────
+            if (!window._pildorasPollingInterval) {
+                const _pollInterval = 30000; // 30 seconds
+
+                const _doPoll = async () => {
+                    try {
+                        const r = await fetch(`${API_URL}/api/promotions/${promotionId}/extended-info?t=${Date.now()}`);
+                        if (r.ok) {
+                            const pollInfo = await r.json();
+                            displayExtendedInfo(pollInfo);
+                            displayPublicCompetences(pollInfo);
+                        }
+                    } catch (_) {}
+                };
+
+                window._pildorasPollingInterval = setInterval(_doPoll, _pollInterval);
+
+                // Pause polling when tab is hidden, resume + refresh immediately when visible again
+                document.addEventListener('visibilitychange', () => {
+                    if (document.hidden) {
+                        clearInterval(window._pildorasPollingInterval);
+                        window._pildorasPollingInterval = null;
+                    } else {
+                        // Refresh immediately on tab focus, then restart interval
+                        _doPoll();
+                        window._pildorasPollingInterval = setInterval(_doPoll, _pollInterval);
+                    }
+                });
+            }
         } else {
             //console.log('No extended info found or error loading:', response.status);
         }
@@ -1229,6 +1236,21 @@ async function loadVirtualClassroom() {
                 </a>`;
             } else {
                 briefingEl.innerHTML = '<span class="text-muted small fst-italic">El formador no ha definido un briefing.</span>';
+            }
+        }
+
+        // Mostrar fecha de entrega si está definida
+        const dueDateSection = document.getElementById('aula-virtual-due-date-section');
+        const dueDateDisplay = document.getElementById('aula-virtual-due-date-display');
+        if (dueDateSection && dueDateDisplay) {
+            if (data.dueDate) {
+                const formatted = new Date(data.dueDate + 'T00:00:00').toLocaleDateString('es-ES', {
+                    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
+                });
+                dueDateDisplay.textContent = formatted;
+                dueDateSection.classList.remove('d-none');
+            } else {
+                dueDateSection.classList.add('d-none');
             }
         }
 

@@ -825,6 +825,10 @@
           style="background:#f1f3f5;color:#4A4A6A;border:1px solid #dee2e6;">
           <i class="bi bi-download me-1"></i>Descargar PDF
         </button>
+        <button type="button" class="btn btn-sm" id="${id}-students-btn"
+          style="background:#0d6efd;color:#fff;border:none;">
+          <i class="bi bi-envelope me-1"></i>Enviar a estudiantes
+        </button>
         <button type="button" class="btn btn-sm" id="${id}-send-btn" 
           style="background:#FF6B35;color:#fff;border:none;display:none;">
           <i class="bi bi-send me-1"></i>Generar y Enviar
@@ -844,9 +848,10 @@
             const emailSec  = document.getElementById(`${id}-email-section`);
             const destSel   = document.getElementById(`${id}-dest-select`);
             const manualIn  = document.getElementById(`${id}-manual-email`);
-            const downBtn   = document.getElementById(`${id}-download-btn`);
-            const excelBtn  = document.getElementById(`${id}-excel-btn`);
-            const sendBtn   = document.getElementById(`${id}-send-btn`);
+            const downBtn     = document.getElementById(`${id}-download-btn`);
+            const excelBtn    = document.getElementById(`${id}-excel-btn`);
+            const sendBtn     = document.getElementById(`${id}-send-btn`);
+            const studentsBtn = document.getElementById(`${id}-students-btn`);
 
             sendCheck.addEventListener('change', () => {
                 const checked = sendCheck.checked;
@@ -902,6 +907,17 @@
                  action: 'send',
                  email: email,
                  sendFormat: sendFormat
+               });
+            });
+
+            studentsBtn.addEventListener('click', () => {
+               if (resolved) return;
+               resolved = true;
+               const val = parseInt(document.getElementById(`${id}-select`).value, 10);
+               modal.hide();
+               resolve({
+                 weekIdx: isNaN(val) ? 0 : val,
+                 action: 'send-students'
                });
             });
 
@@ -2594,6 +2610,22 @@ async function printActaInicio(promotionId) {
                 } else {
                     const error = await emailRes.json();
                     throw new Error(error.error || 'Error al enviar el email');
+                }
+            } else if (selection.action === 'send-students') {
+                _showSaving('Enviando resumen a estudiantes...');
+                const studentsRes = await fetch(`${API_URL}/api/promotions/${promotionId}/send-attendance-email`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify({ bulk: true, weekStart: startStr, weekEnd: endStr })
+                });
+                _hideSaving();
+                const studentsResult = await studentsRes.json();
+                if (studentsRes.ok) {
+                    const msg = `✉ ${studentsResult.sent} enviados${studentsResult.failed > 0 ? ` · ${studentsResult.failed} sin email` : ''}`;
+                    if (window.showToast) window.showToast(msg, studentsResult.failed > 0 ? 'warning' : 'success');
+                    else alert(msg);
+                } else {
+                    throw new Error(studentsResult.error || 'Error al enviar');
                 }
             } else {
                 // Default: download PDF

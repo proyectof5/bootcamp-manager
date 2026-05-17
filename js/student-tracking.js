@@ -284,6 +284,17 @@
                                                 <input type="email" class="form-control" id="ficha-student-email" readonly>
                                                 <div class="form-text">El email no puede ser modificado.</div>
                                             </div>
+                                            <div class="col-md-6">
+                                                <label class="form-label fw-bold">Usuario de GitHub</label>
+                                                <input type="text" class="form-control" id="ficha-student-github" placeholder="ej. octocat">
+                                            </div>
+                                            <div class="col-md-6 d-flex flex-column justify-content-end">
+                                                <label class="form-label fw-bold">Préstamo de ordenador</label>
+                                                <div class="form-check form-switch mt-1">
+                                                    <input class="form-check-input" type="checkbox" id="ficha-student-laptop-loan" role="switch">
+                                                    <label class="form-check-label" for="ficha-student-laptop-loan">Sí, tiene préstamo</label>
+                                                </div>
+                                            </div>
                                         </div>
                                         <div class="mt-4 text-end">
                                             <button type="submit" class="btn btn-primary px-4">
@@ -384,6 +395,9 @@
         _setVal('ficha-student-name', s.name);
         _setVal('ficha-student-lastname', s.lastname);
         _setVal('ficha-student-email', s.email);
+        _setVal('ficha-student-github', s.githubUser);
+        const laptopEl = document.getElementById('ficha-student-laptop-loan');
+        if (laptopEl) laptopEl.checked = !!s.laptopLoan;
 
         // ── Tracking técnico ──
         _renderTeacherNotes();
@@ -2152,6 +2166,8 @@
             name: _getVal('fp-name', 'ficha-student-name'),
             lastname: _getVal('fp-lastname', 'ficha-student-lastname'),
             email: _getVal('fp-email', 'ficha-student-email'),
+            githubUser: document.getElementById('ficha-student-github')?.value?.trim() || '',
+            laptopLoan: document.getElementById('ficha-student-laptop-loan')?.checked || false,
             phone: document.getElementById('fp-phone')?.value?.trim() || '',
             age: parseInt(document.getElementById('fp-age')?.value) || null,
             administrativeSituation: document.getElementById('fp-admin-situation')?.value || '',

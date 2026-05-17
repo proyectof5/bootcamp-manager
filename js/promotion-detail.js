@@ -916,11 +916,14 @@ function displayPildoras() {
             </td>
             <td>
                 <div class="dropdown pildora-students-dropdown">
-                    <button class="btn btn-outline-secondary btn-sm dropdown-toggle w-100 text-start" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                    <button class="btn btn-outline-secondary btn-sm dropdown-toggle w-100 text-start text-truncate"
+                            type="button" data-bs-toggle="dropdown" aria-expanded="false"
+                            style="max-width:100%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;"
+                            title="${selectedIds.length > 0
+                        ? selectedIds.map(id => { const s = students.find(x => x.id === id); return s ? `${s.name || ''} ${s.lastname || ''}`.trim() : id; }).join(', ')
+                        : 'Seleccionar estudiantes'}">
                         ${selectedIds.length > 0
-                ? (selectedIds.length === 1
-                    ? students.find(s => s.id === selectedIds[0])?.name + ' ' + (students.find(s => s.id === selectedIds[0])?.lastname || '')
-                    : `${selectedIds.length} estudiantes seleccionados`)
+                ? selectedIds.map(id => { const s = students.find(x => x.id === id); return s ? `${s.name || ''} ${s.lastname || ''}`.trim() : id; }).join(', ')
                 : 'Seleccionar estudiantes'}
                     </button>
                     <ul class="dropdown-menu w-100" style="max-height: 300px; overflow-y: auto;">
@@ -929,7 +932,9 @@ function displayPildoras() {
                 : students.map(s => {
                     const value = s.id || '';
                     const label = `${s.name || ''} ${s.lastname || ''}`.trim() || value;
-                    const checked = selectedIds.includes(value) ? 'checked' : '';
+                    const isChecked = selectedIds.includes(value);
+                    const checked = isChecked ? 'checked' : '';
+                    const labelStyle = isChecked ? 'color:#adb5bd;' : '';
                     const inputId = `pild-${index}-${escapeHtml(value)}`;
                     return `
                                     <li class="dropdown-item-custom">
@@ -940,7 +945,7 @@ function displayPildoras() {
                                                    id="${inputId}" 
                                                    ${checked}
                                                    data-pildora-index="${index}">
-                                            <label class="form-check-label" for="${inputId}">${escapeHtml(label)}</label>
+                                            <label class="form-check-label" for="${inputId}" style="${labelStyle}">${escapeHtml(label)}</label>
                                         </div>
                                     </li>
                                 `;
@@ -972,6 +977,9 @@ function displayPildoras() {
     document.querySelectorAll('.pildora-student-checkbox').forEach(checkbox => {
         checkbox.addEventListener('change', function () {
             updatePildoraStudentSelection(parseInt(this.dataset.pildoraIndex), this.value, this.checked);
+            // Update the label color to reflect checked state
+            const label = this.closest('.form-check')?.querySelector('.form-check-label');
+            if (label) label.style.color = this.checked ? '#adb5bd' : '';
             // Persist changes to server
             const currentModule = promotionModules[currentModuleIndex];
             if (currentModule) {
@@ -1337,20 +1345,20 @@ function updatePildoraStudentSelection(pildoraIndex, studentId, isChecked) {
         pildora.students = pildora.students.filter(s => s.id !== studentId);
     }
 
-    // Update dropdown button text
+    // Update dropdown button text with real names
     const checkbox = document.querySelector(`input[data-pildora-index="${pildoraIndex}"][value="${studentId}"]`);
     if (checkbox) {
         const dropdown = checkbox.closest('.dropdown');
-        const button = dropdown.querySelector('.dropdown-toggle');
+        const button = dropdown?.querySelector('.dropdown-toggle');
         const selectedStudents = pildora.students || [];
 
         if (selectedStudents.length === 0) {
             button.textContent = 'Seleccionar estudiantes';
-        } else if (selectedStudents.length === 1) {
-            const student = selectedStudents[0];
-            button.textContent = studentFullName(student);
+            button.title = '';
         } else {
-            button.textContent = `${selectedStudents.length} estudiantes seleccionados`;
+            const names = selectedStudents.map(s => `${s.name || ''} ${s.lastname || ''}`.trim()).join(', ');
+            button.textContent = names;
+            button.title = names;
         }
     }
 }
@@ -2812,7 +2820,8 @@ async function loadAccessSettingsInTeacherArea() {
         // Load teaching content and asana workspace in parallel
         await Promise.all([
             _loadTeachingContentInTeacherArea(),
-            _loadAsanaWorkspaceInTeacherArea()
+            _loadAsanaWorkspaceInTeacherArea(),
+            _loadZoomCredentialsInTeacherArea()
         ]);
 
     } catch (error) {
@@ -2879,8 +2888,7 @@ async function _loadTeachingContentInTeacherArea() {
 /**
  * Load Asana workspace and display in teacher area accesos tab
  */
-async function _loadAsanaWorkspaceInTeacherArea() {
-    const token = localStorage.getItem('token');
+async function _loadAsanaWorkspaceInTeacherArea() {    const token = localStorage.getItem('token');
     try {
         const response = await fetch(`${API_URL}/api/promotions/${promotionId}/asana-workspace`, {
             headers: { 'Authorization': `Bearer ${token}` }
@@ -2930,6 +2938,106 @@ async function _loadAsanaWorkspaceInTeacherArea() {
     } catch (error) {
         console.error('Error loading Asana workspace in teacher area:', error);
     }
+}
+
+/**
+ * Carga las credenciales de Zoom y las muestra en la pestaña Accesos del Área del Docente
+ */
+async function _loadZoomCredentialsInTeacherArea() {
+    const token = localStorage.getItem('token');
+    try {
+        const response = await fetch(`${API_URL}/api/promotions/${promotionId}/zoom-credentials`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!response.ok) return;
+
+        const data = await response.json();
+        const urlInput = document.getElementById('teacher-area-zoom-meeting-url');
+        const idInput = document.getElementById('teacher-area-zoom-meeting-id');
+        const passcodeInput = document.getElementById('teacher-area-zoom-passcode');
+        const hostKeyInput = document.getElementById('teacher-area-zoom-host-key');
+        const emailInput = document.getElementById('teacher-area-zoom-email');
+        const passwordInput = document.getElementById('teacher-area-zoom-password');
+        const previewBtn = document.getElementById('teacher-area-zoom-preview-btn');
+        const noZoomMsg = document.getElementById('teacher-area-no-zoom-message');
+        const removeBtn = document.getElementById('teacher-area-remove-zoom-btn');
+
+        if (data && data.meetingUrl) {
+            if (urlInput) urlInput.value = data.meetingUrl || '';
+            if (idInput) idInput.value = data.meetingId || '';
+            if (passcodeInput) passcodeInput.value = data.passcode || '';
+            if (hostKeyInput) hostKeyInput.value = data.hostKey || '';
+            if (emailInput) emailInput.value = data.accountEmail || '';
+            if (passwordInput) passwordInput.value = data.accountPassword || '';
+            if (previewBtn) { previewBtn.href = data.meetingUrl; previewBtn.classList.remove('hidden'); }
+            if (noZoomMsg) noZoomMsg.style.display = 'none';
+            if (removeBtn) removeBtn.style.display = 'inline-block';
+        } else {
+            if (urlInput) urlInput.value = '';
+            if (idInput) idInput.value = '';
+            if (passcodeInput) passcodeInput.value = '';
+            if (hostKeyInput) hostKeyInput.value = '';
+            if (emailInput) emailInput.value = '';
+            if (passwordInput) passwordInput.value = '';
+            if (previewBtn) previewBtn.classList.add('hidden');
+            if (noZoomMsg) noZoomMsg.style.display = 'inline';
+            if (removeBtn) removeBtn.style.display = 'none';
+        }
+    } catch (error) {
+        console.error('Error loading Zoom credentials:', error);
+    }
+}
+
+async function saveZoomCredentials() {
+    const meetingUrl = document.getElementById('teacher-area-zoom-meeting-url')?.value?.trim();
+    const meetingId = document.getElementById('teacher-area-zoom-meeting-id')?.value?.trim();
+    const passcode = document.getElementById('teacher-area-zoom-passcode')?.value?.trim();
+    const hostKey = document.getElementById('teacher-area-zoom-host-key')?.value?.trim();
+    const accountEmail = document.getElementById('teacher-area-zoom-email')?.value?.trim();
+    const accountPassword = document.getElementById('teacher-area-zoom-password')?.value || null;
+
+    if (!meetingUrl && !meetingId) {
+        showToast('Introduce al menos la URL de reunión o el ID de reunión', 'warning');
+        return;
+    }
+
+    const token = localStorage.getItem('token');
+    try {
+        const res = await fetch(`${API_URL}/api/promotions/${promotionId}/zoom-credentials`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ meetingUrl, meetingId, passcode, hostKey, accountEmail: accountEmail || null, accountPassword })
+        });
+        if (res.ok) {
+            showToast('Credenciales de Zoom guardadas', 'success');
+            _loadZoomCredentialsInTeacherArea();
+        } else {
+            const err = await res.json().catch(() => ({}));
+            showToast(`Error: ${err.error || 'No se pudo guardar'}`, 'danger');
+        }
+    } catch (err) {
+        showToast('Error de red al guardar credenciales de Zoom', 'danger');
+    }
+}
+
+async function removeZoomCredentials() {
+    _showConfirmModal('¿Eliminar las credenciales de Zoom de esta promoción?', async () => {
+        const token = localStorage.getItem('token');
+        try {
+            const res = await fetch(`${API_URL}/api/promotions/${promotionId}/zoom-credentials`, {
+                method: 'DELETE',
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (res.ok) {
+                showToast('Credenciales de Zoom eliminadas', 'success');
+                _loadZoomCredentialsInTeacherArea();
+            } else {
+                showToast('Error al eliminar las credenciales de Zoom', 'danger');
+            }
+        } catch (err) {
+            showToast('Error de red al eliminar credenciales de Zoom', 'danger');
+        }
+    }, 'Eliminar', 'btn-danger');
 }
 
 // Load teacher quick actions overview
@@ -6644,10 +6752,8 @@ function setupForms() {
         const name = document.getElementById('student-name').value;
         const lastname = document.getElementById('student-lastname').value;
         const email = document.getElementById('student-email').value;
-        // const englishLevel = document.getElementById('student-english-level')?.value;
-        // const educationLevel = document.getElementById('student-education-level')?.value;
-        // const profession = document.getElementById('student-profession')?.value;
-        // const community = document.getElementById('student-community')?.value;
+        const githubUser = document.getElementById('student-github')?.value?.trim() || '';
+        const laptopLoan = document.getElementById('student-laptop-loan')?.checked || false;
 
         // Check if we're editing an existing student
         const editingStudentId = document.getElementById('student-form').dataset.editingStudentId;
@@ -6657,7 +6763,9 @@ function setupForms() {
         const studentData = {
             name,
             lastname,
-            email
+            email,
+            githubUser,
+            laptopLoan
         };
 
         //console.log('Sending student data:', studentData);
@@ -7034,13 +7142,17 @@ function editStudent(studentId) {
     document.getElementById('student-name').value = student.name || '';
     document.getElementById('student-lastname').value = student.lastname || '';
     document.getElementById('student-email').value = student.email || '';
+    const githubInput = document.getElementById('student-github');
+    if (githubInput) githubInput.value = student.githubUser || '';
+    const laptopInput = document.getElementById('student-laptop-loan');
+    if (laptopInput) laptopInput.checked = !!student.laptopLoan;
 
     // Store the student ID for updating
     document.getElementById('student-form').dataset.editingStudentId = studentId;
 
     // Update modal title
     const modalTitle = document.querySelector('#studentModal .modal-title');
-    if (modalTitle) modalTitle.textContent = 'Edit Student';
+    if (modalTitle) modalTitle.textContent = 'Editar Estudiante';
 
     // Show the modal
     studentModal.show();
@@ -8496,8 +8608,9 @@ window._bulkReportTransversal = function () {
 }
 
 window._bulkReportByProject = async function () {
-    // ... rest of the function remains the same but attached to window
-    // I'll just change the start of the function in SearchReplace
+    // Capture selection BEFORE any await so re-renders can't clear checkboxes
+    window._pendingBulkProjectIds = _getSelectedStudentIds();
+
     // Remove any existing modal
     document.getElementById('_project-picker-modal')?.remove();
 
@@ -8548,8 +8661,8 @@ window._bulkReportByProject = async function () {
             `<option value="${name.replace(/"/g, '&quot;')}" data-module="${moduleName.replace(/"/g, '&quot;')}">${name}</option>`
         ).join('');
 
-        // Get selected student IDs to know how many PDFs will be generated
-        const selectedIds = _getSelectedStudentIds();
+        // Use the IDs captured before the async fetch (prevents losing selection after re-render)
+        const selectedIds = window._pendingBulkProjectIds || [];
 
         // Build the picker modal
         const modal = document.createElement('div');
@@ -8627,8 +8740,9 @@ function _confirmBulkProjectDownload() {
     const projectName = sel?.value;
     if (!projectName) return;
     document.getElementById('_project-picker-modal')?.remove();
-    // Pass the currently selected student IDs (or null = all students)
-    const selectedIds = _getSelectedStudentIds();
+    // Use IDs captured before the modal was opened (safe against re-renders during async fetch)
+    const selectedIds = window._pendingBulkProjectIds || [];
+    window._pendingBulkProjectIds = null;
     window.Reports?.printBulkByProject(projectName, promotionId, selectedIds.length ? selectedIds : null);
 }
 // ── /Bulk PDF Report helpers ──────────────────────────────────────────────────
@@ -10553,6 +10667,10 @@ function initVirtualClassroomPanel(ext, promo) {
         _setBriefingSourceBadge(false);
     }
 
+    // Fill due date
+    const dueDateEl = document.getElementById('vc-due-date');
+    if (dueDateEl) dueDateEl.value = vc.dueDate || '';
+
     // Update status UI
     if (vc.isActive && activeValue) {
         statusBadge.textContent = `Proyecto activo: ${vc.projectName}`;
@@ -10754,6 +10872,7 @@ async function saveVirtualClassroom(isActive) {
     const selectEl = document.getElementById('vc-project-select');
     const repoBaseEl = document.getElementById('vc-repo-base');
     const briefingEl = document.getElementById('vc-briefing-url');
+    const dueDateEl = document.getElementById('vc-due-date');
     const statusBadge = document.getElementById('vc-status-badge');
     const deactivateBtn = document.getElementById('vc-deactivate-btn');
     const activateBtn = document.getElementById('vc-activate-btn');
@@ -10792,7 +10911,8 @@ async function saveVirtualClassroom(isActive) {
             projectName,
             projectType,
             repoBaseUrl: repoBaseEl.value || '',
-            briefingUrl: briefingEl.value || ''
+            briefingUrl: briefingEl.value || '',
+            dueDate: (dueDateEl && dueDateEl.value) ? dueDateEl.value : null
         }
     };
 
@@ -11507,6 +11627,9 @@ function openTeamHistoryView() {
 
     historyBody.innerHTML = _renderTeamHistoryBody(grupalProjects, allStudentIds, studentMap, studentPartners, allGrupalForSelect);
 
+    // Guardar datos para sendTeamEmailsForProject
+    window._teamHistoryData = { grupalProjects };
+
     // Wire up the "open groups" button
     const btn = historyBody.querySelector('#th-open-groups-btn');
     if (btn) {
@@ -11525,6 +11648,124 @@ function closeTeamHistoryView() {
     const historyPanel = document.getElementById('team-history-panel');
     if (historyPanel) historyPanel.classList.add('hidden');
     if (evalTabView) evalTabView.classList.remove('hidden');
+}
+
+/**
+ * Envía por email a cada estudiante de los grupos de un proyecto su asignación de equipo.
+ * @param {number} gProjectIdx - Índice en el array `grupalProjects` almacenado en window._teamHistoryData
+ */
+async function sendTeamEmailsForProject(gProjectIdx) {
+    const data = window._teamHistoryData;
+    if (!data) { showToast('No hay datos de equipos disponibles', 'warning'); return; }
+    const gp = data.grupalProjects[gProjectIdx];
+    if (!gp) return;
+
+    const allStudents = window._evalState?.students || [];
+    const studentMap = new Map(allStudents.map(s => [String(s.id || s._id), s]));
+
+    const recipients = [];
+    gp.groups.forEach(grp => {
+        const memberObjs = (grp.studentIds || []).map(id => studentMap.get(String(id))).filter(Boolean);
+        memberObjs.forEach(student => {
+            if (!student.email) return;
+            recipients.push({
+                studentEmail: student.email,
+                studentName: `${student.name || ''} ${student.lastname || ''}`.trim(),
+                projectName: gp.projName,
+                groupName: grp.groupName || `Grupo ${gp.groups.indexOf(grp) + 1}`,
+                members: memberObjs.map(m => ({ name: m.name || '', lastname: m.lastname || '' }))
+            });
+        });
+    });
+
+    if (recipients.length === 0) {
+        showToast('Ningún estudiante de este proyecto tiene email registrado', 'warning');
+        return;
+    }
+
+    const noEmail = gp.groups.flatMap(grp => (grp.studentIds || []).map(id => studentMap.get(String(id))))
+        .filter(Boolean).filter(s => !s.email).length;
+
+    const taskId = _bgTaskManager.start(`Notificando equipos: ${gp.projName}…`);
+
+    try {
+        const token = localStorage.getItem('token');
+        const res = await fetch(`${API_URL}/api/promotions/${promotionId}/send-team-email`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ recipients })
+        });
+        const result = await res.json();
+        _bgTaskManager.finish(taskId);
+        if (res.ok) {
+            const msg = `✉ ${result.sent} correos enviados${noEmail > 0 ? ` · ${noEmail} sin email` : ''}`;
+            showToast(msg, result.failed > 0 ? 'warning' : 'success');
+        } else {
+            showToast(`Error al enviar emails: ${result.error}`, 'danger');
+        }
+    } catch (err) {
+        _bgTaskManager.finish(taskId);
+        showToast('Error de red al enviar emails de equipos', 'danger');
+    }
+}
+
+/**
+ * Sends team assignment emails from inside the groups modal.
+ * Reads groups from window._evalCurrentSaved (already populated when the modal is open).
+ */
+async function sendTeamEmailsFromGroupsModal() {
+    const saved = window._evalCurrentSaved;
+    if (!saved || !saved.groups || saved.groups.length === 0) {
+        showToast('Guarda los grupos primero antes de notificar', 'warning');
+        return;
+    }
+
+    const allStudents = window._evalState?.students || [];
+    const studentMap = new Map(allStudents.map(s => [String(s.id || s._id), s]));
+
+    const recipients = [];
+    saved.groups.forEach(grp => {
+        const memberObjs = (grp.studentIds || []).map(id => studentMap.get(String(id))).filter(Boolean);
+        memberObjs.forEach(student => {
+            if (!student.email) return;
+            recipients.push({
+                studentEmail: student.email,
+                studentName: `${student.name || ''} ${student.lastname || ''}`.trim(),
+                projectName: saved.projectName,
+                groupName: grp.groupName || `Grupo ${saved.groups.indexOf(grp) + 1}`,
+                members: memberObjs.map(m => ({ name: m.name || '', lastname: m.lastname || '' }))
+            });
+        });
+    });
+
+    const noEmail = saved.groups.flatMap(grp => (grp.studentIds || []).map(id => studentMap.get(String(id))))
+        .filter(Boolean).filter(s => !s.email).length;
+
+    if (recipients.length === 0) {
+        showToast('Ningún estudiante de este proyecto tiene email registrado', 'warning');
+        return;
+    }
+
+    const taskId = _bgTaskManager.start(`Notificando equipos: ${saved.projectName}…`);
+    try {
+        const token = localStorage.getItem('token');
+        const res = await fetch(`${API_URL}/api/promotions/${promotionId}/send-team-email`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ recipients })
+        });
+        const result = await res.json();
+        _bgTaskManager.finish(taskId);
+        if (res.ok) {
+            const msg = `✉ ${result.sent} correos enviados${noEmail > 0 ? ` · ${noEmail} sin email` : ''}`;
+            showToast(msg, result.failed > 0 ? 'warning' : 'success');
+        } else {
+            showToast(`Error al enviar emails: ${result.error}`, 'danger');
+        }
+    } catch (err) {
+        _bgTaskManager.finish(taskId);
+        showToast('Error de red al enviar emails de equipos', 'danger');
+    }
 }
 
 // Keep backward compat alias used by button onclick
@@ -11588,10 +11829,13 @@ function _renderTeamHistoryBody(grupalProjects, allStudentIds, studentMap, stude
         html += `<div class="accordion-item">
             <h2 class="accordion-header" id="heading-${itemId}">
                 <button class="accordion-button collapsed py-2" type="button" data-bs-toggle="collapse" data-bs-target="#collapse-${itemId}" aria-expanded="false" aria-controls="collapse-${itemId}" style="background: #fff;">
-                    <div class="d-flex flex-column text-start">
+                    <div class="d-flex flex-column text-start flex-grow-1">
                         <span class="text-primary fw-bold small" style="color:#E85D26 !important; font-size:0.7rem; line-height:1;">${escapeHtml(gp.modName)}</span>
                         <span class="fw-bold mt-1" style="color:#1A1A2E; font-size:0.9rem;">${escapeHtml(gp.projName)}</span>
                     </div>
+                    <button class="btn btn-sm btn-outline-warning me-2 flex-shrink-0" style="font-size:0.75rem;" onclick="event.stopPropagation(); sendTeamEmailsForProject(${idx})" title="Enviar asignación de equipo por correo">
+                        <i class="bi bi-envelope me-1"></i>Notificar
+                    </button>
                 </button>
             </h2>
             <div id="collapse-${itemId}" class="accordion-collapse collapse" aria-labelledby="heading-${itemId}" data-bs-parent="#projectTeamsAccordion">
@@ -11770,6 +12014,9 @@ function openGroupsModal(mIdx, pIdx) {
                 <div class="modal-body" id="groups-modal-body"></div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                    <button type="button" class="btn btn-outline-warning" onclick="sendTeamEmailsFromGroupsModal()">
+                        <i class="bi bi-envelope me-1"></i>Notificar equipos
+                    </button>
                     <button type="button" class="btn btn-primary" onclick="saveGroups()"
                         style="background:#0ea5e9;border-color:#0ea5e9;">
                         <i class="bi bi-save me-1"></i>Guardar grupos
@@ -12237,6 +12484,9 @@ function _renderEvalTargetsList(saved, students) {
         if (isEvaluated) {
             statusIcons += `<i class="bi bi-check-circle-fill eval-target-check" title="Evaluado" style="font-size: 0.9rem; margin-top: 2px;"></i>`;
         }
+        if (evalEntry && evalEntry.reportSentAt) {
+            statusIcons += `<i class="bi bi-envelope-check-fill text-success" title="Informe enviado el ${new Date(evalEntry.reportSentAt).toLocaleDateString('es-ES')}" style="font-size: 0.9rem; margin-top: 2px;"></i>`;
+        }
 
         const withdrawnBadge = t.isWithdrawn
             ? `<span class="badge bg-danger ms-1" style="font-size:0.6rem;vertical-align:middle;">BAJA</span>`
@@ -12373,7 +12623,7 @@ function selectEvalTarget(targetId) {
             <div class="small fw-semibold text-secondary mb-2"><i class="bi bi-award me-1"></i>Competencias</div>
             ${compHtml}
         </div>
-        <div class="mt-3 mb-4">
+        <div class="mt-3" style="margin-bottom: 10rem;">
             <label class="form-label small fw-semibold"><i class="bi bi-chat-text me-1"></i>Feedback</label>
             <div class="border rounded" style="overflow:hidden;">
                 <div class="eval-feedback-toolbar d-flex flex-wrap gap-1 p-1 bg-light border-bottom">
@@ -13189,6 +13439,11 @@ function openEvaluationModal(mIdx, pIdx) {
                                 ${ev.studentComment ? `<div class="text-primary small mt-1"><i class="bi bi-chat-right-text me-1"></i>"${escapeHtml(ev.studentComment)}"</div>` : ''}
                             </div>
                             <div class="d-flex flex-column gap-1 flex-shrink-0">
+                                <button class="btn btn-sm btn-outline-secondary py-0 px-2" style="font-size:.75rem;"
+                                    title="Preview informe PDF"
+                                    onclick="previewStudentEvalReport('${escapeHtml(String(ev.targetId))}')">
+                                    <i class="bi bi-eye"></i>
+                                </button>
                                 <button class="btn btn-sm btn-outline-primary py-0 px-2" style="font-size:.75rem;"
                                     onclick="editStudentEvaluation('${escapeHtml(String(ev.targetId))}')">
                                     <i class="bi bi-pencil"></i>
@@ -13881,12 +14136,59 @@ async function sendEvaluationByEmail() {
         }
 
         await window.Reports.sendProjectReportByEmail(teamIndex, studentId, promotionId, studentEmail, { silent: true });
+
+        // Mark the evaluation entry as sent and persist
+        const savedForMark = window._evalCurrentSaved;
+        if (savedForMark) {
+            const entryToMark = (savedForMark.evaluations || []).find(e => String(e.targetId) === String(studentId));
+            if (entryToMark) entryToMark.reportSentAt = new Date().toISOString();
+            await _persistEvaluations();
+            _renderEvalTargetsList(savedForMark, window._evalState.allStudents || window._evalState.students);
+        }
+
         showToast('Informe de evaluación enviado correctamente', 'success');
     } catch (err) {
         console.error('[sendEvaluationByEmail]', err);
         showToast('Error al enviar el informe: ' + err.message, 'danger');
     } finally {
         if (sendBtn) { sendBtn.disabled = false; sendBtn.innerHTML = originalHtml; }
+    }
+}
+
+/**
+ * Opens a preview window of the project evaluation PDF for a given student.
+ * Resolves the team index via technicalTracking.teams matching the current project name.
+ */
+async function previewStudentEvalReport(studentId) {
+    if (!window.Reports?.printProjectReport) {
+        showToast('La librería de informes no está disponible', 'danger');
+        return;
+    }
+    if (!studentId) {
+        showToast('Selecciona un estudiante primero', 'warning');
+        return;
+    }
+    const saved = window._evalCurrentSaved;
+    // Groups don't have individual evaluation reports — only individual projects do
+    if (saved?.type === 'grupal') {
+        showToast('El preview de informe sólo está disponible para evaluaciones individuales', 'info');
+        return;
+    }
+    const projectName = saved?.projectName || '';
+
+    const token = localStorage.getItem('token');
+    try {
+        const stuRes = await fetch(`${API_URL}/api/promotions/${promotionId}/students/${studentId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!stuRes.ok) throw new Error('No se pudo cargar el estudiante');
+        const stuData = await stuRes.json();
+        const teams = stuData.technicalTracking?.teams || [];
+        let teamIndex = teams.findIndex(t => t.teamName === projectName);
+        if (teamIndex < 0) teamIndex = 0;
+        window.Reports.printProjectReport(teamIndex, studentId, promotionId);
+    } catch (err) {
+        showToast('Error al cargar los datos del informe: ' + err.message, 'danger');
     }
 }
 
@@ -13905,10 +14207,16 @@ async function sendEvaluationToAllInProject() {
     const mod = modules[mIdx];
     const proj = mod?.projects[pIdx];
 
-    // Solo enviar a estudiantes realmente evaluados (tienen evaluatedAt)
-    const evaluatedEntries = (saved.evaluations || []).filter(e => e.evaluatedAt && !e.isGroup);
+    // Solo enviar a estudiantes realmente evaluados (tienen evaluatedAt) y cuyo informe no se haya enviado aún
+    const allEvaluatedEntries = (saved.evaluations || []).filter(e => e.evaluatedAt && !e.isGroup);
+    const evaluatedEntries = allEvaluatedEntries.filter(e => !e.reportSentAt);
     if (evaluatedEntries.length === 0) {
-        showToast('No hay estudiantes evaluados en este proyecto', 'warning');
+        const alreadySentCount = allEvaluatedEntries.filter(e => e.reportSentAt).length;
+        if (alreadySentCount > 0) {
+            showToast('Todos los informes ya han sido enviados anteriormente', 'info');
+        } else {
+            showToast('No hay estudiantes evaluados en este proyecto', 'warning');
+        }
         return;
     }
 
@@ -13949,6 +14257,7 @@ async function sendEvaluationToAllInProject() {
                 if (teamIndex < 0) teamIndex = 0;
 
                 await window.Reports.sendProjectReportByEmail(teamIndex, studentId, promotionId, studentEmail, { silent: true });
+                entry.reportSentAt = new Date().toISOString();
                 sent++;
             } catch (err) {
                 console.error('[sendEvaluationToAllInProject] student error:', entry.targetId, err);
@@ -13963,6 +14272,10 @@ async function sendEvaluationToAllInProject() {
             ? `Informes enviados a ${sent} estudiante${sent !== 1 ? 's' : ''} correctamente`
             : `Informes enviados: ${sent}. Fallidos: ${failed}`;
         showToast(msg, failed > 0 ? 'warning' : 'success');
+        // Persist all reportSentAt stamps in one go and refresh the list
+        await _persistEvaluations();
+        const savedAfter = window._evalCurrentSaved;
+        if (savedAfter) _renderEvalTargetsList(savedAfter, window._evalState.allStudents || window._evalState.students);
     }, 0);
         }, 'Enviar', 'btn-primary');
 }
