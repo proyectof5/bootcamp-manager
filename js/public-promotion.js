@@ -1136,6 +1136,8 @@ async function loadExtendedInfo() {
                             const pollInfo = await r.json();
                             displayExtendedInfo(pollInfo);
                             displayPublicCompetences(pollInfo);
+                            // Re-inject internal resources after displayExtendedInfo clears #recursos-wrapper
+                            await loadPublicPromoResources();
                         }
                     } catch (_) {}
                 };

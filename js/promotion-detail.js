@@ -9421,7 +9421,29 @@ function showDateContextMenu(dateKey, event) {
     separator.style.margin = '4px 0';
     menu.appendChild(separator);
 
-    // Option 2: Clear Attendance for Day
+    // Option 2: Mark all as present
+    const presentOption = document.createElement('div');
+    presentOption.className = 'date-context-menu-item';
+    presentOption.innerHTML = `
+        <span class="date-context-menu-item-icon">✅</span>
+        <span>Marcar todos como presente</span>
+    `;
+    presentOption.onclick = (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        markAllPresentForDay(dateKey);
+        closeDateContextMenu();
+    };
+    menu.appendChild(presentOption);
+
+    // Separator
+    const separator2 = document.createElement('div');
+    separator2.style.height = '1px';
+    separator2.style.backgroundColor = '#e0e0e0';
+    separator2.style.margin = '4px 0';
+    menu.appendChild(separator2);
+
+    // Option 3: Clear Attendance for Day
     const clearOption = document.createElement('div');
     clearOption.className = 'date-context-menu-item danger';
     clearOption.innerHTML = `
@@ -9493,6 +9515,29 @@ function closeDateContextMenu() {
         menu.remove();
     }
     document.removeEventListener('click', closeDateContextMenuListener, false);
+}
+
+// ── Mark All Present for Day ───────────────────────────────────────────────
+/**
+ * Marks all students as present ('P') for a specific date.
+ * @param {string} dateKey - Date in YYYY-MM-DD format
+ */
+async function markAllPresentForDay(dateKey) {
+    if (promotionHolidays.has(dateKey)) return;
+
+    const cells = document.querySelectorAll(`[data-date="${dateKey}"]`);
+
+    for (const cell of cells) {
+        const studentId = cell.dataset.studentId;
+        if (!studentId) continue;
+
+        cell.dataset.status = 'Presente';
+        _applyAttendanceCellStyle(cell, 'Presente', cell.classList.contains('attendance-has-note'));
+
+        await _flushAttendanceSave(studentId, dateKey, 'Presente', null, cell);
+    }
+
+    updateAttendanceStats();
 }
 
 // ── Clear Day Attendance ────────────────────────────────────────────────────
