@@ -760,7 +760,7 @@
                 optHtml += `<option value="${idx}">${_esc(opt.label)}</option>`;
             });
 
-            let collHtml = '';
+            let collHtml = `<option value="students">✉️ Estudiantes (todos)</option>`;
             collaborators.forEach(c => {
                 collHtml += `<option value="${c.email}">${_esc(c.name)} (${_esc(c.email)})</option>`;
             });
@@ -797,15 +797,17 @@
                 ${collHtml}
               </select>
               <input type="email" id="${id}-manual-email" class="form-control form-control-sm mb-2" placeholder="ejemplo@email.com" style="display:none;font-size:.8rem;">
-              <label class="form-label small text-muted mb-1">Formato a enviar:</label>
-              <div class="d-flex gap-3">
-                <div class="form-check">
-                  <input class="form-check-input" type="radio" name="${id}-format" id="${id}-format-pdf" value="pdf" checked>
-                  <label class="form-check-label small" for="${id}-format-pdf"><i class="bi bi-file-earmark-pdf me-1 text-danger"></i>PDF</label>
-                </div>
-                <div class="form-check">
-                  <input class="form-check-input" type="radio" name="${id}-format" id="${id}-format-excel" value="excel">
-                  <label class="form-check-label small" for="${id}-format-excel"><i class="bi bi-file-earmark-spreadsheet me-1 text-success"></i>Excel</label>
+              <div id="${id}-format-section">
+                <label class="form-label small text-muted mb-1">Formato a enviar:</label>
+                <div class="d-flex gap-3">
+                  <div class="form-check">
+                    <input class="form-check-input" type="radio" name="${id}-format" id="${id}-format-pdf" value="pdf" checked>
+                    <label class="form-check-label small" for="${id}-format-pdf"><i class="bi bi-file-earmark-pdf me-1 text-danger"></i>PDF</label>
+                  </div>
+                  <div class="form-check">
+                    <input class="form-check-input" type="radio" name="${id}-format" id="${id}-format-excel" value="excel">
+                    <label class="form-check-label small" for="${id}-format-excel"><i class="bi bi-file-earmark-spreadsheet me-1 text-success"></i>Excel</label>
+                  </div>
                 </div>
               </div>
             </div>
@@ -825,10 +827,6 @@
           style="background:#f1f3f5;color:#4A4A6A;border:1px solid #dee2e6;">
           <i class="bi bi-download me-1"></i>Descargar PDF
         </button>
-        <button type="button" class="btn btn-sm" id="${id}-students-btn"
-          style="background:#0d6efd;color:#fff;border:none;">
-          <i class="bi bi-envelope me-1"></i>Enviar a estudiantes
-        </button>
         <button type="button" class="btn btn-sm" id="${id}-send-btn" 
           style="background:#FF6B35;color:#fff;border:none;display:none;">
           <i class="bi bi-send me-1"></i>Generar y Enviar
@@ -844,14 +842,14 @@
             const modal    = new window.bootstrap.Modal(modalEl, { backdrop: 'static', keyboard: false });
             let   resolved = false;
 
-            const sendCheck = document.getElementById(`${id}-send-check`);
-            const emailSec  = document.getElementById(`${id}-email-section`);
-            const destSel   = document.getElementById(`${id}-dest-select`);
-            const manualIn  = document.getElementById(`${id}-manual-email`);
+            const sendCheck   = document.getElementById(`${id}-send-check`);
+            const emailSec    = document.getElementById(`${id}-email-section`);
+            const destSel     = document.getElementById(`${id}-dest-select`);
+            const manualIn    = document.getElementById(`${id}-manual-email`);
+            const formatSec   = document.getElementById(`${id}-format-section`);
             const downBtn     = document.getElementById(`${id}-download-btn`);
             const excelBtn    = document.getElementById(`${id}-excel-btn`);
             const sendBtn     = document.getElementById(`${id}-send-btn`);
-            const studentsBtn = document.getElementById(`${id}-students-btn`);
 
             sendCheck.addEventListener('change', () => {
                 const checked = sendCheck.checked;
@@ -862,7 +860,9 @@
             });
 
             destSel.addEventListener('change', () => {
-                manualIn.style.display = (destSel.value === 'manual') ? 'block' : 'none';
+                const val = destSel.value;
+                manualIn.style.display  = (val === 'manual') ? 'block' : 'none';
+                formatSec.style.display = (val === 'students') ? 'none' : 'block';
             });
 
             downBtn.addEventListener('click', () => {
@@ -889,7 +889,20 @@
 
             sendBtn.addEventListener('click', () => {
                if (resolved) return;
-               let email = destSel.value;
+               const dest = destSel.value;
+               const weekVal = parseInt(document.getElementById(`${id}-select`).value, 10);
+
+               if (dest === 'students') {
+                   resolved = true;
+                   modal.hide();
+                   resolve({
+                     weekIdx: isNaN(weekVal) ? 0 : weekVal,
+                     action: 'send-students'
+                   });
+                   return;
+               }
+
+               let email = dest;
                if (email === 'manual') {
                   email = manualIn.value.trim();
                   if (!email || !email.includes('@')) {
@@ -898,26 +911,14 @@
                   }
                }
                resolved = true;
-               const val = parseInt(document.getElementById(`${id}-select`).value, 10);
                const formatRadio = document.querySelector(`input[name="${id}-format"]:checked`);
                const sendFormat = formatRadio ? formatRadio.value : 'pdf';
                modal.hide();
                resolve({
-                 weekIdx: isNaN(val) ? 0 : val,
+                 weekIdx: isNaN(weekVal) ? 0 : weekVal,
                  action: 'send',
                  email: email,
                  sendFormat: sendFormat
-               });
-            });
-
-            studentsBtn.addEventListener('click', () => {
-               if (resolved) return;
-               resolved = true;
-               const val = parseInt(document.getElementById(`${id}-select`).value, 10);
-               modal.hide();
-               resolve({
-                 weekIdx: isNaN(val) ? 0 : val,
-                 action: 'send-students'
                });
             });
 
