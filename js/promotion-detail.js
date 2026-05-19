@@ -523,7 +523,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         // 5. Restore last active tab (Safe now because loadPromotion/loadCollaborators finished)
-        const validTabs = ['overview', 'info', 'students', 'attendance', 'collaborators', 'access-settings', 'evaluation'];
+        const validTabs = ['overview', 'info', 'students', 'attendance', 'collaborators', 'access-settings', 'evaluation', 'teacher-area'];
         let savedTab = sessionStorage.getItem(`activeTab_${promotionId}`) || 'overview';
         if (!validTabs.includes(savedTab)) savedTab = 'overview';
         window.location.hash = savedTab;
@@ -551,16 +551,7 @@ function setupCalendarPreviewHandler() {
 async function loadExtendedInfo() {
     const token = localStorage.getItem('token');
     try {
-        // Ensure Roadmap sub-tab is active on load (wrapped so a Bootstrap error doesn't abort the whole load)
-        try {
-            const roadmapTab = document.getElementById('program-details-roadmap-tab');
-            if (roadmapTab && window.bootstrap) {
-                const tab = bootstrap.Tab.getOrCreateInstance(roadmapTab);
-                tab.show();
-            }
-        } catch (tabErr) {
-            console.warn('[loadExtendedInfo] Could not activate roadmap tab:', tabErr);
-        }
+        // Sub-tab is restored by switchTab('info') — no forced roadmap here
 
         const response = await fetch(`${API_URL}/api/promotions/${promotionId}/extended-info`); // Public endpoint
         if (response.ok) {
@@ -840,8 +831,25 @@ async function loadModulesPildoras() {
                 }
             }
 
-            // Set current module to first module
-            currentModuleIndex = 0;
+            // Restore module index from sessionStorage (set before reload) or default to 0
+            const _savedModuleIdx = parseInt(sessionStorage.getItem(`pildorasModuleIndex_${promotionId}`), 10);
+            sessionStorage.removeItem(`pildorasModuleIndex_${promotionId}`);
+            currentModuleIndex = (!isNaN(_savedModuleIdx) && _savedModuleIdx >= 0 && _savedModuleIdx < promotionModules.length)
+                ? _savedModuleIdx : 0;
+
+            // Auto-assign mode/status for all existing pildoras
+            const _changedModuleIds = new Set();
+            (extendedInfoData.modulesPildoras || []).forEach(mp => {
+                (mp.pildoras || []).forEach(p => {
+                    if (_autoAssignPildoraModeAndStatus(p)) _changedModuleIds.add(mp.moduleId);
+                });
+            });
+            if (_changedModuleIds.size > 0) {
+                promotionModules
+                    .filter(m => _changedModuleIds.has(m.id))
+                    .forEach(m => savePildorasToServer(m));
+            }
+
             displayPildoras();
         } else {
             console.error('Error loading modules píldoras:', response.statusText);
@@ -1006,9 +1014,18 @@ function displayPildoras() {
         input.addEventListener('change', function () {
             const index = parseInt(this.closest('tr').dataset.index);
             updatePildoraField(index, 'date', this.value);
-            // Persist changes to server
             const currentModule = promotionModules[currentModuleIndex];
             if (currentModule) {
+                const mp = extendedInfoData.modulesPildoras?.find(m => m.moduleId === currentModule.id);
+                if (mp?.pildoras?.[index]) {
+                    _autoAssignPildoraModeAndStatus(mp.pildoras[index]);
+                    const row = this.closest('tr');
+                    const modeEl = row?.querySelector('.pildora-mode');
+                    const statusEl = row?.querySelector('.pildora-status');
+                    if (modeEl) modeEl.value = mp.pildoras[index].mode;
+                    if (statusEl) statusEl.value = mp.pildoras[index].status;
+                    applyPildorasColorCoding();
+                }
                 savePildorasToServer(currentModule);
             }
         });
@@ -1104,6 +1121,43 @@ function applyPildorasColorCoding() {
     });
 }
 
+/**
+ * Auto-assigns pildora.mode ('Presencial'/'Virtual') based on extendedInfoData.presentialDays
+ * and pildora.status ('Presentada') if the date has already passed.
+ * Returns true if any field was changed.
+ */
+function _autoAssignPildoraModeAndStatus(pildora) {
+    if (!pildora || !pildora.date) return false;
+
+    const DAY_BY_INDEX = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
+    const presentialDaysStr = (extendedInfoData.presentialDays || '').toLowerCase();
+    const presentialSet = new Set(
+        ['lunes', 'martes', 'miércoles', 'jueves', 'viernes'].filter(d => presentialDaysStr.includes(d))
+    );
+
+    let changed = false;
+
+    // Mode: only when we have presential days data
+    if (presentialSet.size > 0) {
+        const dt = new Date(pildora.date + 'T00:00');
+        const newMode = presentialSet.has(DAY_BY_INDEX[dt.getDay()]) ? 'Presencial' : 'Virtual';
+        if (pildora.mode !== newMode) { pildora.mode = newMode; changed = true; }
+    }
+
+    // Status: dynamically update based on date vs today
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const pildoraDate = new Date(pildora.date + 'T00:00');
+    if (pildoraDate < today && pildora.status !== 'Presentada') {
+        pildora.status = 'Presentada';
+        changed = true;
+    } else if (pildoraDate >= today && pildora.status === 'Presentada') {
+        pildora.status = 'No presentada';
+        changed = true;
+    }
+
+    return changed;
+}
+
 function addPildoraRow() {
     const currentModule = promotionModules[currentModuleIndex];
     if (!currentModule) {
@@ -1129,13 +1183,9 @@ function addPildoraRow() {
 
     // Add new píldora to current module with today's date as default
     const today = new Date().toISOString().split('T')[0];
-    modulePildoras.pildoras.push({
-        mode: 'Virtual',
-        date: today,
-        title: '',
-        students: [],
-        status: ''
-    });
+    const newPildora = { mode: 'Virtual', date: today, title: '', students: [], status: '' };
+    _autoAssignPildoraModeAndStatus(newPildora);
+    modulePildoras.pildoras.push(newPildora);
 
     displayPildoras();
 }
@@ -2200,7 +2250,8 @@ async function saveExtendedInfo() {
                 }
             }
 
-            location.reload();
+            sessionStorage.setItem(`pildorasModuleIndex_${promotionId}`, currentModuleIndex);
+            window.location.reload();
         } else {
             try {
                 const errorData = await response.json();
@@ -2407,10 +2458,11 @@ function openActaModal() {
     endEl.value = /^\d{4}-\d{2}-\d{2}$/.test(d.positiveExitEnd) ? d.positiveExitEnd : '';
 
     // Presential days checkboxes
-    const storedDays = (d.presentialDays || '').toLowerCase();
+    const _norm = s => s.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+    const storedDaysNorm = _norm(d.presentialDays || '');
     WEEKDAYS.forEach(day => {
         const cb = document.getElementById(`pd-${WEEKDAY_IDS[day]}`);
-        if (cb) cb.checked = storedDays.includes(day);
+        if (cb) cb.checked = storedDaysNorm.includes(_norm(day));
     });
 
     // Presential location — extract from stored string if possible
@@ -2567,7 +2619,7 @@ async function saveActaData() {
         });
         if (response.ok) {
             bootstrap.Modal.getInstance(document.getElementById('actaInicioModal'))?.hide();
-            location.reload();
+            window.showApiToast('Acta de inicio guardada correctamente', 'success');
         } else {
             const err = await response.json().catch(() => ({}));
             window.showApiToast(`Error al guardar: ${response.status} - ${err.error || 'Error desconocido'}`, 'danger');
@@ -2666,10 +2718,12 @@ function switchTab(tabId) {
     // Redirect these legacy tabs to the unified Teacher Area
     if (tabId === 'students' || tabId === 'attendance' || tabId === 'evaluation') {
         const targetTab = tabId;
-        // First switch to teacher-area container
+        // Switch to teacher-area container (this will overwrite activeTab, so we re-save after)
         switchTab('teacher-area');
         // Then switch to the specific sub-tab inside it
         switchTeacherAreaSubTab(targetTab);
+        // Re-save the actual sub-tab so reload restores here, not teacher-area overview
+        sessionStorage.setItem(`activeTab_${promotionId}`, tabId);
         return;
     }
 
@@ -2683,8 +2737,9 @@ function switchTab(tabId) {
     if (tabId === 'attendance') loadAttendance();
     if (tabId === 'info') {
         loadExtendedInfo();
-        // Default to roadmap sub-tab when entering Contenido del Programa
-        switchProgramDetailsTab('roadmap');
+        // Restore previously active program-details sub-tab, default to roadmap
+        const savedProgramTab = sessionStorage.getItem(`activeProgramDetailsTab_${promotionId}`) || 'roadmap';
+        switchProgramDetailsTab(savedProgramTab);
     }
     if (tabId === 'collaborators') loadCollaborators();
     if (tabId === 'access-settings') loadAccessPassword();
@@ -10382,6 +10437,9 @@ function updateProgramDetailsSubtitle(sectionName) {
  * @param {string} tabName - Name of the tab to activate (schedule, team, resources, pildoras, evaluation, quicklinks, sections)
  */
 function switchProgramDetailsTab(tabName) {
+    // Persist so reload restores the same sub-tab
+    if (promotionId) sessionStorage.setItem(`activeProgramDetailsTab_${promotionId}`, tabName);
+
     const tabNameMap = {
         'roadmap': { tabId: 'program-details-roadmap', buttonId: 'program-details-roadmap-tab', label: 'Roadmap' },
         'calendar': { tabId: 'program-details-calendar', buttonId: 'program-details-calendar-tab', label: 'Calendario' },
