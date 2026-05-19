@@ -1652,7 +1652,26 @@ async function printActaInicio(promotionId) {
                 body: JSON.stringify({
                     to: toEmail,
                     subject: `Informe de evaluación: ${t.teamName || 'Proyecto'} — ${fullName}`,
-                    body: `Hola ${s.name || ''},<br><br>Te enviamos el informe de evaluación del proyecto <strong>${t.teamName || 'Proyecto'}</strong>.<br><br>En el PDF adjunto encontrarás el detalle de las competencias trabajadas y el nivel alcanzado durante el desarrollo del proyecto.<br><br>¡Mucho ánimo y sigue aprendiendo!<br><br>Un saludo,<br>Equipo formador Factoria F5`,
+                    body: `<div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+  <div style="background-color: #E85D26; padding: 20px; text-align: center; border-radius: 10px 10px 0 0;">
+    <h1 style="color: white; margin: 0;">Bootcamp Manager</h1>
+  </div>
+  <div style="background-color: #f5f5f5; padding: 30px; border-radius: 0 0 10px 10px;">
+    <p style="font-size: 16px; color: #333;">Hola <strong>${s.name || ''}</strong>,</p>
+    <p style="font-size: 14px; color: #666; margin: 16px 0;">
+      Te enviamos el informe de evaluación del proyecto <strong>${t.teamName || 'Proyecto'}</strong>.
+    </p>
+    <div style="background-color: white; padding: 20px; border-radius: 5px; margin: 20px 0; border-left: 4px solid #E85D26; font-size: 14px; color: #333; line-height: 1.6;">
+      En el PDF adjunto encontrarás el detalle de las competencias trabajadas y el nivel alcanzado durante el desarrollo del proyecto.
+    </div>
+    <p style="font-size: 14px; color: #666; margin: 16px 0;">¡Mucho ánimo y sigue aprendiendo!</p>
+    <p style="font-size: 14px; color: #666; margin: 0;">Un saludo,<br>Equipo formador Factoria F5</p>
+    <hr style="border: none; border-top: 1px solid #ddd; margin: 30px 0;">
+    <p style="font-size: 12px; color: #999; text-align: center;">
+      Este es un correo automático de Bootcamp Manager. Por favor no respondas a este correo.
+    </p>
+  </div>
+</div>`,
                     filename: filename,
                     base64Data: base64Data
                 })
