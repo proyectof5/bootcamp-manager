@@ -9,7 +9,10 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet" />
     <link href="https://fonts.googleapis.com/css2?family=Pacifico" rel="stylesheet">
     <link rel="icon" type="image/png" href="./img/favicon_bootcamp_manager.png">
+    <link href="css/design-system.css" rel="stylesheet" />
     <link href="css/style.css" rel="stylesheet" />
+    <link href="https://calendar.google.com/calendar/scheduling-button-script.css" rel="stylesheet">
+    <script src="https://calendar.google.com/calendar/scheduling-button-script.js" async></script>
     <style>
         /* ── Banner ─────────────────────────────────────────── */
         .pp-banner {
@@ -294,32 +297,22 @@
 
     <div class="container-fluid">
         <div class="row">
-            <!-- Sidebar -->
-            <nav class="col-md-3 col-lg-2 d-md-block sidebar collapse">
-                <div class="sidebar-content d-flex flex-column h-100">
-                    <h1 id="nav-title" class="nav-title h3 mb-4 px-3">Bootcamp</h1>
-                    <ul class="nav" id="sidebar-nav">
-                        <!-- Navigation items will be populated here -->
-                    </ul>
-                    <figure class="logo-container text-center p-3 mt-auto">
-                        <a href="https://factoriaf5.org/" target="_blank">
-                            <img src="./img/logo-factoria-b.svg" alt="Logotipo FactoriaF5" class="img-fluid"
-                                style="max-width: 100px;">
-                        </a>
-                    </figure>
-                </div>
-            </nav>
-
             <!-- Main Content -->
-            <main class="col-md-9 col-lg-10 py-4">
+            <main class="col-12 py-4">
 
                 <!-- ══ BANNER ══════════════════════════════════════════ -->
                 <div class="pp-banner mb-4">
                     <img id="pp-banner-img" src="./img/f5_banner_roadmpa_manager.PNG" alt="Banner formación"
                         class="pp-banner-img" onerror="this.style.display='none'">
-                    <div class="pp-banner-body">
-                        <h2 class="pp-banner-title" id="promotion-title">Cargando…</h2>
-                        <p class="pp-banner-sub" id="pp-banner-sub"></p>
+                    <div class="pp-banner-body d-flex justify-content-between align-items-center">
+                        <div>
+                            <h2 class="pp-banner-title" id="promotion-title">Cargando…</h2>
+                            <p class="pp-banner-sub" id="pp-banner-sub"></p>
+                        </div>
+                        <a href="https://factoriaf5.org/" target="_blank" class="ms-3 flex-shrink-0">
+                            <img src="./img/logo-factoria-b.svg" alt="Logotipo FactoriaF5"
+                                style="max-height: 48px; filter: brightness(0) invert(1); opacity: .85;">
+                        </a>
                     </div>
                 </div>
 
@@ -392,6 +385,7 @@
                                 <h5>Calendario</h5>
                             </div>
                             <div class="pp-section-body p-0">
+                                <div id="gc-appointment-btn" class="p-2" style="display: flex; justify-content: flex-end;"></div>
                                 <iframe id="calendar-iframe" style="width:100%;height:320px;border:none;"
                                     allowfullscreen></iframe>
                             </div>
@@ -571,6 +565,22 @@
                 </div>
 
             </main>
+        </div>
+    </div>
+
+    <!-- Appointment Modal -->
+    <div class="modal fade" id="appointmentModal" tabindex="-1" aria-labelledby="appointmentModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-xl">
+            <div class="modal-content" style="height: 85vh;">
+                <div class="modal-header py-2">
+                    <h6 class="modal-title" id="appointmentModalLabel">Reservar una cita</h6>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                </div>
+                <div class="modal-body p-0" style="flex: 1; overflow: hidden;">
+                    <iframe id="appointment-iframe" src="" style="width:100%; height:100%; border:none;"
+                        allow="camera; microphone; geolocation"></iframe>
+                </div>
+            </div>
         </div>
     </div>
 

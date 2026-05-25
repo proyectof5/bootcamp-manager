@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 
 <head>
     <meta charset="UTF-8" />
@@ -8,6 +8,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
     <link href="https://fonts.googleapis.com/css2?family=Pacifico" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet" />
+    <link href="css/design-system.css" rel="stylesheet" />
     <link href="css/promotion-detail.css" rel="stylesheet" />
     <link rel="icon" type="image/png" href="./img/favicon_bootcamp_manager.png">
     <!-- <link rel="stylesheet" href="./css/style.css"> -->
@@ -80,7 +81,7 @@
                 </li>
                 <li class="nav-item teacher-only">
                     <a class="nav-link" href="#teacher-area" onclick="switchTab('teacher-area')">
-                        <i class="bi bi-book me-2"></i>Área del docente
+                        <i class="bi bi-book me-2"></i>Área de administración
                     </a>
                 </li>
                 <li class="nav-item teacher-only">
@@ -262,7 +263,7 @@
                 <!-- Área del Docente Tab -->
                 <div id="teacher-area-tab" class="section-content hidden">
                     <div class="my-4">
-                        <h1 id="teacher-area-title">Área del Docente</h1>
+                        <h1 id="teacher-area-title">Área de Administración</h1>
                         <p id="teacher-area-desc" class="text-muted">Gestión integral del grupo y herramientas de
                             seguimiento</p>
                     </div>
@@ -791,11 +792,6 @@
                                                     <h6 class="mb-0 text-white"><i class="bi bi-camera-video me-2"></i>Zoom</h6>
                                                 </div>
                                                 <div class="card-body">
-                                                    <div class="mb-2">
-                                                        <label for="teacher-area-zoom-meeting-url" class="form-label small fw-bold">URL de la reunión</label>
-                                                        <input type="url" class="form-control form-control-sm" id="teacher-area-zoom-meeting-url"
-                                                            placeholder="https://us06web.zoom.us/j/..." />
-                                                    </div>
                                                     <div class="row g-2 mb-3">
                                                         <div class="col-6">
                                                             <label for="teacher-area-zoom-meeting-id" class="form-label small fw-bold">ID de reunión</label>
@@ -838,10 +834,6 @@
                                                 <div class="card-footer bg-light border-top p-2">
                                                     <small class="text-muted d-block mb-2">Estado:</small>
                                                     <div class="d-flex gap-1 align-items-center">
-                                                        <a id="teacher-area-zoom-preview-btn" href="#"
-                                                            class="btn btn-sm btn-outline-primary hidden" target="_blank">
-                                                            <i class="bi bi-camera-video me-1"></i>Abrir Zoom
-                                                        </a>
                                                         <button class="btn btn-sm btn-outline-danger" onclick="removeZoomCredentials()"
                                                             id="teacher-area-remove-zoom-btn" style="display:none;">
                                                             <i class="bi bi-trash"></i>
@@ -1024,7 +1016,7 @@
                 <div id="info-tab" class="section-content hidden">
                     <div class="d-flex justify-content-between align-items-center my-4 pb-3 border-bottom">
                         <h2 class="mb-0">Detalles del Programa</h2>
-                        <div class="d-flex gap-2">
+                        <div class="d-flex gap-2 justify-content-end">
                             <button id="preview-roadmap-btn" class="btn btn-outline-primary"
                                 onclick="previewPromotion()" title="Vista previa del roadmap">
                                 <i class="bi bi-eye me-2"></i>Preview Roadmap
@@ -1033,16 +1025,6 @@
                                 onclick="downloadPromotionSyllabus()" title="Descargar Syllabus (PDF o Word)">
                                 <i class="bi bi-file-earmark-text me-2"></i>Syllabus
                             </button>
-                            <div class="d-inline-block position-relative">
-                                <button id="save-program-details-btn" class="btn btn-primary" onclick="saveExtendedInfo()"
-                                    title="Save all changes to Program Details">
-                                    <i class="bi bi-save me-2"></i>Guardar Todos los Cambios
-                                </button>
-                                <span id="unsaved-changes-badge" class="badge bg-warning position-absolute top-0 start-100 translate-middle d-none" 
-                                    title="Hay cambios sin guardar">
-                                    <i class="bi bi-exclamation-circle"></i>
-                                </span>
-                            </div>
                         </div>
                     </div>
 
@@ -1074,7 +1056,7 @@
                         </button>
                         <button class="nav-link" id="program-details-evaluation-tab" type="button" role="tab"
                             aria-selected="false" onclick="switchProgramDetailsTab('evaluation')">
-                            <i class="bi bi-clipboard-check me-2"></i>Evaluación
+                            <i class="bi bi-clipboard-check me-2"></i>Criterios
                         </button>
                         <button class="nav-link" id="program-details-virtual-classroom-tab" type="button" role="tab"
                             aria-selected="false" onclick="switchProgramDetailsTab('virtual-classroom')">
@@ -1083,10 +1065,6 @@
                         <button class="nav-link" id="program-details-quicklinks-tab" type="button" role="tab"
                             aria-selected="false" onclick="switchProgramDetailsTab('quicklinks')">
                             <i class="bi bi-lightning me-2"></i>Quick Links
-                        </button>
-                        <button class="nav-link" id="program-details-competences-tab" type="button" role="tab"
-                            aria-selected="false" onclick="switchProgramDetailsTab('competences')">
-                            <i class="bi bi-award me-2"></i>Competencias
                         </button>
                         <button class="nav-link" id="program-details-sections-tab" type="button" role="tab"
                             aria-selected="false" onclick="switchProgramDetailsTab('sections')">
@@ -1144,8 +1122,14 @@
                                                 ID</label>
                                             <input type="text" class="form-control" id="google-calendar-id"
                                                 placeholder="your-calendar@group.calendar.google.com" />
-                                            <small class="text-muted">Encuentra el Googke calendar ID en las
+                                            <small class="text-muted">Encuentra el Google Calendar ID en las
                                                 configuraciones de Google Calendar</small>
+                                        </div>
+                                        <div class="mb-3">
+                                            <label for="google-appointment-url" class="form-label">URL de citas (Google Calendar)</label>
+                                            <input type="url" class="form-control" id="google-appointment-url"
+                                                placeholder="https://calendar.google.com/calendar/appointments/..." />
+                                            <small class="text-muted">URL de la página de reserva de citas de Google Calendar. Si se configura, se mostrará un botón de reserva en la vista del estudiante.</small>
                                         </div>
                                         <button type="submit" class="btn btn-primary">Guardar calendario</button>
                                     </form>
@@ -1202,7 +1186,7 @@
                                                     id="sched-presential-entry">
                                             </div>
                                             <div class="mb-3">
-                                                <label class="form-label form-label-sm">Hora de Entrada</label>
+                                                <label class="form-label form-label-sm">Inicio Píldoras</label>
                                                 <input type="time" class="form-control form-control-sm"
                                                     id="sched-presential-start">
                                             </div>
@@ -1449,9 +1433,9 @@
                                             <i class="bi bi-image"></i>
                                         </button>
                                         <div style="width:1px;background:#ced4da;margin:0 4px;"></div>
-                                        <button type="button" class="btn btn-sm btn-outline-primary" title="Guardar evaluación"
+                                        <button type="button" class="btn btn-sm btn-outline-primary" title="Guardar"
                                             onclick="saveEvaluationFeedback()">
-                                            <i class="bi bi-floppy"></i>
+                                            <i class="bi bi-floppy me-1"></i>Guardar
                                         </button>
                                     </div>
                                     <!-- Editable area
@@ -1618,43 +1602,6 @@
                             </div>
                         </div>
 
-                        <!-- Competencias Tab -->
-                        <div class="tab-pane fade" id="program-details-competences" role="tabpanel"
-                            aria-labelledby="program-details-competences-tab">
-                            <div class="card">
-                                <div class="card-header bg-light">
-                                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
-                                        <div class="d-flex align-items-center gap-2">
-                                            <h6 class="mb-0"><i class="bi bi-award me-2"></i>Competencias del Programa
-                                            </h6>
-                                        </div>
-                                        <div class="d-flex align-items-center gap-2">
-                                            <select class="form-select form-select-sm w-auto"
-                                                id="competences-area-filter"
-                                                onchange="window.ProgramCompetences?.filterByArea()">
-                                                <option value="">Todas las áreas</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="card-body">
-                                    <div class="alert alert-info d-flex align-items-start gap-2 py-2 mb-3">
-                                        <i class="bi bi-info-circle-fill flex-shrink-0 mt-1"></i>
-                                        <div class="small">
-                                            Las competencias se definen por proyecto en la sección
-                                            <strong>Evaluación</strong>.
-                                            Haz clic en el badge de competencias de cada tarjeta de proyecto para
-                                            seleccionar qué competencias y herramientas se evaluarán.
-                                            Esta vista se actualiza automáticamente y se muestra en la <strong>página
-                                                pública</strong> del bootcamp.
-                                        </div>
-                                    </div>
-                                    <div id="competences-list-container">
-                                        <!-- Rendered by program-competences.js in view-only mode -->
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
                     </div>
                 </div>
 

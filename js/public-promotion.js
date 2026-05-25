@@ -951,6 +951,9 @@ async function loadCalendar() {
             const iframe = document.getElementById('calendar-iframe');
             if (iframe) iframe.src = `https://calendar.google.com/calendar/embed?src=${encodeURIComponent(calendar.googleCalendarId)}&ctz=Europe/Madrid`;
 
+            // Inject Google appointment scheduling button if URL is configured
+            _loadAppointmentButton(calendar.googleAppointmentUrl);
+
             // Flag so that updateSidebarWithExtendedInfo knows calendar is configured
             window._calendarConfigured = true;
         }
@@ -1169,21 +1172,7 @@ async function loadExtendedInfo() {
 let _virtualClassroomState = null;
 
 function _addAulaVirtualToSidebar() {
-    const nav = document.getElementById('sidebar-nav');
-    if (!nav) return;
-    // Avoid duplicates
-    if (nav.querySelector('a[onclick*="openAulaVirtualPage"]')) return;
-    const aulaLi = document.createElement('li');
-    aulaLi.className = 'nav-item';
-    aulaLi.innerHTML = '<a class="nav-link" href="#" onclick="openAulaVirtualPage(event)"><i class="bi bi-laptop me-2"></i>Aula Virtual</a>';
-    const quickLinksAnchor = nav.querySelector('a[href="#quick-links"]');
-    const quickLinksItem = quickLinksAnchor ? quickLinksAnchor.parentElement : null;
-    if (quickLinksItem) {
-        quickLinksItem.insertAdjacentElement('afterend', aulaLi);
-    } else {
-        nav.appendChild(aulaLi);
-    }
-    // Also reveal the CTA button in the "En Progreso" tab
+    // Sidebar was removed — only reveal the CTA button in the main content area
     const ctaDiv = document.getElementById('pp-cta-aula-virtual');
     if (ctaDiv) ctaDiv.classList.remove('d-none');
 }
@@ -2696,4 +2685,33 @@ function generateResourcesHTML(resources) {
 
     html += '</div>';
     return html;
+}
+
+/**
+ * Injects the Google Calendar appointment scheduling button into #gc-appointment-btn.
+ * Retries until the external scheduling-button script has loaded.
+ * @param {string|null} url - The Google Calendar appointment URL
+ */
+function _loadAppointmentButton(url) {
+    const target = document.getElementById('gc-appointment-btn');
+    if (!target) return;
+    if (!url) { target.style.display = 'none'; return; }
+    target.style.display = 'flex';
+    target.style.justifyContent = 'flex-end';
+    target.innerHTML = '';
+    const btn = document.createElement('button');
+    btn.className = 'qxCTlb';
+    btn.style.color = '#fff';
+    btn.style.backgroundColor = '#F4511E';
+    btn.textContent = 'Reservar una cita';
+    btn.addEventListener('click', () => {
+        const iframe = document.getElementById('appointment-iframe');
+        if (iframe) iframe.src = url;
+        const modal = new bootstrap.Modal(document.getElementById('appointmentModal'));
+        modal.show();
+        document.getElementById('appointmentModal').addEventListener('hidden.bs.modal', () => {
+            if (iframe) iframe.src = '';
+        }, { once: true });
+    });
+    target.appendChild(btn);
 }
