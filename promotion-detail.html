@@ -80,7 +80,7 @@
                 </li>
                 <li class="nav-item teacher-only">
                     <a class="nav-link" href="#teacher-area" onclick="switchTab('teacher-area')">
-                        <i class="bi bi-book me-2"></i>Área del docente
+                        <i class="bi bi-book me-2"></i>Área de administración
                     </a>
                 </li>
                 <li class="nav-item teacher-only">
@@ -262,7 +262,7 @@
                 <!-- Área del Docente Tab -->
                 <div id="teacher-area-tab" class="section-content hidden">
                     <div class="my-4">
-                        <h1 id="teacher-area-title">Área del Docente</h1>
+                        <h1 id="teacher-area-title">Área de Administración</h1>
                         <p id="teacher-area-desc" class="text-muted">Gestión integral del grupo y herramientas de
                             seguimiento</p>
                     </div>
@@ -791,11 +791,6 @@
                                                     <h6 class="mb-0 text-white"><i class="bi bi-camera-video me-2"></i>Zoom</h6>
                                                 </div>
                                                 <div class="card-body">
-                                                    <div class="mb-2">
-                                                        <label for="teacher-area-zoom-meeting-url" class="form-label small fw-bold">URL de la reunión</label>
-                                                        <input type="url" class="form-control form-control-sm" id="teacher-area-zoom-meeting-url"
-                                                            placeholder="https://us06web.zoom.us/j/..." />
-                                                    </div>
                                                     <div class="row g-2 mb-3">
                                                         <div class="col-6">
                                                             <label for="teacher-area-zoom-meeting-id" class="form-label small fw-bold">ID de reunión</label>
@@ -838,10 +833,6 @@
                                                 <div class="card-footer bg-light border-top p-2">
                                                     <small class="text-muted d-block mb-2">Estado:</small>
                                                     <div class="d-flex gap-1 align-items-center">
-                                                        <a id="teacher-area-zoom-preview-btn" href="#"
-                                                            class="btn btn-sm btn-outline-primary hidden" target="_blank">
-                                                            <i class="bi bi-camera-video me-1"></i>Abrir Zoom
-                                                        </a>
                                                         <button class="btn btn-sm btn-outline-danger" onclick="removeZoomCredentials()"
                                                             id="teacher-area-remove-zoom-btn" style="display:none;">
                                                             <i class="bi bi-trash"></i>
@@ -1024,7 +1015,7 @@
                 <div id="info-tab" class="section-content hidden">
                     <div class="d-flex justify-content-between align-items-center my-4 pb-3 border-bottom">
                         <h2 class="mb-0">Detalles del Programa</h2>
-                        <div class="d-flex gap-2">
+                        <div class="d-flex gap-2 justify-content-end">
                             <button id="preview-roadmap-btn" class="btn btn-outline-primary"
                                 onclick="previewPromotion()" title="Vista previa del roadmap">
                                 <i class="bi bi-eye me-2"></i>Preview Roadmap

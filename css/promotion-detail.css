@@ -196,6 +196,8 @@ body {
     margin: 0.2rem;
     transition: all 0.3s ease;
     list-style: none;
+    border-left: 3px solid transparent;
+    white-space: nowrap;
 }
 
 .sidebar .nav-link:hover {
