@@ -579,6 +579,17 @@ async function loadExtendedInfo() {
             }
             _set('sched-notes', sched.notes);
 
+            // Attach auto-save listeners on schedule fields
+            const _schedIds = [
+                'sched-online-entry','sched-online-start','sched-online-break','sched-online-lunch','sched-online-finish',
+                'sched-presential-entry','sched-presential-start','sched-presential-break','sched-presential-lunch','sched-presential-finish',
+                'sched-notes'
+            ];
+            _schedIds.forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.addEventListener('change', _scheduleAutoSave);
+            });
+
             // Populate Additional Lists
             displayTeam();
             displayResources();
@@ -1208,6 +1219,51 @@ function deletePildoraRow(index) {
         savePildorasToServer(currentModule, 'Píldora eliminada', true);
         displayPildoras();
     }, 'Eliminar', 'btn-danger');
+}
+
+// Debounce timer for schedule auto-save
+let _scheduleSaveTimer = null;
+
+function _scheduleAutoSave() {
+    if (_scheduleSaveTimer) clearTimeout(_scheduleSaveTimer);
+    _scheduleSaveTimer = setTimeout(_saveScheduleNow, 800);
+}
+
+async function _saveScheduleNow() {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    const schedule = {
+        online: {
+            entry: document.getElementById('sched-online-entry').value,
+            start: document.getElementById('sched-online-start').value,
+            break: document.getElementById('sched-online-break').value,
+            lunch: document.getElementById('sched-online-lunch').value,
+            finish: document.getElementById('sched-online-finish').value
+        },
+        presential: {
+            entry: document.getElementById('sched-presential-entry').value,
+            start: document.getElementById('sched-presential-start').value,
+            break: document.getElementById('sched-presential-break').value,
+            lunch: document.getElementById('sched-presential-lunch').value,
+            finish: document.getElementById('sched-presential-finish').value
+        },
+        notes: document.getElementById('sched-notes').value
+    };
+    extendedInfoData.schedule = schedule;
+    try {
+        const response = await fetch(`${API_URL}/api/promotions/${promotionId}/extended-info`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ schedule })
+        });
+        if (response.ok) {
+            window.showApiToast('Horario guardado', 'success', 2000);
+        } else {
+            window.showApiToast('Error al guardar horario', 'danger');
+        }
+    } catch (err) {
+        window.showApiToast('Error al guardar horario', 'danger');
+    }
 }
 
 // Debounce map for savePildorasToServer: moduleId -> { timer, successMsg }
