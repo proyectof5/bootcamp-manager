@@ -85,29 +85,16 @@ window.openProfileModal = async function () {
             document.getElementById('profile-email').value = profile.email;
             document.getElementById('profile-location').value = profile.location || '';
 
-            // Clear password fields
-            document.getElementById('current-password').value = '';
-            document.getElementById('new-password').value = '';
-            document.getElementById('confirm-password').value = '';
-
-            // Update save button handler
-            const saveBtn = document.getElementById('profile-save-btn');
-            saveBtn.onclick = function () {
-                const activeTab = document.querySelector('.nav-link.active');
-                if (activeTab.id === 'profile-tab') {
-                    saveProfileInfo();
-                } else {
-                    changePassword();
-                }
-            };
-
             profileModal.show();
         } else {
-            window.showApiToast('Error loading profile', 'danger');
+            let errMsg = `Error loading profile (${response.status})`;
+            try { const e = await response.json(); errMsg = e.error || errMsg; } catch {}
+            console.error('[openProfileModal]', response.status, errMsg);
+            window.showApiToast(errMsg, 'danger');
         }
     } catch (error) {
         console.error('Error loading profile:', error);
-        window.showApiToast('Error loading profile', 'danger');
+        window.showApiToast('Error loading profile: ' + error.message, 'danger');
     }
 };
 
