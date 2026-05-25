@@ -3384,6 +3384,74 @@ function displayModules(modules) {
     });
 }
 
+// ── Helpers del gantt ────────────────────────────────────────────────────────
+
+// Cierra el dropdown ••• ancestro del elemento dado. Se usa desde el onclick
+// inline de cada item porque el event.stopPropagation() rompe el cierre
+// automático que Bootstrap haría al detectar el click en bubble.
+function hideGanttDropdown(el) {
+    const toggle = el.closest('.dropdown')?.querySelector('[data-bs-toggle="dropdown"]');
+    if (toggle) bootstrap.Dropdown.getInstance(toggle)?.hide();
+}
+
+// Renderiza un dropdown contextual ••• con las acciones pasadas.
+// actions: [{ icon: 'bi-pencil', label: 'Editar', onclick: 'fn(...)', variant?: 'danger' }]
+function renderRowActions(actions) {
+    if (!actions || !actions.length) return '';
+    const items = actions.map(a => `
+        <li><button class="dropdown-item${a.variant === 'danger' ? ' text-danger' : ''}"
+                    type="button"
+                    onclick="event.stopPropagation(); hideGanttDropdown(this); ${a.onclick}">
+            <i class="bi ${a.icon} me-2"></i>${a.label}
+        </button></li>`).join('');
+    return `
+        <div class="dropdown gantt-row-actions">
+            <button class="btn-icon" type="button"
+                    data-bs-toggle="dropdown" aria-expanded="false"
+                    onclick="event.stopPropagation();"
+                    aria-label="Acciones">
+                <i class="bi bi-three-dots-vertical"></i>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end">${items}</ul>
+        </div>`;
+}
+
+// Dibuja una línea vertical sobre el wrapper indicando la semana actual.
+function renderTodayLine(table, weekIndex) {
+    const wrapper = table.closest('.table-responsive') || table.parentElement;
+    if (!wrapper) return;
+    wrapper.style.position = 'relative';
+    wrapper.querySelector('.gantt-today-line')?.remove();
+
+    requestAnimationFrame(() => {
+        const headerCells = table.querySelectorAll('thead tr:last-child th');
+        const targetCell = headerCells[weekIndex + 1]; // +1 por la columna label
+        if (!targetCell) return;
+        const tableRect = table.getBoundingClientRect();
+        const cellRect = targetCell.getBoundingClientRect();
+        const leftPx = cellRect.left - tableRect.left + (cellRect.width / 2);
+
+        const line = document.createElement('div');
+        line.className = 'gantt-today-line';
+        line.style.left = `${leftPx}px`;
+        line.title = `Semana actual (${weekIndex + 1})`;
+        wrapper.appendChild(line);
+    });
+}
+
+// Scrollea el wrapper para centrar la semana indicada (solo primer render).
+function scrollToWeek(table, weekIndex) {
+    const wrapper = table.closest('.table-responsive');
+    if (!wrapper) return;
+    requestAnimationFrame(() => {
+        const headerCells = table.querySelectorAll('thead tr:last-child th');
+        const targetCell = headerCells[weekIndex + 1];
+        if (!targetCell) return;
+        const targetLeft = targetCell.offsetLeft - (wrapper.clientWidth / 2);
+        wrapper.scrollTo({ left: Math.max(0, targetLeft), behavior: 'smooth' });
+    });
+}
+
 function generateGanttChart(promotion) {
     const table = document.getElementById('gantt-table');
     table.innerHTML = '';
@@ -3400,39 +3468,9 @@ function generateGanttChart(promotion) {
         return;
     }
 
-    // Compact table — override the generous default padding from style.css
+    // Layout y estética viven en promotion-detail.css (clases .gantt-*).
+    // Mantener solo el className para que el CSS aplique.
     table.className = 'table table-sm table-bordered gantt-table';
-    table.style.fontSize = '0.65rem';
-    table.style.borderCollapse = 'collapse';
-    table.style.tableLayout = 'auto';
-
-    // Inject a scoped style block once to force tight cell sizing
-    if (!document.getElementById('gantt-compact-style')) {
-        const s = document.createElement('style');
-        s.id = 'gantt-compact-style';
-        s.textContent = `
-            #gantt-table th, #gantt-table td {
-                padding: 1px 2px !important;
-                font-size: 0.6rem;
-                border: 1px solid #dee2e6 !important;
-                box-sizing: border-box;
-            }
-            #gantt-table .gantt-label-cell {
-                white-space: nowrap;
-                overflow: visible;
-                position: sticky;
-                left: 0;
-                background: white;
-                z-index: 2;
-            }
-            #gantt-table .gantt-week-cell {
-                writing-mode: vertical-rl;
-                text-orientation: mixed;
-                padding: 3px 1px !important;
-            }
-        `;
-        document.head.appendChild(s);
-    }
 
     const tableContainer = table.closest('.table-responsive') || table.parentElement;
     if (tableContainer) {
@@ -3524,10 +3562,10 @@ function generateGanttChart(promotion) {
     }
 
     empLabelCell.innerHTML = `
-        <div class="d-flex align-items-center gap-1">
-            <i class="bi ${isEmpExpanded ? 'bi-chevron-down' : 'bi-chevron-right'} gantt-emp-chevron" style="font-size:0.6rem;"></i>
+        <div class="d-flex align-items-center gap-2">
+            <i class="bi ${isEmpExpanded ? 'bi-chevron-down' : 'bi-chevron-right'} gantt-emp-chevron"></i>
             <strong>Empleabilidad</strong>
-            <span class="badge bg-warning text-dark" style="font-size:0.55rem;">${employability.length}</span>
+            <span class="badge bg-primary">${employability.length}</span>
         </div>
         ${spanBarHtml}`;
     empHeaderRow.appendChild(empLabelCell);
@@ -3549,15 +3587,15 @@ function generateGanttChart(promotion) {
         const itemUrl = item.url
             ? `<a href="${escapeHtml(item.url)}" target="_blank" class="text-decoration-none">${escapeHtml(item.name)}</a>`
             : escapeHtml(item.name);
-        const editBtn = isTeacher
-            ? `<button class="btn btn-xs btn-outline-warning py-0 px-1" style="font-size:0.55rem;" onclick="event.stopPropagation();editEmployabilityItem(${index})"><i class="bi bi-pencil"></i></button>` : '';
-        const delBtn = isTeacher
-            ? `<button class="btn btn-xs btn-outline-danger py-0 px-1" style="font-size:0.55rem;" onclick="event.stopPropagation();deleteEmployabilityItem(${index})"><i class="bi bi-trash"></i></button>` : '';
+        const actions = isTeacher ? renderRowActions([
+            { icon: 'bi-pencil', label: 'Editar',  onclick: `editEmployabilityItem(${index})` },
+            { icon: 'bi-trash',  label: 'Borrar', onclick: `deleteEmployabilityItem(${index})`, variant: 'danger' }
+        ]) : '';
 
         itemCell.innerHTML = `
-            <div class="d-flex align-items-center justify-content-between gap-1" style="padding-left:14px;">
-                <small style="font-size:0.58rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:110px;">${itemUrl}</small>
-                <div class="d-flex gap-1">${editBtn}${delBtn}</div>
+            <div class="d-flex align-items-center justify-content-between gap-4" style="padding-left:14px;">
+                <small>${itemUrl}</small>
+                ${actions}
             </div>`;
         itemRow.appendChild(itemCell);
 
@@ -3594,18 +3632,18 @@ function generateGanttChart(promotion) {
         const moduleCell = document.createElement('td');
         moduleCell.className = 'gantt-label-cell';
 
-        const editBtn = isTeacher
-            ? `<button class="btn btn-xs btn-outline-warning py-0 px-1" style="font-size:0.55rem;" onclick="event.stopPropagation();editModule('${escapeHtml(module.id)}')"><i class="bi bi-pencil"></i></button>` : '';
-        const deleteBtn = isTeacher
-            ? `<button class="btn btn-xs btn-outline-danger py-0 px-1" style="font-size:0.55rem;" onclick="event.stopPropagation();deleteModule('${escapeHtml(module.id)}')"><i class="bi bi-trash"></i></button>` : '';
+        const moduleActions = isTeacher ? renderRowActions([
+            { icon: 'bi-pencil', label: 'Editar',  onclick: `editModule('${escapeHtml(module.id)}')` },
+            { icon: 'bi-trash',  label: 'Borrar', onclick: `deleteModule('${escapeHtml(module.id)}')`, variant: 'danger' }
+        ]) : '';
 
         moduleCell.innerHTML = `
-            <div class="d-flex align-items-center justify-content-between gap-1">
-                <div class="d-flex align-items-center gap-1">
-                    <i class="bi ${isExpanded ? 'bi-chevron-down' : 'bi-chevron-right'} gantt-mod-chevron" style="font-size:0.6rem;"></i>
+            <div class="d-flex align-items-center justify-content-between gap-4">
+                <div class="d-flex align-items-center gap-2">
+                    <i class="bi ${isExpanded ? 'bi-chevron-down' : 'bi-chevron-right'} gantt-mod-chevron"></i>
                     <strong>M${index + 1}: ${escapeHtml(module.name)}</strong>
                 </div>
-                <div class="d-flex gap-1">${editBtn}${deleteBtn}</div>
+                ${moduleActions}
             </div>`;
         moduleRow.appendChild(moduleCell);
 
@@ -3641,13 +3679,14 @@ function generateGanttChart(promotion) {
             const link = courseUrl
                 ? `<a href="${escapeHtml(courseUrl)}" target="_blank" class="text-decoration-none">${escapeHtml(courseName)}</a>`
                 : escapeHtml(courseName);
-            const delBtn = isTeacher
-                ? `<button class="btn btn-xs btn-outline-danger py-0 px-1" style="font-size:0.55rem;" onclick="event.stopPropagation();deleteCourseFromModule('${escapeHtml(module.id)}',${courseIndex})"><i class="bi bi-trash"></i></button>` : '';
+            const courseActions = isTeacher ? renderRowActions([
+                { icon: 'bi-trash', label: 'Borrar', onclick: `deleteCourseFromModule('${escapeHtml(module.id)}',${courseIndex})`, variant: 'danger' }
+            ]) : '';
 
             courseCell.innerHTML = `
-                <div class="d-flex align-items-center justify-content-between gap-1" style="padding-left:14px;">
-                    <small style="font-size:0.58rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:115px;">${link}</small>
-                    <div>${delBtn}</div>
+                <div class="d-flex align-items-center justify-content-between gap-4" style="padding-left:14px;">
+                    <small>${link}</small>
+                    ${courseActions}
                 </div>`;
             courseRow.appendChild(courseCell);
 
@@ -3676,13 +3715,14 @@ function generateGanttChart(promotion) {
             const link = projectUrl
                 ? `<a href="${escapeHtml(projectUrl)}" target="_blank" class="text-decoration-none">${escapeHtml(projectName)}</a>`
                 : escapeHtml(projectName);
-            const delBtn = isTeacher
-                ? `<button class="btn btn-xs btn-outline-danger py-0 px-1" style="font-size:0.55rem;" onclick="event.stopPropagation();deleteProjectFromModule('${escapeHtml(module.id)}',${projectIndex})"><i class="bi bi-trash"></i></button>` : '';
+            const projectActions = isTeacher ? renderRowActions([
+                { icon: 'bi-trash', label: 'Borrar', onclick: `deleteProjectFromModule('${escapeHtml(module.id)}',${projectIndex})`, variant: 'danger' }
+            ]) : '';
 
             projectCell.innerHTML = `
-                <div class="d-flex align-items-center justify-content-between gap-1" style="padding-left:14px;">
-                    <small style="font-size:0.58rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:115px;">${link}</small>
-                    <div>${delBtn}</div>
+                <div class="d-flex align-items-center justify-content-between gap-4" style="padding-left:14px;">
+                    <small>${link}</small>
+                    ${projectActions}
                 </div>`;
             projectRow.appendChild(projectCell);
 
@@ -3698,6 +3738,48 @@ function generateGanttChart(promotion) {
 
         table.appendChild(modContentTbody);
         weekCounter += module.duration;
+    });
+
+    // Línea vertical "esta semana" + scroll inicial al centro si la promoción
+    // ya empezó. Sin startDate fiable no se dibuja nada (silencioso).
+    const startDate = promotion.startDate ? new Date(promotion.startDate) : null;
+    if (startDate && !isNaN(startDate.getTime()) && weeks > 0) {
+        const msPerWeek = 7 * 24 * 60 * 60 * 1000;
+        const currentWeek = Math.floor((Date.now() - startDate.getTime()) / msPerWeek);
+        if (currentWeek >= 0 && currentWeek < weeks) {
+            renderTodayLine(table, currentWeek);
+            // Scroll inicial solo una vez por render (no en cada toggle)
+            if (!table.dataset.scrolledOnce) {
+                scrollToWeek(table, currentWeek);
+                table.dataset.scrolledOnce = '1';
+            }
+        }
+    }
+
+    // Re-inicializar dropdowns ••• con Popper strategy:'fixed' para que el
+    // menu NO quede atrapado dentro del .table-responsive (overflow-x:auto).
+    //
+    // Truco extra del stacking context: .gantt-label-cell tiene position:sticky
+    // con z-index numérico, así que cada <td> crea su propio stacking context.
+    // El z-index:1080 del .dropdown-menu no puede escapar de su <td> padre, y
+    // las celdas sticky de filas siguientes (mismo z-index) lo tapan por orden
+    // DOM. Solución: elevar el z-index del <td> entero mientras el menú está
+    // abierto, así su stacking context queda sobre los hermanos.
+    table.querySelectorAll('.gantt-row-actions [data-bs-toggle="dropdown"]').forEach(toggle => {
+        bootstrap.Dropdown.getInstance(toggle)?.dispose();
+        new bootstrap.Dropdown(toggle, {
+            popperConfig: (defaultConfig) => ({
+                ...defaultConfig,
+                strategy: 'fixed'
+            })
+        });
+
+        const liftCell = (z) => {
+            const cell = toggle.closest('.gantt-label-cell');
+            if (cell) cell.style.zIndex = z;
+        };
+        toggle.addEventListener('show.bs.dropdown', () => liftCell('1080'));
+        toggle.addEventListener('hidden.bs.dropdown', () => liftCell(''));
     });
 }
 

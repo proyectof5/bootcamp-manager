@@ -7,8 +7,10 @@
     <title>Bootcamp Roadmap</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet" />
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet" />
     <link href="https://fonts.googleapis.com/css2?family=Pacifico" rel="stylesheet">
     <link rel="icon" type="image/png" href="./img/favicon_bootcamp_manager.png">
+    <link href="css/design-system.css" rel="stylesheet" />
     <link href="css/style.css" rel="stylesheet" />
     <style>
         /* ── Banner ─────────────────────────────────────────── */
@@ -30,10 +32,18 @@
 
         .pp-banner-body {
             padding: 1rem 1.5rem 1.25rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .pp-banner-text {
+            flex: 1 1 auto;
+            min-width: 0;
         }
 
         .pp-banner-title {
-            font-size: 1.45rem;
+            font-size: var(--app-font-size-fluid-2xl);   /* 20px móvil → 24px desktop */
             font-weight: 700;
             margin: 0;
             letter-spacing: -.01em;
@@ -43,6 +53,23 @@
             font-size: .85rem;
             opacity: .85;
             margin: .15rem 0 0;
+        }
+
+        .pp-banner-logo {
+            flex: 0 0 auto;
+            display: inline-flex;
+            align-items: center;
+            line-height: 0;
+            transition: opacity var(--app-transition-fast);
+        }
+        .pp-banner-logo:hover { opacity: .85; }
+        .pp-banner-logo img {
+            height: 32px;
+            width: auto;
+            display: block;
+        }
+        @media (min-width: 576px) {
+            .pp-banner-logo img { height: 40px; }
         }
 
         /* ── Tabs ────────────────────────────────────────────── */
@@ -128,12 +155,15 @@
             border-radius: 8px;
             padding: .6rem 1rem;
             text-align: center;
-            flex: 1;
+            flex: 1 1 calc(50% - .75rem);   /* 2 columnas en móvil pequeño */
             min-width: 90px;
+        }
+        @media (min-width: 576px) {
+            .pp-stat-box { flex: 1 1 0; }     /* fila completa en >=sm */
         }
 
         .pp-stat-val {
-            font-size: 1.5rem;
+            font-size: var(--app-font-size-fluid-xl);   /* 18px móvil → 20px desktop */
             font-weight: 700;
             color: var(--principal-1);
             line-height: 1.1;
@@ -225,33 +255,8 @@
             }
         }
 
-        @media (min-width: 768px) {
-            .container-fluid>.row {
-                flex-wrap: nowrap;
-            }
-
-            nav.sidebar {
-                display: block !important;
-                width: 180px;
-                max-width: 180px;
-                flex: 0 0 180px;
-            }
-
-            main {
-                width: auto;
-                max-width: none;
-                flex: 1 1 auto;
-                min-width: 0;
-                margin-left: 10px;
-                margin-right: 10px;
-            }
-
-            main>* {
-                max-width: 1000px;
-                margin-left: auto;
-                margin-right: auto;
-            }
-        }
+        /* Ancho de página controlado por .container de Bootstrap
+           (max-width responsive nativo: 540/720/960/1140/1320 px). */
     </style>
 </head>
 
@@ -292,34 +297,27 @@
         </div>
     </div>
 
-    <div class="container-fluid">
-        <div class="row">
-            <!-- Sidebar -->
-            <nav class="col-md-3 col-lg-2 d-md-block sidebar collapse">
-                <div class="sidebar-content d-flex flex-column h-100">
-                    <h1 id="nav-title" class="nav-title h3 mb-4 px-3">Bootcamp</h1>
-                    <ul class="nav" id="sidebar-nav">
-                        <!-- Navigation items will be populated here -->
-                    </ul>
-                    <figure class="logo-container text-center p-3 mt-auto">
-                        <a href="https://factoriaf5.org/" target="_blank">
-                            <img src="./img/logo-factoria-b.svg" alt="Logotipo FactoriaF5" class="img-fluid"
-                                style="max-width: 100px;">
-                        </a>
-                    </figure>
-                </div>
-            </nav>
+    <!-- Sidebar nav eliminada en esta vista; el JS sigue popularando #sidebar-nav
+         pero el contenedor está oculto para que las llamadas no fallen. -->
+    <ul id="sidebar-nav" class="d-none" aria-hidden="true"></ul>
 
-            <!-- Main Content -->
-            <main class="col-md-9 col-lg-10 py-4">
+    <div class="container">
+        <div class="row">
+            <!-- Main Content (sin sidebar — ocupa todo el ancho del container) -->
+            <main class="col-12 py-4">
 
                 <!-- ══ BANNER ══════════════════════════════════════════ -->
                 <div class="pp-banner mb-4">
                     <img id="pp-banner-img" src="./img/f5_banner_roadmpa_manager.PNG" alt="Banner formación"
                         class="pp-banner-img" onerror="this.style.display='none'">
                     <div class="pp-banner-body">
-                        <h2 class="pp-banner-title" id="promotion-title">Cargando…</h2>
-                        <p class="pp-banner-sub" id="pp-banner-sub"></p>
+                        <div class="pp-banner-text">
+                            <h2 class="pp-banner-title" id="promotion-title">Cargando…</h2>
+                            <p class="pp-banner-sub" id="pp-banner-sub"></p>
+                        </div>
+                        <a href="https://factoriaf5.org/" target="_blank" rel="noopener" class="pp-banner-logo">
+                            <img src="./img/logo-factoria-b.svg" alt="Factoría F5" />
+                        </a>
                     </div>
                 </div>
 

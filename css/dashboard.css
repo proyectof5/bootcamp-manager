@@ -1,48 +1,16 @@
-/* Override Bootstrap blue spinners → brand orange */
+/* Tokens, reset y base globales viven en css/design-system.css.
+   Aquí solo van estilos específicos de la vista dashboard. */
+
+/* Spinners → color de marca */
 .spinner-border,
 .spinner-grow {
-    color: #FF6B35 !important;
-}
-
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
-:root {
-    --principal-1: #FF4700;
-    --principal-2: #020100;
-    --principal-3: #FFFFFF;
-    --complementario-1: #9c9c9c;
-    --complementario-2: #FFA37F;
-    ;
-
-
-    /* colores fuera de la paleta oficial */
-    --complementario-1-light: #f9dccd;
-    --complementario-1-extra-light: #f5f2f2;
-    --green-f5: #9af6c2;
-    --purple-f5: #6f42c1;
-    --purple-light-f5: #d1c4e9;
-    --blue-light-f5: #345253;
-
-
-    --grey-f5: #897d7c;
-    --grey-light-f5: #e2d2cd;
-    --bs-nav-link-hover-color: #FFFFFF;
-
-    /*crok default colors*/
-    --green-crok: #0a8950;
-     --green-light-crok:#0a8950a6;
+    color: var(--app-color-primary) !important;
 }
 
 body {
- background-color: #f19976;
- height: 100%;
- /* background-image: url("../img/Fondo-factoria-f5-color.png"); */
- background-size: 150px 150px;
- background-repeat: repeat;
- border-right: 2px solid #ff4700;
+    background-color: var(--app-color-bg-festive);   /* salmón — diseño intencional */
+    height: 100%;
+    border-right: 2px solid var(--app-color-primary);
 }
 
 
@@ -53,34 +21,32 @@ main {
 
 .card {
     border: none;
-    border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    transition: all 0.3s ease;
-    margin-bottom: 24px;
-    background-color: #ffffff;
-    /* Increased margin */
+    border-radius: var(--app-radius-md);
+    box-shadow: var(--app-shadow-sm);
+    transition: box-shadow var(--app-transition-base), transform var(--app-transition-base);
+    margin-bottom: var(--app-space-5);
+    background-color: var(--app-color-bg-surface);
 }
 
 .card-body p {
     white-space: pre-wrap;
-    /* Preserve newlines and wrap text */
 }
 
 .card:hover {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    box-shadow: var(--app-shadow-md);
     transform: translateY(-2px);
 }
 
 .card-title {
-    color: #333;
-    font-weight: 600;
+    color: var(--app-color-text);
+    font-weight: var(--app-font-weight-semi);
     display: flex;
     align-items: center;
-    margin-bottom: 10px;
+    margin-bottom: var(--app-space-3);
 }
 
 .card-title i {
-    color: #ff4700;
+    color: var(--app-color-primary);
 }
 
 .section-content {
@@ -91,28 +57,33 @@ main {
 .section-content.hidden {
     display: none;
 }
-.container-promotions{
-   padding:2rem;
-    background-color: rgba(244, 166, 150, 0.559); 
+.container-promotions {
+    padding: var(--app-space-6);
+    /* sin background — deja ver el salmón del body */
 }
 
+/* Botón "Añadir Promoción" — usa los mismos tokens que .app-btn-primary */
 .btn-new {
-    background: #ff4700 0%;
-    border: none;
-    color: white;
-    margin:0.5rem;
-    padding: 10px 20px;
-    border-radius: 5px;
-    font-weight: 500;
+    background-color: var(--app-color-primary);
+    border: 1px solid var(--app-color-primary);
+    color: var(--app-color-primary-on);
+    margin: var(--app-space-2);
+    padding: var(--app-space-2) var(--app-space-5);
+    border-radius: var(--app-radius-md);
+    font-weight: var(--app-font-weight-semi);
+    font-size: var(--app-font-size-sm);
     cursor: pointer;
-    transition: all 0.3s ease;
-    box-shadow: 0 2px 8px rgba(7, 7, 7, 0.3);
+    transition: background-color var(--app-transition-fast),
+                box-shadow var(--app-transition-fast),
+                transform var(--app-transition-fast);
+    box-shadow: var(--app-shadow-sm);
 }
 
-.btn-primary:hover {
-    opacity: 0.9;
-    transform: translateY(-2px);
-    box-shadow: 0 5px 15px rgba(255, 71, 0, 0.4);
+.btn-new:hover {
+    background-color: var(--app-color-primary-hover);
+    border-color: var(--app-color-primary-hover);
+    box-shadow: var(--app-shadow-brand);
+    transform: translateY(-1px);
 }
 
 .navbar {
@@ -140,20 +111,21 @@ main {
     min-height: 80px;
 }
 .navbar-brand {
-    font-weight: 600;
-    color: #ff4700 !important;
+    font-weight: var(--app-font-weight-semi);
+    color: var(--app-color-primary) !important;
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: var(--app-space-3);
     margin: 0 !important;
     padding: 0 !important;
     flex: 0 0 auto;
 }
 
+/* .navbar .page-title se aplica al <img class="page-title"> del logo dentro del
+   navbar — el color es irrelevante (es una imagen), el tamaño se controla con
+   el atributo height del <img>. */
 .navbar .page-title {
-    color: #ffffff;
     margin-right: 0;
-    font-size: 2rem;
     margin-bottom: 0;
 }
 
@@ -225,44 +197,36 @@ main {
         transform: translateY(0);
     }
 }
-.navbar .page-title {
-    color: #ffffff;
-    margin-right: 0;
-    font-size: 2rem;
-    margin-bottom: 0;
-}
-
+/* Título de página (h1 "Mis Promociones"). Blanco sobre el fondo salmón
+   del dashboard. Tamaño rebajado respecto al original (era 2.5rem / 40px). */
 .page-title {
-    color: #ffffff;
-    font-size: 2.5rem;
+    color: var(--app-color-primary-on);
+    font-size: var(--app-font-size-2xl);   /* 24px */
+    font-weight: var(--app-font-weight-bold);
+    line-height: var(--app-line-height-tight);
+    margin: 0;
 }
 .form-control,
 .form-select {
-    border: 1px solid #ddd;
-    border-radius: 5px;
-    padding: 10px 12px;
+    border: 1px solid var(--app-color-border);
+    border-radius: var(--app-radius-md);
+    padding: var(--app-space-3);
 }
-
-.form-control:focus,
-.form-select:focus {
-    border-color: #ff4700;
-    box-shadow: 0 0 0 0.2rem rgba(255, 71, 0, 0.25);
-}
+/* Focus state ya viene del design-system (sobrescribe Bootstrap) */
 
 /* Promotion Cards - Course Style */
 .promotion-card {
     border: none;
-    border-radius: 12px;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-    transition: all 0.3s ease;
+    border-radius: var(--app-radius-lg);
+    box-shadow: var(--app-shadow-md);
+    transition: box-shadow var(--app-transition-base), transform var(--app-transition-base);
     cursor: pointer;
     display: flex;
     flex-direction: column;
     height: 90%;
     min-height: 100px;
     overflow: hidden;
-    /* background: linear-gradient(135deg, #FF4700 0%, #FF6B35 100%); */
-        background-image: url("../img/Fondo-factoria-f5-color.png")!important;
+    background-image: url("../img/Fondo-factoria-f5-color.png") !important;
     background-size: 150px 150px;
     background-repeat: repeat;
     position: relative;
@@ -284,7 +248,7 @@ main {
 }
 
 .promotion-card:hover {
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+    box-shadow: var(--app-shadow-lg);
     transform: translateY(-8px);
 }
 
@@ -299,18 +263,18 @@ main {
 }
 
 .promotion-card-title {
-    color: white;
-    font-weight: 700;
-    font-size: 3rem;
-    margin-bottom: 12px;
-    line-height: 1.3;
+    color: var(--app-color-primary-on);
+    font-weight: var(--app-font-weight-bold);
+    font-size: var(--app-font-size-xl);     /* 20px — antes 3rem (48px) */
+    margin-bottom: var(--app-space-3);
+    line-height: var(--app-line-height-tight);
 }
 
 .promotion-card-meta {
     color: rgba(255, 255, 255, 0.9);
-    font-size: 0.95rem;
+    font-size: var(--app-font-size-sm);
     margin-bottom: auto;
-    line-height: 1.5;
+    line-height: var(--app-line-height-base);
 }
 
 .promotion-card .badge-weeks {
@@ -344,53 +308,27 @@ main {
 }
 
 .badge-weeks {
-    background-color: #ff4700;
-    color: white;
-    padding: 5px 10px;
-    border-radius: 20px;
-    font-size: 0.85rem;
+    background-color: var(--app-color-primary);
+    color: var(--app-color-primary-on);
+    padding: var(--app-space-1) var(--app-space-3);
+    border-radius: var(--app-radius-pill);
+    font-size: var(--app-font-size-xs);
 }
 
 .modal-header {
-    border-bottom: 2px solid #ff4700;
+    border-bottom: 2px solid var(--app-color-primary);
 }
 
 .modal-title {
-    color: #333;
-    font-weight: 600;
+    color: var(--app-color-text);
+    font-weight: var(--app-font-weight-semi);
 }
 
-
-
-/* Bootstrap color overrides for orange theme */
-.btn-warning {
-    background-color: #ff4700 !important;
-    border-color: #ff4700 !important;
-    color: white !important;
-}
-
-.btn-warning:hover {
-    background-color: #d63900 !important;
-    border-color: #d63900 !important;
-}
-
-.bg-warning {
-    background-color: #ff4700 !important;
-}
-
-.text-warning {
-    color: #ff4700 !important;
-}
-
-.alert-warning {
-    background-color: #ffe6d0;
-    border-color: #ff4700;
-    color: #333;
-}
-
-.border-warning {
-    border-color: #ff4700 !important;
-}
+/* Nota: previamente .btn-warning, .bg-warning, .text-warning, etc. se
+   secuestraban para pintar la marca naranja. Esto rompía la semántica:
+   warning = amarillo. Ahora .btn-primary ya usa el color de marca vía
+   --bs-primary (definido en design-system.css). Los componentes que eran
+   warning de marca se han migrado a .btn-primary / .bg-primary / etc. */
 
 .password-input-group {
     position: relative;
@@ -417,7 +355,7 @@ main {
 }
 
 .password-toggle:hover {
-    color: #ff4700;
+    color: var(--app-color-primary);
 }
 
 /* Hamburger button styling - Global */
@@ -460,8 +398,8 @@ main {
     main {
         margin-top: 0;
     }
-    .page-title{
-        font-size: 2rem;
+    .page-title {
+        font-size: var(--app-font-size-xl);   /* 20px en mobile */
     }
 
 
