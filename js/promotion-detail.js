@@ -1191,6 +1191,7 @@ function addPildoraRow() {
     modulePildoras.pildoras.push(newPildora);
 
     displayPildoras();
+    savePildorasToServer(currentModule, 'Píldora añadida', true);
 }
 
 function deletePildoraRow(index) {
@@ -1204,13 +1205,36 @@ function deletePildoraRow(index) {
 
     _showConfirmModal('¿Eliminar esta píldora?', () => {
         modulePildoras.pildoras.splice(index, 1);
-        savePildorasToServer(currentModule);
+        savePildorasToServer(currentModule, 'Píldora eliminada', true);
         displayPildoras();
     }, 'Eliminar', 'btn-danger');
 }
 
+// Debounce map for savePildorasToServer: moduleId -> { timer, successMsg }
+const _pildoraSaveDebounce = new Map();
+
 // Save píldoras changes to server
-async function savePildorasToServer(module) {
+// @param {object} module - the module object
+// @param {string} [successMsg] - optional toast message on success; pass null to suppress
+// @param {boolean} [immediate] - if true, skip debounce (used for explicit create/delete actions)
+function savePildorasToServer(module, successMsg = 'Cambios guardados', immediate = false) {
+    if (immediate) {
+        return _savePildorasNow(module, successMsg);
+    }
+    const existing = _pildoraSaveDebounce.get(module.id);
+    if (existing?.timer) {
+        clearTimeout(existing.timer);
+        // Keep the most specific message (non-default wins)
+        if (existing.successMsg !== 'Cambios guardados') successMsg = existing.successMsg;
+    }
+    const timer = setTimeout(() => {
+        _pildoraSaveDebounce.delete(module.id);
+        _savePildorasNow(module, successMsg);
+    }, 400);
+    _pildoraSaveDebounce.set(module.id, { timer, successMsg });
+}
+
+async function _savePildorasNow(module, successMsg) {
     try {
         const modulePildoras = extendedInfoData.modulesPildoras?.find(mp => mp.moduleId === module.id);
         if (!modulePildoras) return;
@@ -1236,10 +1260,10 @@ async function savePildorasToServer(module) {
             throw new Error(`Failed to save píldoras: ${response.statusText}`);
         }
 
-        //console.log('Píldoras saved successfully');
+        if (successMsg) window.showApiToast(successMsg, 'success', 2000);
     } catch (error) {
         console.error('Error saving píldoras:', error);
-        window.showApiToast('Error saving changes to server', 'danger');
+        window.showApiToast('Error al guardar los cambios', 'danger');
     }
 }
 
@@ -10457,11 +10481,10 @@ function switchProgramDetailsTab(tabName) {
         'team': { tabId: 'program-details-team', buttonId: 'program-details-team-tab', label: 'Team' },
         'resources': { tabId: 'program-details-resources', buttonId: 'program-details-resources-tab', label: 'Resources' },
         'pildoras': { tabId: 'program-details-pildoras', buttonId: 'program-details-pildoras-tab', label: 'Píldoras' },
-        'evaluation': { tabId: 'program-details-evaluation', buttonId: 'program-details-evaluation-tab', label: 'Evaluation' },
+        'evaluation': { tabId: 'program-details-evaluation', buttonId: 'program-details-evaluation-tab', label: 'Criterios' },
         'virtual-classroom': { tabId: 'program-details-virtual-classroom', buttonId: 'program-details-virtual-classroom-tab', label: 'Aula Virtual' },
         'quicklinks': { tabId: 'program-details-quicklinks', buttonId: 'program-details-quicklinks-tab', label: 'Quick Links' },
-        'sections': { tabId: 'program-details-sections', buttonId: 'program-details-sections-tab', label: 'Sections' },
-        'competences': { tabId: 'program-details-competences', buttonId: 'program-details-competences-tab', label: 'Competencias' }
+        'sections': { tabId: 'program-details-sections', buttonId: 'program-details-sections-tab', label: 'Sections' }
     };
 
     const tab = tabNameMap[tabName];
