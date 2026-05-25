@@ -1145,12 +1145,15 @@ function _autoAssignPildoraModeAndStatus(pildora) {
     }
 
     // Status: dynamically update based on date vs today
+    // Only auto-set past píldoras to Presentada.
+    // Today's píldora may have been manually set to Presentada — do not revert it.
+    // Only future píldoras (strictly > today) get reverted to No presentada.
     const today = new Date(); today.setHours(0, 0, 0, 0);
     const pildoraDate = new Date(pildora.date + 'T00:00');
     if (pildoraDate < today && pildora.status !== 'Presentada') {
         pildora.status = 'Presentada';
         changed = true;
-    } else if (pildoraDate >= today && pildora.status === 'Presentada') {
+    } else if (pildoraDate > today && pildora.status === 'Presentada') {
         pildora.status = 'No presentada';
         changed = true;
     }
@@ -5085,6 +5088,11 @@ async function loadCalendar() {
                 calendarIdInput.value = currentCalendarId;
             }
 
+            const appointmentInput = document.getElementById('google-appointment-url');
+            if (appointmentInput) {
+                appointmentInput.value = calendar.googleAppointmentUrl || '';
+            }
+
             displayCalendar(currentCalendarId);
             // Also update the calendar preview in Overview
             if (window.setupCalendarPreview) {
@@ -6779,6 +6787,8 @@ function setupForms() {
             return;
         }
 
+        const googleAppointmentUrl = (document.getElementById('google-appointment-url')?.value || '').trim() || null;
+
         const token = localStorage.getItem('token');
 
         try {
@@ -6788,7 +6798,7 @@ function setupForms() {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
                 },
-                body: JSON.stringify({ googleCalendarId })
+                body: JSON.stringify({ googleCalendarId, googleAppointmentUrl })
             });
 
             if (response.ok) {
@@ -12096,6 +12106,7 @@ function openGroupsModal(mIdx, pIdx) {
         window._evalState.savedEvaluations.push(saved);
     }
     window._evalCurrentSaved = saved;
+    _normalizeGrupalEvalKeys(saved);
 
     // Get or create the modal
     let modalEl = document.getElementById('groupsModal');
@@ -12494,6 +12505,7 @@ function openEvaluationView(mIdx, pIdx) {
         type: 'individual', groups: [], evaluations: []
     };
     window._evalCurrentSaved = saved;
+    _normalizeGrupalEvalKeys(saved);
 
     // Build project competences exclusively from the evaluation picker (projectCompetences).
     // No longer falls back to proj.competenceIds (roadmap) — competences must be defined in Evaluación.
@@ -12645,7 +12657,11 @@ function selectEvalTarget(targetId) {
     });
 
     const isGrupal = saved.type === 'grupal';
-    const savedEval = (saved.evaluations || []).find(e => String(e.targetId) === String(targetId));
+    // Primary: exact match. Fallback for grupal: canonical resolution (guards against any
+    // remaining stale sanitised keys that might have slipped past _normalizeGrupalEvalKeys).
+    const _canonicalTarget = isGrupal ? _resolveEvalTargetId(String(targetId)) : String(targetId);
+    const savedEval = (saved.evaluations || []).find(e => String(e.targetId) === String(targetId))
+        || (isGrupal ? (saved.evaluations || []).find(e => _resolveEvalTargetId(String(e.targetId)) === _canonicalTarget) : null);
     //console.log('[DEBUG] selectEvalTarget:', { targetId, isGrupal, savedEval });
 
     // Resolve display name
@@ -13088,14 +13104,17 @@ function _buildEvalCompetencesHtmlForTarget(targetId, savedEval, projCompetences
 
 /** Removes a competence card from the split view (mirrors removeEvalCompetence for the modal). */
 function removeEvalCompetenceFromView(targetId, compId) {
+    // Resolve canonical targetId (group names may be sanitized in event handler calls)
+    const canonicalId = _resolveEvalTargetId(targetId);
+
     if (!window._evalRemovedComps) window._evalRemovedComps = {};
-    if (!window._evalRemovedComps[String(targetId)]) window._evalRemovedComps[String(targetId)] = [];
-    if (!window._evalRemovedComps[String(targetId)].includes(String(compId))) {
-        window._evalRemovedComps[String(targetId)].push(String(compId));
+    if (!window._evalRemovedComps[canonicalId]) window._evalRemovedComps[canonicalId] = [];
+    if (!window._evalRemovedComps[canonicalId].includes(String(compId))) {
+        window._evalRemovedComps[canonicalId].push(String(compId));
     }
     const saved = window._evalCurrentSaved;
     if (saved) {
-        const evalEntry = (saved.evaluations || []).find(e => e.targetId === String(targetId));
+        const evalEntry = (saved.evaluations || []).find(e => e.targetId === canonicalId);
         if (evalEntry) evalEntry.competences = (evalEntry.competences || []).filter(c => String(c.competenceId) !== String(compId));
     }
     const card = document.querySelector(`.eval-comp-card[data-comp-id="${CSS.escape(String(compId))}"][data-target-id="${CSS.escape(String(targetId))}"]`);
@@ -13139,6 +13158,8 @@ function openEvaluationModal(mIdx, pIdx) {
         moduleId: modId, moduleName: mod.name, projectName: proj.name,
         type: 'individual', groups: [], evaluations: []
     };
+    // Normalise any stale sanitised group-name keys in eval entries before building the modal body
+    _normalizeGrupalEvalKeys(saved);
 
     const projCompetences = (() => {
         const pcEntry = (window._evalState.projectCompetences || []).find(
@@ -13980,6 +14001,67 @@ function removeEvalTool(targetId, compId, toolName) {
 }
 
 /**
+ * Normalises stale eval entry keys in a grupal `saved` object.
+ * Before the canonical-key fix, entries were stored under the sanitised group name
+ * (e.g. "Grupo-1" instead of "Grupo 1"). This helper renames any such entries to the
+ * canonical group name and deduplicates when both a stale and a canonical entry exist.
+ *
+ * Self-contained: does NOT rely on `window._evalCurrentSaved` or `_resolveEvalTargetId`,
+ * so it can be called as soon as `saved` is available (before setting `_evalCurrentSaved`).
+ */
+function _normalizeGrupalEvalKeys(saved) {
+    if (!saved || saved.type !== 'grupal' || !Array.isArray(saved.groups) || !Array.isArray(saved.evaluations)) return;
+    // Build sanitised-name → canonical-name map for groups that have special chars
+    const sanitizedToCanonical = new Map();
+    for (const grp of saved.groups) {
+        const canonical = grp.groupName;
+        const sanitized = String(canonical).replace(/[^a-zA-Z0-9-]/g, '-');
+        if (sanitized !== canonical) sanitizedToCanonical.set(sanitized, canonical);
+    }
+    if (sanitizedToCanonical.size === 0) return; // No groups with special chars — nothing to fix
+    // Iterate backwards so splice indices remain valid
+    for (let i = saved.evaluations.length - 1; i >= 0; i--) {
+        const entry = saved.evaluations[i];
+        const canonical = sanitizedToCanonical.get(entry.targetId);
+        if (!canonical) continue; // Not a stale sanitised key
+        const canonicalIdx = saved.evaluations.findIndex((e, j) => j !== i && e.targetId === canonical);
+        if (canonicalIdx >= 0) {
+            // Both stale and canonical entries exist — merge missing data into canonical, drop stale
+            const canonicalEntry = saved.evaluations[canonicalIdx];
+            if (!canonicalEntry.checkedIndicators && entry.checkedIndicators) canonicalEntry.checkedIndicators = entry.checkedIndicators;
+            if ((!canonicalEntry.competences || !canonicalEntry.competences.length) && entry.competences && entry.competences.length) canonicalEntry.competences = entry.competences;
+            if (!canonicalEntry.feedback && entry.feedback) canonicalEntry.feedback = entry.feedback;
+            if (!canonicalEntry.evaluatedAt && entry.evaluatedAt) canonicalEntry.evaluatedAt = entry.evaluatedAt;
+            saved.evaluations.splice(i, 1);
+        } else {
+            // Only stale entry exists — rename it in-place to the canonical key
+            entry.targetId = canonical;
+        }
+    }
+}
+
+/**
+ * Resolves the canonical targetId for in-memory eval entries.
+ * Event handlers pass safeTargetId (spaces replaced by dashes) for use in CSS selectors,
+ * but eval entries are keyed by the original group name. This helper finds the canonical key.
+ */
+function _resolveEvalTargetId(targetId) {
+    const saved = window._evalCurrentSaved;
+    if (!saved) return targetId;
+    // Always prefer canonical group name lookup first.
+    // Do NOT shortcut on exact match: stale data from before a fix may exist under a
+    // sanitized key (e.g. "Grupo-1") and "Grupo-1" would wrongly match itself.
+    const safeLookup = String(targetId).replace(/[^a-zA-Z0-9-]/g, '-');
+    const grpMatch = (saved.groups || []).find(g =>
+        String(g.groupName) === targetId ||                                 // exact canonical name
+        String(g.groupName).replace(/[^a-zA-Z0-9-]/g, '-') === safeLookup  // sanitized match
+    );
+    if (grpMatch) return grpMatch.groupName;
+    // Not a group — return as-is (student IDs are numeric strings, never contain special chars)
+    return targetId;
+}
+
+/**
  * Called when the user checks/unchecks an indicator checkbox in the evaluation sub-modal.
  * Updates the in-memory checkedIndicators state and recalculates the auto-level badge.
  */
@@ -13987,11 +14069,15 @@ function updateEvalIndicator(targetId, compId, indKey, level, checked, compName)
     const saved = window._evalCurrentSaved;
     if (!saved) return;
 
+    // Resolve canonical targetId: event handlers use safeTargetId (spaces→dashes) for CSS
+    // selectors, but eval entries are keyed by the original group name.
+    const canonicalId = _resolveEvalTargetId(targetId);
+
     // Ensure eval entry exists
-    let evalEntry = (saved.evaluations || []).find(e => e.targetId === targetId);
+    let evalEntry = (saved.evaluations || []).find(e => e.targetId === canonicalId);
     if (!evalEntry) {
         evalEntry = {
-            targetId, targetName: targetId,
+            targetId: canonicalId, targetName: canonicalId,
             competences: [], feedback: '', studentComment: '', evaluatedAt: null
         };
         if (!saved.evaluations) saved.evaluations = [];
@@ -14110,10 +14196,20 @@ async function saveIndividualStudentEval() {
         const ta  = !rte && searchRoot ? searchRoot.querySelector(`textarea[data-target-id="${CSS.escape(studentId)}"]`) : null;
         const feedback = rte ? rte.innerHTML : (ta ? ta.value : '');
 
-        let evalEntry = (saved.evaluations || []).find(e => e.targetId === studentId);
+        // For grupal split view: studentId is the raw groupName (e.g. "Grupo 1").
+        // Normalize it, then clean up any stale entry written under the sanitized key
+        // (e.g. "Grupo-1") left by a previous broken session.
+        const canonicalStudentId = _resolveEvalTargetId(studentId);
+
+        // Remove any stale miskeyed entry so it doesn't shadow the canonical one
+        if (canonicalStudentId !== studentId && saved.evaluations) {
+            saved.evaluations = saved.evaluations.filter(e => e.targetId !== studentId);
+        }
+
+        let evalEntry = (saved.evaluations || []).find(e => e.targetId === canonicalStudentId);
         if (!evalEntry) {
             if (!saved.evaluations) saved.evaluations = [];
-            evalEntry = { targetId: studentId, targetName: _resolveTargetName(studentId), competences: [], feedback: '' };
+            evalEntry = { targetId: canonicalStudentId, targetName: _resolveTargetName(canonicalStudentId), competences: [], feedback: '' };
             saved.evaluations.push(evalEntry);
         }
         evalEntry.feedback = feedback;
@@ -14132,9 +14228,11 @@ async function saveIndividualStudentEval() {
 
         await _persistEvaluations();
 
-        // Sync to student ficha (individual only) — use allStudents so withdrawn students are included
+        // Sync to student ficha — use allStudents so withdrawn students are included
         const { allStudents } = window._evalState;
-        if (saved.type !== 'grupal') {
+        if (saved.type === 'grupal') {
+            await _syncGrupalEvaluationsToStudentTracking(saved, mod, proj, allStudents);
+        } else {
             await _syncEvaluationsToStudentTracking(saved, mod, proj, allStudents);
         }
 
@@ -14143,8 +14241,9 @@ async function saveIndividualStudentEval() {
         if (inSplitView) {
             // Stay in split view: refresh the target list and reload the right panel
             _renderEvalTargetsList(saved, window._evalState.students);
-            // Re-open same target so the header shows "Evaluado"
-            selectEvalTarget(studentId);
+            // Re-open same target so the header shows "Evaluado".
+            // Use canonicalStudentId so the left list entry (keyed by canonical name) gets selected.
+            selectEvalTarget(canonicalStudentId);
             // Reset button
             if (saveBtn) { saveBtn.disabled = false; saveBtn.innerHTML = originalBtnHtml; }
         } else {
@@ -14272,16 +14371,25 @@ async function previewStudentEvalReport(studentId) {
         return;
     }
     const saved = window._evalCurrentSaved;
-    // Groups don't have individual evaluation reports — only individual projects do
+
+    // For grupal evaluations the report is generated per student using the group's shared
+    // evaluation. Resolve the actual student ID: for groups, use the first member.
+    let actualStudentId = studentId;
     if (saved?.type === 'grupal') {
-        showToast('El preview de informe sólo está disponible para evaluaciones individuales', 'info');
-        return;
+        const grp = (saved.groups || []).find(g => g.groupName === studentId);
+        const memberIds = grp?.studentIds || [];
+        if (!memberIds.length) {
+            showToast('Este grupo no tiene miembros asignados para previsualizar', 'warning');
+            return;
+        }
+        actualStudentId = String(memberIds[0]);
     }
+
     const projectName = saved?.projectName || '';
 
     const token = localStorage.getItem('token');
     try {
-        const stuRes = await fetch(`${API_URL}/api/promotions/${promotionId}/students/${studentId}`, {
+        const stuRes = await fetch(`${API_URL}/api/promotions/${promotionId}/students/${actualStudentId}`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
         if (!stuRes.ok) throw new Error('No se pudo cargar el estudiante');
@@ -14289,7 +14397,7 @@ async function previewStudentEvalReport(studentId) {
         const teams = stuData.technicalTracking?.teams || [];
         let teamIndex = teams.findIndex(t => t.teamName === projectName);
         if (teamIndex < 0) teamIndex = 0;
-        window.Reports.printProjectReport(teamIndex, studentId, promotionId);
+        window.Reports.printProjectReport(teamIndex, actualStudentId, promotionId);
     } catch (err) {
         showToast('Error al cargar los datos del informe: ' + err.message, 'danger');
     }
@@ -14411,10 +14519,13 @@ function toggleEvalLevel(btn, targetId, compId, level, compName) {
     const saved = window._evalCurrentSaved;
     if (!saved) return;
 
-    let evalEntry = (saved.evaluations || []).find(e => e.targetId === targetId);
+    // Resolve canonical targetId (group names may be sanitized in event handler calls)
+    const canonicalId = _resolveEvalTargetId(targetId);
+
+    let evalEntry = (saved.evaluations || []).find(e => e.targetId === canonicalId);
     if (!evalEntry) {
         if (!saved.evaluations) saved.evaluations = [];
-        evalEntry = { targetId, targetName: _resolveTargetName(targetId), competences: [], feedback: '' };
+        evalEntry = { targetId: canonicalId, targetName: _resolveTargetName(canonicalId), competences: [], feedback: '' };
         saved.evaluations.push(evalEntry);
     }
 
@@ -14448,16 +14559,19 @@ function toggleEvalLevel(btn, targetId, compId, level, compName) {
 }
 
 function removeEvalCompetence(targetId, compId) {
+    // Resolve canonical targetId (group names may be sanitized in event handler calls)
+    const canonicalId = _resolveEvalTargetId(targetId);
+
     if (!window._evalRemovedComps) window._evalRemovedComps = {};
-    if (!window._evalRemovedComps[String(targetId)]) window._evalRemovedComps[String(targetId)] = [];
-    if (!window._evalRemovedComps[String(targetId)].includes(String(compId))) {
-        window._evalRemovedComps[String(targetId)].push(String(compId));
+    if (!window._evalRemovedComps[canonicalId]) window._evalRemovedComps[canonicalId] = [];
+    if (!window._evalRemovedComps[canonicalId].includes(String(compId))) {
+        window._evalRemovedComps[canonicalId].push(String(compId));
     }
 
     // Also remove from saved evaluations in memory so it won't be persisted
     const saved = window._evalCurrentSaved;
     if (saved) {
-        const evalEntry = (saved.evaluations || []).find(e => e.targetId === String(targetId));
+        const evalEntry = (saved.evaluations || []).find(e => e.targetId === canonicalId);
         if (evalEntry) {
             evalEntry.competences = (evalEntry.competences || []).filter(c => String(c.competenceId) !== String(compId));
         }
@@ -14519,6 +14633,42 @@ async function saveProjectEvaluation() {
             evalEntry.evaluatedAt = new Date().toISOString();
         });
 
+        // For grupal evaluations: normalize miskeyed entries (safeTargetId → canonical group name)
+        // and collect feedback from RTEs (grupal modals use div[contenteditable] not textarea).
+        if (saved.type === 'grupal') {
+            (saved.groups || []).forEach(grp => {
+                const safeGroupName = String(grp.groupName).replace(/[^a-zA-Z0-9-]/g, '-');
+                if (safeGroupName === grp.groupName) return; // No chars to fix
+                const miskeyedEntry = (saved.evaluations || []).find(e =>
+                    e.targetId !== grp.groupName &&
+                    String(e.targetId).replace(/[^a-zA-Z0-9-]/g, '-') === safeGroupName
+                );
+                const canonicalEntry = (saved.evaluations || []).find(e => e.targetId === grp.groupName);
+                if (miskeyedEntry && !canonicalEntry) {
+                    // Simple rename: no canonical entry exists yet
+                    miskeyedEntry.targetId = grp.groupName;
+                } else if (miskeyedEntry && canonicalEntry) {
+                    // The canonical entry (from current session) already has the latest data.
+                    // Discard the stale miskeyed entry to avoid overwriting current indicators.
+                    saved.evaluations = saved.evaluations.filter(e => e !== miskeyedEntry);
+                }
+            });
+
+            // Collect feedback from RTEs (grupal uses div[contenteditable], not textarea)
+            document.querySelectorAll('#eval-modal-body .eval-feedback-rte[data-target-id]').forEach(rte => {
+                const targetId = rte.getAttribute('data-target-id');
+                if (!targetId) return;
+                let evalEntry = (saved.evaluations || []).find(e => e.targetId === targetId);
+                if (!evalEntry) {
+                    if (!saved.evaluations) saved.evaluations = [];
+                    evalEntry = { targetId, targetName: _resolveTargetName(targetId), competences: [], feedback: '' };
+                    saved.evaluations.push(evalEntry);
+                }
+                evalEntry.feedback = rte.innerHTML;
+                if (!evalEntry.evaluatedAt) evalEntry.evaluatedAt = new Date().toISOString();
+            });
+        }
+
         // Merge into savedEvaluations state
         const existingIdx = savedEvaluations.findIndex(e => e.moduleId === modId && e.projectName === proj.name);
         if (existingIdx >= 0) {
@@ -14529,9 +14679,11 @@ async function saveProjectEvaluation() {
 
         await _persistEvaluations();
 
-        // ── Sync individual evaluations → student technicalTracking ──────────────
+        // ── Sync evaluations → student technicalTracking ──────────────
         // Use allStudents so withdrawn students are included in the sync
-        if (saved.type === 'individual') {
+        if (saved.type === 'grupal') {
+            await _syncGrupalEvaluationsToStudentTracking(saved, mod, proj, allStudents);
+        } else if (saved.type === 'individual') {
             await _syncEvaluationsToStudentTracking(saved, mod, proj, allStudents);
         }
 
@@ -14812,6 +14964,121 @@ async function _syncEvaluationsToStudentTracking(saved, mod, proj, students) {
             });
         } catch (e) {
             console.error(`[Eval] Error syncing to student ${studentId}:`, e);
+        }
+    }
+}
+
+/**
+ * Syncs a saved GRUPAL evaluation to each member of each group.
+ * Each member's technicalTracking.teams gets an entry with:
+ *   - projectType: 'grupal'
+ *   - members: [{name}] list of other group members
+ *   - teacherNote, competences: from the group's evalEntry
+ */
+async function _syncGrupalEvaluationsToStudentTracking(saved, mod, proj, students) {
+    const token = localStorage.getItem('token');
+
+    for (const grp of (saved.groups || [])) {
+        const groupEvalEntry = (saved.evaluations || []).find(e => e.targetId === grp.groupName);
+        if (!groupEvalEntry) continue;
+
+        // All member names, keyed by id — used to build "other members" per student
+        const memberById = {};
+        (grp.studentIds || []).forEach(sid => {
+            const st = students.find(s => String(s.id || s._id) === String(sid));
+            if (st) memberById[String(sid)] = `${st.name || ''} ${st.lastname || ''}`.trim();
+        });
+
+        // Build competences list (same logic as individual sync)
+        const teamCompetences = (groupEvalEntry.competences || []).map(ce => {
+            const compChecked = ce.checkedIndicators || groupEvalEntry.checkedIndicators?.[String(ce.competenceId)] || {};
+            const projComp = (window._evalCurrentProjectCompetences || []).find(c => String(c.id) === String(ce.competenceId));
+            const toolsWithInds = projComp?.toolsWithIndicators || [];
+            const compIndicators = projComp?.competenceIndicators || { initial: [], medio: [], advance: [] };
+            const toolsUsed = toolsWithInds
+                .filter(t => t.indicators && t.indicators.some(ind => compChecked[`tool-${t.id}-${ind.id}`]))
+                .map(t => t.name);
+            const achievedIndicators = [];
+            toolsWithInds.forEach(t => {
+                if (!t.indicators) return;
+                t.indicators.forEach(ind => {
+                    if (compChecked[`tool-${t.id}-${ind.id}`]) {
+                        achievedIndicators.push({ type: 'tool', toolName: t.name, indicatorName: ind.name, indicatorId: String(ind.id), levelId: ind.levelId || 1 });
+                    }
+                });
+            });
+            [{ lvl: 1, inds: compIndicators.initial }, { lvl: 2, inds: compIndicators.medio }, { lvl: 3, inds: compIndicators.advance }].forEach(({ lvl, inds }) => {
+                if (!inds) return;
+                inds.forEach(ind => {
+                    if (compChecked[`comp-${ind.id}`]) {
+                        achievedIndicators.push({ type: 'competence', indicatorName: ind.name, indicatorId: String(ind.id), levelId: lvl });
+                    }
+                });
+            });
+            return { competenceId: ce.competenceId, competenceName: ce.competenceName, level: ce.level, toolsUsed, achievedIndicators };
+        });
+
+        for (const memberId of (grp.studentIds || [])) {
+            const student = students.find(s => String(s.id || s._id) === String(memberId));
+            if (!student) continue;
+            const studentId = student.id || student._id;
+
+            try {
+                const sRes = await fetch(`${API_URL}/api/promotions/${promotionId}/students/${studentId}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (!sRes.ok) continue;
+                const sData = await sRes.json();
+                const tt = sData.technicalTracking || {};
+
+                // Build the team entry for this member (members = other group members, not self)
+                const otherMembers = Object.entries(memberById)
+                    .filter(([sid]) => sid !== String(memberId))
+                    .map(([, name]) => ({ name }));
+                const teamEntry = {
+                    teamName: proj.name || '',
+                    projectType: 'grupal',
+                    role: '',
+                    moduleName: mod.name || '',
+                    moduleId: mod.id || String(window._evalState.currentModuleIdx),
+                    assignedDate: new Date().toISOString().split('T')[0],
+                    teacherNote: groupEvalEntry.feedback || '',
+                    studentComment: groupEvalEntry.studentComment || '',
+                    members: otherMembers,
+                    competences: teamCompetences
+                };
+
+                const existingTeams = (tt.teams || []).map(t => ({ ...t }));
+                const teamIdx = existingTeams.findIndex(
+                    t => t.teamName === (proj.name || '') && t.moduleId === (mod.id || String(window._evalState.currentModuleIdx))
+                );
+                if (teamIdx >= 0) existingTeams[teamIdx] = { ...existingTeams[teamIdx], ...teamEntry };
+                else existingTeams.push(teamEntry);
+
+                // Auto-calculate module progress (reuse same logic as individual)
+                const existingComps = (tt.competences || []).map(c => ({ ...c }));
+                for (const ce of (groupEvalEntry.competences || [])) {
+                    if (!ce.competenceName) continue;
+                    const idx = existingComps.findIndex(c => String(c.competenceId) === String(ce.competenceId));
+                    const entry = { competenceId: ce.competenceId, competenceName: ce.competenceName, level: ce.level, toolsUsed: (teamCompetences.find(tc => String(tc.competenceId) === String(ce.competenceId))?.toolsUsed || []), achievedIndicators: (teamCompetences.find(tc => String(tc.competenceId) === String(ce.competenceId))?.achievedIndicators || []), evaluatedDate: new Date().toISOString().split('T')[0], notes: groupEvalEntry.feedback || '' };
+                    if (idx >= 0) existingComps[idx] = { ...existingComps[idx], ...entry };
+                    else existingComps.push(entry);
+                }
+
+                await fetch(`${API_URL}/api/promotions/${promotionId}/students/${studentId}/ficha/technical`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify({
+                        teacherNotes: tt.teacherNotes || [],
+                        teams: existingTeams,
+                        competences: existingComps,
+                        completedModules: tt.completedModules || [],
+                        completedPildoras: tt.completedPildoras || []
+                    })
+                });
+            } catch (e) {
+                console.error(`[Eval] Error syncing grupal to student ${studentId}:`, e);
+            }
         }
     }
 }

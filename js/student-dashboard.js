@@ -698,6 +698,9 @@ async function loadCalendar(promotionId) {
                 document.getElementById('no-calendar-msg').classList.remove('hidden');
                 iframe.classList.add('hidden');
             }
+
+            // Inject Google appointment scheduling button if URL is configured
+            _loadAppointmentButton(calendar.googleAppointmentUrl);
         }
     } catch (error) {
         console.error('Error loading calendar:', error);
@@ -822,4 +825,33 @@ function escapeHtml(text) {
     const div = document.createElement('div');
     div.textContent = text;
     return div.innerHTML;
+}
+
+/**
+ * Injects the Google Calendar appointment scheduling button into #gc-appointment-btn.
+ * Retries until the external scheduling-button script has loaded.
+ * @param {string|null} url - The Google Calendar appointment URL
+ */
+function _loadAppointmentButton(url) {
+    const target = document.getElementById('gc-appointment-btn');
+    if (!target) return;
+    if (!url) { target.style.display = 'none'; return; }
+    target.style.display = 'flex';
+    target.style.justifyContent = 'flex-end';
+    target.innerHTML = '';
+    const btn = document.createElement('button');
+    btn.className = 'qxCTlb';
+    btn.style.color = '#fff';
+    btn.style.backgroundColor = '#F4511E';
+    btn.textContent = 'Reservar una cita';
+    btn.addEventListener('click', () => {
+        const iframe = document.getElementById('appointment-iframe');
+        if (iframe) iframe.src = url;
+        const modal = new bootstrap.Modal(document.getElementById('appointmentModal'));
+        modal.show();
+        document.getElementById('appointmentModal').addEventListener('hidden.bs.modal', () => {
+            if (iframe) iframe.src = '';
+        }, { once: true });
+    });
+    target.appendChild(btn);
 }
