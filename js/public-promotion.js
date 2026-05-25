@@ -1172,21 +1172,7 @@ async function loadExtendedInfo() {
 let _virtualClassroomState = null;
 
 function _addAulaVirtualToSidebar() {
-    const nav = document.getElementById('sidebar-nav');
-    if (!nav) return;
-    // Avoid duplicates
-    if (nav.querySelector('a[onclick*="openAulaVirtualPage"]')) return;
-    const aulaLi = document.createElement('li');
-    aulaLi.className = 'nav-item';
-    aulaLi.innerHTML = '<a class="nav-link" href="#" onclick="openAulaVirtualPage(event)"><i class="bi bi-laptop me-2"></i>Aula Virtual</a>';
-    const quickLinksAnchor = nav.querySelector('a[href="#quick-links"]');
-    const quickLinksItem = quickLinksAnchor ? quickLinksAnchor.parentElement : null;
-    if (quickLinksItem) {
-        quickLinksItem.insertAdjacentElement('afterend', aulaLi);
-    } else {
-        nav.appendChild(aulaLi);
-    }
-    // Also reveal the CTA button in the "En Progreso" tab
+    // Sidebar was removed — only reveal the CTA button in the main content area
     const ctaDiv = document.getElementById('pp-cta-aula-virtual');
     if (ctaDiv) ctaDiv.classList.remove('d-none');
 }
