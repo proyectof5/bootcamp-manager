@@ -1,42 +1,18 @@
-/* Override Bootstrap blue spinners → brand orange */
+/* Tokens y variables globales viven en css/design-system.css.
+   Aquí solo van estilos compartidos por varias vistas (sidebar, gantt,
+   asistencia, quick-actions). */
+
+/* Spinners → color de marca */
 .spinner-border,
 .spinner-grow {
-    color: #FF6B35 !important;
-}
-
-:root {
-    --principal-1: #FF4700;
-    --principal-2: #020100;
-    --principal-3: #FFFFFF;
-    --complementario-1: #9c9c9c;
-    --complementario-2: #FFA37F;
-    ;
-
-
-    /* colores fuera de la paleta oficial */
-    --complementario-1-light: #f9dccd;
-    --complementario-1-extra-light: #f5f2f2;
-    --green-f5: #9af6c2;
-    --purple-f5: #6f42c1;
-    --purple-light-f5: #d1c4e9;
-    --blue-light-f5: #345253;
-
-
-    --grey-f5: #897d7c;
-    --grey-light-f5: #e2d2cd;
-    --bs-nav-link-hover-color: #FFFFFF;
-
-    /*crok default colors*/
-    --green-crok: #0a8950;
-    --green-light-crok: #0a8950a6;
+    color: var(--app-color-primary) !important;
 }
 
 body {
-    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    background-color: #f5f7fa;
     height: 100vh;
     display: flex;
     flex-wrap: wrap;
+    /* font-family, background-color y color heredan del design-system */
 }
 
 /* sidebar */
@@ -290,12 +266,12 @@ body {
 }
 
 .attendance-table-wrapper::-webkit-scrollbar-thumb {
-    background: #ff4700;
+    background: var(--app-color-primary);
     border-radius: 4px;
 }
 
 .attendance-table-wrapper::-webkit-scrollbar-thumb:hover {
-    background: #d63900;
+    background: var(--app-color-primary-hover);
 }
 
 #attendance-table th,
@@ -397,7 +373,7 @@ body {
 .quick-action-card:hover:not(.disabled) {
     box-shadow: 0 4px 16px rgba(255, 71, 0, 0.15);
     transform: translateY(-3px);
-    border-color: #ff4700;
+    border-color: var(--app-color-primary);
 }
 
 .quick-action-card.disabled {
@@ -421,7 +397,7 @@ body {
 }
 
 .quick-action-link:hover:not(.disabled) {
-    color: #ff4700;
+    color: var(--app-color-primary);
 }
 
 .quick-action-icon {
@@ -446,5 +422,5 @@ body {
 }
 
 .quick-action-card:hover:not(.disabled) .quick-action-label {
-    color: #ff4700;
+    color: var(--app-color-primary);
 }

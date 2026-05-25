@@ -7,26 +7,32 @@
     <title>Admin Dashboard - Bootcamp Manager</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="css/design-system.css" rel="stylesheet">
     <link href="css/dashboard.css" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         body {
-            font-family: 'Inter', sans-serif;
+            font-family: var(--app-font-sans);
         }
 
         /* ── Sidebar ── */
         .admin-sidebar {
-            position: fixed;
-            top: 80px;
-            bottom: 0;
-            left: 0;
-            z-index: 100;
-            padding: 20px 0;
             background-image: url("./img/Fondo-factoria-f5-color.png");
             background-size: 150px 150px;
             background-repeat: repeat;
-            border-right: 2px solid #ff4700;
             overflow-y: auto;
+        }
+        /* En desktop la sidebar es fija; en móvil es un offcanvas (Bootstrap offcanvas-md) */
+        @media (min-width: 768px) {
+            .admin-sidebar {
+                position: fixed;
+                top: 80px;
+                bottom: 0;
+                left: 0;
+                z-index: 100;
+                padding: 20px 0;
+                border-right: 2px solid var(--app-color-primary);
+            }
         }
 
         .admin-sidebar-sticky {
@@ -44,18 +50,18 @@
 
         .admin-sidebar .nav-link:hover {
             background-color: #ffffff;
-            color: #ff4700;
-            border-left: 3px solid #ff4700;
+            color: var(--app-color-primary);
+            border-left: 3px solid var(--app-color-primary);
         }
 
         .admin-sidebar .nav-link.active {
             background-color: #ffffff;
-            color: #ff4700;
+            color: var(--app-color-primary);
         }
 
         /* Back-to-dashboard button – orange pill */
         .nav-link-back {
-            background-color: #ff4700 !important;
+            background-color: var(--app-color-primary) !important;
             color: white !important;
             box-shadow: rgba(62, 25, 1, 0.29) 2px 2px 6px;
         }
@@ -75,7 +81,7 @@
 
         .teacher-card {
             transition: transform 0.2s, box-shadow 0.2s;
-            border: 2px solid #ff4700;
+            border: 2px solid var(--app-color-primary);
             border-radius: 12px;
             background-color: #ffffff;
         }
@@ -83,43 +89,33 @@
         .teacher-card:hover {
             transform: translateY(-5px);
             box-shadow: 0 10px 20px rgba(255, 71, 0, 0.15);
-            border-color: #d63900;
+            border-color: var(--app-color-primary-hover);
         }
 
         .status-badge {
             font-weight: 500;
             padding: 0.4rem 0.8rem;
             border-radius: 20px;
-            background-color: #ff4700;
+            background-color: var(--app-color-primary);
             color: white;
         }
 
         .btn-primary {
-            background-color: #ff4700 !important;
-            border-color: #ff4700 !important;
+            background-color: var(--app-color-primary) !important;
+            border-color: var(--app-color-primary) !important;
         }
 
         .btn-primary:hover {
-            background-color: #d63900 !important;
-            border-color: #d63900 !important;
+            background-color: var(--app-color-primary-hover) !important;
+            border-color: var(--app-color-primary-hover) !important;
         }
 
         h1, h2, h3, h4, h5, h6 {
             color: #333333;
         }
 
-        @media (max-width: 768px) {
-            .admin-sidebar {
-                position: static;
-                width: 100%;
-                height: auto;
-                border-right: none;
-                border-bottom: 2px solid #ff4700;
-                padding: 10px 0;
-            }
-            main {
-                margin-top: 0;
-            }
+        @media (max-width: 767.98px) {
+            main { margin-top: 0; }
         }
     </style>
 </head>
@@ -128,6 +124,14 @@
     <!-- Top Navbar -->
     <nav class="navbar navbar-expand-lg navbar-light bg-light shadow-sm">
         <div class="container-fluid">
+            <!-- Toggle de la sidebar admin (solo móvil) -->
+            <button class="navbar-toggler d-md-none me-2" type="button"
+                    data-bs-toggle="offcanvas"
+                    data-bs-target="#adminSidebarOffcanvas"
+                    aria-controls="adminSidebarOffcanvas"
+                    aria-label="Abrir menú admin">
+                <span class="navbar-toggler-icon"></span>
+            </button>
             <a class="navbar-brand" href="dashboard.html">
                 <img class="page-title" src="./img/crok_manager_logotype_bold.png" height="60"/>
             </a>
@@ -150,10 +154,16 @@
 
     <div class="container-fluid">
         <div class="row">
-            <!-- Sidebar -->
-            <nav class="col-md-3 col-lg-2 d-md-block admin-sidebar px-0">
-                <div class="admin-sidebar-sticky">
-                    <img src="./img/logo-factoria-b.svg" alt="FactoriaF5" height="40" class="mt-4 mb-2 ms-2"/>
+            <!-- Sidebar: offcanvas en móvil, fija desde md -->
+            <nav class="col-md-3 col-lg-2 admin-sidebar px-0 offcanvas-md offcanvas-start"
+                 tabindex="-1" id="adminSidebarOffcanvas" aria-labelledby="adminSidebarOffcanvasLabel">
+                <div class="offcanvas-header d-md-none">
+                    <h5 class="offcanvas-title" id="adminSidebarOffcanvasLabel">Admin</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="offcanvas"
+                            data-bs-target="#adminSidebarOffcanvas" aria-label="Cerrar"></button>
+                </div>
+                <div class="offcanvas-body admin-sidebar-sticky">
+                    <img src="./img/logo-factoria-b.svg" alt="FactoriaF5" height="40" class="mt-4 mb-2 ms-2 d-none d-md-inline"/>
                     <ul class="nav flex-column">
                         <li class="nav-item">
                             <a class="nav-link nav-link-back" href="dashboard.html">
@@ -161,12 +171,12 @@
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link active" id="nav-users" href="#" onclick="showSection('users')">
+                            <a class="nav-link active" id="nav-users" href="#" onclick="showSection('users')" data-bs-dismiss="offcanvas" data-bs-target="#adminSidebarOffcanvas">
                                 <i class="bi bi-people me-2"></i>Gestión de Usuarios
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" id="nav-templates" href="#" onclick="showSection('templates')">
+                            <a class="nav-link" id="nav-templates" href="#" onclick="showSection('templates')" data-bs-dismiss="offcanvas" data-bs-target="#adminSidebarOffcanvas">
                                 <i class="bi bi-layout-text-window me-2"></i>Plantillas de Bootcamp
                             </a>
                         </li>
@@ -212,7 +222,7 @@
                 </div>
 
                 <!-- Create template from promotion -->
-                <div class="card shadow-sm mb-4 border-0" style="border-left: 4px solid #ff4700 !important;">
+                <div class="card shadow-sm mb-4 border-0" style="border-left: 4px solid var(--app-color-primary) !important;">
                     <div class="card-body p-4">
                         <h5 class="fw-bold mb-1"><i class="bi bi-magic me-2 text-primary"></i>Crea una plantilla de una promoción </h5>
                         <p class="text-muted small mb-3">Elige una promoción existente y guarda todo su contenido (roadmap, píldoras, acta de inicio, evaluación, competencias) para que sea reusable como plantilla.</p>
@@ -302,7 +312,7 @@
     <div class="modal fade" id="editTeacherModal" tabindex="-1">
         <div class="modal-dialog">
             <div class="modal-content border-0 shadow">
-                <div class="modal-header border-0 bg-warning text-dark">
+                <div class="modal-header border-0 bg-primary text-white">
                     <h5 class="modal-title"><i class="bi bi-pencil me-2"></i>Editar usuario</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
@@ -328,7 +338,7 @@
                     </div>
                     <div class="modal-footer border-0">
                         <button type="button" class="btn btn-light" data-bs-dismiss="modal">Cancelar</button>
-                        <button type="submit" class="btn btn-warning px-4">Guardar cambios</button>
+                        <button type="submit" class="btn btn-primary px-4">Guardar cambios</button>
                     </div>
                 </form>
             </div>
@@ -379,7 +389,7 @@
     <div class="modal fade" id="editTemplateModal" tabindex="-1" aria-labelledby="editTemplateModalLabel" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content border-0 shadow">
-                <div class="modal-header border-0" style="background:#ff4700;">
+                <div class="modal-header border-0" style="background:var(--app-color-primary);">
                     <h5 class="modal-title text-white" id="editTemplateModalLabel">
                         <i class="bi bi-pencil-square me-2"></i>Editar plantilla
                     </h5>
