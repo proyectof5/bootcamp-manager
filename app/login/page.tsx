@@ -166,14 +166,17 @@ export default function LoginPage() {
       <div className={styles.loginContainer}>
         {/* Header */}
         <div className={styles.logoSection}>
-          <Image
-            src="/img/bootcamp_manager_logotype_bold_organge.png"
-            alt="Bootcamp Manager"
-            width={300}
-            height={80}
-            style={{ maxWidth: '90%', height: 'auto' }}
-            priority
-          />
+          <div className={styles.brandRow}>
+            <Image
+              src="/img/logo-factoria-b.svg"
+              alt="Factoría F5"
+              width={120}
+              height={50}
+              className={styles.brandLogo}
+              priority
+            />
+            <span className={styles.brandName}>Bootcamp<br />Manager</span>
+          </div>
         </div>
 
         <h2 className={styles.welcomeTitle}>preparate para dar el salto...</h2>

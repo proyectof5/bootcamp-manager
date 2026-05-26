@@ -1,4 +1,10 @@
 .body {
+  /* El <body> HTML está en display:flex por css/style.css (legacy). Sin
+     flex:1 1 100% + width:100%, este <div> se ajusta a su contenido y el
+     fondo solo cubre la mitad izquierda. */
+  flex: 1 1 100%;
+  width: 100%;
+
   background-image: url("/img/Fondo-factoria-f5-color.png");
   background-size: 150px 150px;
   background-repeat: repeat;
@@ -26,8 +32,26 @@
   color: white;
 }
 
-.logoSection img {
-  max-width: 90%;
+.brandRow {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+}
+
+.brandLogo {
+  width: auto;
+  height: 56px;             /* tamaño consistente para SVG escalable */
+  max-width: 50%;
+}
+
+.brandName {
+  color: white;
+  font-weight: 700;
+  font-size: 1.5rem;
+  line-height: 1.05;
+  letter-spacing: -0.01em;
+  text-align: left;
 }
 
 .welcomeTitle {
@@ -35,6 +59,7 @@
   font-size: 1.2rem;
   font-weight: 400;
   margin: 0;
+  padding: 1.25rem 0 0.25rem;   /* respira frente al borde inferior del logoSection naranja */
   text-align: center;
   font-family: "Homemade Apple", cursive;
 }

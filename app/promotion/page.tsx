@@ -82,6 +82,14 @@ export default function PromotionPage() {
     <div
       ref={containerRef}
       id="promotion-detail-root"
+      // suppressHydrationWarning: el HTML legacy inyectado puede ser tocado
+      // por extensiones del navegador (Bitwarden, etc.) o scripts vanilla
+      // antes de la hidratación. Sin esto, React loguea mismatch warnings.
+      suppressHydrationWarning
+      // flex:1 + width:100% supera el body legacy que está en display:flex
+      // y deja a este wrapper colapsado al ancho del contenido si no se
+      // fuerza explícitamente.
+      style={{ flex: '1 1 100%', width: '100%' }}
       // The full promotion-detail HTML body is injected here.
       // Vanilla JS scripts populate all dynamic content after mount.
       // eslint-disable-next-line react/no-danger

@@ -2026,8 +2026,12 @@ function deleteResource(index) {
     });
 }
 
-let employabilityModal;
-let currentEditingEmployabilityIndex = -1;
+// `var` (no `let`) porque algún script o callback DOM cargado antes accede
+// a esta referencia y `let` lo deja en TDZ → ReferenceError al inicializar
+// la página. var es hoisted al top y queda como `undefined` hasta que
+// initEmployabilityModal() la asigne.
+var employabilityModal;
+var currentEditingEmployabilityIndex = -1;
 
 function initEmployabilityModal() {
     const modalEl = document.getElementById('employabilityModal');

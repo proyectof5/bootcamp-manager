@@ -2,6 +2,12 @@
   !*** css ./node_modules/next/dist/build/webpack/loaders/css-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[2]!./node_modules/next/dist/build/webpack/loaders/postcss-loader/src/index.js??ruleSet[1].rules[14].oneOf[5].use[3]!./app/login/page.module.css ***!
   \*********************************************************************************************************************************************************************************************************************************************************************/
 .page_body__F_rFz {
+  /* El <body> HTML está en display:flex por css/style.css (legacy). Sin
+     flex:1 1 100% + width:100%, este <div> se ajusta a su contenido y el
+     fondo solo cubre la mitad izquierda. */
+  flex: 1 1 100%;
+  width: 100%;
+
   background-image: url("/img/Fondo-factoria-f5-color.png");
   background-size: 150px 150px;
   background-repeat: repeat;
@@ -29,8 +35,26 @@
   color: white;
 }
 
-.page_logoSection__aOKqn img {
-  max-width: 90%;
+.page_brandRow__JRcrO {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+}
+
+.page_brandLogo__XPUEl {
+  width: auto;
+  height: 56px;             /* tamaño consistente para SVG escalable */
+  max-width: 50%;
+}
+
+.page_brandName___HZ7f {
+  color: white;
+  font-weight: 700;
+  font-size: 1.5rem;
+  line-height: 1.05;
+  letter-spacing: -0.01em;
+  text-align: left;
 }
 
 .page_welcomeTitle__8fJsu {
@@ -38,6 +62,7 @@
   font-size: 1.2rem;
   font-weight: 400;
   margin: 0;
+  padding: 1.25rem 0 0.25rem;   /* respira frente al borde inferior del logoSection naranja */
   text-align: center;
   font-family: "Homemade Apple", cursive;
 }

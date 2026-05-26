@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
+import './public-promotion.css';
 
 // ── Script loader utility ──────────────────────────────────────────────────
 function loadScript(src: string): Promise<void> {
@@ -35,7 +36,7 @@ export default function PublicPromotionPage() {
   }, []);
 
   return (
-    <>
+    <div style={{ flex: '1 1 100%', width: '100%', minHeight: '100vh' }}>
       {/* ── Password Access Modal ── */}
       <div className="modal fade" id="passwordModal" tabIndex={-1} data-bs-backdrop="static" data-bs-keyboard="false">
         <div className="modal-dialog modal-dialog-centered">
@@ -78,7 +79,11 @@ export default function PublicPromotionPage() {
       </div>
 
       {/* ── Main layout ── */}
-      <div className="container-fluid">
+      {/* container (no -fluid): aplica max-width responsive de Bootstrap
+          (540/720/960/1140/1320) + margin:0 auto → contenido centrado con
+          espacios laterales en pantallas grandes, como pide la vista de
+          alumnos. */}
+      <div className="container">
         <div className="row">
           <main className="col-12 py-4">
 
@@ -311,7 +316,7 @@ export default function PublicPromotionPage() {
               <button type="button" className="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
             </div>
             <div className="modal-body p-0" style={{ flex: 1, overflow: 'hidden' }}>
-              <iframe id="appointment-iframe" src="" style={{ width: '100%', height: '100%', border: 'none' }}
+              <iframe id="appointment-iframe" style={{ width: '100%', height: '100%', border: 'none' }}
                 allow="camera; microphone; geolocation"></iframe>
             </div>
           </div>
@@ -328,6 +333,6 @@ export default function PublicPromotionPage() {
         <div id="pp-info-title"></div>
         <div id="pp-info-sub"></div>
       </div>
-    </>
+    </div>
   );
 }

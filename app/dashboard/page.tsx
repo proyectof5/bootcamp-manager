@@ -7,6 +7,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { apiFetch, getApiUrl } from '@/lib/api';
 import { showToast } from '@/lib/toast';
 import Spinner from '@/components/Spinner';
+import styles from './page.module.css';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -315,19 +316,20 @@ export default function DashboardPage() {
   // ── Render ────────────────────────────────────────────────────────────────────
 
   return (
-    <>
+    <div className={styles.dashboardBody}>
       {/* ── Navbar ── */}
       <nav className="navbar navbar-expand-lg navbar-light shadow-sm">
         <div className="container-fluid">
-          <a className="navbar-brand" href="#">
+          <a className={`navbar-brand ${styles.brandRow}`} href="#">
             <Image
-              className="page-title"
-              src="/img/bootcamp_manager_logotype_bold.png"
-              alt="Bootcamp Manager"
-              width={200}
-              height={60}
-              style={{ height: 60, width: 'auto' }}
+              src="/img/logo-factoria-b.svg"
+              alt="Factoría F5"
+              width={120}
+              height={44}
+              className={styles.brandLogo}
+              priority
             />
+            <span className={styles.brandName}>Bootcamp<br />Manager</span>
           </a>
 
           <div className="container-sesion">
@@ -660,6 +662,6 @@ export default function DashboardPage() {
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 }

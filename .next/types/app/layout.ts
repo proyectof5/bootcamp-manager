@@ -1,4 +1,4 @@
-// File: /media/alexandra/ALEX HD/DELETE/roadmap-manager-fs/roadmap-manager-frontend/app/layout.tsx
+// File: C:\Users\Administrator\Documents\Projects\Bootcamp-Manager\bootcamp-manager\app\layout.tsx
 import * as entry from '../../../app/layout.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 

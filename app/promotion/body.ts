@@ -2,15 +2,18 @@
 // Do not edit manually - regenerate by running the extraction script
 const promotionDetailBody = `
     <!-- Navigation -->
-    <nav class="navbar navbar-expand-lg navbar-light bg-light shadow-sm">
+    <nav class="navbar navbar-expand-lg navbar-light bg-light shadow-sm sticky-top" style="z-index:1030;">
         <div class="container-fluid">
-            <!-- Sidebar Toggle (Hamburger) -->
-            <button class="btn btn-link text-dark me-2" id="sidebar-desktop-toggle" title="Mostrar/Ocultar Menú">
-                <i class="bi bi-list fs-3"></i>
-            </button>
-            <a class="navbar-brand" href="#">
-                <img class="page-title" src="/img/bootcamp_manager_logotype_bold.png" height="60"/> 
-            </a>
+            <!-- Hamburguesa + brand juntos: cuentan como UN solo item del
+                 justify-content:space-between del .container-fluid legacy. -->
+            <div class="d-flex align-items-center gap-2">
+                <button class="btn btn-link text-dark p-0 m-0" id="sidebar-desktop-toggle" title="Mostrar/Ocultar Menú">
+                    <i class="bi bi-list fs-3"></i>
+                </button>
+                <a class="navbar-brand m-0 p-0 d-flex align-items-center" href="#">
+                    <span style="color:#fff;font-weight:700;font-size:1.25rem;line-height:1.05;letter-spacing:-0.01em;">Bootcamp<br/>Manager</span>
+                </a>
+            </div>
             <!-- Promotion Name Center -->
             <div class="navbar-promotion-title d-none d-lg-flex">
                 <h5 id="navbar-promotion-name" class="mb-0  fw-semibold" >

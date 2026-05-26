@@ -1,4 +1,4 @@
-// File: /media/alexandra/ALEX HD/DELETE/roadmap-manager-fs/roadmap-manager-frontend/app/public-promotion/page.tsx
+// File: C:\Users\Administrator\Documents\Projects\Bootcamp-Manager\bootcamp-manager\app\public-promotion\page.tsx
 import * as entry from '../../../../app/public-promotion/page.js'
 import type { ResolvingMetadata, ResolvingViewport } from 'next/dist/lib/metadata/types/metadata-interface.js'
 
