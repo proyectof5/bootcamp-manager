@@ -1,0 +1,22 @@
+/*
+ * globals.css
+ *
+ * Loaded by app/layout.tsx — applies to every page in the Next.js app.
+ * Bootstrap 5 is loaded via CDN <link> in layout.tsx.
+ *
+ * During the HTML→Next.js migration we import the legacy CSS files from
+ * their original locations inside css/.  Once all pages are migrated and
+ * the CSS is restructured (NEXT-04) this file will consolidate everything.
+ */
+
+/* Legacy design system (shared variables, typography, component tokens) */
+@import url('../css/design-system.css');
+
+/* Legacy global styles */
+@import url('../css/style.css');
+
+/* Dashboard */
+@import url('../css/dashboard.css');
+
+/* Promotion detail */
+@import url('../css/promotion-detail.css');

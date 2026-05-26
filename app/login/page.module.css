@@ -1,0 +1,142 @@
+.body {
+  background-image: url("/img/Fondo-factoria-f5-color.png");
+  background-size: 150px 150px;
+  background-repeat: repeat;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.loginContainer {
+  width: 100%;
+  max-width: 450px;
+  background: white;
+  margin: 1rem;
+  padding: 0;
+  border-radius: 15px;
+  box-shadow: 0 4px 20px rgba(106, 47, 28, 0.7);
+  overflow: hidden;
+}
+
+.logoSection {
+  text-align: center;
+  background: var(--principal-1);
+  padding: 20px;
+  color: white;
+}
+
+.logoSection img {
+  max-width: 90%;
+}
+
+.welcomeTitle {
+  color: var(--principal-1);
+  font-size: 1.2rem;
+  font-weight: 400;
+  margin: 0;
+  text-align: center;
+  font-family: "Homemade Apple", cursive;
+}
+
+.loginForm {
+  padding: 10px 40px 40px 40px;
+}
+
+.formGroup {
+  margin-bottom: 20px;
+}
+
+.formLabel {
+  color: #555;
+  font-weight: 500;
+  margin-bottom: 8px;
+  display: block;
+}
+
+.formControl {
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 12px 15px;
+  font-size: 0.95rem;
+  width: 100%;
+}
+
+.formControl:focus {
+  border-color: var(--principal-1);
+  box-shadow: 0 0 0 0.2rem rgba(255, 71, 0, 0.25);
+  outline: none;
+}
+
+.btnLogin {
+  background: linear-gradient(135deg, var(--principal-1) 0%);
+  border: none;
+  color: white;
+  padding: 12px 20px;
+  border-radius: 6px;
+  font-weight: 600;
+  width: 100%;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.btnLogin:hover:not(:disabled) {
+  opacity: 0.9;
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px var(--principal-1);
+}
+
+.btnLogin:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.passwordInputGroup {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.passwordInputGroup input {
+  padding-right: 45px;
+  flex: 1;
+}
+
+.passwordToggle {
+  position: absolute;
+  right: 12px;
+  background: none;
+  border: none;
+  color: #999;
+  cursor: pointer;
+  padding: 5px;
+  display: flex;
+  align-items: center;
+  transition: color 0.2s ease;
+}
+
+.passwordToggle:hover {
+  color: var(--principal-1);
+}
+
+.helpText {
+  color: #999;
+  font-size: 0.85rem;
+  margin-top: 5px;
+}
+
+.alertBox {
+  margin-bottom: 20px;
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  font-size: 0.9rem;
+}
+
+.hidden {
+  display: none;
+}
