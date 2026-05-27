@@ -1,2 +1,8 @@
 node_modules/
 .env
+
+# Next.js — generados, NUNCA commitear (rompen pulls con conflictos masivos)
+.next/
+out/
+next-env.d.ts
+.env*.local
