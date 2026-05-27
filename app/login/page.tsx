@@ -1,32 +1,51 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
+import { Eye, EyeOff, KeyRound, Send } from 'lucide-react';
+
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogClose,
+} from '@/components/ui/dialog';
 import Spinner from '@/components/Spinner';
+
 import { getApiUrl } from '@/lib/api';
 import { isTokenExpired, clearSession } from '@/lib/auth';
 import type { StoredUser } from '@/lib/auth';
-import styles from './page.module.css';
 
 type AlertType = 'danger' | 'success';
 
 export default function LoginPage() {
   const router = useRouter();
+
+  // ── Login form state ──
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [alert, setAlert] = useState<{ message: string; type: AlertType } | null>(null);
 
-  // Forgot password modal state
+  // ── Forgot password modal state ──
+  const [forgotOpen, setForgotOpen] = useState(false);
   const [forgotEmail, setForgotEmail] = useState('');
   const [forgotLoading, setForgotLoading] = useState(false);
-  const [forgotAlert, setForgotAlert] = useState<{ message: string; type: AlertType | 'warning' } | null>(null);
+  const [forgotAlert, setForgotAlert] = useState<{
+    message: string;
+    type: AlertType | 'warning';
+  } | null>(null);
   const [forgotSuccess, setForgotSuccess] = useState(false);
-  const forgotModalRef = useRef<HTMLDivElement>(null);
 
-  // Redirect if already logged in
+  // ── Auto-redirect if already logged in ──
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (token && !isTokenExpired(token)) {
@@ -36,6 +55,17 @@ export default function LoginPage() {
     }
   }, [router]);
 
+  // ── Reset forgot state when dialog closes ──
+  function handleForgotOpenChange(open: boolean) {
+    setForgotOpen(open);
+    if (open) {
+      setForgotEmail('');
+      setForgotAlert(null);
+      setForgotSuccess(false);
+    }
+  }
+
+  // ── Login handler (lógica idéntica a la versión Bootstrap) ──
   async function handleLogin(e?: React.FormEvent) {
     e?.preventDefault();
     if (!email || !password) {
@@ -101,7 +131,11 @@ export default function LoginPage() {
         setTimeout(() => router.push('/dashboard'), 1000);
       } else {
         const errMsg =
-          data.message || data.error || payload.message || payload.error || 'Login fallido. Comprueba tus credenciales.';
+          data.message ||
+          data.error ||
+          payload.message ||
+          payload.error ||
+          'Login fallido. Comprueba tus credenciales.';
         setAlert({ message: errMsg, type: 'danger' });
       }
     } catch {
@@ -111,17 +145,7 @@ export default function LoginPage() {
     }
   }
 
-  function openForgotModal() {
-    setForgotEmail('');
-    setForgotAlert(null);
-    setForgotSuccess(false);
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const bs = (window as any).bootstrap;
-    if (bs?.Modal && forgotModalRef.current) {
-      new bs.Modal(forgotModalRef.current).show();
-    }
-  }
-
+  // ── Forgot password handler (lógica idéntica) ──
   async function sendForgotPassword() {
     if (!forgotEmail.trim()) {
       setForgotAlert({ message: 'Por favor, introduce tu correo electrónico.', type: 'warning' });
@@ -140,17 +164,24 @@ export default function LoginPage() {
 
       let data: Record<string, string> = {};
       const text = await response.text();
-      try { data = JSON.parse(text); } catch { /* no JSON body */ }
+      try {
+        data = JSON.parse(text);
+      } catch {
+        /* no JSON body */
+      }
 
       if (response.ok) {
         setForgotAlert({
-          message: data.message || 'En breves recibirás un correo con el enlace para restablecer tu contraseña.',
+          message:
+            data.message ||
+            'En breves recibirás un correo con el enlace para restablecer tu contraseña.',
           type: 'success',
         });
         setForgotSuccess(true);
       } else {
         setForgotAlert({
-          message: data.message || data.error || 'No se pudo enviar el correo. Comprueba la dirección.',
+          message:
+            data.message || data.error || 'No se pudo enviar el correo. Comprueba la dirección.',
           type: 'danger',
         });
       }
@@ -161,79 +192,101 @@ export default function LoginPage() {
     }
   }
 
+  // ── Helper para mapear tipo de alert (danger/warning) a variant de shadcn ──
+  function alertVariant(type: AlertType | 'warning'): 'default' | 'destructive' {
+    return type === 'danger' ? 'destructive' : 'default';
+  }
+
   return (
-    <div className={styles.body}>
-      <div className={styles.loginContainer}>
-        {/* Header */}
-        <div className={styles.logoSection}>
-          <div className={styles.brandRow}>
+    <div
+      className="flex-1 w-full min-h-screen flex items-center justify-center bg-repeat"
+      style={{
+        backgroundImage: "url('/img/Fondo-factoria-f5-color.png')",
+        backgroundSize: '150px 150px',
+      }}
+    >
+      <div className="w-full max-w-md m-4 bg-white rounded-2xl shadow-lg overflow-hidden">
+        {/* Header naranja con logo F5 + Bootcamp Manager */}
+        <div className="bg-primary text-white text-center p-5">
+          <div className="flex items-center justify-center gap-3">
             <Image
               src="/img/logo-factoria-b.svg"
               alt="Factoría F5"
               width={120}
-              height={50}
-              className={styles.brandLogo}
+              height={56}
+              className="h-14 w-auto max-w-[50%]"
               priority
             />
-            <span className={styles.brandName}>Bootcamp<br />Manager</span>
+            <span className="font-bold text-2xl leading-tight tracking-tight text-left">
+              Bootcamp
+              <br />
+              Manager
+            </span>
           </div>
         </div>
 
-        <h2 className={styles.welcomeTitle}>preparate para dar el salto...</h2>
+        {/* Título decorativo */}
+        <h2 className="text-primary text-center font-decorative text-xl pt-5 pb-1 m-0">
+          preparate para dar el salto...
+        </h2>
 
-        {/* Alerts */}
-        {alert && (
-          <div className={`alert alert-${alert.type} mx-4 mt-3`} role="alert">
-            {alert.message}
-          </div>
-        )}
+        {/* Form login */}
+        <form onSubmit={handleLogin} noValidate className="px-10 pt-2 pb-10 space-y-5">
+          {alert && (
+            <Alert variant={alertVariant(alert.type)}>
+              <AlertDescription>{alert.message}</AlertDescription>
+            </Alert>
+          )}
 
-        {/* Login form */}
-        <form id="login-form" className={styles.loginForm} onSubmit={handleLogin} noValidate>
-          <div className={styles.formGroup}>
-            <label htmlFor="email" className={styles.formLabel}>
+          <div className="space-y-2">
+            <Label htmlFor="email" className="text-text">
               Email
-            </label>
-            <input
-              type="email"
+            </Label>
+            <Input
               id="email"
-              className={styles.formControl}
-              placeholder="tu.correo@ejemplo.com"
-              value={email}
-              onChange={e => setEmail(e.target.value)}
+              type="email"
               required
               autoComplete="username"
+              placeholder="tu.correo@ejemplo.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
             />
           </div>
 
-          <div className={styles.formGroup}>
-            <label htmlFor="password" className={styles.formLabel}>
+          <div className="space-y-2">
+            <Label htmlFor="password" className="text-text">
               Contraseña
-            </label>
-            <div className={styles.passwordInputGroup}>
-              <input
-                type={showPassword ? 'text' : 'password'}
+            </Label>
+            <div className="relative">
+              <Input
                 id="password"
-                className={styles.formControl}
-                placeholder="Introduce tu contraseña"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
+                type={showPassword ? 'text' : 'password'}
                 required
                 autoComplete="current-password"
+                placeholder="Introduce tu contraseña"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="pr-10"
               />
-              <button
+              <Button
                 type="button"
-                className={styles.passwordToggle}
-                onClick={() => setShowPassword(v => !v)}
+                variant="ghost"
+                size="icon"
+                className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-text-muted hover:text-primary hover:bg-transparent"
+                onClick={() => setShowPassword((v) => !v)}
                 aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
               >
-                <i className={`bi ${showPassword ? 'bi-eye-slash' : 'bi-eye'}`} />
-              </button>
+                {showPassword ? <EyeOff /> : <Eye />}
+              </Button>
             </div>
-            <div className={styles.helpText}>Usa tu contraseña asignada</div>
+            <p className="text-xs text-text-muted">Usa tu contraseña asignada</p>
           </div>
 
-          <button type="submit" className={styles.btnLogin} disabled={loading}>
+          <Button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-primary hover:bg-primary-hover text-primary-on h-11"
+          >
             {loading ? (
               <>
                 <Spinner size="sm" />
@@ -242,93 +295,82 @@ export default function LoginPage() {
             ) : (
               'Iniciar sesión'
             )}
-          </button>
+          </Button>
 
-          <div className="text-center mt-3">
-            <button
+          <div className="text-center">
+            <Button
               type="button"
-              className="btn btn-link text-muted p-0"
-              style={{ fontSize: '0.85rem', textDecoration: 'none' }}
-              onClick={openForgotModal}
+              variant="link"
+              className="text-text-muted text-xs p-0 h-auto"
+              onClick={() => handleForgotOpenChange(true)}
             >
-              <i className="bi bi-key me-1" />
+              <KeyRound className="mr-1 h-3 w-3" />
               ¿Has olvidado tu contraseña?
-            </button>
+            </Button>
           </div>
         </form>
       </div>
 
-      {/* Forgot Password Modal */}
-      <div
-        className="modal fade"
-        id="forgotPasswordModal"
-        tabIndex={-1}
-        aria-labelledby="forgotPasswordModalLabel"
-        aria-hidden="true"
-        ref={forgotModalRef}
-      >
-        <div className="modal-dialog modal-dialog-centered" style={{ maxWidth: 420 }}>
-          <div className="modal-content border-0 shadow" style={{ borderRadius: 12, overflow: 'hidden' }}>
-            <div className="modal-header border-0" style={{ background: 'var(--principal-1)' }}>
-              <h5 className="modal-title text-white fw-bold" id="forgotPasswordModalLabel">
-                <i className="bi bi-key me-2" />
-                Restablecer contraseña
-              </h5>
-              <button type="button" className="btn-close btn-close-white" data-bs-dismiss="modal" />
-            </div>
+      {/* ── Forgot password Dialog (reemplaza Bootstrap Modal) ── */}
+      <Dialog open={forgotOpen} onOpenChange={handleForgotOpenChange}>
+        <DialogContent className="max-w-[420px] p-0 gap-0 overflow-hidden">
+          <DialogHeader className="bg-primary text-white p-4 space-y-0">
+            <DialogTitle className="text-white font-bold flex items-center gap-2">
+              <KeyRound className="h-4 w-4" />
+              Restablecer contraseña
+            </DialogTitle>
+          </DialogHeader>
 
-            <div className="modal-body px-4 py-4">
-              <p className="text-muted small mb-3">
-                Introduce tu dirección de correo electrónico y te enviaremos un enlace para restablecer tu contraseña.
-              </p>
+          <div className="px-4 py-4 space-y-3">
+            <p className="text-text-muted text-sm">
+              Introduce tu dirección de correo electrónico y te enviaremos un enlace para
+              restablecer tu contraseña.
+            </p>
 
-              {forgotAlert && (
-                <div className={`alert alert-${forgotAlert.type} mb-3`} role="alert">
-                  {forgotAlert.message}
-                </div>
-              )}
+            {forgotAlert && (
+              <Alert variant={alertVariant(forgotAlert.type)}>
+                <AlertDescription>{forgotAlert.message}</AlertDescription>
+              </Alert>
+            )}
 
-              <div className="form-group mb-0">
-                <label htmlFor="forgot-email" className="form-label">
-                  Correo electrónico
-                </label>
-                <input
-                  type="email"
-                  id="forgot-email"
-                  className="form-control"
-                  placeholder="tu.correo@ejemplo.com"
-                  value={forgotEmail}
-                  onChange={e => setForgotEmail(e.target.value)}
-                  disabled={forgotSuccess}
-                  onKeyDown={e => e.key === 'Enter' && sendForgotPassword()}
-                />
-              </div>
-            </div>
-
-            <div className="modal-footer border-0 px-4 pb-4 pt-0 d-flex gap-2">
-              <button type="button" className="btn btn-outline-secondary flex-grow-1" data-bs-dismiss="modal">
-                Cancelar
-              </button>
-              <button
-                type="button"
-                className="btn flex-grow-1 text-white fw-semibold"
-                style={{ background: 'var(--principal-1)', border: 'none' }}
-                onClick={sendForgotPassword}
-                disabled={forgotLoading || forgotSuccess}
-              >
-                {forgotLoading ? (
-                  <Spinner size="sm" />
-                ) : (
-                  <>
-                    <i className="bi bi-send me-1" />
-                    Enviar enlace
-                  </>
-                )}
-              </button>
+            <div className="space-y-2">
+              <Label htmlFor="forgot-email">Correo electrónico</Label>
+              <Input
+                id="forgot-email"
+                type="email"
+                placeholder="tu.correo@ejemplo.com"
+                value={forgotEmail}
+                onChange={(e) => setForgotEmail(e.target.value)}
+                disabled={forgotSuccess}
+                onKeyDown={(e) => e.key === 'Enter' && sendForgotPassword()}
+              />
             </div>
           </div>
-        </div>
-      </div>
+
+          <DialogFooter className="px-4 pb-4 pt-0 gap-2 sm:gap-2">
+            <DialogClose asChild>
+              <Button type="button" variant="outline" className="flex-1">
+                Cancelar
+              </Button>
+            </DialogClose>
+            <Button
+              type="button"
+              className="flex-1 bg-primary hover:bg-primary-hover text-primary-on"
+              onClick={sendForgotPassword}
+              disabled={forgotLoading || forgotSuccess}
+            >
+              {forgotLoading ? (
+                <Spinner size="sm" />
+              ) : (
+                <>
+                  <Send className="mr-1 h-3 w-3" />
+                  Enviar enlace
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
