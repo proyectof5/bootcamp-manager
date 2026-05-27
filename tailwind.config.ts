@@ -11,6 +11,10 @@ const config: Config = {
   // Reactivar (quitar esta línea) en el spec 0014 cuando se quite Bootstrap.
   corePlugins: { preflight: false },
 
+  // Bootstrap utilities usan !important. Sin esto, Tailwind pierde por
+  // especificidad (`bg-primary`, `text-primary`, etc.). Quitar en spec 0014.
+  important: true,
+
   // ── shadcn/ui (estilo "new-york") usa `darkMode: 'class'` por defecto ──
   darkMode: 'class',
 
@@ -25,10 +29,18 @@ const config: Config = {
       // Si cambias --app-color-primary en design-system.css, Tailwind lo
       // refleja automáticamente sin tocar este config.
       colors: {
-        primary:         'var(--app-color-primary)',
-        'primary-hover': 'var(--app-color-primary-hover)',
-        'primary-soft':  'var(--app-color-primary-soft)',
-        'primary-on':    'var(--app-color-primary-on)',
+        // Tokens "crok" (sin colisión con Bootstrap .bg-primary !important
+        // que se carga DESPUÉS del CSS de Next y gana en cascada).
+        crok:               '#ff4700',
+        'crok-hover':       '#d63900',
+        'crok-soft':        '#fff1ea',
+        'crok-on':          '#ffffff',
+        // Compatibilidad shadcn (su Button usa bg-primary/text-primary-foreground)
+        primary:               '#ff4700',
+        'primary-foreground':  '#ffffff',
+        'primary-hover':       '#d63900',
+        'primary-soft':        '#fff1ea',
+        'primary-on':          '#ffffff',
         'bg-page':       'var(--app-color-bg-page)',
         'bg-surface':    'var(--app-color-bg-surface)',
         'bg-festive':    'var(--app-color-bg-festive)',

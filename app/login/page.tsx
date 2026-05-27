@@ -207,14 +207,15 @@ export default function LoginPage() {
     >
       <div className="w-full max-w-md m-4 bg-white rounded-2xl shadow-lg overflow-hidden">
         {/* Header naranja con logo F5 + Bootcamp Manager */}
-        <div className="bg-primary text-white text-center p-5">
+        <div className="bg-crok text-white text-center p-5">
           <div className="flex items-center justify-center gap-3">
             <Image
               src="/img/logo-factoria-b.svg"
               alt="Factoría F5"
               width={120}
               height={56}
-              className="h-14 w-auto max-w-[50%]"
+              className="h-14 w-auto"
+              style={{ height: 'auto', maxHeight: 56 }}
               priority
             />
             <span className="font-bold text-2xl leading-tight tracking-tight text-left">
@@ -226,7 +227,7 @@ export default function LoginPage() {
         </div>
 
         {/* Título decorativo */}
-        <h2 className="text-primary text-center font-decorative text-xl pt-5 pb-1 m-0">
+        <h2 className="text-crok text-center font-decorative text-xl pt-5 pb-1 m-0">
           preparate para dar el salto...
         </h2>
 
@@ -272,7 +273,7 @@ export default function LoginPage() {
                 type="button"
                 variant="ghost"
                 size="icon"
-                className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-text-muted hover:text-primary hover:bg-transparent"
+                className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7 text-text-muted hover:text-crok hover:bg-transparent"
                 onClick={() => setShowPassword((v) => !v)}
                 aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}
               >
@@ -285,7 +286,7 @@ export default function LoginPage() {
           <Button
             type="submit"
             disabled={loading}
-            className="w-full bg-primary hover:bg-primary-hover text-primary-on h-11"
+            className="w-full bg-crok hover:bg-crok-hover text-crok-on h-11"
           >
             {loading ? (
               <>
@@ -314,7 +315,7 @@ export default function LoginPage() {
       {/* ── Forgot password Dialog (reemplaza Bootstrap Modal) ── */}
       <Dialog open={forgotOpen} onOpenChange={handleForgotOpenChange}>
         <DialogContent className="max-w-[420px] p-0 gap-0 overflow-hidden">
-          <DialogHeader className="bg-primary text-white p-4 space-y-0">
+          <DialogHeader className="bg-crok text-white p-4 space-y-0">
             <DialogTitle className="text-white font-bold flex items-center gap-2">
               <KeyRound className="h-4 w-4" />
               Restablecer contraseña
@@ -355,7 +356,7 @@ export default function LoginPage() {
             </DialogClose>
             <Button
               type="button"
-              className="flex-1 bg-primary hover:bg-primary-hover text-primary-on"
+              className="flex-1 bg-crok hover:bg-crok-hover text-crok-on"
               onClick={sendForgotPassword}
               disabled={forgotLoading || forgotSuccess}
             >
