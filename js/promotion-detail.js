@@ -14339,6 +14339,73 @@ function _closeStudentEvalPanel() {
 }
 
 /**
+ * Sends the project evaluation report to every member of a group.
+ * Called by sendEvaluationByEmail() when saved.type === 'grupal'.
+ * @param {string} groupName – canonical group name (targetId)
+ */
+async function _sendGroupEvaluationByEmail(groupName) {
+    if (!window.Reports?.sendProjectReportByEmail) {
+        showToast('La librería de informes no está disponible', 'danger');
+        return;
+    }
+    const saved = window._evalCurrentSaved;
+    if (!saved) return;
+
+    const grp = (saved.groups || []).find(g => g.groupName === groupName);
+    if (!grp || !(grp.studentIds || []).length) {
+        showToast('Este grupo no tiene miembros asignados', 'warning');
+        return;
+    }
+
+    // Save current evaluation state first
+    await saveIndividualStudentEval();
+
+    const students = window._evalState?.allStudents || window._evalState?.students || [];
+    const token = localStorage.getItem('token');
+    const mIdx = window._evalState?.currentModuleIdx;
+    const pIdx = window._evalState?.currentProjectIdx;
+    const mod = (window._evalState?.modules || [])[mIdx];
+    const proj = mod?.projects[pIdx];
+    const projectName = proj?.name || saved.projectName;
+
+    let sent = 0, failed = 0;
+    for (const memberId of grp.studentIds) {
+        const studentId = String(memberId);
+        const student = students.find(s => String(s.id || s._id) === studentId);
+        const studentEmail = student?.email || '';
+        if (!studentEmail) { failed++; continue; }
+        try {
+            const stuRes = await fetch(`${API_URL}/api/promotions/${promotionId}/students/${studentId}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (!stuRes.ok) { failed++; continue; }
+            const stuData = await stuRes.json();
+            const teams = stuData.technicalTracking?.teams || [];
+            let teamIndex = teams.findIndex(t => t.teamName === projectName);
+            if (teamIndex < 0) teamIndex = 0;
+            await window.Reports.sendProjectReportByEmail(teamIndex, studentId, promotionId, studentEmail, { silent: true });
+            sent++;
+        } catch (err) {
+            console.error('[_sendGroupEvaluationByEmail] member error:', memberId, err);
+            failed++;
+        }
+    }
+
+    if (sent > 0) {
+        const canonicalGroupName = _resolveEvalTargetId(groupName);
+        const entryToMark = (saved.evaluations || []).find(e => String(e.targetId) === canonicalGroupName);
+        if (entryToMark) entryToMark.reportSentAt = new Date().toISOString();
+        await _persistEvaluations();
+        _renderEvalTargetsList(saved, window._evalState.allStudents || window._evalState.students);
+    }
+
+    const msg = failed === 0
+        ? `Informe enviado a ${sent} miembro${sent !== 1 ? 's' : ''} del grupo`
+        : `Enviados: ${sent}. Fallidos: ${failed}`;
+    showToast(msg, failed > 0 ? 'warning' : 'success');
+}
+
+/**
  * Saves the current individual evaluation and then sends the project report PDF by email to the student.
  */
 async function sendEvaluationByEmail() {
@@ -14358,6 +14425,16 @@ async function sendEvaluationByEmail() {
     if (sendBtn) {
         sendBtn.disabled = true;
         sendBtn.innerHTML = `<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>Enviando...`;
+    }
+
+    // ── Grupal evaluation: dispatch to group-specific handler ─────────────
+    if (window._evalCurrentSaved?.type === 'grupal') {
+        try {
+            await _sendGroupEvaluationByEmail(studentId);
+        } finally {
+            if (sendBtn) { sendBtn.disabled = false; sendBtn.innerHTML = originalHtml; }
+        }
+        return;
     }
 
     try {
@@ -14470,6 +14547,89 @@ async function previewStudentEvalReport(studentId) {
 }
 
 /**
+ * Sends the evaluation report to every member of every evaluated group in a grupal project.
+ * Called by sendEvaluationToAllInProject() when saved.type === 'grupal'.
+ * @param {object} saved  – window._evalCurrentSaved
+ * @param {string} projName – display name of the project
+ */
+async function _sendAllGroupEvaluationsByEmail(saved, projName) {
+    const students = window._evalState?.allStudents || window._evalState?.students || [];
+
+    const evaluatedGroupEntries = (saved.evaluations || []).filter(e => e.evaluatedAt);
+    const pendingGroupEntries = evaluatedGroupEntries.filter(e => !e.reportSentAt);
+
+    if (pendingGroupEntries.length === 0) {
+        const alreadySentCount = evaluatedGroupEntries.filter(e => e.reportSentAt).length;
+        showToast(
+            alreadySentCount > 0
+                ? 'Todos los informes ya han sido enviados anteriormente'
+                : 'No hay grupos evaluados en este proyecto',
+            alreadySentCount > 0 ? 'info' : 'warning'
+        );
+        return;
+    }
+
+    // Expand groups to individual members
+    const memberSendList = [];
+    for (const entry of pendingGroupEntries) {
+        const grp = (saved.groups || []).find(g => g.groupName === entry.targetId);
+        for (const memberId of (grp?.studentIds || [])) {
+            const student = students.find(s => String(s.id || s._id) === String(memberId));
+            memberSendList.push({ studentId: String(memberId), email: student?.email || '', groupEntry: entry });
+        }
+    }
+
+    const nMembers = memberSendList.length;
+    _showConfirmModal(
+        `¿Enviar el informe de evaluación a los grupos evaluados en <em>"${escapeHtml(projName)}"</em>?<br><small class="text-muted">Se enviará un correo individual a cada integrante de cada grupo.</small>`,
+        async () => {
+    const token = localStorage.getItem('token');
+    const total = nMembers;
+    const taskId = _bgTaskManager.start(`Enviando informes 0/${total}...`);
+
+    setTimeout(async function _doSendAllGrupal() {
+        let sent = 0, failed = 0;
+        const sentGroupEntries = new Set();
+
+        for (const { studentId, email, groupEntry } of memberSendList) {
+            try {
+                if (!email) { failed++; _bgTaskManager.update(taskId, `Enviando informes ${sent + failed}/${total}...`); continue; }
+
+                const stuRes = await fetch(`${API_URL}/api/promotions/${promotionId}/students/${studentId}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (!stuRes.ok) { failed++; _bgTaskManager.update(taskId, `Enviando informes ${sent + failed}/${total}...`); continue; }
+                const stuData = await stuRes.json();
+                const teams = stuData.technicalTracking?.teams || [];
+                let teamIndex = teams.findIndex(t => t.teamName === projName);
+                if (teamIndex < 0) teamIndex = 0;
+
+                await window.Reports.sendProjectReportByEmail(teamIndex, studentId, promotionId, email, { silent: true });
+                sentGroupEntries.add(groupEntry);
+                sent++;
+            } catch (err) {
+                console.error('[sendEvaluationToAllInProject grupal] member error:', studentId, err);
+                failed++;
+            }
+            _bgTaskManager.update(taskId, `Enviando informes ${sent + failed}/${total}...`);
+        }
+
+        for (const entry of sentGroupEntries) {
+            entry.reportSentAt = new Date().toISOString();
+        }
+        _bgTaskManager.finish(taskId);
+        const msg = failed === 0
+            ? `Informes enviados a ${sent} miembro${sent !== 1 ? 's' : ''} correctamente`
+            : `Informes enviados: ${sent}. Fallidos: ${failed}`;
+        showToast(msg, failed > 0 ? 'warning' : 'success');
+        await _persistEvaluations();
+        const savedAfter = window._evalCurrentSaved;
+        if (savedAfter) _renderEvalTargetsList(savedAfter, window._evalState.allStudents || window._evalState.students);
+    }, 0);
+        }, 'Enviar', 'btn-primary');
+}
+
+/**
  * Sends the individual evaluation report to ALL evaluated students in the current project.
  * Uses the same flow as sendEvaluationByEmail() but iterates over every student
  * that has been graded (evaluatedAt is set) in the active project split-view.
@@ -14483,6 +14643,12 @@ async function sendEvaluationToAllInProject() {
     const modules = window._evalState?.modules || [];
     const mod = modules[mIdx];
     const proj = mod?.projects[pIdx];
+
+    // ── Grupal evaluation: expand groups to individual members ────────────
+    if (saved.type === 'grupal') {
+        await _sendAllGroupEvaluationsByEmail(saved, proj?.name || saved.projectName);
+        return;
+    }
 
     // Solo enviar a estudiantes realmente evaluados (tienen evaluatedAt) y cuyo informe no se haya enviado aún
     const allEvaluatedEntries = (saved.evaluations || []).filter(e => e.evaluatedAt && !e.isGroup);
