@@ -1,7 +1,10 @@
 function __onDomReady(fn) { document.readyState === "loading" ? document.addEventListener("DOMContentLoaded", fn) : fn(); }
 const API_URL = window.APP_CONFIG?.API_URL || window.location.origin;
 let promotionId = null;
-let passwordModal = null;
+// passwordModal removido (spec 0011): modales ahora son shadcn Dialog controlados
+// por useState. Usar window.openPasswordModal() / window.closePasswordModal() y
+// window.openAppointmentModal() / window.setAppointmentIframeSrc(url) expuestos
+// por app/public-promotion/page.tsx.
 let promotionHasPassword = false;
 let isAccessVerified = false;
 let isPreviewMode = false;
@@ -18,11 +21,7 @@ __onDomReady( () => {
         return;
     }
 
-    // Initialize password modal (student access mode only)
-    const modalEl = document.getElementById('passwordModal');
-    if (modalEl) {
-        passwordModal = new bootstrap.Modal(modalEl, { backdrop: 'static', keyboard: false });
-    }
+    // (spec 0011) Modal shadcn controlado por React; no inicializar Bootstrap aquí.
 
     if (isPreviewMode) {
         // In preview mode (from teacher overview), bypass password and tracking
@@ -100,9 +99,9 @@ async function checkPasswordRequirement() {
             promotionHasPassword = !!promotion.accessPassword;
 
             if (promotionHasPassword && !isAccessVerified) {
-                // Show password modal
-                if (passwordModal) {
-                    passwordModal.show();
+                // Show password modal (shadcn Dialog via React state, spec 0011)
+                if (typeof window.openPasswordModal === 'function') {
+                    window.openPasswordModal();
                 }
             } else {
                 // Load promotion content
@@ -157,9 +156,9 @@ window.verifyPromotionPassword = async function () {
 
             isAccessVerified = true;
 
-            // Hide modal and load content
-            if (passwordModal) {
-                passwordModal.hide();
+            // Hide modal and load content (shadcn Dialog via React state, spec 0011)
+            if (typeof window.closePasswordModal === 'function') {
+                window.closePasswordModal();
             }
 
             // Load content after successful password verification
@@ -2706,13 +2705,15 @@ function _loadAppointmentButton(url) {
     btn.style.backgroundColor = '#F4511E';
     btn.textContent = 'Reservar una cita';
     btn.addEventListener('click', () => {
-        const iframe = document.getElementById('appointment-iframe');
-        if (iframe) iframe.src = url;
-        const modal = new bootstrap.Modal(document.getElementById('appointmentModal'));
-        modal.show();
-        document.getElementById('appointmentModal').addEventListener('hidden.bs.modal', () => {
-            if (iframe) iframe.src = '';
-        }, { once: true });
+        // shadcn Dialog via React state (spec 0011)
+        if (typeof window.setAppointmentIframeSrc === 'function') {
+            window.setAppointmentIframeSrc(url);
+        }
+        if (typeof window.openAppointmentModal === 'function') {
+            window.openAppointmentModal();
+        }
+        // No cleanup listener — el shadcn Dialog se desmonta al cerrar y el
+        // iframe se reinicia al volver a abrir con setAppointmentIframeSrc(url).
     });
     target.appendChild(btn);
 }
