@@ -141,6 +141,62 @@ window.handleLogin = async function () {
     }
 };
 
+function openForgotPassword() {
+    const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('forgotPasswordModal'));
+    const alertEl = document.getElementById('forgot-alert');
+    const emailEl = document.getElementById('forgot-email');
+    if (alertEl) { alertEl.className = 'alert hidden'; alertEl.textContent = ''; }
+    if (emailEl) emailEl.value = '';
+    modal.show();
+}
+
+window.sendForgotPassword = async function () {
+    const email = (document.getElementById('forgot-email')?.value || '').trim();
+    const alertEl = document.getElementById('forgot-alert');
+    const btnText = document.getElementById('forgot-btn-text');
+    const spinner = document.getElementById('forgot-btn-spinner');
+    const submitBtn = document.getElementById('forgot-submit-btn');
+
+    if (!email) {
+        alertEl.className = 'alert alert-warning';
+        alertEl.textContent = 'Por favor, introduce tu correo electrónico.';
+        alertEl.classList.remove('hidden');
+        return;
+    }
+
+    if (submitBtn) submitBtn.disabled = true;
+    if (btnText) btnText.classList.add('d-none');
+    if (spinner) spinner.classList.remove('d-none');
+
+    try {
+        const base = window.APP_CONFIG?.API_URL || window.location.origin;
+        const res = await fetch(`${base}/api/auth/forgot-password`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email })
+        });
+
+        let data = {};
+        const text = await res.text();
+        try { data = JSON.parse(text); } catch { /* no JSON body */ }
+
+        alertEl.className = res.ok ? 'alert alert-success' : 'alert alert-danger';
+        alertEl.textContent = data.message || (res.ok
+            ? 'En breves recibirás un correo con el enlace para restablecer tu contraseña.'
+            : 'Error al enviar el correo. Inténtalo de nuevo.');
+        alertEl.classList.remove('hidden');
+    } catch (err) {
+        console.error('[sendForgotPassword]', err);
+        alertEl.className = 'alert alert-danger';
+        alertEl.textContent = 'Error de conexión. Inténtalo de nuevo.';
+        alertEl.classList.remove('hidden');
+    } finally {
+        if (submitBtn) submitBtn.disabled = false;
+        if (btnText) btnText.classList.remove('d-none');
+        if (spinner) spinner.classList.add('d-none');
+    }
+};
+
 document.addEventListener('DOMContentLoaded', function() {
     // If the user already has a valid session, skip the login page
     var existingToken = localStorage.getItem('token');

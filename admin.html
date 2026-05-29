@@ -278,9 +278,15 @@
                             <i class="bi bi-info-circle me-1 text-primary"></i>
                             Se generará una contraseña provisional y se registrará automáticamente en <strong>users.coderf5.es</strong>.
                         </div>
-                        <div class="mb-3">
-                            <label class="form-label fw-semibold">Nombre completo</label>
-                            <input type="text" class="form-control" id="teacher-name" required placeholder="Ej: Ana García">
+                        <div class="row g-3 mb-3">
+                            <div class="col-6">
+                                <label class="form-label fw-semibold">Nombre</label>
+                                <input type="text" class="form-control" id="teacher-name" required placeholder="Ej: Ana">
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label fw-semibold">Apellido</label>
+                                <input type="text" class="form-control" id="teacher-lastname" required placeholder="Ej: García">
+                            </div>
                         </div>
                         <div class="mb-3">
                             <label class="form-label fw-semibold">Correo electrónico</label>
@@ -319,9 +325,15 @@
                 <form id="edit-teacher-form">
                     <input type="hidden" id="edit-teacher-id">
                     <div class="modal-body p-4">
-                        <div class="mb-3">
-                            <label class="form-label fw-semibold">Nombre completo</label>
-                            <input type="text" class="form-control" id="edit-teacher-name" required>
+                        <div class="row g-3 mb-3">
+                            <div class="col-6">
+                                <label class="form-label fw-semibold">Nombre</label>
+                                <input type="text" class="form-control" id="edit-teacher-name" required>
+                            </div>
+                            <div class="col-6">
+                                <label class="form-label fw-semibold">Apellido</label>
+                                <input type="text" class="form-control" id="edit-teacher-lastname">
+                            </div>
                         </div>
                         <div class="mb-3">
                             <label class="form-label fw-semibold">Correo electrónico</label>
