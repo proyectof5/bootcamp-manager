@@ -846,13 +846,13 @@ function _loadAppointmentButton(url) {
     btn.style.backgroundColor = '#F4511E';
     btn.textContent = 'Reservar una cita';
     btn.addEventListener('click', () => {
-        const iframe = document.getElementById('appointment-iframe');
-        if (iframe) iframe.src = url;
-        const modal = new bootstrap.Modal(document.getElementById('appointmentModal'));
-        modal.show();
-        document.getElementById('appointmentModal').addEventListener('hidden.bs.modal', () => {
-            if (iframe) iframe.src = '';
-        }, { once: true });
+        // shadcn Dialog via React state (spec 0012)
+        if (typeof window.setStudentAppointmentIframeSrc === 'function') {
+            window.setStudentAppointmentIframeSrc(url);
+        }
+        if (typeof window.openStudentAppointmentModal === 'function') {
+            window.openStudentAppointmentModal();
+        }
     });
     target.appendChild(btn);
 }
