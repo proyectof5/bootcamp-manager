@@ -18,7 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('teachers-list').addEventListener('click', (e) => {
         const btn = e.target.closest('.btn-edit-user');
         if (btn) {
-            openEditModal(btn.dataset.id, btn.dataset.name, btn.dataset.email, btn.dataset.userrole);
+            openEditModal(btn.dataset.id, btn.dataset.name, btn.dataset.lastname || '', btn.dataset.email, btn.dataset.userrole);
         }
     });
 
@@ -101,7 +101,7 @@ function displayTeachers(teachers) {
                             <i class="bi bi-person-badge fs-4"></i>
                         </div>
                         <div>
-                            <h5 class="card-title mb-0">${escapeHtml(teacher.name)}</h5>
+                            <h5 class="card-title mb-0">${escapeHtml(teacher.name)}${teacher.lastName ? ' ' + escapeHtml(teacher.lastName) : ''}</h5>
                             <span class="badge bg-${badgeColor} mt-1">${escapeHtml(userRole)}</span>
                         </div>
                     </div>
@@ -112,6 +112,7 @@ function displayTeachers(teachers) {
                         <button class="btn btn-sm btn-outline-warning w-100 btn-edit-user"
                             data-id="${teacher.id}"
                             data-name="${escapeHtml(teacher.name)}"
+                            data-lastname="${escapeHtml(teacher.lastName || '')}"
                             data-email="${escapeHtml(teacher.email)}"
                             data-userrole="${escapeHtml(userRole)}">
                             <i class="bi bi-pencil me-1"></i> Editar
@@ -138,7 +139,8 @@ function openCreateTeacherModal() {
 async function handleCreateTeacher(e) {
     e.preventDefault();
     const token = localStorage.getItem('token');
-    const name = document.getElementById('teacher-name').value;
+    const name = document.getElementById('teacher-name').value.trim();
+    const lastName = document.getElementById('teacher-lastname').value.trim();
     const email = document.getElementById('teacher-email').value;
     const userRole = document.getElementById('teacher-userrole').value;
 
@@ -192,9 +194,10 @@ async function handleCreateTeacher(e) {
     }
 }
 
-function openEditModal(id, name, email, userRole) {
+function openEditModal(id, name, lastName, email, userRole) {
     document.getElementById('edit-teacher-id').value = id;
     document.getElementById('edit-teacher-name').value = name;
+    document.getElementById('edit-teacher-lastname').value = lastName || '';
     document.getElementById('edit-teacher-email').value = email;
     document.getElementById('edit-teacher-userrole').value = userRole || 'Formador/a';
     editModal.show();
@@ -205,6 +208,7 @@ async function handleUpdateTeacher(e) {
     const token = localStorage.getItem('token');
     const id = document.getElementById('edit-teacher-id').value;
     const name = document.getElementById('edit-teacher-name').value;
+    const lastName = document.getElementById('edit-teacher-lastname').value.trim();
     const email = document.getElementById('edit-teacher-email').value;
     const userRole = document.getElementById('edit-teacher-userrole').value;
 

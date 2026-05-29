@@ -161,27 +161,20 @@ window.changePassword = async function () {
     }
 
     try {
-        const isLocal = window.location.hostname === 'localhost' || window.location.hostname === 'localhost';
-        const resetUrl = isLocal
-            ? 'http://localhost:8000/reset-password/api-request-reset'
-            : 'https://users.coderf5.es/reset-password/api-request-reset';
-
-        const response = await fetch(resetUrl, {
+        const res = await fetch(`${API_URL}/api/auth/forgot-password`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email })
         });
 
-        // Many reset-password endpoints return 200/204 with no body, or a JSON message
         let data = {};
-        const text = await response.text();
+        const text = await res.text();
         try { data = JSON.parse(text); } catch { /* no JSON body */ }
 
-        if (response.ok) {
+        if (res.ok) {
             alertEl.className = 'alert alert-success';
             alertEl.textContent = data.message || 'En breves recibirás un correo con el enlace para cambiar tu contraseña.';
             alertEl.classList.remove('hidden');
-            // Do NOT close the modal — let the user read the confirmation
         } else {
             alertEl.className = 'alert alert-danger';
             alertEl.textContent = data.message || data.error || 'Error al enviar el correo. Inténtalo de nuevo.';
@@ -386,7 +379,11 @@ document.addEventListener('DOMContentLoaded', () => {
     window.exportStudentsCsv = exportAllStudentsExcel; // Map CSV buttons to Excel as requested
     window.exportStudentsExcel = exportAllStudentsExcel;
 
-    if (!promotionId) {
+    // Guard against empty string, literal "null"/"undefined" (can happen if promotion.id
+    // is missing/null in the DB and the template literal stringifies it).
+    const _invalidId = !promotionId || promotionId === 'null' || promotionId === 'undefined';
+    if (_invalidId) {
+        console.warn('[promotion-detail] Invalid promotionId:', promotionId, '— redirecting to dashboard');
         window.location.href = 'dashboard.html';
         return;
     }
@@ -7978,7 +7975,8 @@ async function openCollaboratorModal() {
                 available.forEach(t => {
                     const opt = document.createElement('option');
                     opt.value = t.id;
-                    opt.textContent = `${t.name} — ${t.userRole || 'Formador/a'} (${t.email})`;
+                    const fullName = t.lastName ? `${t.name} ${t.lastName}` : t.name;
+                    opt.textContent = `${fullName} — ${t.userRole || 'Formador/a'} (${t.email})`;
                     select.appendChild(opt);
                 });
             }

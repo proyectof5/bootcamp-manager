@@ -94,6 +94,11 @@ function displayPromotions(promotions, userId) {
     }
 
     promotions.forEach(promotion => {
+        // Skip promotions with missing or invalid ID (data inconsistency safeguard)
+        if (!promotion.id || promotion.id === 'null' || promotion.id === 'undefined') {
+            console.warn('[dashboard] Skipping promotion with invalid id:', promotion.name, promotion.id);
+            return;
+        }
         const card = document.createElement('div');
         card.className = 'col-md-6 col-lg-4';
         const isOwner = promotion.teacherId === userId;
@@ -464,27 +469,20 @@ window.changePassword = async function () {
     }
 
     try {
-        const isLocal = window.location.hostname === 'localhost' || window.location.hostname === 'localhost';
-        const resetUrl = isLocal
-            ? 'http://localhost:8000/reset-password/api-request-reset'
-            : 'https://users.coderf5.es/reset-password/api-request-reset';
-
-        const response = await fetch(resetUrl, {
+        const res = await fetch(`${API_URL}/api/auth/forgot-password`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email })
         });
 
-        // Many reset-password endpoints return 200/204 with no body, or a JSON message
         let data = {};
-        const text = await response.text();
+        const text = await res.text();
         try { data = JSON.parse(text); } catch { /* no JSON body */ }
 
-        if (response.ok) {
+        if (res.ok) {
             alertEl.className = 'alert alert-success';
             alertEl.textContent = data.message || 'En breves recibirás un correo con el enlace para cambiar tu contraseña.';
             alertEl.classList.remove('hidden');
-            // Do NOT close the modal — let the user read the confirmation
         } else {
             alertEl.className = 'alert alert-danger';
             alertEl.textContent = data.message || data.error || 'Error al enviar el correo. Inténtalo de nuevo.';
