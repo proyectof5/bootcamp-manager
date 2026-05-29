@@ -1,13 +1,55 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/hooks/useAuth';
-import { apiFetch, getApiUrl } from '@/lib/api';
-import { showToast } from '@/lib/toast';
+import {
+  CircleUser,
+  User,
+  ShieldCheck,
+  LogOut,
+  PlusCircle,
+  Trash2,
+  Mail,
+  Info,
+} from 'lucide-react';
+
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogClose,
+} from '@/components/ui/dialog';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import {
+  Select,
+  SelectTrigger,
+  SelectValue,
+  SelectContent,
+  SelectItem,
+  SelectGroup,
+  SelectLabel,
+} from '@/components/ui/select';
 import Spinner from '@/components/Spinner';
-import styles from './page.module.css';
+
+import { useAuth } from '@/hooks/useAuth';
+import { apiFetch } from '@/lib/api';
+import { showToast } from '@/lib/toast';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -40,19 +82,11 @@ interface Profile {
   location?: string;
 }
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
-
-function escapeHtml(text: string) {
-  const d = document.createElement('div');
-  d.textContent = text;
-  return d.innerHTML;
-}
-
 const COMUNIDADES = [
-  'Andalucía','Aragón','Asturias','Islas Baleares','Canarias','Cantabria',
-  'Castilla-La Mancha','Castilla y León','Cataluña','Ceuta','Comunidad de Madrid',
-  'Comunidad Foral de Navarra','Comunidad Valenciana','Extremadura','Galicia',
-  'La Rioja','Melilla','País Vasco','Región de Murcia',
+  'Andalucía', 'Aragón', 'Asturias', 'Islas Baleares', 'Canarias', 'Cantabria',
+  'Castilla-La Mancha', 'Castilla y León', 'Cataluña', 'Ceuta', 'Comunidad de Madrid',
+  'Comunidad Foral de Navarra', 'Comunidad Valenciana', 'Extremadura', 'Galicia',
+  'La Rioja', 'Melilla', 'País Vasco', 'Región de Murcia',
 ];
 
 // ── Page component ────────────────────────────────────────────────────────────
@@ -61,16 +95,15 @@ export default function DashboardPage() {
   const router = useRouter();
   const { user, isLoading } = useAuth();
 
-  // Promotions
+  // ── Promotions ──
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [loadingPromotions, setLoadingPromotions] = useState(true);
 
-  // Templates
+  // ── Templates ──
   const [templates, setTemplates] = useState<Template[]>([]);
 
-  // New / edit promotion modal
-  const promotionModalRef = useRef<HTMLDivElement>(null);
-  const [promotionModalOpen, setPromotionModalOpen] = useState(false);
+  // ── Promotion modal (shadcn Dialog controlado por useState) ──
+  const [promoOpen, setPromoOpen] = useState(false);
   const [currentPromotionId, setCurrentPromotionId] = useState<string | null>(null);
   const [promoForm, setPromoForm] = useState({
     templateId: '', name: '', description: '', weeks: '', hours: '',
@@ -78,8 +111,8 @@ export default function DashboardPage() {
   });
   const [savingPromo, setSavingPromo] = useState(false);
 
-  // Profile modal
-  const profileModalRef = useRef<HTMLDivElement>(null);
+  // ── Profile modal (shadcn Dialog controlado por useState) ──
+  const [profileOpen, setProfileOpen] = useState(false);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [profileForm, setProfileForm] = useState({ name: '', lastName: '', location: '' });
   const [resetEmail, setResetEmail] = useState('');
@@ -88,7 +121,7 @@ export default function DashboardPage() {
   const [savingProfile, setSavingProfile] = useState(false);
   const [sendingReset, setSendingReset] = useState(false);
 
-  // ── Data loading ────────────────────────────────────────────────────────────
+  // ── Data loading ──
 
   const loadPromotions = useCallback(async () => {
     setLoadingPromotions(true);
@@ -119,27 +152,12 @@ export default function DashboardPage() {
     }
   }, [isLoading, user, loadPromotions, loadTemplates]);
 
-  // ── Bootstrap modal helpers ─────────────────────────────────────────────────
-
-  function openBsModal(ref: React.RefObject<HTMLDivElement | null>) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const bs = (window as any).bootstrap;
-    if (bs?.Modal && ref.current) new bs.Modal(ref.current).show();
-  }
-
-  function closeBsModal(ref: React.RefObject<HTMLDivElement | null>) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const bs = (window as any).bootstrap;
-    if (bs?.Modal && ref.current) bs.Modal.getInstance(ref.current)?.hide();
-  }
-
-  // ── Promotion modal ─────────────────────────────────────────────────────────
+  // ── Promotion modal handlers ──
 
   function openNewPromotion() {
     setCurrentPromotionId(null);
     setPromoForm({ templateId: '', name: '', description: '', weeks: '', hours: '', startDate: '', endDate: '' });
-    setPromotionModalOpen(true);
-    setTimeout(() => openBsModal(promotionModalRef), 50);
+    setPromoOpen(true);
   }
 
   function applyTemplate(templateId: string) {
@@ -187,7 +205,7 @@ export default function DashboardPage() {
         if (!currentPromotionId) {
           router.push(`/promotion?id=${saved.id}&openActa=1`);
         } else {
-          closeBsModal(promotionModalRef);
+          setPromoOpen(false);
           loadPromotions();
         }
       } else {
@@ -213,7 +231,7 @@ export default function DashboardPage() {
     }
   }
 
-  // ── Profile modal ────────────────────────────────────────────────────────────
+  // ── Profile modal handlers ──
 
   async function openProfileModal() {
     setProfileAlert(null);
@@ -225,7 +243,7 @@ export default function DashboardPage() {
         setProfile(p);
         setProfileForm({ name: p.name || '', lastName: p.lastName || '', location: p.location || '' });
         setResetEmail(p.email || '');
-        openBsModal(profileModalRef);
+        setProfileOpen(true);
       } else {
         showToast('Error cargando el perfil', 'danger');
       }
@@ -298,370 +316,430 @@ export default function DashboardPage() {
     }
   }
 
-  // ── Stats ────────────────────────────────────────────────────────────────────
+  // ── Helpers ──
+
+  function alertVariant(type: string): 'default' | 'destructive' {
+    return type === 'danger' ? 'destructive' : 'default';
+  }
+
+  // ── Stats ──
 
   const totalModules = promotions.reduce((acc, p) => acc + (p.modules?.length ?? 0), 0);
   const isSuperAdmin = user?.role === 'superadmin';
 
-  // ── Loading guard ─────────────────────────────────────────────────────────────
+  // ── Loading guard ──
 
   if (isLoading) {
     return (
-      <div className="d-flex justify-content-center align-items-center vh-100">
+      <div className="flex justify-center items-center h-screen">
         <Spinner />
       </div>
     );
   }
 
-  // ── Render ────────────────────────────────────────────────────────────────────
+  // ── Render ──
 
   return (
-    <div className={styles.dashboardBody}>
-      {/* ── Navbar ── */}
-      <nav className="navbar navbar-expand-lg navbar-light shadow-sm">
-        <div className="container-fluid">
-          <a className={`navbar-brand ${styles.brandRow}`} href="#">
-            <Image
-              src="/img/logo-factoria-b.svg"
-              alt="Factoría F5"
-              width={120}
-              height={44}
-              className={styles.brandLogo}
-              priority
-            />
-            <span className={styles.brandName}>Bootcamp<br />Manager</span>
-          </a>
+    <div className="flex-1 w-full min-h-screen bg-[#f19976]">
+      {/* ── Navbar siempre expandido (resuelve el bug de < 992px del v0.x) ── */}
+      <nav
+        className="bg-crok bg-repeat shadow-md flex items-center justify-between px-6 py-3"
+        style={{
+          backgroundImage: "url('/img/Fondo-factoria-f5-color.png')",
+          backgroundSize: '150px 150px',
+        }}
+      >
+        <a href="#" className="flex items-center gap-3 no-underline">
+          <Image
+            src="/img/logo-factoria-b.svg"
+            alt="Factoría F5"
+            width={120}
+            height={44}
+            className="w-auto"
+            style={{ height: 'auto', maxHeight: 44 }}
+            priority
+          />
+          <span className="text-white font-bold text-xl leading-tight tracking-tight">
+            Bootcamp<br />Manager
+          </span>
+        </a>
 
-          <div className="container-sesion">
-            <button
-              className="navbar-toggler"
-              type="button"
-              data-bs-toggle="collapse"
-              data-bs-target="#navbarNav"
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button
+              variant="ghost"
+              className="bg-transparent text-white border border-white/30 hover:bg-white hover:text-crok hover:border-white gap-2"
             >
-              <span className="navbar-toggler-icon" />
-            </button>
-
-            <div className="collapse navbar-collapse" id="navbarNav">
-              <ul className="navbar-nav ms-auto">
-                <li className="nav-item dropdown">
-                  <a
-                    className="nav-link dropdown-toggle"
-                    href="#"
-                    id="userMenu"
-                    role="button"
-                    data-bs-toggle="dropdown"
-                  >
-                    <i className="bi bi-person-circle me-2" />
-                    <span>{user?.name || 'Teacher'}</span>
+              <CircleUser className="h-4 w-4" />
+              <span>{user?.name || 'Teacher'}</span>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={openProfileModal}>
+              <User className="mr-2 h-4 w-4" /> Perfil
+            </DropdownMenuItem>
+            {isSuperAdmin && (
+              <>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem asChild>
+                  <a href="/admin">
+                    <ShieldCheck className="mr-2 h-4 w-4" /> Panel de Admin
                   </a>
-                  <ul className="dropdown-menu dropdown-menu-end">
-                    <li>
-                      <button className="dropdown-item" onClick={openProfileModal}>
-                        <i className="bi bi-person me-2" />Perfil
-                      </button>
-                    </li>
-                    {isSuperAdmin && (
-                      <>
-                        <li><hr className="dropdown-divider" /></li>
-                        <li>
-                          <a className="dropdown-item" href="/admin">
-                            <i className="bi bi-shield-lock me-2" />Panel de Admin
-                          </a>
-                        </li>
-                      </>
-                    )}
-                    <li><hr className="dropdown-divider" /></li>
-                    <li>
-                      <button
-                        className="dropdown-item"
-                        onClick={() => {
-                          localStorage.clear();
-                          router.replace('/login');
-                        }}
-                      >
-                        <i className="bi bi-box-arrow-right me-2" />Cerrar Sesión
-                      </button>
-                    </li>
-                  </ul>
-                </li>
-              </ul>
-            </div>
-          </div>
-        </div>
+                </DropdownMenuItem>
+              </>
+            )}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem
+              onClick={() => {
+                localStorage.clear();
+                router.replace('/login');
+              }}
+            >
+              <LogOut className="mr-2 h-4 w-4" /> Cerrar Sesión
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </nav>
 
       {/* ── Main ── */}
-      <div className="container-promotions">
-        <div className="row">
-          <main className="ms-sm-auto">
-            <div className="d-flex align-items-end justify-content-between my-4 w-100">
-              <div className="d-flex align-items-end gap-3">
-                <h1 className="page-title m-0">Mis Promociones</h1>
-                <Image
-                  src="/img/logo-factoria-b.svg"
-                  alt="FactoriaF5"
-                  width={50}
-                  height={50}
-                  style={{ height: 50, width: 'auto' }}
-                  className="d-lg-block mb-1"
-                />
-              </div>
-              <div className="d-flex align-items-center gap-3">
-                <span className="text-muted small">
-                  Promociones: <strong>{promotions.length}</strong>
-                </span>
-                <span className="text-muted small">
-                  Módulos totales: <strong>{totalModules}</strong>
-                </span>
-                <button className="btn-new" onClick={openNewPromotion}>
-                  <i className="bi bi-plus-circle me-2" />Añadir Promoción
-                </button>
-              </div>
-            </div>
-
-            {/* Promotions list */}
-            <div className="row" id="promotions-list">
-              {loadingPromotions ? (
-                <div className="col-12 text-center py-5">
-                  <Spinner />
-                </div>
-              ) : promotions.length === 0 ? (
-                <div className="col-12">
-                  <p className="text-muted text-center">
-                    Aún no tienes promociones. ¡Crea una para empezar!
-                  </p>
-                </div>
-              ) : (
-                promotions.map(p => {
-                  const isOwner = p.teacherId === user?.id;
-                  return (
-                    <div key={p.id} className="col-md-6 col-lg-4">
-                      <div
-                        className="card promotion-card"
-                        style={{ cursor: 'pointer' }}
-                        onClick={() => router.push(`/promotion?id=${p.id}`)}
-                      >
-                        <div className="card-body">
-                          <div className="d-flex justify-content-between align-items-start mb-2">
-                            <h5
-                              className="promotion-card-title"
-                              dangerouslySetInnerHTML={{ __html: escapeHtml(p.name) }}
-                            />
-                            {!isOwner && (
-                              <span className="badge bg-info">Collaborator</span>
-                            )}
-                          </div>
-                          <p className="promotion-card-meta">
-                            {p.description || 'Sin descripción'}
-                          </p>
-                          <div className="d-flex justify-content-between align-items-center mt-3">
-                            <span className="badge-weeks">{p.weeks} weeks</span>
-                            {isOwner && (
-                              <button
-                                className="btn btn-sm btn-outline-danger ms-2"
-                                onClick={e => deletePromotion(p.id, e)}
-                              >
-                                <i className="bi bi-trash" />
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })
-              )}
-            </div>
-          </main>
+      <main className="container mx-auto px-4 py-6">
+        <div className="flex flex-wrap items-end justify-between mb-6 gap-3">
+          <div className="flex items-end gap-3">
+            <h1 className="text-3xl font-bold m-0 text-white drop-shadow">Mis Promociones</h1>
+            <Image
+              src="/img/logo-factoria-b.svg"
+              alt="Factoría F5"
+              width={50}
+              height={50}
+              className="hidden lg:block w-auto mb-1"
+              style={{ height: 'auto', maxHeight: 48 }}
+            />
+          </div>
+          <div className="flex flex-wrap items-center gap-3">
+            <span className="text-white/90 text-sm">
+              Promociones: <strong>{promotions.length}</strong>
+            </span>
+            <span className="text-white/90 text-sm">
+              Módulos totales: <strong>{totalModules}</strong>
+            </span>
+            <Button
+              className="bg-crok hover:bg-crok-hover text-crok-on"
+              onClick={openNewPromotion}
+            >
+              <PlusCircle className="mr-2 h-4 w-4" /> Añadir Promoción
+            </Button>
+          </div>
         </div>
-      </div>
+
+        {/* Lista de promociones */}
+        {loadingPromotions ? (
+          <div className="flex justify-center py-12">
+            <Spinner />
+          </div>
+        ) : promotions.length === 0 ? (
+          <p className="text-white/90 text-center py-12">
+            Aún no tienes promociones. ¡Crea una para empezar!
+          </p>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {promotions.map(p => {
+              const isOwner = p.teacherId === user?.id;
+              return (
+                <div
+                  key={p.id}
+                  onClick={() => router.push(`/promotion?id=${p.id}`)}
+                  className="rounded-lg shadow-md cursor-pointer overflow-hidden bg-crok bg-repeat hover:shadow-lg hover:-translate-y-1 transition-all"
+                  style={{
+                    backgroundImage: "url('/img/Fondo-factoria-f5-color.png')",
+                    backgroundSize: '150px 150px',
+                  }}
+                >
+                  <div className="p-6 text-white">
+                    <div className="flex justify-between items-start mb-2 gap-2">
+                      <h5 className="font-bold text-xl drop-shadow leading-tight m-0">
+                        {p.name}
+                      </h5>
+                      {!isOwner && (
+                        <Badge className="bg-cyan-500 hover:bg-cyan-500 text-white shrink-0">
+                          Collaborator
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-white/90 text-sm mb-3">
+                      {p.description || 'Sin descripción'}
+                    </p>
+                    <div className="flex justify-between items-center mt-3">
+                      <span className="bg-white/25 border border-white/50 px-3 py-1 rounded-full text-sm">
+                        {p.weeks} weeks
+                      </span>
+                      {isOwner && (
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="bg-white/20 border-white/50 text-white hover:bg-white/30 hover:text-white h-8 w-8"
+                          onClick={(e) => deletePromotion(p.id, e)}
+                          aria-label="Eliminar promoción"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </main>
 
       {/* ── Profile Modal ── */}
-      <div className="modal fade" id="profileModal" tabIndex={-1} ref={profileModalRef}>
-        <div className="modal-dialog modal-lg">
-          <div className="modal-content">
-            <div className="modal-header bg-primary bg-opacity-10 border-primary">
-              <h5 className="modal-title">Perfil</h5>
-              <button type="button" className="btn-close" data-bs-dismiss="modal" />
-            </div>
-            <div className="modal-body">
-              <ul className="nav nav-tabs mb-4" id="profileTabs" role="tablist">
-                <li className="nav-item" role="presentation">
-                  <button className="nav-link active" data-bs-toggle="tab" data-bs-target="#profile-content" type="button" role="tab">
-                    Información general
-                  </button>
-                </li>
-                <li className="nav-item" role="presentation">
-                  <button className="nav-link" data-bs-toggle="tab" data-bs-target="#password-content" type="button" role="tab">
-                    Cambiar contraseña
-                  </button>
-                </li>
-              </ul>
+      <Dialog open={profileOpen} onOpenChange={setProfileOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Perfil</DialogTitle>
+          </DialogHeader>
 
-              <div className="tab-content">
-                {/* Profile tab */}
-                <div className="tab-pane fade show active" id="profile-content" role="tabpanel">
-                  <div className="mb-3">
-                    <label htmlFor="profile-name" className="form-label">Nombre</label>
-                    <input type="text" className="form-control" id="profile-name"
-                      value={profileForm.name}
-                      onChange={e => setProfileForm(f => ({ ...f, name: e.target.value }))} />
-                  </div>
-                  <div className="mb-3">
-                    <label htmlFor="profile-lastName" className="form-label">Apellido</label>
-                    <input type="text" className="form-control" id="profile-lastName"
-                      value={profileForm.lastName}
-                      onChange={e => setProfileForm(f => ({ ...f, lastName: e.target.value }))} />
-                  </div>
-                  <div className="mb-3">
-                    <label htmlFor="profile-email" className="form-label">Email</label>
-                    <input type="email" className="form-control" id="profile-email"
-                      value={profile?.email || ''} disabled readOnly />
-                  </div>
-                  <div className="mb-3">
-                    <label htmlFor="profile-location" className="form-label">Comunidad Autónoma</label>
-                    <select className="form-select" id="profile-location"
-                      value={profileForm.location}
-                      onChange={e => setProfileForm(f => ({ ...f, location: e.target.value }))}>
-                      <option value="">-- Selecciona tu comunidad --</option>
-                      {COMUNIDADES.map(c => <option key={c} value={c}>{c}</option>)}
-                    </select>
-                  </div>
-                  {profileAlert && (
-                    <div className={`alert alert-${profileAlert.type}`}>{profileAlert.msg}</div>
-                  )}
-                </div>
+          <Tabs defaultValue="profile" className="mt-2">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="profile">Información general</TabsTrigger>
+              <TabsTrigger value="password">Cambiar contraseña</TabsTrigger>
+            </TabsList>
 
-                {/* Password tab */}
-                <div className="tab-pane fade" id="password-content" role="tabpanel">
-                  <div className="alert alert-info d-flex align-items-start gap-2 mb-4">
-                    <i className="bi bi-info-circle-fill mt-1" />
-                    <span>Te enviaremos un enlace a tu correo para que puedas cambiar tu contraseña de forma segura.</span>
-                  </div>
-                  <div className="mb-3">
-                    <label htmlFor="reset-email" className="form-label">Tu correo electrónico</label>
-                    <input type="email" className="form-control" id="reset-email"
-                      placeholder="ejemplo@correo.com"
-                      value={resetEmail}
-                      onChange={e => setResetEmail(e.target.value)} />
-                  </div>
-                  {passwordAlert && (
-                    <div className={`alert alert-${passwordAlert.type}`}>{passwordAlert.msg}</div>
-                  )}
-                  <div className="mt-3">
-                    <button type="button" className="btn btn-primary w-100"
-                      onClick={changePassword} disabled={sendingReset}>
-                      {sendingReset
-                        ? <Spinner size="sm" />
-                        : <><i className="bi bi-envelope me-2" />Enviar enlace de cambio de contraseña</>
-                      }
-                    </button>
-                  </div>
-                </div>
+            {/* Tab: Información general */}
+            <TabsContent value="profile" className="space-y-3 pt-3">
+              <div className="space-y-2">
+                <Label htmlFor="profile-name">Nombre</Label>
+                <Input
+                  id="profile-name"
+                  value={profileForm.name}
+                  onChange={e => setProfileForm(f => ({ ...f, name: e.target.value }))}
+                />
               </div>
-            </div>
-            <div className="modal-footer">
-              <button type="button" className="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
-              <button type="button" className="btn btn-primary" onClick={saveProfileInfo} disabled={savingProfile}>
-                {savingProfile ? <Spinner size="sm" /> : 'Guardar perfil'}
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
+              <div className="space-y-2">
+                <Label htmlFor="profile-lastName">Apellido</Label>
+                <Input
+                  id="profile-lastName"
+                  value={profileForm.lastName}
+                  onChange={e => setProfileForm(f => ({ ...f, lastName: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="profile-email">Email</Label>
+                <Input
+                  id="profile-email"
+                  type="email"
+                  value={profile?.email || ''}
+                  disabled
+                  readOnly
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="profile-location">Comunidad Autónoma</Label>
+                <Select
+                  value={profileForm.location || undefined}
+                  onValueChange={(v) => setProfileForm(f => ({ ...f, location: v }))}
+                >
+                  <SelectTrigger id="profile-location">
+                    <SelectValue placeholder="-- Selecciona tu comunidad --" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {COMUNIDADES.map(c => (
+                      <SelectItem key={c} value={c}>{c}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {profileAlert && (
+                <Alert variant={alertVariant(profileAlert.type)}>
+                  <AlertDescription>{profileAlert.msg}</AlertDescription>
+                </Alert>
+              )}
+            </TabsContent>
+
+            {/* Tab: Cambiar contraseña */}
+            <TabsContent value="password" className="space-y-3 pt-3">
+              <Alert>
+                <Info className="h-4 w-4" />
+                <AlertDescription>
+                  Te enviaremos un enlace a tu correo para que puedas cambiar tu contraseña de forma segura.
+                </AlertDescription>
+              </Alert>
+              <div className="space-y-2">
+                <Label htmlFor="reset-email">Tu correo electrónico</Label>
+                <Input
+                  id="reset-email"
+                  type="email"
+                  placeholder="ejemplo@correo.com"
+                  value={resetEmail}
+                  onChange={e => setResetEmail(e.target.value)}
+                />
+              </div>
+              {passwordAlert && (
+                <Alert variant={alertVariant(passwordAlert.type)}>
+                  <AlertDescription>{passwordAlert.msg}</AlertDescription>
+                </Alert>
+              )}
+              <Button
+                type="button"
+                className="w-full bg-crok hover:bg-crok-hover text-crok-on"
+                onClick={changePassword}
+                disabled={sendingReset}
+              >
+                {sendingReset
+                  ? <Spinner size="sm" />
+                  : <><Mail className="mr-2 h-4 w-4" />Enviar enlace de cambio de contraseña</>
+                }
+              </Button>
+            </TabsContent>
+          </Tabs>
+
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button type="button" variant="outline">Cerrar</Button>
+            </DialogClose>
+            <Button
+              type="button"
+              className="bg-crok hover:bg-crok-hover text-crok-on"
+              onClick={saveProfileInfo}
+              disabled={savingProfile}
+            >
+              {savingProfile ? <Spinner size="sm" /> : 'Guardar perfil'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* ── New / Edit Promotion Modal ── */}
-      {promotionModalOpen && (
-        <div className="modal fade" id="promotionModal" tabIndex={-1} ref={promotionModalRef}>
-          <div className="modal-dialog modal-lg">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title">
-                  {currentPromotionId ? 'Editar promoción' : 'Nueva promoción'}
-                </h5>
-                <button type="button" className="btn-close" data-bs-dismiss="modal" />
+      <Dialog open={promoOpen} onOpenChange={setPromoOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {currentPromotionId ? 'Editar promoción' : 'Nueva promoción'}
+            </DialogTitle>
+          </DialogHeader>
+
+          <form onSubmit={handlePromoSubmit} className="space-y-3">
+            {/* Template selector (solo si es creación) */}
+            {!currentPromotionId && (
+              <div className="space-y-2">
+                <Label htmlFor="promotion-template">Plantilla de bootcamp (Opcional)</Label>
+                <Select
+                  value={promoForm.templateId || undefined}
+                  onValueChange={applyTemplate}
+                >
+                  <SelectTrigger id="promotion-template">
+                    <SelectValue placeholder="-- Selecciona una plantilla para empezar --" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {templates.filter(t => !t.isCustom).length > 0 && (
+                      <SelectGroup>
+                        {templates.filter(t => !t.isCustom).map(t => (
+                          <SelectItem key={t.id} value={t.id}>
+                            {t.name} ({t.weeks ? `${t.weeks}w` : '?w'}, {t.hours || t.totalHours ? `${t.hours || t.totalHours}h` : '?h'})
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    )}
+                    {templates.some(t => t.isCustom) && (
+                      <SelectGroup>
+                        <SelectLabel>Plantillas personalizadas</SelectLabel>
+                        {templates.filter(t => t.isCustom).map(t => (
+                          <SelectItem key={t.id} value={t.id}>
+                            {t.name} ({t.weeks ? `${t.weeks}w` : '?w'}, {t.hours || t.totalHours ? `${t.hours || t.totalHours}h` : '?h'})
+                          </SelectItem>
+                        ))}
+                      </SelectGroup>
+                    )}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-text-muted">
+                  Seleccionar una plantilla te ayudará a acelerar el proceso.
+                </p>
               </div>
-              <form onSubmit={handlePromoSubmit}>
-                <div className="modal-body">
-                  {/* Template selector */}
-                  <div className="mb-3">
-                    <label htmlFor="promotion-template" className="form-label">
-                      Plantilla de bootcamp (Opcional)
-                    </label>
-                    <select className="form-select" id="promotion-template"
-                      value={promoForm.templateId}
-                      onChange={e => applyTemplate(e.target.value)}>
-                      <option value="">-- Selecciona una plantilla para empezar --</option>
-                      {templates.filter(t => !t.isCustom).map(t => (
-                        <option key={t.id} value={t.id}>
-                          {t.name} ({t.weeks ? `${t.weeks}w` : '?w'}, {t.hours || t.totalHours ? `${t.hours || t.totalHours}h` : '?h'})
-                        </option>
-                      ))}
-                      {templates.some(t => t.isCustom) && (
-                        <optgroup label="Plantillas personalizadas">
-                          {templates.filter(t => t.isCustom).map(t => (
-                            <option key={t.id} value={t.id}>
-                              {t.name} ({t.weeks ? `${t.weeks}w` : '?w'}, {t.hours || t.totalHours ? `${t.hours || t.totalHours}h` : '?h'})
-                            </option>
-                          ))}
-                        </optgroup>
-                      )}
-                    </select>
-                    <small className="form-text text-muted">
-                      Seleccionar una plantilla te ayudará a acelerar el proceso.
-                    </small>
-                  </div>
-                  <hr />
-                  <div className="mb-3">
-                    <label htmlFor="promotion-name" className="form-label">Nombre de la promoción</label>
-                    <input type="text" className="form-control" id="promotion-name" required
-                      value={promoForm.name}
-                      onChange={e => setPromoForm(f => ({ ...f, name: e.target.value }))} />
-                  </div>
-                  <div className="mb-3">
-                    <label htmlFor="promotion-desc" className="form-label">Descripción</label>
-                    <textarea className="form-control" id="promotion-desc" rows={3}
-                      value={promoForm.description}
-                      onChange={e => setPromoForm(f => ({ ...f, description: e.target.value }))} />
-                  </div>
-                  <div className="mb-3">
-                    <label htmlFor="promotion-weeks" className="form-label">Número de semanas</label>
-                    <input type="number" className="form-control" id="promotion-weeks" min={1} required
-                      value={promoForm.weeks}
-                      onChange={e => setPromoForm(f => ({ ...f, weeks: e.target.value }))} />
-                  </div>
-                  <div className="mb-3">
-                    <label htmlFor="promotion-hours" className="form-label">Horas totales de formación</label>
-                    <input type="number" className="form-control" id="promotion-hours" min={1} placeholder="ej. 900"
-                      value={promoForm.hours}
-                      onChange={e => setPromoForm(f => ({ ...f, hours: e.target.value }))} />
-                    <small className="form-text text-muted">Número de horas lectivas totales del programa.</small>
-                  </div>
-                  <div className="mb-3">
-                    <label htmlFor="promotion-start" className="form-label">Fecha de inicio</label>
-                    <input type="date" className="form-control" id="promotion-start"
-                      value={promoForm.startDate}
-                      onChange={e => setPromoForm(f => ({ ...f, startDate: e.target.value }))} />
-                  </div>
-                  <div className="mb-3">
-                    <label htmlFor="promotion-end" className="form-label">Fecha de fin</label>
-                    <input type="date" className="form-control" id="promotion-end"
-                      value={promoForm.endDate}
-                      onChange={e => setPromoForm(f => ({ ...f, endDate: e.target.value }))} />
-                  </div>
-                </div>
-                <div className="modal-footer">
-                  <button type="button" className="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                  <button type="submit" className="btn btn-primary" disabled={savingPromo}>
-                    {savingPromo ? <Spinner size="sm" /> : 'Crear Promoción'}
-                  </button>
-                </div>
-              </form>
+            )}
+
+            <div className="space-y-2">
+              <Label htmlFor="promotion-name">Nombre de la promoción</Label>
+              <Input
+                id="promotion-name"
+                required
+                value={promoForm.name}
+                onChange={e => setPromoForm(f => ({ ...f, name: e.target.value }))}
+              />
             </div>
-          </div>
-        </div>
-      )}
+
+            <div className="space-y-2">
+              <Label htmlFor="promotion-desc">Descripción</Label>
+              <Textarea
+                id="promotion-desc"
+                rows={3}
+                value={promoForm.description}
+                onChange={e => setPromoForm(f => ({ ...f, description: e.target.value }))}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="promotion-weeks">Número de semanas</Label>
+              <Input
+                id="promotion-weeks"
+                type="number"
+                min={1}
+                required
+                value={promoForm.weeks}
+                onChange={e => setPromoForm(f => ({ ...f, weeks: e.target.value }))}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="promotion-hours">Horas totales de formación</Label>
+              <Input
+                id="promotion-hours"
+                type="number"
+                min={1}
+                placeholder="ej. 900"
+                value={promoForm.hours}
+                onChange={e => setPromoForm(f => ({ ...f, hours: e.target.value }))}
+              />
+              <p className="text-xs text-text-muted">
+                Número de horas lectivas totales del programa.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="promotion-start">Fecha de inicio</Label>
+              <Input
+                id="promotion-start"
+                type="date"
+                value={promoForm.startDate}
+                onChange={e => setPromoForm(f => ({ ...f, startDate: e.target.value }))}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="promotion-end">Fecha de fin</Label>
+              <Input
+                id="promotion-end"
+                type="date"
+                value={promoForm.endDate}
+                onChange={e => setPromoForm(f => ({ ...f, endDate: e.target.value }))}
+              />
+            </div>
+
+            <DialogFooter className="pt-2">
+              <DialogClose asChild>
+                <Button type="button" variant="outline">Cancelar</Button>
+              </DialogClose>
+              <Button
+                type="submit"
+                className="bg-crok hover:bg-crok-hover text-crok-on"
+                disabled={savingPromo}
+              >
+                {savingPromo ? <Spinner size="sm" /> : (currentPromotionId ? 'Guardar cambios' : 'Crear Promoción')}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
