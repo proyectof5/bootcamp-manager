@@ -379,7 +379,11 @@ document.addEventListener('DOMContentLoaded', () => {
     window.exportStudentsCsv = exportAllStudentsExcel; // Map CSV buttons to Excel as requested
     window.exportStudentsExcel = exportAllStudentsExcel;
 
-    if (!promotionId) {
+    // Guard against empty string, literal "null"/"undefined" (can happen if promotion.id
+    // is missing/null in the DB and the template literal stringifies it).
+    const _invalidId = !promotionId || promotionId === 'null' || promotionId === 'undefined';
+    if (_invalidId) {
+        console.warn('[promotion-detail] Invalid promotionId:', promotionId, '— redirecting to dashboard');
         window.location.href = 'dashboard.html';
         return;
     }
@@ -7971,7 +7975,8 @@ async function openCollaboratorModal() {
                 available.forEach(t => {
                     const opt = document.createElement('option');
                     opt.value = t.id;
-                    opt.textContent = `${t.name} — ${t.userRole || 'Formador/a'} (${t.email})`;
+                    const fullName = t.lastName ? `${t.name} ${t.lastName}` : t.name;
+                    opt.textContent = `${fullName} — ${t.userRole || 'Formador/a'} (${t.email})`;
                     select.appendChild(opt);
                 });
             }

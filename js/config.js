@@ -22,8 +22,13 @@
         // Injected by CI — we are in a real deployment
         API_URL = PROD_API_URL;
     } else if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-        // Local development (frontend served on any port: 5000, 5500, 3000…)
-        API_URL = DEV_API_URL;
+        // Local development: allow overriding the backend URL via localStorage.
+        // Useful when the local DB is empty and you want to point at the production backend.
+        //   To activate:  localStorage.setItem('DEV_API_OVERRIDE', 'https://your-backend.onrender.com')
+        //   To deactivate: localStorage.removeItem('DEV_API_OVERRIDE')
+        const _override = localStorage.getItem('DEV_API_OVERRIDE');
+        API_URL = (_override && _override.startsWith('http')) ? _override : DEV_API_URL;
+        if (_override) console.info('[config] DEV_API_OVERRIDE active → API_URL:', API_URL);
     } else {
         // Fallback: same origin (monorepo mode — backend serves the frontend)
         API_URL = window.location.origin;

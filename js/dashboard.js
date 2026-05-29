@@ -94,6 +94,11 @@ function displayPromotions(promotions, userId) {
     }
 
     promotions.forEach(promotion => {
+        // Skip promotions with missing or invalid ID (data inconsistency safeguard)
+        if (!promotion.id || promotion.id === 'null' || promotion.id === 'undefined') {
+            console.warn('[dashboard] Skipping promotion with invalid id:', promotion.name, promotion.id);
+            return;
+        }
         const card = document.createElement('div');
         card.className = 'col-md-6 col-lg-4';
         const isOwner = promotion.teacherId === userId;
