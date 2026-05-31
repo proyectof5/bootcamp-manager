@@ -811,6 +811,7 @@ function displaySections(sections) {
 
 function updateSidebar(sections) {
     const nav = document.getElementById('sidebar-nav');
+    if (!nav) return; // Vista shadcn (page.tsx) no usa sidebar
     nav.innerHTML = '';
 
     // Only show Roadmap if there are modules configured
@@ -839,10 +840,7 @@ function updateSidebar(sections) {
 // Update sidebar with only the Program Info sections that have data
 function updateSidebarWithExtendedInfo(info) {
     const nav = document.getElementById('sidebar-nav');
-    if (!nav) {
-        console.error('Sidebar navigation not found');
-        return;
-    }
+    if (!nav) return; // Vista shadcn (page.tsx) no usa sidebar
 
     //console.log('Updating sidebar with extended info:', info);
 

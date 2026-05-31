@@ -6633,8 +6633,10 @@ function saveProjectCompetencePicker() {
 
 // Píldoras UI
 function setupForms() {
-    // Module form
-    document.getElementById('module-form').addEventListener('submit', async (e) => {
+    // Module form (shadcn Dialog: el form solo existe cuando el modal abre,
+    // por eso usamos delegacion en document en vez de getElementById directo).
+    document.addEventListener('submit', async (e) => {
+        if (e.target.id !== 'module-form') return;
         e.preventDefault();
 
         const name = document.getElementById('module-name').value;
@@ -6763,8 +6765,9 @@ function setupForms() {
         }
     });
 
-    // Quick link form
-    document.getElementById('quick-link-form').addEventListener('submit', async (e) => {
+    // Quick link form (shadcn Dialog: delegacion en document).
+    document.addEventListener('submit', async (e) => {
+        if (e.target.id !== 'quick-link-form') return;
         e.preventDefault();
 
         const name = document.getElementById('link-name').value;
@@ -6794,8 +6797,9 @@ function setupForms() {
         }
     });
 
-    // Section form
-    document.getElementById('section-form').addEventListener('submit', async (e) => {
+    // Section form (shadcn Dialog: delegacion en document).
+    document.addEventListener('submit', async (e) => {
+        if (e.target.id !== 'section-form') return;
         e.preventDefault();
 
         const title = document.getElementById('section-title').value;
@@ -8933,8 +8937,8 @@ function renderAttendanceTable() {
     const body = document.getElementById('attendance-body');
 
     // Clear previous
-    headerRow.innerHTML = '<th class="sticky-column bg-light" style="min-width: 250px; z-index: 10;">Student</th>';
-    if (weekdayRow) weekdayRow.innerHTML = '<th class="sticky-column bg-light" style="min-width: 250px; z-index: 10;"></th>';
+    headerRow.innerHTML = '<th class="sticky-column" style="min-width: 250px; z-index: 10;">Estudiantes</th>';
+    if (weekdayRow) weekdayRow.innerHTML = '<th class="sticky-column" style="min-width: 250px; z-index: 10;"></th>';
     body.innerHTML = '';
 
     if (studentsForAttendance.length === 0) {
