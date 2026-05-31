@@ -221,7 +221,8 @@ function togglePasswordVisibility(inputId) {
 
 let promotionId = null;
 // moduleModal, quickLinkModal, sectionModal, resourceModal removidos (spec 0013-c): shadcn Dialog.
-let studentModal, studentProgressModal, teamModal, editTeamModal,
+// studentModal, studentProgressModal removidos (spec 0013-d v2): shadcn Dialog.
+let teamModal, editTeamModal,
     collaboratorModal, projectAssignmentDetailModal;
 // Always read role fresh from localStorage so external auth (users.coderf5.es),
 // which writes 'role' after the page loads, is picked up correctly.
@@ -395,11 +396,7 @@ __onDomReady( () => {
         // moduleModal, quickLinkModal, sectionModal: shadcn Dialog (spec 0013-c).
         // Initialize modals only if elements exist (teacher view)
 
-        const studentModalEl = document.getElementById('studentModal');
-        if (studentModalEl) studentModal = new bootstrap.Modal(studentModalEl);
-
-        const studentProgressModalEl = document.getElementById('studentProgressModal');
-        if (studentProgressModalEl) studentProgressModal = new bootstrap.Modal(studentProgressModalEl);
+        // studentModal, studentProgressModal: shadcn Dialog (spec 0013-d v2).
 
         const projectAssignmentDetailModalEl = document.getElementById('projectAssignmentDetailModal');
         if (projectAssignmentDetailModalEl) projectAssignmentDetailModal = new bootstrap.Modal(projectAssignmentDetailModalEl);
@@ -2007,31 +2004,24 @@ function deleteResource(index) {
     });
 }
 
-// `var` (no `let`) porque algún script o callback DOM cargado antes accede
-// a esta referencia y `let` lo deja en TDZ → ReferenceError al inicializar
-// la página. var es hoisted al top y queda como `undefined` hasta que
-// initEmployabilityModal() la asigne.
-var employabilityModal;
+// employabilityModal: shadcn Dialog (spec 0013-d v2).
 var currentEditingEmployabilityIndex = -1;
 
 function initEmployabilityModal() {
-    const modalEl = document.getElementById('employabilityModal');
-    if (modalEl) {
-        employabilityModal = new bootstrap.Modal(modalEl);
-    }
+    // No-op: shadcn Dialog se abre/cierra via window._openShadcnModal/_closeShadcnModal.
 }
 
 function openEmployabilityModal() {
-    if (!employabilityModal) initEmployabilityModal();
-    document.getElementById('employability-form').reset();
-    document.getElementById('employabilityModalTitle').textContent = 'Add Employability Session';
     currentEditingEmployabilityIndex = -1;
-    employabilityModal.show();
+    window._openShadcnModal?.("employabilityModal");
+    setTimeout(() => {
+        document.getElementById('employability-form')?.reset();
+        const t = document.getElementById('employabilityModalTitle');
+        if (t) t.textContent = 'Agregar sesión de empleabilidad';
+    }, 0);
 }
 
 function editEmployabilityItem(index) {
-    if (!employabilityModal) initEmployabilityModal();
-
     const promotion = window.currentPromotion;
     if (!promotion || !promotion.employability) {
         console.error('editEmployabilityItem: window.currentPromotion not loaded yet');
@@ -2044,14 +2034,17 @@ function editEmployabilityItem(index) {
         return;
     }
 
-    document.getElementById('employability-name').value = item.name || '';
-    document.getElementById('employability-url').value = item.url || '';
-    document.getElementById('employability-start-month').value = item.startMonth || 1;
-    document.getElementById('employability-duration').value = item.duration || 1;
-    document.getElementById('employabilityModalTitle').textContent = 'Edit Employability Session';
-
     currentEditingEmployabilityIndex = index;
-    employabilityModal.show();
+    window._openShadcnModal?.("employabilityModal");
+    setTimeout(() => {
+        const v = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
+        v('employability-name', item.name || '');
+        v('employability-url', item.url || '');
+        v('employability-start-month', item.startMonth || 1);
+        v('employability-duration', item.duration || 1);
+        const t = document.getElementById('employabilityModalTitle');
+        if (t) t.textContent = 'Editar sesión de empleabilidad';
+    }, 0);
 }
 
 async function saveEmployabilityItem() {
@@ -2102,7 +2095,7 @@ async function saveEmployabilityItem() {
         });
 
         if (updateResponse.ok) {
-            employabilityModal.hide();
+            window._closeShadcnModal?.("employabilityModal");
             loadModules();
         } else {
             window.showApiToast('Error saving employability item', 'danger');
@@ -6862,8 +6855,9 @@ function setupForms() {
         }
     });
 
-    // Student form
-    document.getElementById('student-form').addEventListener('submit', async (e) => {
+    // Student form (shadcn Dialog: delegacion en document, spec 0013-d v2).
+    document.addEventListener('submit', async (e) => {
+        if (e.target.id !== 'student-form') return;
         e.preventDefault();
 
         const name = document.getElementById('student-name').value;
@@ -6914,9 +6908,10 @@ function setupForms() {
 
             if (response.ok) {
                 const data = await response.json();
-                studentModal.hide();
-                document.getElementById('student-form').reset();
-                delete document.getElementById('student-form').dataset.editingStudentId;
+                window._closeShadcnModal?.("studentModal");
+                document.getElementById('student-form')?.reset();
+                const _sf = document.getElementById('student-form');
+                if (_sf) delete _sf.dataset.editingStudentId;
                 loadStudents();
 
                 const action = editingStudentId ? 'actualizado' : 'añadido';
@@ -7255,24 +7250,20 @@ function editStudent(studentId) {
         return;
     }
 
-    // Populate the form with existing data
-    document.getElementById('student-name').value = student.name || '';
-    document.getElementById('student-lastname').value = student.lastname || '';
-    document.getElementById('student-email').value = student.email || '';
-    const githubInput = document.getElementById('student-github');
-    if (githubInput) githubInput.value = student.githubUser || '';
-    const laptopInput = document.getElementById('student-laptop-loan');
-    if (laptopInput) laptopInput.checked = !!student.laptopLoan;
-
-    // Store the student ID for updating
-    document.getElementById('student-form').dataset.editingStudentId = studentId;
-
-    // Update modal title
-    const modalTitle = document.querySelector('#studentModal .modal-title');
-    if (modalTitle) modalTitle.textContent = 'Editar Estudiante';
-
-    // Show the modal
-    studentModal.show();
+    window._openShadcnModal?.("studentModal");
+    setTimeout(() => {
+        const v = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
+        v('student-name', student.name || '');
+        v('student-lastname', student.lastname || '');
+        v('student-email', student.email || '');
+        v('student-github', student.githubUser || '');
+        const laptopInput = document.getElementById('student-laptop-loan');
+        if (laptopInput) laptopInput.checked = !!student.laptopLoan;
+        const sf = document.getElementById('student-form');
+        if (sf) sf.dataset.editingStudentId = studentId;
+        const title = document.getElementById('studentModalTitle');
+        if (title) title.textContent = 'Editar Estudiante';
+    }, 0);
 }
 
 // Export all students as CSV
@@ -7421,44 +7412,53 @@ function updateLinkName() {
     }
 }
 
+// shadcn Dialog no monta su contenido hasta open=true. Abrimos el modal
+// primero y diferimos cualquier toque al DOM interno con setTimeout(0) para
+// que React commitee el render antes (spec 0013-d v2).
 function openModuleModal() {
-    document.getElementById('module-form').reset();
-    document.getElementById('moduleModalTitle').textContent = 'Add Module';
-    document.getElementById('courses-container').innerHTML = '';
-    document.getElementById('projects-container').innerHTML = '';
     currentEditingModuleId = null;
     currentEditingTopics = [];
     currentEditingModuleProjects = [];
     currentPlannerItems = [];
-    renderTopicsEditor();
-    renderPlannerEditor();
-
     window._openShadcnModal?.("moduleModal");
+    setTimeout(() => {
+        document.getElementById('module-form')?.reset();
+        const title = document.getElementById('moduleModalTitle');
+        if (title) title.textContent = 'Add Module';
+        const cc = document.getElementById('courses-container'); if (cc) cc.innerHTML = '';
+        const pc = document.getElementById('projects-container'); if (pc) pc.innerHTML = '';
+        renderTopicsEditor();
+        renderPlannerEditor();
+    }, 0);
 }
 
 function openQuickLinkModal() {
-    document.getElementById('quick-link-form').reset();
-    document.getElementById('link-platform').value = '';
-    document.getElementById('link-name').readOnly = false;
     window._openShadcnModal?.("quickLinkModal");
+    setTimeout(() => {
+        document.getElementById('quick-link-form')?.reset();
+        const lp = document.getElementById('link-platform'); if (lp) lp.value = '';
+        const ln = document.getElementById('link-name'); if (ln) ln.readOnly = false;
+    }, 0);
 }
 
 function openSectionModal() {
-    document.getElementById('section-form').reset();
     window._openShadcnModal?.("sectionModal");
+    setTimeout(() => {
+        document.getElementById('section-form')?.reset();
+    }, 0);
 }
 
 function openStudentModal() {
-    document.getElementById('student-form').reset();
-
-    // Clear any editing state
-    delete document.getElementById('student-form').dataset.editingStudentId;
-
-    // Update modal title
-    const modalTitle = document.querySelector('#studentModal .modal-title');
-    if (modalTitle) modalTitle.textContent = 'Add Student';
-
-    studentModal.show();
+    window._openShadcnModal?.("studentModal");
+    setTimeout(() => {
+        const sf = document.getElementById('student-form');
+        if (sf) {
+            sf.reset();
+            delete sf.dataset.editingStudentId;
+        }
+        const title = document.getElementById('studentModalTitle');
+        if (title) title.textContent = 'Añadir Estudiante';
+    }, 0);
 }
 
 async function deleteQuickLink(linkId) {
@@ -9819,27 +9819,8 @@ function openAttendanceModal(studentId, date) {
 
     currentModalAttendance = { studentId, date };
     const record = attendanceData.find(a => a.studentId === studentId && a.date === date);
-
-    document.getElementById('attendance-modal-student-name').textContent = studentFullName(student);
-    document.getElementById('attendance-modal-date').textContent = date;
     const _rec = (record && record.status) ? record.status : '';
     const { base: _recBase, cameraOff: _recCam } = _parseAttendanceStatus(_rec);
-    document.getElementById('attendance-modal-status').value = _recBase;
-    const cameraOffCheck = document.getElementById('attendance-modal-camera-off');
-    if (cameraOffCheck) {
-        cameraOffCheck.checked = _recCam;
-        // Show/hide the camera checkbox based on status
-        const CAMERA_COMPATIBLE = ['Presente', 'Con retraso', 'Justificado', 'Sale antes'];
-        const wrapper = document.getElementById('attendance-camera-off-wrapper');
-        if (wrapper) wrapper.classList.toggle('d-none', !_recBase || !CAMERA_COMPATIBLE.includes(_recBase));
-        // Update visibility dynamically when status changes
-        document.getElementById('attendance-modal-status').onchange = function() {
-            const sel = this.value;
-            if (wrapper) wrapper.classList.toggle('d-none', !sel || !CAMERA_COMPATIBLE.includes(sel));
-            if (!CAMERA_COMPATIBLE.includes(sel) && cameraOffCheck) cameraOffCheck.checked = false;
-        };
-    }
-    document.getElementById('attendance-modal-note').value = (record && record.note) ? record.note : '';
 
     // Calculate student stats for this month
     let sPres = 0, sAbs = 0, sLate = 0, sJust = 0;
@@ -9851,53 +9832,62 @@ function openAttendanceModal(studentId, date) {
         else if (base === 'Justificado') sJust++;
     });
 
-    document.getElementById('student-stat-present').textContent = sPres;
-    document.getElementById('student-stat-absent').textContent = sAbs;
-    document.getElementById('student-stat-late').textContent = sLate;
-    document.getElementById('student-stat-justified').textContent = sJust;
-
-    // Determine if this date is blocked due to withdrawal
     const withdrawalDate = student.isWithdrawn && student.withdrawal?.date
         ? student.withdrawal.date.split('T')[0]
         : null;
     const isWithdrawnDay = withdrawalDate && date >= withdrawalDate;
 
-    // Lock / unlock editing controls based on withdrawal status
-    const statusSelect = document.getElementById('attendance-modal-status');
-    const noteField = document.getElementById('attendance-modal-note');
-    const saveBtn = document.getElementById('attendance-modal-save-btn');
-    const withdrawalBanner = document.getElementById('attendance-modal-withdrawal-banner');
-
-    if (statusSelect) statusSelect.disabled = !!isWithdrawnDay;
-    if (noteField) noteField.disabled = !!isWithdrawnDay;
-    if (saveBtn) saveBtn.disabled = !!isWithdrawnDay;
-
-    // Show/hide withdrawal warning banner
-    if (withdrawalBanner) {
-        if (isWithdrawnDay) {
-            withdrawalBanner.classList.remove('d-none');
-            withdrawalBanner.textContent = `Alumno/a dado de baja el ${new Date(withdrawalDate).toLocaleDateString('es-ES')} — no se puede registrar asistencia desde esta fecha.`;
-        } else {
-            withdrawalBanner.classList.add('d-none');
+    // shadcn Dialog (spec 0013-d v2): abrir primero, poblar despues que React monte.
+    window._openShadcnModal?.("attendanceModal");
+    setTimeout(() => {
+        const setText = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+        const setVal = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
+        setText('attendance-modal-student-name', studentFullName(student));
+        setText('attendance-modal-date', date);
+        setVal('attendance-modal-status', _recBase);
+        const cameraOffCheck = document.getElementById('attendance-modal-camera-off');
+        const wrapper = document.getElementById('attendance-camera-off-wrapper');
+        const CAMERA_COMPATIBLE = ['Presente', 'Con retraso', 'Justificado', 'Sale antes'];
+        if (cameraOffCheck) {
+            cameraOffCheck.checked = _recCam;
+            if (wrapper) wrapper.classList.toggle('d-none', !_recBase || !CAMERA_COMPATIBLE.includes(_recBase));
+            const statusEl = document.getElementById('attendance-modal-status');
+            if (statusEl) statusEl.onchange = function () {
+                const sel = this.value;
+                if (wrapper) wrapper.classList.toggle('d-none', !sel || !CAMERA_COMPATIBLE.includes(sel));
+                if (!CAMERA_COMPATIBLE.includes(sel) && cameraOffCheck) cameraOffCheck.checked = false;
+            };
         }
-    }
+        setVal('attendance-modal-note', (record && record.note) ? record.note : '');
+        setText('student-stat-present', sPres);
+        setText('student-stat-absent', sAbs);
+        setText('student-stat-late', sLate);
+        setText('student-stat-justified', sJust);
 
-    const modalEl = document.getElementById('attendanceModal');
-    const modal = new bootstrap.Modal(modalEl);
+        const statusSelect = document.getElementById('attendance-modal-status');
+        const noteField = document.getElementById('attendance-modal-note');
+        const saveBtn = document.getElementById('attendance-modal-save-btn');
+        const withdrawalBanner = document.getElementById('attendance-modal-withdrawal-banner');
+        if (statusSelect) statusSelect.disabled = !!isWithdrawnDay;
+        if (noteField) noteField.disabled = !!isWithdrawnDay;
+        if (saveBtn) saveBtn.disabled = !!isWithdrawnDay;
+        if (withdrawalBanner) {
+            if (isWithdrawnDay) {
+                withdrawalBanner.classList.remove('d-none');
+                withdrawalBanner.textContent = `Alumno/a dado de baja el ${new Date(withdrawalDate).toLocaleDateString('es-ES')} — no se puede registrar asistencia desde esta fecha.`;
+            } else {
+                withdrawalBanner.classList.add('d-none');
+            }
+        }
 
-    // Focus note field when modal is shown (only if not locked)
-    modalEl.addEventListener('shown.bs.modal', () => {
-        if (!isWithdrawnDay) document.getElementById('attendance-modal-note').focus();
-    }, { once: true });
-
-    // Wire up summary button
-    const summaryBtn = document.getElementById('view-student-summary-btn');
-    summaryBtn.onclick = () => {
-        modal.hide();
-        openStudentSummary(studentId);
-    };
-
-    modal.show();
+        // Wire summary button + focus note
+        const summaryBtn = document.getElementById('view-student-summary-btn');
+        if (summaryBtn) summaryBtn.onclick = () => {
+            window._closeShadcnModal?.("attendanceModal");
+            openStudentSummary(studentId);
+        };
+        if (!isWithdrawnDay && noteField) noteField.focus();
+    }, 0);
 }
 
 let _summaryStudentId = null; // tracks which student is open in the summary modal
@@ -9907,49 +9897,53 @@ function openStudentSummary(studentId) {
     const student = studentsForAttendance.find(s => s.id === studentId);
     if (!student) return;
 
-    document.getElementById('summary-student-name').textContent = studentFullName(student);
-
-    const [year, month] = currentAttendanceMonth.split('-');
-    const monthNames = ["January", "February", "March", "April", "May", "June",
-        "July", "August", "September", "October", "November", "December"
-    ];
-    document.getElementById('summary-month-title').textContent = `${monthNames[parseInt(month) - 1]} ${year}`;
-
-    const tbody = document.getElementById('student-summary-body');
-    tbody.innerHTML = '';
-
     // Get all records for this student in this month, sorted by date
     const records = attendanceData
         .filter(a => a.studentId === studentId && a.date.startsWith(currentAttendanceMonth))
         .sort((a, b) => a.date.localeCompare(b.date));
 
-    if (records.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="3" class="text-center py-3 text-muted">No attendance records found for this month.</td></tr>';
-    } else {
-        records.forEach(r => {
-            const tr = document.createElement('tr');
-            const { base: rBase, cameraOff: rCam } = _parseAttendanceStatus(r.status);
-            const camBadge = rCam ? ' <span class="badge" style="background-color:#e2e8f0;color:#475569;font-size:0.65rem;"><i class="bi bi-camera-video-off me-1"></i>cámara apagada</span>' : '';
+    // shadcn Dialog (spec 0013-d v2): abrir primero, poblar despues.
+    window._openShadcnModal?.("studentSummaryModal");
+    setTimeout(() => {
+        const nameEl = document.getElementById('summary-student-name');
+        if (nameEl) nameEl.textContent = studentFullName(student);
 
-            let statusBadge = '';
-            if (rBase === 'Presente') statusBadge = '<span class="badge" style="background-color: var(--green-f5); color: var(--principal-2);">Presente</span>';
-            else if (rBase === 'Ausente') statusBadge = '<span class="badge" style="background-color: var(--principal-1); color: var(--principal-3);">Ausente</span>';
-            else if (rBase === 'Con retraso') statusBadge = '<span class="badge" style="background-color: var(--complementario-2); color: var(--principal-2);">Con retraso</span>';
-            else if (rBase === 'Justificado') statusBadge = '<span class="badge" style="background-color: var(--blue-light-f5); color: var(--principal-2);">Justificado</span>';
-            else if (rBase === 'Sale antes') statusBadge = '<span class="badge" style="background-color:#e9d8fd;color:#5b21b6;">Sale antes</span>';
-            else statusBadge = '<span class="badge" style="background-color: var(--complementario-1-extra-light); color: var(--principal-2); border: 1px solid var(--complementario-1);">No marcado</span>';
+        const [year, month] = currentAttendanceMonth.split('-');
+        const monthNames = ["January", "February", "March", "April", "May", "June",
+            "July", "August", "September", "October", "November", "December"
+        ];
+        const titleEl = document.getElementById('summary-month-title');
+        if (titleEl) titleEl.textContent = `${monthNames[parseInt(month) - 1]} ${year}`;
 
-            tr.innerHTML = `
-                <td class="fw-bold">${r.date.split('-')[2]}</td>
-                <td>${statusBadge}${camBadge}</td>
-                <td class="small">${escapeHtml(r.note || '-')}</td>
-            `;
-            tbody.appendChild(tr);
-        });
-    }
+        const tbody = document.getElementById('student-summary-body');
+        if (!tbody) return;
+        tbody.innerHTML = '';
 
-    const summaryModal = new bootstrap.Modal(document.getElementById('studentSummaryModal'));
-    summaryModal.show();
+        if (records.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="3" class="text-center py-3 text-muted">No attendance records found for this month.</td></tr>';
+        } else {
+            records.forEach(r => {
+                const tr = document.createElement('tr');
+                const { base: rBase, cameraOff: rCam } = _parseAttendanceStatus(r.status);
+                const camBadge = rCam ? ' <span class="badge" style="background-color:#e2e8f0;color:#475569;font-size:0.65rem;"><i class="bi bi-camera-video-off me-1"></i>cámara apagada</span>' : '';
+
+                let statusBadge = '';
+                if (rBase === 'Presente') statusBadge = '<span class="badge" style="background-color: var(--green-f5); color: var(--principal-2);">Presente</span>';
+                else if (rBase === 'Ausente') statusBadge = '<span class="badge" style="background-color: var(--principal-1); color: var(--principal-3);">Ausente</span>';
+                else if (rBase === 'Con retraso') statusBadge = '<span class="badge" style="background-color: var(--complementario-2); color: var(--principal-2);">Con retraso</span>';
+                else if (rBase === 'Justificado') statusBadge = '<span class="badge" style="background-color: var(--blue-light-f5); color: var(--principal-2);">Justificado</span>';
+                else if (rBase === 'Sale antes') statusBadge = '<span class="badge" style="background-color:#e9d8fd;color:#5b21b6;">Sale antes</span>';
+                else statusBadge = '<span class="badge" style="background-color: var(--complementario-1-extra-light); color: var(--principal-2); border: 1px solid var(--complementario-1);">No marcado</span>';
+
+                tr.innerHTML = `
+                    <td class="fw-bold">${r.date.split('-')[2]}</td>
+                    <td>${statusBadge}${camBadge}</td>
+                    <td class="small">${escapeHtml(r.note || '-')}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+    }, 0);
 }
 
 /**
@@ -10304,7 +10298,7 @@ function saveAttendanceFromModal() {
     const note = document.getElementById('attendance-modal-note').value;
 
     updateAttendance(studentId, date, status, note, null);
-    bootstrap.Modal.getInstance(document.getElementById('attendanceModal')).hide();
+    window._closeShadcnModal?.("attendanceModal");
 }
 
 function prevAttendanceMonth() {
