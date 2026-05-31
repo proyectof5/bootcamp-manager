@@ -221,8 +221,7 @@ function togglePasswordVisibility(inputId) {
 
 let promotionId = null;
 // moduleModal, quickLinkModal, sectionModal, resourceModal removidos (spec 0013-c): shadcn Dialog.
-// studentModal, studentProgressModal removidos (spec 0013-d): shadcn Dialog.
-let teamModal, editTeamModal,
+let studentModal, studentProgressModal, teamModal, editTeamModal,
     collaboratorModal, projectAssignmentDetailModal;
 // Always read role fresh from localStorage so external auth (users.coderf5.es),
 // which writes 'role' after the page loads, is picked up correctly.
@@ -396,7 +395,11 @@ __onDomReady( () => {
         // moduleModal, quickLinkModal, sectionModal: shadcn Dialog (spec 0013-c).
         // Initialize modals only if elements exist (teacher view)
 
-        // studentModal, studentProgressModal: shadcn Dialog (spec 0013-d).
+        const studentModalEl = document.getElementById('studentModal');
+        if (studentModalEl) studentModal = new bootstrap.Modal(studentModalEl);
+
+        const studentProgressModalEl = document.getElementById('studentProgressModal');
+        if (studentProgressModalEl) studentProgressModal = new bootstrap.Modal(studentProgressModalEl);
 
         const projectAssignmentDetailModalEl = document.getElementById('projectAssignmentDetailModal');
         if (projectAssignmentDetailModalEl) projectAssignmentDetailModal = new bootstrap.Modal(projectAssignmentDetailModalEl);
@@ -2007,21 +2010,28 @@ function deleteResource(index) {
 // `var` (no `let`) porque algún script o callback DOM cargado antes accede
 // a esta referencia y `let` lo deja en TDZ → ReferenceError al inicializar
 // la página. var es hoisted al top y queda como `undefined` hasta que
-// employabilityModal: shadcn Dialog (spec 0013-d). Sin instancia Bootstrap.
+// initEmployabilityModal() la asigne.
+var employabilityModal;
 var currentEditingEmployabilityIndex = -1;
 
 function initEmployabilityModal() {
-    // No-op: shadcn Dialog se abre/cierra via window._openShadcnModal/_closeShadcnModal.
+    const modalEl = document.getElementById('employabilityModal');
+    if (modalEl) {
+        employabilityModal = new bootstrap.Modal(modalEl);
+    }
 }
 
 function openEmployabilityModal() {
+    if (!employabilityModal) initEmployabilityModal();
     document.getElementById('employability-form').reset();
     document.getElementById('employabilityModalTitle').textContent = 'Add Employability Session';
     currentEditingEmployabilityIndex = -1;
-    window._openShadcnModal?.("employabilityModal");
+    employabilityModal.show();
 }
 
 function editEmployabilityItem(index) {
+    if (!employabilityModal) initEmployabilityModal();
+
     const promotion = window.currentPromotion;
     if (!promotion || !promotion.employability) {
         console.error('editEmployabilityItem: window.currentPromotion not loaded yet');
@@ -2041,7 +2051,7 @@ function editEmployabilityItem(index) {
     document.getElementById('employabilityModalTitle').textContent = 'Edit Employability Session';
 
     currentEditingEmployabilityIndex = index;
-    window._openShadcnModal?.("employabilityModal");
+    employabilityModal.show();
 }
 
 async function saveEmployabilityItem() {
@@ -2092,7 +2102,7 @@ async function saveEmployabilityItem() {
         });
 
         if (updateResponse.ok) {
-            window._closeShadcnModal?.("employabilityModal");
+            employabilityModal.hide();
             loadModules();
         } else {
             window.showApiToast('Error saving employability item', 'danger');
@@ -6900,7 +6910,7 @@ function setupForms() {
 
             if (response.ok) {
                 const data = await response.json();
-                window._closeShadcnModal?.("studentModal");
+                studentModal.hide();
                 document.getElementById('student-form').reset();
                 delete document.getElementById('student-form').dataset.editingStudentId;
                 loadStudents();
@@ -7258,7 +7268,7 @@ function editStudent(studentId) {
     if (modalTitle) modalTitle.textContent = 'Editar Estudiante';
 
     // Show the modal
-    window._openShadcnModal?.("studentModal");
+    studentModal.show();
 }
 
 // Export all students as CSV
@@ -7444,7 +7454,7 @@ function openStudentModal() {
     const modalTitle = document.querySelector('#studentModal .modal-title');
     if (modalTitle) modalTitle.textContent = 'Add Student';
 
-    window._openShadcnModal?.("studentModal");
+    studentModal.show();
 }
 
 async function deleteQuickLink(linkId) {
@@ -9868,22 +9878,22 @@ function openAttendanceModal(studentId, date) {
         }
     }
 
-    // attendanceModal: shadcn Dialog (spec 0013-d).
-    // Wire up summary button before opening
+    const modalEl = document.getElementById('attendanceModal');
+    const modal = new bootstrap.Modal(modalEl);
+
+    // Focus note field when modal is shown (only if not locked)
+    modalEl.addEventListener('shown.bs.modal', () => {
+        if (!isWithdrawnDay) document.getElementById('attendance-modal-note').focus();
+    }, { once: true });
+
+    // Wire up summary button
     const summaryBtn = document.getElementById('view-student-summary-btn');
-    if (summaryBtn) {
-        summaryBtn.onclick = () => {
-            window._closeShadcnModal?.("attendanceModal");
-            openStudentSummary(studentId);
-        };
-    }
+    summaryBtn.onclick = () => {
+        modal.hide();
+        openStudentSummary(studentId);
+    };
 
-    window._openShadcnModal?.("attendanceModal");
-
-    // Focus note field after Dialog mounts (shadcn doesn't emit shown.bs.modal)
-    if (!isWithdrawnDay) {
-        setTimeout(() => document.getElementById('attendance-modal-note')?.focus(), 100);
-    }
+    modal.show();
 }
 
 let _summaryStudentId = null; // tracks which student is open in the summary modal
@@ -9934,7 +9944,8 @@ function openStudentSummary(studentId) {
         });
     }
 
-    window._openShadcnModal?.("studentSummaryModal");
+    const summaryModal = new bootstrap.Modal(document.getElementById('studentSummaryModal'));
+    summaryModal.show();
 }
 
 /**
@@ -10289,7 +10300,7 @@ function saveAttendanceFromModal() {
     const note = document.getElementById('attendance-modal-note').value;
 
     updateAttendance(studentId, date, status, note, null);
-    window._closeShadcnModal?.("attendanceModal");
+    bootstrap.Modal.getInstance(document.getElementById('attendanceModal')).hide();
 }
 
 function prevAttendanceMonth() {
