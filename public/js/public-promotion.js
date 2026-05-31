@@ -811,6 +811,7 @@ function displaySections(sections) {
 
 function updateSidebar(sections) {
     const nav = document.getElementById('sidebar-nav');
+    if (!nav) return; // Vista shadcn (page.tsx) no usa sidebar
     nav.innerHTML = '';
 
     // Only show Roadmap if there are modules configured

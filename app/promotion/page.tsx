@@ -895,6 +895,369 @@ export default function PromotionPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* ── studentModal (crear/editar estudiante) ── spec 0013-d */}
+      <Dialog
+        open={isModalOpen('studentModal')}
+        onOpenChange={(o) => setModalOpen('studentModal', o)}
+      >
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Añadir Estudiante</DialogTitle>
+          </DialogHeader>
+          <form id="student-form">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-2">
+              <div className="space-y-1">
+                <Label htmlFor="student-name" className="font-semibold">
+                  Nombre(s) <span className="text-red-600">*</span>
+                </Label>
+                <Input id="student-name" required />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="student-lastname" className="font-semibold">
+                  Apellido(s) <span className="text-red-600">*</span>
+                </Label>
+                <Input id="student-lastname" required />
+              </div>
+              <div className="md:col-span-2 space-y-1">
+                <Label htmlFor="student-email" className="font-semibold">
+                  Email <span className="text-red-600">*</span>
+                </Label>
+                <Input type="email" id="student-email" required />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="student-github" className="font-semibold">Usuario de GitHub</Label>
+                <Input id="student-github" placeholder="ej. octocat" />
+              </div>
+              <div className="space-y-1 flex flex-col justify-end">
+                <Label className="font-semibold">Préstamo de ordenador</Label>
+                <div className="flex items-center gap-2 mt-1">
+                  <input
+                    type="checkbox"
+                    id="student-laptop-loan"
+                    role="switch"
+                    className="h-4 w-8 appearance-none rounded-full bg-gray-300 checked:bg-crok cursor-pointer relative transition"
+                  />
+                  <Label htmlFor="student-laptop-loan" className="cursor-pointer m-0">
+                    Sí, tiene préstamo
+                  </Label>
+                </div>
+              </div>
+            </div>
+            <DialogFooter className="mt-4">
+              <DialogClose asChild>
+                <Button type="button" variant="outline">Cancelar</Button>
+              </DialogClose>
+              <Button type="submit" className="bg-crok hover:bg-crok-hover text-crok-on">
+                Guardar Estudiante
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── studentProgressModal (progreso del estudiante) ── spec 0013-d */}
+      <Dialog
+        open={isModalOpen('studentProgressModal')}
+        onOpenChange={(o) => setModalOpen('studentProgressModal', o)}
+      >
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle id="progressModalTitle">Progreso del estudiantes</DialogTitle>
+          </DialogHeader>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 py-2">
+            <div className="md:col-span-1 space-y-3">
+              <div className="border rounded-lg">
+                <div className="border-b px-3 py-2 font-semibold text-sm">Información del estudiante</div>
+                <div className="p-3 text-sm space-y-1">
+                  <p><strong>Nombre:</strong> <span id="progress-student-name">-</span></p>
+                  <p><strong>Apellido:</strong> <span id="progress-student-lastname">-</span></p>
+                  <p><strong>Email:</strong> <span id="progress-student-email">-</span></p>
+                  <p><strong>último acceso:</strong> <span id="progress-last-accessed">-</span></p>
+                </div>
+              </div>
+              <div className="border rounded-lg">
+                <div className="border-b px-3 py-2 font-semibold text-sm">Actualizar progreso</div>
+                <div className="p-3 space-y-2">
+                  <div className="space-y-1">
+                    <Label htmlFor="update-modules-completed">Módulos completados</Label>
+                    <Input type="number" id="update-modules-completed" min={0} max={20} />
+                  </div>
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="bg-green-600 hover:bg-green-700 text-white"
+                    onClick={() => (window as unknown as { updateStudentProgress?: () => void }).updateStudentProgress?.()}
+                  >
+                    Actualizar progreso
+                  </Button>
+                </div>
+              </div>
+            </div>
+            <div className="md:col-span-2 space-y-3">
+              <div className="border rounded-lg">
+                <div className="border-b px-3 py-2 font-semibold text-sm">Resumen del progreso</div>
+                <div className="p-3 grid grid-cols-3 text-center">
+                  <div>
+                    <h3 className="text-2xl font-bold text-crok" id="progress-modules-completed">0</h3>
+                    <p className="mb-0 text-sm">Módulos completados</p>
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-bold text-blue-500" id="progress-modules-viewed-count">0</h3>
+                    <p className="mb-0 text-sm">Módulos vistos</p>
+                  </div>
+                  <div>
+                    <h3 className="text-2xl font-bold text-green-600" id="progress-sections-completed-count">0</h3>
+                    <p className="mb-0 text-sm">Secciones completadas</p>
+                  </div>
+                </div>
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="border rounded-lg h-full">
+                  <div className="border-b px-3 py-2 font-semibold text-sm">Módulos vistos</div>
+                  <div className="p-3">
+                    <div id="progress-modules-viewed">
+                      <p className="text-text-muted mb-0 text-sm">Cargando...</p>
+                    </div>
+                  </div>
+                </div>
+                <div className="border rounded-lg h-full">
+                  <div className="border-b px-3 py-2 font-semibold text-sm">Secciones completadas</div>
+                  <div className="p-3">
+                    <div id="progress-sections-completed">
+                      <p className="text-text-muted mb-0 text-sm">Cargando...</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div className="border rounded-lg">
+                <div className="border-b px-3 py-2 flex justify-between items-center">
+                  <span className="font-semibold text-sm">Notas del Formador</span>
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="bg-crok hover:bg-crok-hover text-crok-on"
+                    onClick={() => (window as unknown as { saveStudentNotes?: () => void }).saveStudentNotes?.()}
+                  >
+                    <Save className="h-4 w-4 mr-1" /> Guardar notas
+                  </Button>
+                </div>
+                <div className="p-3">
+                  <Textarea
+                    id="progress-student-notes"
+                    rows={4}
+                    placeholder="Add notes about student progress, behavior, or any important observations..."
+                  />
+                </div>
+              </div>
+              <div className="border rounded-lg">
+                <div className="border-b px-3 py-2 flex justify-between items-center">
+                  <span className="font-semibold text-sm">Proyectos</span>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="border-crok text-crok hover:bg-crok-soft"
+                    onClick={() => (window as unknown as { openAssignProjectModal?: () => void }).openAssignProjectModal?.()}
+                  >
+                    + Asignar Proyecto
+                  </Button>
+                </div>
+                <div className="p-3">
+                  <div id="progress-student-projects">
+                    <p className="text-text-muted mb-0 text-sm">No hay proyectos asignados aún</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button type="button" variant="outline">Cerrar</Button>
+            </DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── employabilityModal (sesiones de empleabilidad) ── spec 0013-d */}
+      <Dialog
+        open={isModalOpen('employabilityModal')}
+        onOpenChange={(o) => setModalOpen('employabilityModal', o)}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle id="employabilityModalTitle">Agregar sesiones de empleabilidad</DialogTitle>
+          </DialogHeader>
+          <form id="employability-form" className="space-y-3">
+            <div className="space-y-1">
+              <Label htmlFor="employability-name">Título de la sesión</Label>
+              <Input id="employability-name" placeholder="e.g., CV Preparation" required />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="employability-url">URL (Opcional)</Label>
+              <Input type="url" id="employability-url" placeholder="https://..." />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="employability-start-month">Mes de inicio</Label>
+              <Input type="number" id="employability-start-month" min={1} defaultValue={1} required />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="employability-duration">Duración (Cuántos Meses)</Label>
+              <Input type="number" id="employability-duration" min={1} defaultValue={1} required />
+            </div>
+          </form>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button type="button" variant="outline">Cancelar</Button>
+            </DialogClose>
+            <Button
+              type="button"
+              className="bg-crok hover:bg-crok-hover text-crok-on"
+              onClick={() => (window as unknown as { saveEmployabilityItem?: () => void }).saveEmployabilityItem?.()}
+            >
+              Guardar sesión
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── attendanceModal (detalle de asistencia) ── spec 0013-d */}
+      <Dialog
+        open={isModalOpen('attendanceModal')}
+        onOpenChange={(o) => setModalOpen('attendanceModal', o)}
+      >
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Detalles de la asistencia</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div id="attendance-detail-info" className="text-sm">
+              <p><strong>Estudiante:</strong> <span id="attendance-modal-student-name">-</span></p>
+              <p><strong>Fecha:</strong> <span id="attendance-modal-date">-</span></p>
+            </div>
+            <div className="space-y-1">
+              <Label>Estado</Label>
+              <select
+                id="attendance-modal-status"
+                className="flex h-9 w-full rounded-md border border-input bg-transparent px-2 text-sm"
+                defaultValue=""
+              >
+                <option value="">No marcado</option>
+                <option value="Presente">Presente</option>
+                <option value="Ausente">Ausente</option>
+                <option value="Con retraso">Con retraso</option>
+                <option value="Justificado">Justificado</option>
+                <option value="Sale antes">Sale antes</option>
+              </select>
+            </div>
+            <div id="attendance-camera-off-wrapper" className="flex items-center gap-2">
+              <input type="checkbox" id="attendance-modal-camera-off" />
+              <Label htmlFor="attendance-modal-camera-off" className="m-0">
+                <strong>Cámara apagada</strong>{' '}
+                <span className="text-text-muted text-xs">(solo si está presente)</span>
+              </Label>
+            </div>
+            <div className="space-y-1">
+              <Label>Nota / Comentario</Label>
+              <Textarea id="attendance-modal-note" rows={3} placeholder="Add a comment..." />
+            </div>
+            <hr />
+            <h6 className="font-semibold text-sm">Estadísticas de asistencia (Mes actual)</h6>
+            <div className="grid grid-cols-4 text-center mt-2 text-sm">
+              <div>
+                <div className="font-bold text-green-600 text-xs">Pres.</div>
+                <div id="student-stat-present">0</div>
+              </div>
+              <div>
+                <div className="font-bold text-red-600 text-xs">Aus.</div>
+                <div id="student-stat-absent">0</div>
+              </div>
+              <div>
+                <div className="font-bold text-yellow-600 text-xs">Retr.</div>
+                <div id="student-stat-late">0</div>
+              </div>
+              <div>
+                <div className="font-bold text-blue-500 text-xs">Just.</div>
+                <div id="student-stat-justified">0</div>
+              </div>
+            </div>
+          </div>
+          <DialogFooter className="sm:justify-between">
+            <Button
+              type="button"
+              variant="outline"
+              className="border-blue-500 text-blue-500 hover:bg-blue-50"
+              id="view-student-summary-btn"
+            >
+              Resumen del mes
+            </Button>
+            <div className="flex gap-2">
+              <DialogClose asChild>
+                <Button type="button" variant="outline">Cancelar</Button>
+              </DialogClose>
+              <Button
+                type="button"
+                className="bg-crok hover:bg-crok-hover text-crok-on"
+                onClick={() => (window as unknown as { saveAttendanceFromModal?: () => void }).saveAttendanceFromModal?.()}
+              >
+                Guardar Cambios
+              </Button>
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── studentSummaryModal (resumen mensual asistencia) ── spec 0013-d */}
+      <Dialog
+        open={isModalOpen('studentSummaryModal')}
+        onOpenChange={(o) => setModalOpen('studentSummaryModal', o)}
+      >
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto p-0 gap-0">
+          <DialogHeader className="px-4 py-3 bg-crok-soft border-b-2 border-crok">
+            <DialogTitle className="text-crok font-semibold">
+              Resumen del mes: <span id="summary-student-name">-</span>
+            </DialogTitle>
+          </DialogHeader>
+          <div className="p-4">
+            <h6 id="summary-month-title" className="mb-4 text-crok font-semibold">-</h6>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead className="bg-crok-soft">
+                  <tr>
+                    <th className="text-left p-2 text-crok font-semibold">Fecha</th>
+                    <th className="text-left p-2 text-crok font-semibold">Estado</th>
+                    <th className="text-left p-2 text-crok font-semibold">Nota / Comentario</th>
+                  </tr>
+                </thead>
+                <tbody id="student-summary-body">{/* dinámico */}</tbody>
+              </table>
+            </div>
+          </div>
+          <DialogFooter className="bg-crok-soft px-4 py-3 gap-2 flex-wrap">
+            <Button
+              type="button"
+              size="sm"
+              id="summary-pdf-month-btn"
+              className="bg-yellow-400 hover:bg-yellow-500 text-black"
+              onClick={() => (window as unknown as { exportStudentAttendancePdf?: (s: string) => void }).exportStudentAttendancePdf?.('month')}
+            >
+              PDF este mes
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              id="summary-pdf-all-btn"
+              className="bg-crok hover:bg-crok-hover text-crok-on"
+              onClick={() => (window as unknown as { exportStudentAttendancePdf?: (s: string) => void }).exportStudentAttendancePdf?.('all')}
+            >
+              PDF todos los meses
+            </Button>
+            <DialogClose asChild>
+              <Button type="button" size="sm" variant="outline">Cerrar</Button>
+            </DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
