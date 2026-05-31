@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import {
   Menu,
   CircleUser,
@@ -14,9 +14,25 @@ import {
   UserPlus,
   PencilLine,
   Trash2,
+  Save,
+  AlertTriangle,
+  InfoIcon,
+  Mail,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogClose,
+} from '@/components/ui/dialog';
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -24,6 +40,7 @@ import {
   DropdownMenuItem,
   DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 
 import promotionDetailBody from './body';
 
@@ -51,13 +68,22 @@ function loadScript(src: string): Promise<void> {
 
 // ── Helpers globales del JS legacy (declarados aquí para TypeScript) ────────
 // Estas funciones las define promotion-detail.js. Las llamamos desde JSX.
+// Las funciones _openShadcnModal / _closeShadcnModal las expone ESTE componente
+// para que el JS legacy pueda abrir/cerrar los modales shadcn por id.
 declare global {
   interface Window {
     switchTab?: (tab: string) => void;
     openProfileModal?: () => void;
     openEditPromotionModal?: () => void;
     openDeletePromotionModal?: () => void;
+    saveEditPromotion?: (e: Event) => void;
+    confirmDeletePromotion?: () => void;
+    saveProfileInfo?: () => void;
+    changePassword?: () => void;
     logout?: () => void;
+    // Registro genérico para los modales shadcn (spec 0013-b en adelante)
+    _openShadcnModal?: (id: string) => void;
+    _closeShadcnModal?: (id: string) => void;
   }
 }
 
@@ -65,6 +91,20 @@ export default function PromotionPage() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [teacherName, setTeacherName] = useState('Teacher');
   const [isSuperAdmin, setIsSuperAdmin] = useState(false);
+
+  // ── Registro genérico de modales shadcn (spec 0013-b en adelante) ──
+  // Estado por id, abierto desde el JS legacy via window._openShadcnModal('X').
+  const [shadcnModals, setShadcnModals] = useState<Record<string, boolean>>({});
+  const setModalOpen = useCallback((id: string, open: boolean) => {
+    setShadcnModals(prev => ({ ...prev, [id]: open }));
+  }, []);
+  const isModalOpen = (id: string) => !!shadcnModals[id];
+
+  useEffect(() => {
+    // Exponer registro al window para que JS legacy lo use
+    window._openShadcnModal = (id) => setModalOpen(id, true);
+    window._closeShadcnModal = (id) => setModalOpen(id, false);
+  }, [setModalOpen]);
 
   useEffect(() => {
     // ── Inject CSS files not in globals.css ──────────────────────────────
@@ -187,10 +227,8 @@ export default function PromotionPage() {
               {isSuperAdmin && (
                 <>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem asChild>
-                    <a href="/admin">
-                      <ShieldCheck className="mr-2 h-4 w-4" /> Panel de Admin
-                    </a>
+                  <DropdownMenuItem onClick={() => { window.location.href = '/admin'; }}>
+                    <ShieldCheck className="mr-2 h-4 w-4" /> Panel de Admin
                   </DropdownMenuItem>
                 </>
               )}
@@ -271,9 +309,250 @@ export default function PromotionPage() {
         </div>
       </nav>
 
-      {/* ── Resto del HTML legacy (main content + 23 modales) ───────────────── */}
+      {/* ── Resto del HTML legacy (main content + 19 modales restantes) ───── */}
       {/* eslint-disable-next-line react/no-danger */}
       <div suppressHydrationWarning dangerouslySetInnerHTML={{ __html: promotionDetailBody }} />
+
+      {/* ──────────────────────────────────────────────────────────────────────
+          MODALES SHADCN (spec 0013-b en adelante)
+          Cada modal usa el registro genérico `shadcnModals[id]` y el JS legacy
+          los abre/cierra con window._openShadcnModal('id') / _closeShadcnModal('id').
+          IMPORTANTE: preservar TODOS los ids internos (inputs, labels, alerts)
+          porque el JS legacy los manipula con document.getElementById().
+          ────────────────────────────────────────────────────────────────────── */}
+
+      {/* ── editPromotionModal ── */}
+      <Dialog
+        open={isModalOpen('editPromotionModal')}
+        onOpenChange={(o) => setModalOpen('editPromotionModal', o)}
+      >
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <PencilLine className="h-5 w-5 text-crok" /> Modificar promoción
+            </DialogTitle>
+          </DialogHeader>
+          <form
+            id="edit-promotion-form"
+            onSubmit={(e) => { e.preventDefault(); window.saveEditPromotion?.(e.nativeEvent); }}
+            className="space-y-3"
+          >
+            <div className="space-y-2">
+              <Label htmlFor="edit-promotion-name" className="font-semibold">
+                Nombre de la promoción <span className="text-red-500">*</span>
+              </Label>
+              <Input id="edit-promotion-name" required />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="edit-promotion-desc" className="font-semibold">Descripción</Label>
+              <Textarea id="edit-promotion-desc" rows={3} />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="edit-promotion-weeks" className="font-semibold">
+                  Número de semanas <span className="text-red-500">*</span>
+                </Label>
+                <Input id="edit-promotion-weeks" type="number" min={1} required />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-promotion-hours" className="font-semibold">Horas totales</Label>
+                <Input id="edit-promotion-hours" type="number" min={1} placeholder="ej. 900" />
+              </div>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="edit-promotion-start" className="font-semibold">Fecha de inicio</Label>
+                <Input id="edit-promotion-start" type="date" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-promotion-end" className="font-semibold">Fecha de fin</Label>
+                <Input id="edit-promotion-end" type="date" />
+              </div>
+            </div>
+            {/* Alert manipulado por JS legacy: añade/quita 'd-none' y setea textContent */}
+            <div id="edit-promotion-alert" className="d-none mt-2" role="alert">
+              <Alert variant="destructive">
+                <AlertDescription id="edit-promotion-alert-text"></AlertDescription>
+              </Alert>
+            </div>
+            <DialogFooter className="pt-2">
+              <DialogClose asChild>
+                <Button type="button" variant="outline">Cancelar</Button>
+              </DialogClose>
+              <Button
+                type="submit"
+                id="edit-promotion-save-btn"
+                className="bg-crok hover:bg-crok-hover text-crok-on"
+              >
+                <span className="btn-label flex items-center gap-1">
+                  <Save className="h-4 w-4" />Guardar cambios
+                </span>
+                <span className="spinner-border spinner-border-sm d-none ms-2" role="status" aria-hidden="true"></span>
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── deletePromotionModal ── */}
+      <Dialog
+        open={isModalOpen('deletePromotionModal')}
+        onOpenChange={(o) => setModalOpen('deletePromotionModal', o)}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-red-600">
+              <AlertTriangle className="h-5 w-5" /> Eliminar promoción
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <p>
+              Esta acción <strong>no se puede deshacer</strong>. Se eliminarán los datos asociados a esta promoción (roadmap, módulos, estudiantes, etc.).
+            </p>
+            <p>Escribe <strong>ELIMINAR</strong> para confirmar:</p>
+            <Input id="delete-promotion-confirm-input" placeholder="ELIMINAR" />
+          </div>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button type="button" variant="outline">Cancelar</Button>
+            </DialogClose>
+            <Button
+              type="button"
+              className="bg-red-600 hover:bg-red-700 text-white"
+              onClick={() => window.confirmDeletePromotion?.()}
+            >
+              Sí, eliminar la promoción
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── profileModal ── */}
+      <Dialog
+        open={isModalOpen('profileModal')}
+        onOpenChange={(o) => setModalOpen('profileModal', o)}
+      >
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Perfil</DialogTitle>
+          </DialogHeader>
+          <Tabs defaultValue="profile" className="mt-2">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="profile" id="profile-tab">Información general</TabsTrigger>
+              <TabsTrigger value="password" id="password-tab">Cambiar contraseña</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="profile" className="space-y-3 pt-3">
+              <div className="space-y-2">
+                <Label htmlFor="profile-name">Nombre</Label>
+                <Input id="profile-name" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="profile-lastName">Apellido</Label>
+                <Input id="profile-lastName" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="profile-email">Email</Label>
+                <Input id="profile-email" type="email" disabled />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="profile-location">Comunidad Autónoma</Label>
+                {/* Native <select> porque JS legacy lo lee con .value */}
+                <select
+                  id="profile-location"
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+                >
+                  <option value="">-- Selecciona tu comunidad --</option>
+                  <option value="Andalucía">Andalucía</option>
+                  <option value="Aragón">Aragón</option>
+                  <option value="Asturias">Asturias</option>
+                  <option value="Islas Baleares">Islas Baleares</option>
+                  <option value="Canarias">Canarias</option>
+                  <option value="Cantabria">Cantabria</option>
+                  <option value="Castilla-La Mancha">Castilla-La Mancha</option>
+                  <option value="Castilla y León">Castilla y León</option>
+                  <option value="Cataluña">Cataluña</option>
+                  <option value="Ceuta">Ceuta</option>
+                  <option value="Comunidad de Madrid">Comunidad de Madrid</option>
+                  <option value="Comunidad Foral de Navarra">Comunidad Foral de Navarra</option>
+                  <option value="Comunidad Valenciana">Comunidad Valenciana</option>
+                  <option value="Extremadura">Extremadura</option>
+                  <option value="Galicia">Galicia</option>
+                  <option value="La Rioja">La Rioja</option>
+                  <option value="Melilla">Melilla</option>
+                  <option value="País Vasco">País Vasco</option>
+                  <option value="Región de Murcia">Región de Murcia</option>
+                </select>
+              </div>
+              {/* Alert manipulado por JS legacy con clases 'alert', 'hidden', etc. */}
+              <div id="profile-alert" className="alert hidden" role="alert"></div>
+            </TabsContent>
+
+            <TabsContent value="password" className="space-y-3 pt-3">
+              <Alert>
+                <InfoIcon className="h-4 w-4" />
+                <AlertDescription>
+                  Te enviaremos un enlace a tu correo electrónico para que puedas cambiar tu contraseña de forma segura.
+                </AlertDescription>
+              </Alert>
+              <div className="space-y-2">
+                <Label htmlFor="reset-email">Tu correo electrónico</Label>
+                <Input id="reset-email" type="email" placeholder="ejemplo@correo.com" />
+              </div>
+              <div id="password-alert" className="alert hidden" role="alert"></div>
+              <Button
+                type="button"
+                className="w-full bg-crok hover:bg-crok-hover text-crok-on"
+                onClick={() => window.changePassword?.()}
+              >
+                <Mail className="mr-2 h-4 w-4" />Enviar enlace de cambio de contraseña
+              </Button>
+            </TabsContent>
+          </Tabs>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button type="button" variant="outline">Cerrar</Button>
+            </DialogClose>
+            <Button
+              type="button"
+              id="profile-save-btn"
+              className="bg-crok hover:bg-crok-hover text-crok-on"
+              onClick={() => window.saveProfileInfo?.()}
+            >
+              Guardar perfil
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── confirmDeleteTopicModal ── */}
+      <Dialog
+        open={isModalOpen('confirmDeleteTopicModal')}
+        onOpenChange={(o) => setModalOpen('confirmDeleteTopicModal', o)}
+      >
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Eliminar tema</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            <p>Esta accion eliminara el tema y todo su contenido (lecciones y proyectos). No se puede deshacer.</p>
+            <p className="font-bold" id="confirm-delete-topic-name"></p>
+          </div>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button type="button" variant="outline" size="sm">Cancelar</Button>
+            </DialogClose>
+            <Button
+              type="button"
+              size="sm"
+              id="confirm-delete-topic-btn"
+              className="bg-red-600 hover:bg-red-700 text-white"
+            >
+              Eliminar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

@@ -59,18 +59,9 @@ function renderPromoSubtitle(promotionName) {
 
 // ==================== PROFILE MANAGEMENT ====================
 
-let profileModal;
-
-function initProfileModal() {
-    const el = document.getElementById('profileModal');
-    if (el) profileModal = new bootstrap.Modal(el);
-}
+// profileModal: ahora es shadcn Dialog (spec 0013-b). Sin init Bootstrap.
 
 window.openProfileModal = async function () {
-    if (!profileModal) {
-        initProfileModal();
-    }
-
     const token = localStorage.getItem('token');
     try {
         const response = await fetch(`${API_URL}/api/profile`, {
@@ -86,7 +77,7 @@ window.openProfileModal = async function () {
             document.getElementById('profile-email').value = profile.email;
             document.getElementById('profile-location').value = profile.location || '';
 
-            profileModal.show();
+            window._openShadcnModal?.('profileModal');
         } else {
             let errMsg = `Error loading profile (${response.status})`;
             try { const e = await response.json(); errMsg = e.error || errMsg; } catch {}
@@ -244,7 +235,7 @@ let promotionModules = []; // Store promotion modules
 window.promotionModules = promotionModules; // Expose for program-competences.js
 let currentModuleIndex = 0; // Track current module for píldoras navigation
 
-let deletePromotionModal;
+// deletePromotionModal removido (spec 0013-b): shadcn Dialog.
 try {
     const userJson = localStorage.getItem('user');
     currentUser = userJson && userJson !== 'undefined' ? JSON.parse(userJson) : {};
@@ -426,8 +417,7 @@ __onDomReady( () => {
         const resourceModalEl = document.getElementById('resourceModal');
         if (resourceModalEl) resourceModal = new bootstrap.Modal(resourceModalEl);
 
-        const deletePromotionModalEl = document.getElementById('deletePromotionModal');
-        if (deletePromotionModalEl) deletePromotionModal = new bootstrap.Modal(deletePromotionModalEl);
+        // deletePromotionModal: ahora es shadcn Dialog (spec 0013-b). Sin init Bootstrap.
 
         const collaboratorModalEl = document.getElementById('collaboratorModal');
         if (collaboratorModalEl) collaboratorModal = new bootstrap.Modal(collaboratorModalEl);
@@ -443,7 +433,7 @@ __onDomReady( () => {
         }
 
         initEmployabilityModal();
-        initProfileModal();
+        // initProfileModal removido (spec 0013-b): profileModal es shadcn Dialog.
 
         // Wire funder Enter key
         document.getElementById('acta-funder-input')?.addEventListener('keydown', e => {
@@ -5418,16 +5408,11 @@ function confirmDeleteTopic(index) {
         btn.parentNode.replaceChild(newBtn, btn);
         newBtn.addEventListener('click', () => {
             deleteTopic(index);
-            const modalEl = document.getElementById('confirmDeleteTopicModal');
-            if (modalEl) bootstrap.Modal.getInstance(modalEl)?.hide();
+            window._closeShadcnModal?.('confirmDeleteTopicModal');
         });
     }
 
-    const modalEl = document.getElementById('confirmDeleteTopicModal');
-    if (modalEl) {
-        const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
-        modal.show();
-    }
+    window._openShadcnModal?.('confirmDeleteTopicModal');
 }
 
 /**
@@ -7499,7 +7484,7 @@ async function deleteQuickLink(linkId) {
 
 // ==================== EDIT PROMOTION ====================
 
-let _editPromotionModal = null;
+// _editPromotionModal removido (spec 0013-b): shadcn Dialog.
 
 function openEditPromotionModal() {
     const promotion = window.currentPromotion;
@@ -7529,12 +7514,8 @@ function openEditPromotionModal() {
 
     if (alertEl) alertEl.classList.add('d-none');
 
-    if (!_editPromotionModal) {
-        const el = document.getElementById('editPromotionModal');
-        if (!el) return;
-        _editPromotionModal = new bootstrap.Modal(el);
-    }
-    _editPromotionModal.show();
+    // editPromotionModal: ahora es shadcn Dialog (spec 0013-b).
+    window._openShadcnModal?.('editPromotionModal');
 }
 
 async function saveEditPromotion(event) {
@@ -7587,7 +7568,7 @@ async function saveEditPromotion(event) {
             throw new Error(data.error || `Error ${res.status}`);
         }
 
-        if (_editPromotionModal) _editPromotionModal.hide();
+        window._closeShadcnModal?.('editPromotionModal');
 
         // Update local extendedInfoData with new totalHours so Syllabus picks it up
         if (payload.totalHours && extendedInfoData) {
@@ -7613,17 +7594,13 @@ async function saveEditPromotion(event) {
 // ==================== DELETE PROMOTION ====================
 
 function openDeletePromotionModal() {
-    if (!deletePromotionModal) {
-        const el = document.getElementById('deletePromotionModal');
-        if (!el) return;
-        deletePromotionModal = new bootstrap.Modal(el);
-    }
+    // deletePromotionModal: ahora es shadcn Dialog (spec 0013-b).
     const input = document.getElementById('delete-promotion-confirm-input');
     if (input) {
         input.value = '';
         input.focus();
     }
-    deletePromotionModal.show();
+    window._openShadcnModal?.('deletePromotionModal');
 }
 
 async function confirmDeletePromotion() {
@@ -7641,7 +7618,7 @@ async function confirmDeletePromotion() {
         });
 
         if (response.ok) {
-            if (deletePromotionModal) deletePromotionModal.hide();
+            window._closeShadcnModal?.('deletePromotionModal');
             window.location.href = '/dashboard';
         } else {
             showToast('Error al eliminar la promoción', 'danger');

@@ -1551,93 +1551,8 @@ const promotionDetailBody = `
         </div>
     </div>
 
-    <!-- Edit Promotion Modal -->
-    <div class="modal fade" id="editPromotionModal" tabindex="-1" aria-labelledby="editPromotionModalLabel" aria-hidden="true">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="editPromotionModalLabel">
-                        <i class="bi bi-pencil-square me-2"></i>Modificar promoción
-                    </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <form id="edit-promotion-form" onsubmit="saveEditPromotion(event)">
-                    <div class="modal-body">
-                        <div class="mb-3">
-                            <label for="edit-promotion-name" class="form-label fw-semibold">Nombre de la promoción <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="edit-promotion-name" required />
-                        </div>
-                        <div class="mb-3">
-                            <label for="edit-promotion-desc" class="form-label fw-semibold">Descripción</label>
-                            <textarea class="form-control" id="edit-promotion-desc" rows="3"></textarea>
-                        </div>
-                        <div class="row g-3">
-                            <div class="col-md-4">
-                                <label for="edit-promotion-weeks" class="form-label fw-semibold">Número de semanas <span class="text-danger">*</span></label>
-                                <input type="number" class="form-control" id="edit-promotion-weeks" min="1" required />
-                            </div>
-                            <div class="col-md-4">
-                                <label for="edit-promotion-hours" class="form-label fw-semibold">Horas totales</label>
-                                <input type="number" class="form-control" id="edit-promotion-hours" min="1" placeholder="ej. 900" />
-                            </div>
-                            <div class="col-md-4">
-                                <!-- spacer -->
-                            </div>
-                        </div>
-                        <div class="row g-3 mt-1">
-                            <div class="col-md-4">
-                                <label for="edit-promotion-start" class="form-label fw-semibold">Fecha de inicio</label>
-                                <input type="date" class="form-control" id="edit-promotion-start" />
-                            </div>
-                            <div class="col-md-4">
-                                <label for="edit-promotion-end" class="form-label fw-semibold">Fecha de fin</label>
-                                <input type="date" class="form-control" id="edit-promotion-end" />
-                            </div>
-                        </div>
-                        <div id="edit-promotion-alert" class="alert alert-danger mt-3 d-none" role="alert"></div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                        <button type="submit" class="btn btn-primary" id="edit-promotion-save-btn"
-                                style="background:var(--principal-1, #FF4700);border-color:var(--principal-1, #FF4700);">
-                            <span class="btn-label"><i class="bi bi-save me-1"></i>Guardar cambios</span>
-                            <span class="spinner-border spinner-border-sm d-none ms-2" role="status" aria-hidden="true"></span>
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <!-- Delete Promotion Confirmation Modal -->
-    <div class="modal fade" id="deletePromotionModal" tabindex="-1" aria-labelledby="deletePromotionModalLabel"
-        aria-hidden="true">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header border-danger">
-                    <h5 class="modal-title text-danger" id="deletePromotionModalLabel">
-                        <i class="bi bi-exclamation-triangle me-2"></i>Eliminar promoción
-                    </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                </div>
-                <div class="modal-body">
-                    <p class="mb-3">
-                        Esta acción <strong>no se puede deshacer</strong>. Se eliminarán los datos asociados a esta
-                        promoción
-                        (roadmap, módulos, estudiantes, etc.).
-                    </p>
-                    <p class="mb-2">Escribe <strong>ELIMINAR</strong> para confirmar:</p>
-                    <input type="text" id="delete-promotion-confirm-input" class="form-control" placeholder="ELIMINAR">
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" class="btn btn-danger" onclick="confirmDeletePromotion()">
-                        Sí, eliminar la promoción
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
+    <!-- editPromotionModal y deletePromotionModal removidos (spec 0013-b).
+         Ahora viven como shadcn Dialog en app/promotion/page.tsx. -->
 
     <!-- Module Modal -->
     <div class="modal fade" id="moduleModal" tabindex="-1">
@@ -2919,92 +2834,8 @@ ISECR2 Finalizar cada programa con un máximo de bajas de 10%.</textarea>
     </style>
 
     <!-- Profile Modal -->
-    <div class="modal fade" id="profileModal" tabindex="-1">
-        <div class="modal-dialog modal-lg">
-            <div class="modal-content">
-                <div class="modal-header bg-warning bg-opacity-10 border-warning">
-                    <h5 class="modal-title">Perfil</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <ul class="nav nav-tabs mb-4" id="profileTabs" role="tablist">
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link active" id="profile-tab" data-bs-toggle="tab" data-bs-target="#profile-content" type="button" role="tab">Información general</button>
-                        </li>
-                        <li class="nav-item" role="presentation">
-                            <button class="nav-link" id="password-tab" data-bs-toggle="tab" data-bs-target="#password-content" type="button" role="tab">Cambiar contraseña</button>
-                        </li>
-                    </ul>
-
-                    <!-- Profile Information Tab -->
-                    <div class="tab-content" id="profileTabContent">
-                        <div class="tab-pane fade show active" id="profile-content" role="tabpanel">
-                            <div class="mb-3">
-                                <label for="profile-name" class="form-label">Nombre</label>
-                                <input type="text" class="form-control" id="profile-name">
-                            </div>
-                            <div class="mb-3">
-                                <label for="profile-lastName" class="form-label">Apellido</label>
-                                <input type="text" class="form-control" id="profile-lastName">
-                            </div>
-                            <div class="mb-3">
-                                <label for="profile-email" class="form-label">Email</label>
-                                <input type="email" class="form-control" id="profile-email" disabled>
-                            </div>
-                            <div class="mb-3">
-                                <label for="profile-location" class="form-label">Comunidad Autónoma</label>
-                                <select class="form-select" id="profile-location">
-                                    <option value="">-- Selecciona tu comunidad --</option>
-                                    <option value="Andalucía">Andalucía</option>
-                                    <option value="Aragón">Aragón</option>
-                                    <option value="Asturias">Asturias</option>
-                                    <option value="Islas Baleares">Islas Baleares</option>
-                                    <option value="Canarias">Canarias</option>
-                                    <option value="Cantabria">Cantabria</option>
-                                    <option value="Castilla-La Mancha">Castilla-La Mancha</option>
-                                    <option value="Castilla y León">Castilla y León</option>
-                                    <option value="Cataluña">Cataluña</option>
-                                    <option value="Ceuta">Ceuta</option>
-                                    <option value="Comunidad de Madrid">Comunidad de Madrid</option>
-                                    <option value="Comunidad Foral de Navarra">Comunidad Foral de Navarra</option>
-                                    <option value="Comunidad Valenciana">Comunidad Valenciana</option>
-                                    <option value="Extremadura">Extremadura</option>
-                                    <option value="Galicia">Galicia</option>
-                                    <option value="La Rioja">La Rioja</option>
-                                    <option value="Melilla">Melilla</option>
-                                    <option value="País Vasco">País Vasco</option>
-                                    <option value="Región de Murcia">Región de Murcia</option>
-                                </select>
-                            </div>
-                            <div id="profile-alert" class="alert hidden" role="alert"></div>
-                        </div>
-
-                        <!-- Change Password Tab -->
-                        <div class="tab-pane fade" id="password-content" role="tabpanel">
-                            <div class="alert alert-info d-flex align-items-start gap-2 mb-4" role="alert">
-                                <i class="bi bi-info-circle-fill mt-1"></i>
-                                <span>Te enviaremos un enlace a tu correo electrónico para que puedas cambiar tu contraseña de forma segura.</span>
-                            </div>
-                            <div class="mb-3">
-                                <label for="reset-email" class="form-label">Tu correo electrónico</label>
-                                <input type="email" class="form-control" id="reset-email" placeholder="ejemplo@correo.com">
-                            </div>
-                            <div id="password-alert" class="alert hidden" role="alert"></div>
-                            <div class="mt-3">
-                                <button type="button" class="btn btn-warning w-100" onclick="changePassword()">
-                                    <i class="bi bi-envelope me-2"></i>Enviar enlace de cambio de contraseña
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
-                    <button type="button" class="btn btn-warning" id="profile-save-btn" onclick="saveProfileInfo()">Guardar perfil</button>
-                </div>
-            </div>
-        </div>
-    </div>
+    <!-- profileModal removido (spec 0013-b). Ahora vive como shadcn Dialog
+         en app/promotion/page.tsx. -->
 
     <!-- Attendance Dropdown Container (dynamic) -->
     <div id="attendance-dropdown-container"></div>
@@ -3025,25 +2856,8 @@ ISECR2 Finalizar cada programa con un máximo de bajas de 10%.</textarea>
     
     
 
-    <!-- Modal confirmacion eliminacion de tema -->
-    <div class="modal fade" id="confirmDeleteTopicModal" tabindex="-1">
-        <div class="modal-dialog modal-sm">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Eliminar tema</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <p>Esta accion eliminara el tema y todo su contenido (lecciones y proyectos). No se puede deshacer.</p>
-                    <p class="fw-bold" id="confirm-delete-topic-name"></p>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" class="btn btn-danger btn-sm" id="confirm-delete-topic-btn">Eliminar</button>
-                </div>
-            </div>
-        </div>
-    </div>
+    <!-- confirmDeleteTopicModal removido (spec 0013-b). Ahora vive como
+         shadcn Dialog en app/promotion/page.tsx. -->
 
 `;
 export default promotionDetailBody;
