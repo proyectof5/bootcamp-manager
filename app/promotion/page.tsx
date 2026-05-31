@@ -553,6 +553,348 @@ export default function PromotionPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* ──────────────────────────────────────────────────────────────────
+          MODALES ESTRUCTURA (spec 0013-c)
+          ────────────────────────────────────────────────────────────────── */}
+
+      {/* ── moduleModal ── */}
+      <Dialog
+        open={isModalOpen('moduleModal')}
+        onOpenChange={(o) => setModalOpen('moduleModal', o)}
+      >
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle id="moduleModalTitle">Agregar Módulo</DialogTitle>
+          </DialogHeader>
+          <form id="module-form" className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="module-name">Nombre del Módulo</Label>
+                <Input id="module-name" required />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="module-duration">Duración (semanas)</Label>
+                <Input id="module-duration" type="number" min={1} required />
+              </div>
+            </div>
+
+            {/* LEGACY hidden — kept for backward compat (TASK-RM-06b) */}
+            <div id="courses-container" style={{ display: 'none' }}></div>
+            <div id="projects-container" style={{ display: 'none' }}></div>
+
+            {/* Planificador de Módulo */}
+            <div className="space-y-2">
+              <div className="flex justify-between items-center flex-wrap gap-2">
+                <h6 className="m-0 font-semibold">Planificador de Módulo</h6>
+                <div className="flex gap-2 flex-wrap">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => (window as unknown as { addPlannerItem?: (t: string) => void }).addPlannerItem?.('curso')}
+                  >
+                    Añadir Curso
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => (window as unknown as { addPlannerItem?: (t: string) => void }).addPlannerItem?.('proyecto')}
+                  >
+                    Añadir Proyecto
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => (window as unknown as { addPlannerItem?: (t: string) => void }).addPlannerItem?.('leccion')}
+                  >
+                    Añadir Lección
+                  </Button>
+                </div>
+              </div>
+              <div id="planner-container" className="border rounded p-3 bg-gray-50">
+                <p className="text-text-muted text-sm m-0">No hay elementos todavía. Añade un curso, proyecto o lección.</p>
+              </div>
+              <p className="text-xs text-text-muted">Arrastra los elementos para reordenarlos. Los cambios se guardan al pulsar &quot;Guardar Módulo&quot;.</p>
+            </div>
+
+            <DialogFooter className="pt-2">
+              <DialogClose asChild>
+                <Button type="button" variant="outline">Cancelar</Button>
+              </DialogClose>
+              <Button type="submit" className="bg-crok hover:bg-crok-hover text-crok-on">
+                Guardar Módulo
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── quickLinkModal ── */}
+      <Dialog
+        open={isModalOpen('quickLinkModal')}
+        onOpenChange={(o) => setModalOpen('quickLinkModal', o)}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Agregar Quick Link</DialogTitle>
+          </DialogHeader>
+          <form id="quick-link-form" className="space-y-3">
+            <div className="space-y-2">
+              <Label htmlFor="link-platform">Plataforma</Label>
+              {/* Native <select> porque JS legacy lo lee con .value + onChange */}
+              <select
+                id="link-platform"
+                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+                onChange={() => (window as unknown as { updateLinkName?: () => void }).updateLinkName?.()}
+              >
+                <option value="">Selecciona una plataforma o customizala</option>
+                <option value="zoom">Zoom</option>
+                <option value="discord">Discord</option>
+                <option value="classroom">Google Classroom</option>
+                <option value="github">GitHub</option>
+                <option value="custom">Link customizado</option>
+              </select>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="link-name">Nombre del Link</Label>
+              <Input id="link-name" placeholder="e.g., Zoom Class" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="link-url">URL</Label>
+              <Input id="link-url" type="url" required />
+            </div>
+            <DialogFooter className="pt-2">
+              <DialogClose asChild>
+                <Button type="button" variant="outline">Cancelar</Button>
+              </DialogClose>
+              <Button type="submit" className="bg-crok hover:bg-crok-hover text-crok-on">
+                Agregar Link
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── sectionModal ── */}
+      <Dialog
+        open={isModalOpen('sectionModal')}
+        onOpenChange={(o) => setModalOpen('sectionModal', o)}
+      >
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Agregar Sección</DialogTitle>
+          </DialogHeader>
+          <form id="section-form" className="space-y-3">
+            <div className="space-y-2">
+              <Label htmlFor="section-title">Título</Label>
+              <Input id="section-title" required />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="section-content">Contenido</Label>
+              <Textarea id="section-content" rows={8} required />
+            </div>
+            <DialogFooter className="pt-2">
+              <DialogClose asChild>
+                <Button type="button" variant="outline">Cancelar</Button>
+              </DialogClose>
+              <Button type="submit" className="bg-crok hover:bg-crok-hover text-crok-on">
+                Agregar Sección
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── promoResourceModal ── */}
+      <Dialog
+        open={isModalOpen('promoResourceModal')}
+        onOpenChange={(o) => setModalOpen('promoResourceModal', o)}
+      >
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle id="promo-resource-modal-title">Nuevo Recurso</DialogTitle>
+          </DialogHeader>
+          <form id="promo-resource-form" className="space-y-3">
+            <input type="hidden" id="promo-resource-id" defaultValue="" />
+            <div className="space-y-2">
+              <Label htmlFor="promo-resource-title" className="font-semibold">
+                Título <span className="text-red-500">*</span>
+              </Label>
+              <Input id="promo-resource-title" placeholder="Ej: Intro al proyecto final" required />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="promo-resource-description" className="font-semibold">Descripción</Label>
+              <Textarea id="promo-resource-description" rows={3} placeholder="Breve descripción del recurso…" />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="promo-resource-type" className="font-semibold">Tipo de recurso</Label>
+                <select
+                  id="promo-resource-type"
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+                  defaultValue="video"
+                >
+                  <option value="video">📹 Vídeo</option>
+                  <option value="repository">💻 Repositorio</option>
+                  <option value="canva">🎨 Presentación Canva</option>
+                  <option value="powerpoint">📊 PowerPoint</option>
+                  <option value="other">📎 Otro</option>
+                </select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="promo-resource-module" className="font-semibold">Módulo</Label>
+                {/* JS legacy rellena las opciones dinámicamente */}
+                <select
+                  id="promo-resource-module"
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+                  defaultValue=""
+                >
+                  <option value="">— Sin módulo —</option>
+                </select>
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="promo-resource-url" className="font-semibold">
+                Link al recurso <span className="text-red-500">*</span>
+              </Label>
+              <Input id="promo-resource-url" type="url" placeholder="https://…" required />
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label className="font-semibold">Estado de publicación</Label>
+                <div className="flex gap-3">
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name="promo-resource-status"
+                      id="promo-resource-draft"
+                      value="draft"
+                      defaultChecked
+                      onChange={(e) => (window as unknown as { togglePublishAtField?: (v: string) => void }).togglePublishAtField?.(e.target.value)}
+                    />
+                    <span className="inline-flex items-center rounded-md bg-gray-500 text-white px-2 py-0.5 text-xs font-semibold">Borrador</span>
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input
+                      type="radio"
+                      name="promo-resource-status"
+                      id="promo-resource-published"
+                      value="published"
+                      onChange={(e) => (window as unknown as { togglePublishAtField?: (v: string) => void }).togglePublishAtField?.(e.target.value)}
+                    />
+                    <span className="inline-flex items-center rounded-md bg-green-500 text-white px-2 py-0.5 text-xs font-semibold">Publicar ahora</span>
+                  </label>
+                </div>
+              </div>
+              {/* Fila publishAt manipulada por JS legacy (style.display toggled) */}
+              <div className="space-y-2" id="promo-resource-publishAt-row" style={{ display: 'none' }}>
+                <Label htmlFor="promo-resource-publishAt" className="font-semibold">
+                  Publicar en esta fecha <small className="text-text-muted font-normal">(deja vacío para no programar)</small>
+                </Label>
+                <Input id="promo-resource-publishAt" type="datetime-local" />
+              </div>
+            </div>
+            <DialogFooter className="pt-2">
+              <DialogClose asChild>
+                <Button type="button" variant="outline">Cancelar</Button>
+              </DialogClose>
+              <Button
+                type="submit"
+                id="promo-resource-submit-btn"
+                className="bg-crok hover:bg-crok-hover text-crok-on"
+              >
+                <Save className="mr-1 h-4 w-4" />Guardar recurso
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── resourceModal (búsqueda en catálogo externo) ── */}
+      <Dialog
+        open={isModalOpen('resourceModal')}
+        onOpenChange={(o) => setModalOpen('resourceModal', o)}
+      >
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto p-0 gap-0">
+          <DialogHeader
+            className="px-4 py-3 text-white"
+            style={{ background: 'linear-gradient(135deg,#2563eb,#7c3aed)' }}
+          >
+            <DialogTitle className="text-white font-bold">
+              Buscar y agregar recurso
+            </DialogTitle>
+          </DialogHeader>
+          <div>
+            {/* Barra de búsqueda + filtros */}
+            <div className="p-3 border-b bg-gray-50">
+              <div className="grid grid-cols-1 md:grid-cols-12 gap-2 items-end">
+                <div className="md:col-span-6 space-y-1">
+                  <Label className="text-xs font-semibold m-0">Buscar recurso</Label>
+                  <div className="flex">
+                    <Input
+                      id="resource-search-input"
+                      placeholder="Nombre, tecnología, proveedor…"
+                      onInput={() => (window as unknown as { filterResourceCatalog?: () => void }).filterResourceCatalog?.()}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      className="ml-1"
+                      onClick={() => {
+                        const inp = document.getElementById('resource-search-input') as HTMLInputElement | null;
+                        if (inp) inp.value = '';
+                        (window as unknown as { filterResourceCatalog?: () => void }).filterResourceCatalog?.();
+                      }}
+                      aria-label="Limpiar búsqueda"
+                    >
+                      ✕
+                    </Button>
+                  </div>
+                </div>
+                <div className="md:col-span-3 space-y-1">
+                  <Label htmlFor="resource-area-filter" className="text-xs font-semibold m-0">Área</Label>
+                  <select
+                    id="resource-area-filter"
+                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-2 text-sm"
+                    onChange={() => (window as unknown as { filterResourceCatalog?: () => void }).filterResourceCatalog?.()}
+                  >
+                    <option value="">Todas las áreas</option>
+                  </select>
+                </div>
+                <div className="md:col-span-3 space-y-1">
+                  <Label htmlFor="resource-type-filter" className="text-xs font-semibold m-0">Tipo</Label>
+                  <select
+                    id="resource-type-filter"
+                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-2 text-sm"
+                    onChange={() => (window as unknown as { filterResourceCatalog?: () => void }).filterResourceCatalog?.()}
+                  >
+                    <option value="">Todos los tipos</option>
+                  </select>
+                </div>
+              </div>
+              <div className="mt-2 flex items-center gap-2">
+                <span id="resource-catalog-count" className="inline-flex items-center rounded-md bg-gray-500 text-white px-2 py-0.5 text-xs font-semibold">0 recursos</span>
+                <span id="resource-catalog-loading" className="text-text-muted text-xs d-none">Cargando catálogo…</span>
+              </div>
+            </div>
+
+            {/* Resultados */}
+            <div id="resource-catalog-grid" className="p-3" style={{ minHeight: 300 }}></div>
+            <div className="text-center text-text-muted py-12 d-none" id="resource-catalog-empty">
+              No se encontraron recursos con estos filtros
+            </div>
+          </div>
+          <DialogFooter className="bg-gray-50 px-4 py-3">
+            <DialogClose asChild>
+              <Button type="button" variant="outline">Cancelar</Button>
+            </DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

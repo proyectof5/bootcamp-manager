@@ -220,7 +220,8 @@ function togglePasswordVisibility(inputId) {
 
 
 let promotionId = null;
-let moduleModal, quickLinkModal, sectionModal, studentModal, studentProgressModal, teamModal, editTeamModal, resourceModal,
+// moduleModal, quickLinkModal, sectionModal, resourceModal removidos (spec 0013-c): shadcn Dialog.
+let studentModal, studentProgressModal, teamModal, editTeamModal,
     collaboratorModal, projectAssignmentDetailModal;
 // Always read role fresh from localStorage so external auth (users.coderf5.es),
 // which writes 'role' after the page loads, is picked up correctly.
@@ -391,15 +392,8 @@ __onDomReady( () => {
         // Setup calendar preview
         setupCalendarPreviewHandler();
 
+        // moduleModal, quickLinkModal, sectionModal: shadcn Dialog (spec 0013-c).
         // Initialize modals only if elements exist (teacher view)
-        const moduleModalEl = document.getElementById('moduleModal');
-        if (moduleModalEl) moduleModal = new bootstrap.Modal(moduleModalEl);
-
-        const quickLinkModalEl = document.getElementById('quickLinkModal');
-        if (quickLinkModalEl) quickLinkModal = new bootstrap.Modal(quickLinkModalEl);
-
-        const sectionModalEl = document.getElementById('sectionModal');
-        if (sectionModalEl) sectionModal = new bootstrap.Modal(sectionModalEl);
 
         const studentModalEl = document.getElementById('studentModal');
         if (studentModalEl) studentModal = new bootstrap.Modal(studentModalEl);
@@ -414,9 +408,7 @@ __onDomReady( () => {
         const teamModalEl = document.getElementById('teamModal');
         if (teamModalEl) teamModal = new bootstrap.Modal(teamModalEl);
 
-        const resourceModalEl = document.getElementById('resourceModal');
-        if (resourceModalEl) resourceModal = new bootstrap.Modal(resourceModalEl);
-
+        // resourceModal: shadcn Dialog (spec 0013-c).
         // deletePromotionModal: ahora es shadcn Dialog (spec 0013-b). Sin init Bootstrap.
 
         const collaboratorModalEl = document.getElementById('collaboratorModal');
@@ -425,11 +417,10 @@ __onDomReady( () => {
         const editTeamModalEl = document.getElementById('editTeamModal');
         if (editTeamModalEl) editTeamModal = new bootstrap.Modal(editTeamModalEl);
 
-        // Promo Resources modal
-        const promoResourceModalEl = document.getElementById('promoResourceModal');
-        if (promoResourceModalEl) {
-            window._promoResourceModal = new bootstrap.Modal(promoResourceModalEl);
-            document.getElementById('promo-resource-form').addEventListener('submit', submitPromoResource);
+        // promoResourceModal: shadcn Dialog (spec 0013-c). Solo hooks de form.
+        const promoResourceFormEl = document.getElementById('promo-resource-form');
+        if (promoResourceFormEl) {
+            promoResourceFormEl.addEventListener('submit', submitPromoResource);
         }
 
         initEmployabilityModal();
@@ -1775,7 +1766,7 @@ let _resourceCatalogAll = [];   // full list fetched from API
 let _resourceCatalogFiltered = [];
 
 async function openResourceModal() {
-    resourceModal.show();
+    window._openShadcnModal?.("resourceModal");
 
     const grid = document.getElementById('resource-catalog-grid');
     const loading = document.getElementById('resource-catalog-loading');
@@ -4036,7 +4027,7 @@ async function editModule(moduleId) {
             renderPlannerEditor();
 
             currentEditingModuleId = moduleId;
-            moduleModal.show();
+            window._openShadcnModal?.("moduleModal");
         }
     } catch (error) {
         console.error('Error editing module:', error);
@@ -4725,7 +4716,7 @@ function openPromoResourceModal(resourceId = null) {
         });
     }
 
-    window._promoResourceModal?.show();
+    window._openShadcnModal?.("promoResourceModal");
 }
 
 function togglePublishAtField(value) {
@@ -4773,7 +4764,7 @@ async function submitPromoResource(e) {
             });
         }
         if (res.ok) {
-            window._promoResourceModal?.hide();
+            window._closeShadcnModal?.("promoResourceModal");
             await loadPromoResources();
         } else {
             const err = await res.json();
@@ -6730,7 +6721,7 @@ function setupForms() {
                 });
 
                 if (updateResponse.ok) {
-                    moduleModal.hide();
+                    window._closeShadcnModal?.("moduleModal");
                     document.getElementById('module-form').reset();
                     currentEditingModuleId = null;
                     currentEditingTopics = [];
@@ -6754,7 +6745,7 @@ function setupForms() {
                 });
 
                 if (response.ok) {
-                    moduleModal.hide();
+                    window._closeShadcnModal?.("moduleModal");
                     document.getElementById('module-form').reset();
                     currentEditingModuleId = null;
                     currentEditingTopics = [];
@@ -6793,7 +6784,7 @@ function setupForms() {
             });
 
             if (response.ok) {
-                quickLinkModal.hide();
+                window._closeShadcnModal?.("quickLinkModal");
                 document.getElementById('quick-link-form').reset();
                 loadQuickLinks();
                 refreshQuickActions();
@@ -6823,7 +6814,7 @@ function setupForms() {
             });
 
             if (response.ok) {
-                sectionModal.hide();
+                window._closeShadcnModal?.("sectionModal");
                 document.getElementById('section-form').reset();
                 loadSections();
                 loadPromotion();
@@ -7438,19 +7429,19 @@ function openModuleModal() {
     renderTopicsEditor();
     renderPlannerEditor();
 
-    moduleModal.show();
+    window._openShadcnModal?.("moduleModal");
 }
 
 function openQuickLinkModal() {
     document.getElementById('quick-link-form').reset();
     document.getElementById('link-platform').value = '';
     document.getElementById('link-name').readOnly = false;
-    quickLinkModal.show();
+    window._openShadcnModal?.("quickLinkModal");
 }
 
 function openSectionModal() {
     document.getElementById('section-form').reset();
-    sectionModal.show();
+    window._openShadcnModal?.("sectionModal");
 }
 
 function openStudentModal() {
