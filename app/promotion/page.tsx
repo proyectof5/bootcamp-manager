@@ -18,6 +18,7 @@ import {
   AlertTriangle,
   InfoIcon,
   Mail,
+  ClipboardCheck,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -1373,6 +1374,37 @@ export default function PromotionPage() {
               onClick={() => (window as unknown as { addTeamMember?: () => void }).addTeamMember?.()}
             >
               Agregar Miembro
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── evaluationModal (evaluacion de proyecto) ── spec 0013-e (5/5) */}
+      <Dialog
+        open={isModalOpen('evaluationModal')}
+        onOpenChange={(o) => setModalOpen('evaluationModal', o)}
+      >
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle id="eval-modal-title" className="flex items-center gap-2 text-crok">
+              <ClipboardCheck className="h-5 w-5" />
+              Evaluación
+            </DialogTitle>
+          </DialogHeader>
+          {/* cuerpo poblado dinamicamente por openEvaluationModal() via innerHTML */}
+          <div id="eval-modal-body" />
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button type="button" variant="outline">Cerrar</Button>
+            </DialogClose>
+            <Button
+              type="button"
+              id="eval-modal-save-btn"
+              className="d-none bg-crok hover:bg-crok-hover text-crok-on"
+              onClick={() => (window as unknown as { saveProjectEvaluation?: () => void }).saveProjectEvaluation?.()}
+            >
+              <Save className="mr-1 h-4 w-4" />
+              Guardar evaluación
             </Button>
           </DialogFooter>
         </DialogContent>

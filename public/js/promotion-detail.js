@@ -13223,7 +13223,8 @@ function openEvaluationModal(mIdx, pIdx) {
     // DEBUG: log competence tool data
     //console.log('[Eval] projCompetences:', projCompetences.map(c => ({ id: c.id, name: c.name, toolsWithIndicators_count: (c.toolsWithIndicators || []).length, first_tool: (c.toolsWithIndicators || [])[0] ? { name: (c.toolsWithIndicators || [])[0].name, indicators_count: ((c.toolsWithIndicators || [])[0].indicators || []).length, first_indicator: ((c.toolsWithIndicators || [])[0].indicators || [])[0] } : null })));
 
-    document.getElementById('eval-modal-title').textContent = `${escapeHtml(proj.name)} — ${escapeHtml(mod.name || `Módulo ${mIdx + 1}`)}`;
+    // Titulo calculado aqui; se aplica al DOM dentro de _whenMounted (textContent ya escapa).
+    const _evalModalTitle = `${proj.name} — ${mod.name || `Módulo ${mIdx + 1}`}`;
 
     const LEVEL_LABELS = ['Sin nivel', 'Básico', 'Medio', 'Avanzado'];
     const LEVEL_COLORS = ['secondary', 'danger', 'warning', 'success'];
@@ -13648,18 +13649,20 @@ function openEvaluationModal(mIdx, pIdx) {
         ${existingEvalsHtml}`;
     }
 
-    document.getElementById('eval-modal-body').innerHTML = bodyHtml;
-
-    // Show "Guardar" button only for grupal evaluations; individual uses sub-modal
-    const saveBtn = document.getElementById('eval-modal-save-btn');
-    if (saveBtn) saveBtn.classList.toggle('d-none', saved.type !== 'grupal');
-
     // Store saved reference so JS functions can access it
     window._evalCurrentSaved = saved;
     window._evalCurrentProjectCompetences = projCompetences;
 
-    const modal = new bootstrap.Modal(document.getElementById('evaluationModal'));
-    modal.show();
+    // shadcn Dialog (spec 0013-e 5/5): abrir primero, inyectar cuerpo cuando Radix monte.
+    window._openShadcnModal?.("evaluationModal");
+    _whenMounted('eval-modal-body', () => {
+        const titleEl = document.getElementById('eval-modal-title');
+        if (titleEl) titleEl.textContent = _evalModalTitle;
+        document.getElementById('eval-modal-body').innerHTML = bodyHtml;
+        // "Guardar" solo para evaluaciones grupales; individual usa el panel inline.
+        const saveBtn = document.getElementById('eval-modal-save-btn');
+        if (saveBtn) saveBtn.classList.toggle('d-none', saved.type !== 'grupal');
+    });
 }
 
 function openStudentEvalSubModal() {
@@ -13993,11 +13996,8 @@ function _openStudentEvalSubModalFor(studentId) {
     // ── Show the inline eval panel (within the page, sidebar + navbar still visible) ──
     const panel = document.getElementById('student-eval-panel');
     const tabView = document.getElementById('evaluation-tab-view');
-    const evalModal = document.getElementById('evaluationModal');
-
-    // Close the evaluation modal first
-    const evalModalInstance = bootstrap.Modal.getInstance(evalModal);
-    if (evalModalInstance) evalModalInstance.hide();
+    // Close the evaluation modal first (shadcn Dialog, spec 0013-e 5/5)
+    window._closeShadcnModal?.("evaluationModal");
 
     // Populate the panel
     const titleEl = document.getElementById('student-eval-panel-title');
@@ -14728,7 +14728,7 @@ async function saveProjectEvaluation() {
             await _syncEvaluationsToStudentTracking(saved, mod, proj, allStudents);
         }
 
-        bootstrap.Modal.getInstance(document.getElementById('evaluationModal'))?.hide();
+        window._closeShadcnModal?.("evaluationModal");
         renderEvaluationTab();
         showToast('Evaluación guardada correctamente', 'success');
 

@@ -1528,28 +1528,9 @@ const promotionDetailBody = `
             </main>
 
     <!-- Evaluation Modal -->
-    <div class="modal fade" id="evaluationModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-xl modal-dialog-scrollable">
-            <div class="modal-content">
-                <div class="modal-header" style="background:linear-gradient(135deg,#E85D26,#f97316);color:#fff;">
-                    <h5 class="modal-title fw-bold" id="eval-modal-title">
-                        <i class="bi bi-clipboard-check me-2"></i>Evaluación
-                    </h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body" id="eval-modal-body">
-                    <!-- Populated dynamically by openEvaluationModal() -->
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
-                    <button type="button" class="btn btn-primary d-none" id="eval-modal-save-btn"
-                        onclick="saveProjectEvaluation()" style="background:#E85D26;border-color:#E85D26;">
-                        <i class="bi bi-save me-1"></i>Guardar evaluación
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
+    <!-- evaluationModal migrado (spec 0013-e 5/5): shadcn Dialog en page.tsx.
+         El cuerpo (#eval-modal-body) se sigue poblando por openEvaluationModal()
+         via innerHTML; #eval-modal-save-btn y #eval-modal-title conservan sus ids. -->
 
     <!-- editPromotionModal y deletePromotionModal removidos (spec 0013-b).
          Ahora viven como shadcn Dialog en app/promotion/page.tsx. -->
