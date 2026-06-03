@@ -223,8 +223,8 @@ let promotionId = null;
 // moduleModal, quickLinkModal, sectionModal, resourceModal removidos (spec 0013-c): shadcn Dialog.
 // studentModal, studentProgressModal removidos (spec 0013-d v2): shadcn Dialog.
 // editTeamModal removido (spec 0013-e v2 1/5): shadcn Dialog.
-let teamModal,
-    collaboratorModal, projectAssignmentDetailModal;
+// teamModal removido (spec 0013-e 2/5): shadcn Dialog.
+let collaboratorModal, projectAssignmentDetailModal;
 // Always read role fresh from localStorage so external auth (users.coderf5.es),
 // which writes 'role' after the page loads, is picked up correctly.
 // 'superadmin' has the same edit rights as 'teacher'.
@@ -403,8 +403,7 @@ __onDomReady( () => {
         if (projectAssignmentDetailModalEl) projectAssignmentDetailModal = new bootstrap.Modal(projectAssignmentDetailModalEl);
 
         // New Modals (Teacher)
-        const teamModalEl = document.getElementById('teamModal');
-        if (teamModalEl) teamModal = new bootstrap.Modal(teamModalEl);
+        // teamModal: shadcn Dialog (spec 0013-e 2/5).
 
         // resourceModal: shadcn Dialog (spec 0013-c).
         // deletePromotionModal: ahora es shadcn Dialog (spec 0013-b). Sin init Bootstrap.
@@ -1573,40 +1572,38 @@ function importPildorasFromExcel(input) {
 }
 
 async function openTeamModal() {
-    document.getElementById('team-form').reset();
-    document.getElementById('team-collab-preview').classList.add('d-none');
-
-    // Populate collaborators dropdown (required — only collaborators can be added)
-
-    const collabSelect = document.getElementById('team-from-collaborator');
-    collabSelect.innerHTML = '<option value="">— Select a collaborator —</option>';
-    collabSelect._collabData = {};
-
+    // Fetch de colaboradores ANTES de abrir (la data no depende del DOM del modal).
+    let collaborators = [];
     try {
         const token = localStorage.getItem('token');
         const res = await fetch(`${API_URL}/api/promotions/${promotionId}/collaborators`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
-        if (res.ok) {
-            const collaborators = await res.json();
-            // Filter out collaborators already in the team
-            const existingIds = new Set((extendedInfoData.team || []).map(m => m.collaboratorId).filter(Boolean));
-            collaborators.forEach(c => {
-                collabSelect._collabData[c.id] = c;
-                const opt = document.createElement('option');
-                opt.value = c.id;
-                const role = c.userRole || 'Formador/a';
-                opt.textContent = `${c.name} — ${role}`;
-                if (existingIds.has(c.id)) {
-                    opt.disabled = true;
-                    opt.textContent += ' (already added)';
-                }
-                collabSelect.appendChild(opt);
-            });
-        }
+        if (res.ok) collaborators = await res.json();
     } catch (e) { /* silent */ }
+    const existingIds = new Set((extendedInfoData.team || []).map(m => m.collaboratorId).filter(Boolean));
 
-    teamModal.show();
+    // shadcn Dialog (spec 0013-e 2/5): abrir primero, poblar cuando Radix monte.
+    window._openShadcnModal?.("teamModal");
+    _whenMounted('team-from-collaborator', () => {
+        document.getElementById('team-form')?.reset();
+        document.getElementById('team-collab-preview')?.classList.add('d-none');
+
+        const collabSelect = document.getElementById('team-from-collaborator');
+        if (!collabSelect) return;
+        collabSelect._collabData = {};
+
+        // innerHTML como string (un solo set) para evitar que React reconcilie los <option>.
+        let html = '<option value="">— Selecciona un colaborador —</option>';
+        collaborators.forEach(c => {
+            collabSelect._collabData[c.id] = c;
+            const role = c.userRole || 'Formador/a';
+            const added = existingIds.has(c.id);
+            html += `<option value="${escapeHtml(c.id)}"${added ? ' disabled' : ''}>`
+                  + `${escapeHtml(c.name)} — ${escapeHtml(role)}${added ? ' (ya agregado)' : ''}</option>`;
+        });
+        collabSelect.innerHTML = html;
+    });
 }
 
 function fillTeamFromCollaborator() {
@@ -1689,7 +1686,7 @@ function addTeamMember() {
         moduleName: finalModuleName
     });
     displayTeam();
-    teamModal.hide();
+    window._closeShadcnModal?.("teamModal");
 }
 
 function deleteTeamMember(index) {

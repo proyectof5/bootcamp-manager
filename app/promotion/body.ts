@@ -1679,51 +1679,11 @@ const promotionDetailBody = `
     </div>
 
     <!-- Team Member Modal -->
-    <div class="modal fade" id="teamModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Agregar miembro del Equipo</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <form id="team-form">
-                        <div class="mb-3">
-                            <label class="form-label fw-semibold">Seleccionar colaborador</label>
-                            <select class="form-select" id="team-from-collaborator"
-                                onchange="fillTeamFromCollaborator()" required>
-                                <option value="">— Selecciona un colaborador —</option>
-                            </select>
-                            <div class="form-text">Solo colaboradores asignados a este programa pueden ser agregados
-                            </div>
-                        </div>
-                        <!-- Collaborator info preview -->
-                        <div id="team-collab-preview" class="d-none mb-3">
-                            <div class="alert alert-light border d-flex align-items-center gap-3 py-2">
-                                <i class="bi bi-person-badge fs-4 text-primary"></i>
-                                <div>
-                                    <div class="fw-semibold" id="team-preview-name"></div>
-                                    <div class="text-muted small" id="team-preview-email"></div>
-                                    <span class="badge mt-1" id="team-preview-role-badge"></span>
-                                </div>
-                            </div>
-                        </div>
-                        <!-- Module selection removed: automatically inherited from collaborator -->
-
-                        <div class="mb-3">
-                            <label class="form-label">LinkedIn <span class="text-muted small">(opcional)</span></label>
-                            <input type="url" class="form-control" id="team-linkedin"
-                                placeholder="https://linkedin.com/in/...">
-                        </div>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" class="btn btn-primary" onclick="addTeamMember()">Agregar Miembro</button>
-                </div>
-            </div>
-        </div>
-    </div>
+    <!-- teamModal removido (spec 0013-e 2/5): shadcn Dialog en page.tsx. -->
+    <!-- Estructura React-managed; el <select> dinamico se puebla via innerHTML. -->
+    <!-- editTeamModal y teamModal viven ahora en app/promotion/page.tsx. -->
+    <!-- Las funciones openTeamModal/fillTeamFromCollaborator/addTeamMember siguen en promotion-detail.js. -->
+    <!-- preview del colaborador: id="team-collab-preview" (toggle d-none desde JS). -->
 
 
 

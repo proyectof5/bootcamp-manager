@@ -1315,6 +1315,68 @@ export default function PromotionPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* ── teamModal (agregar miembro del equipo) ── spec 0013-e (2/5) */}
+      <Dialog
+        open={isModalOpen('teamModal')}
+        onOpenChange={(o) => setModalOpen('teamModal', o)}
+      >
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Agregar miembro del Equipo</DialogTitle>
+          </DialogHeader>
+          <form id="team-form" className="space-y-3">
+            <div className="space-y-1">
+              <Label htmlFor="team-from-collaborator" className="font-semibold">
+                Seleccionar colaborador
+              </Label>
+              {/* select poblado por JS via innerHTML (sin children JSX: evita reconciliacion React de los <option>) */}
+              <select
+                id="team-from-collaborator"
+                required
+                onChange={() =>
+                  (window as unknown as { fillTeamFromCollaborator?: () => void }).fillTeamFromCollaborator?.()
+                }
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+              <p className="text-xs text-text-muted">
+                Solo colaboradores asignados a este programa pueden ser agregados
+              </p>
+            </div>
+
+            {/* preview del colaborador (se muestra/oculta con d-none desde JS) */}
+            <div id="team-collab-preview" className="d-none">
+              <div className="flex items-center gap-3 rounded border bg-gray-50 p-2">
+                <CircleUser className="h-7 w-7 text-crok" />
+                <div>
+                  <div className="font-semibold" id="team-preview-name" />
+                  <div className="text-sm text-text-muted" id="team-preview-email" />
+                  <span className="badge mt-1" id="team-preview-role-badge" />
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-1">
+              <Label htmlFor="team-linkedin">
+                LinkedIn <span className="text-text-muted text-xs">(opcional)</span>
+              </Label>
+              <Input type="url" id="team-linkedin" placeholder="https://linkedin.com/in/..." />
+            </div>
+          </form>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button type="button" variant="outline">Cancelar</Button>
+            </DialogClose>
+            <Button
+              type="button"
+              className="bg-crok hover:bg-crok-hover text-crok-on"
+              onClick={() => (window as unknown as { addTeamMember?: () => void }).addTeamMember?.()}
+            >
+              Agregar Miembro
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
