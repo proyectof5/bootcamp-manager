@@ -224,7 +224,8 @@ let promotionId = null;
 // studentModal, studentProgressModal removidos (spec 0013-d v2): shadcn Dialog.
 // editTeamModal removido (spec 0013-e v2 1/5): shadcn Dialog.
 // teamModal removido (spec 0013-e 2/5): shadcn Dialog.
-let collaboratorModal, projectAssignmentDetailModal;
+// projectAssignmentDetailModal eliminado (spec 0013-e 3/5): codigo muerto (nunca se abria, sin handler).
+let collaboratorModal;
 // Always read role fresh from localStorage so external auth (users.coderf5.es),
 // which writes 'role' after the page loads, is picked up correctly.
 // 'superadmin' has the same edit rights as 'teacher'.
@@ -399,8 +400,7 @@ __onDomReady( () => {
 
         // studentModal, studentProgressModal: shadcn Dialog (spec 0013-d v2).
 
-        const projectAssignmentDetailModalEl = document.getElementById('projectAssignmentDetailModal');
-        if (projectAssignmentDetailModalEl) projectAssignmentDetailModal = new bootstrap.Modal(projectAssignmentDetailModalEl);
+        // projectAssignmentDetailModal eliminado (spec 0013-e 3/5): era codigo muerto.
 
         // New Modals (Teacher)
         // teamModal: shadcn Dialog (spec 0013-e 2/5).

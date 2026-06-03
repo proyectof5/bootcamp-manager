@@ -1611,45 +1611,9 @@ const promotionDetailBody = `
     </div>
 
     <!-- Project Assignment Detail Modal -->
-    <div class="modal fade" id="projectAssignmentDetailModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Dealle del proyecto asignado:</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="mb-2">
-                        <strong>Proyecto:</strong>
-                        <div id="projectAssignment-detail-name"></div>
-                    </div>
-                    <div class="mb-2">
-                        <strong>Módulo:</strong>
-                        <div id="projectAssignment-detail-module"></div>
-                    </div>
-                    <div class="mb-3">
-                        <label for="projectAssignment-detail-group" class="form-label">Nombre del Equipo</label>
-                        <input type="text" class="form-control" id="projectAssignment-detail-group" />
-                    </div>
-                    <div class="form-check mb-3">
-                        <input class="form-check-input" type="checkbox" id="projectAssignment-detail-done">
-                        <label class="form-check-label" for="projectAssignment-detail-done">
-                            Marcar como Hecho
-                        </label>
-                    </div>
-                    <div class="mb-2">
-                        <strong>Inegrantes del equipo:</strong>
-                        <ul id="projectAssignment-detail-teammates" class="mb-0"></ul>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
-                    <button type="button" class="btn btn-primary"
-                        onclick="saveProjectAssignmentDetail()">Guardar</button>
-                </div>
-            </div>
-        </div>
-    </div>
+    <!-- projectAssignmentDetailModal eliminado (spec 0013-e 3/5): era codigo muerto.
+         Nunca se abria (sin .show() ni data-bs-toggle), sin poblado, y su handler
+         onclick saveProjectAssignmentDetail() no existia en ningun archivo. -->
 
     <!-- Add Collaborator Modal (by Email) -->
     <div class="modal fade" id="addCollaboratorModal" tabindex="-1">
