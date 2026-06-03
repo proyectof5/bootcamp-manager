@@ -1725,53 +1725,6 @@ const promotionDetailBody = `
         </div>
     </div>
 
-    <!-- Edit Team Member Modal -->
-    <div class="modal fade" id="editTeamModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Editar miembro del Equipo</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <form id="edit-team-form">
-                        <input type="hidden" id="edit-team-index">
-                        <div class="mb-3">
-                            <label class="form-label">Nombre</label>
-                            <input type="text" class="form-control bg-light" id="edit-team-name" readonly>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Rol</label>
-                            <input type="text" class="form-control bg-light" id="edit-team-role" readonly>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Email</label>
-                            <input type="email" class="form-control bg-light" id="edit-team-email" readonly>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label fw-bold"><i class="bi bi-journal-check me-1 text-primary"></i>Participación en Módulos</label>
-                            <div id="edit-team-module-list" class="alert alert-light border rounded p-2 mb-1" 
-                                 style="font-size: 0.9rem; min-height: 40px; background-color: #fcfcfc;">
-                                <!-- Assigned modules as badges will be injected here -->
-                                <span class="text-muted small">Cargando módulos...</span>
-                            </div>
-                            <div class="form-text small text-muted">
-                                <i class="bi bi-info-circle me-1"></i>Para cambiar los módulos de este integrante, debes hacerlo desde la pestaña de <strong>Colaboradores</strong>.
-                            </div>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">LinkedIn <span class="text-muted small">(opcional)</span></label>
-                            <input type="url" class="form-control" id="edit-team-linkedin" placeholder="https://linkedin.com/in/...">
-                        </div>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" class="btn btn-primary" onclick="updateTeamMember()">Guardar Cambios</button>
-                </div>
-            </div>
-        </div>
-    </div>
 
 
 

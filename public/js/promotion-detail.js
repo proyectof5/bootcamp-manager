@@ -222,7 +222,8 @@ function togglePasswordVisibility(inputId) {
 let promotionId = null;
 // moduleModal, quickLinkModal, sectionModal, resourceModal removidos (spec 0013-c): shadcn Dialog.
 // studentModal, studentProgressModal removidos (spec 0013-d v2): shadcn Dialog.
-let teamModal, editTeamModal,
+// editTeamModal removido (spec 0013-e v2 1/5): shadcn Dialog.
+let teamModal,
     collaboratorModal, projectAssignmentDetailModal;
 // Always read role fresh from localStorage so external auth (users.coderf5.es),
 // which writes 'role' after the page loads, is picked up correctly.
@@ -411,8 +412,7 @@ __onDomReady( () => {
         const collaboratorModalEl = document.getElementById('collaboratorModal');
         if (collaboratorModalEl) collaboratorModal = new bootstrap.Modal(collaboratorModalEl);
 
-        const editTeamModalEl = document.getElementById('editTeamModal');
-        if (editTeamModalEl) editTeamModal = new bootstrap.Modal(editTeamModalEl);
+        // editTeamModal: shadcn Dialog (spec 0013-e v2 1/5).
 
         // promoResourceModal: shadcn Dialog (spec 0013-c). Solo hooks de form.
         const promoResourceFormEl = document.getElementById('promo-resource-form');
@@ -1699,21 +1699,24 @@ function deleteTeamMember(index) {
     });
 }
 
+// Espera a que un nodo exista en el DOM antes de tocarlo. Radix Dialog monta su
+// contenido de forma asincrona tras _openShadcnModal; un setTimeout(0) puede
+// correr ANTES del montaje y perder la carrera (los inputs quedan sin poblar).
+// requestAnimationFrame reintenta hasta que el nodo existe. spec 0013-e.
+function _whenMounted(id, cb, tries = 30) {
+    if (document.getElementById(id)) return cb();
+    if (tries <= 0) return;
+    requestAnimationFrame(() => _whenMounted(id, cb, tries - 1));
+}
+
 function openEditTeamModal(index) {
     const member = (extendedInfoData.team || [])[index];
     if (!member) return;
 
-    document.getElementById('edit-team-index').value = index;
-    document.getElementById('edit-team-name').value = member.name || '';
-    document.getElementById('edit-team-role').value = member.role || '';
-    document.getElementById('edit-team-email').value = member.email || '';
-    document.getElementById('edit-team-linkedin').value = member.linkedin || '';
-
-    // Find assigned modules from central state (currentPromotion)
+    // Modules pre-calculados antes del setTimeout (no dependen del DOM del modal).
     let moduleIds = [];
     const promo = window.currentPromotion || {};
     const isOwner = promo.teacherId === member.collaboratorId;
-    
     if (isOwner) {
         moduleIds = promo.ownerModules || [];
     } else {
@@ -1721,26 +1724,30 @@ function openEditTeamModal(index) {
         moduleIds = entry ? (entry.moduleIds || []) : [];
     }
 
-    // Populate read-only list
-    const modules = window.promotionModules || [];
-    const displayList = document.getElementById('edit-team-module-list');
-    displayList.innerHTML = '';
-    
-    if (moduleIds.length === 0) {
-        displayList.innerHTML = '<span class="text-muted small">Sin módulos asignados.</span>';
-    } else {
-        moduleIds.forEach(mid => {
-            const found = modules.find(m => String(m.id) === String(mid));
-            if (found) {
-                const badge = document.createElement('span');
-                badge.className = 'badge bg-light text-dark border me-1';
-                badge.textContent = found.name;
-                displayList.appendChild(badge);
-            }
-        });
-    }
+    // shadcn Dialog (spec 0013-e v2 1/5): abrir primero, poblar cuando Radix monte.
+    window._openShadcnModal?.("editTeamModal");
+    _whenMounted('edit-team-index', () => {
+        const v = (id, val) => { const el = document.getElementById(id); if (el) el.value = val; };
+        v('edit-team-index', index);
+        v('edit-team-name', member.name || '');
+        v('edit-team-role', member.role || '');
+        v('edit-team-email', member.email || '');
+        v('edit-team-linkedin', member.linkedin || '');
 
-    editTeamModal.show();
+        const modules = window.promotionModules || [];
+        const displayList = document.getElementById('edit-team-module-list');
+        if (!displayList) return;
+        if (moduleIds.length === 0) {
+            displayList.innerHTML = '<span class="text-muted small">Sin módulos asignados.</span>';
+        } else {
+            // innerHTML como string para evitar reconciliacion React de los badges.
+            displayList.innerHTML = moduleIds
+                .map(mid => modules.find(m => String(m.id) === String(mid)))
+                .filter(Boolean)
+                .map(m => `<span class="badge bg-light text-dark border me-1">${escapeHtml(m.name)}</span>`)
+                .join('');
+        }
+    });
 }
 
 function updateTeamMember() {
@@ -1754,7 +1761,7 @@ function updateTeamMember() {
     member.linkedin = document.getElementById('edit-team-linkedin').value.trim();
 
     displayTeam();
-    editTeamModal.hide();
+    window._closeShadcnModal?.("editTeamModal");
 }
 
 // ── Resource Catalog (evaluation.coderf5.es/v1/resources — via local proxy) ──

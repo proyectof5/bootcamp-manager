@@ -1253,6 +1253,68 @@ export default function PromotionPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* ── editTeamModal (editar miembro del equipo) ── spec 0013-e v2 (1/5) */}
+      <Dialog
+        open={isModalOpen('editTeamModal')}
+        onOpenChange={(o) => setModalOpen('editTeamModal', o)}
+      >
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Editar miembro del Equipo</DialogTitle>
+          </DialogHeader>
+          <form id="edit-team-form" className="space-y-3">
+            <input type="hidden" id="edit-team-index" />
+            <div className="space-y-1">
+              <Label htmlFor="edit-team-name">Nombre</Label>
+              <Input id="edit-team-name" readOnly className="bg-gray-100" />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="edit-team-role">Rol</Label>
+              <Input id="edit-team-role" readOnly className="bg-gray-100" />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="edit-team-email">Email</Label>
+              <Input type="email" id="edit-team-email" readOnly className="bg-gray-100" />
+            </div>
+            <div className="space-y-1">
+              <Label className="font-bold flex items-center gap-1">
+                <BookOpen className="h-4 w-4 text-crok" />
+                Participación en Módulos
+              </Label>
+              <div
+                id="edit-team-module-list"
+                className="border rounded p-2 bg-gray-50 text-sm"
+                style={{ minHeight: 40 }}
+              >
+                <span className="text-text-muted text-xs">Cargando módulos...</span>
+              </div>
+              <div className="text-xs text-text-muted flex items-center gap-1">
+                <InfoIcon className="h-3 w-3" />
+                Para cambiar los módulos de este integrante, debes hacerlo desde la pestaña de <strong>Colaboradores</strong>.
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="edit-team-linkedin">
+                LinkedIn <span className="text-text-muted text-xs">(opcional)</span>
+              </Label>
+              <Input type="url" id="edit-team-linkedin" placeholder="https://linkedin.com/in/..." />
+            </div>
+          </form>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button type="button" variant="outline">Cancelar</Button>
+            </DialogClose>
+            <Button
+              type="button"
+              className="bg-crok hover:bg-crok-hover text-crok-on"
+              onClick={() => (window as unknown as { updateTeamMember?: () => void }).updateTeamMember?.()}
+            >
+              Guardar Cambios
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
