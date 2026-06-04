@@ -1697,13 +1697,16 @@ function deleteTeamMember(index) {
 }
 
 // Espera a que un nodo exista en el DOM antes de tocarlo. Radix Dialog monta su
-// contenido de forma asincrona tras _openShadcnModal; un setTimeout(0) puede
-// correr ANTES del montaje y perder la carrera (los inputs quedan sin poblar).
-// requestAnimationFrame reintenta hasta que el nodo existe. spec 0013-e.
-function _whenMounted(id, cb, tries = 30) {
+// contenido de forma asincrona tras _openShadcnModal; tocar el DOM justo despues
+// (p.ej. setTimeout(0)) pierde la carrera y los campos quedan sin poblar.
+// Polling con setTimeout (NO requestAnimationFrame): rAF se PAUSA por completo
+// cuando la pagina no es visible (document.hidden) — p.ej. pestaña en background
+// o navegador headless — dejando el modal sin poblar. setTimeout sigue
+// disparando (aunque throttled) y resuelve igual el montaje. spec 0013-e.
+function _whenMounted(id, cb, tries = 60) {
     if (document.getElementById(id)) return cb();
     if (tries <= 0) return;
-    requestAnimationFrame(() => _whenMounted(id, cb, tries - 1));
+    setTimeout(() => _whenMounted(id, cb, tries - 1), 16);
 }
 
 function openEditTeamModal(index) {

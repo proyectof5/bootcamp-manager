@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import { useEffect, useRef, useState, useCallback, memo } from 'react';
 import {
   Menu,
   CircleUser,
@@ -87,6 +87,17 @@ declare global {
     _closeShadcnModal?: (id: string) => void;
   }
 }
+
+// El cuerpo legacy se inyecta UNA sola vez. memo() sin props evita que un
+// re-render de PromotionPage (p.ej. al abrir/cerrar un shadcn Dialog vía
+// _openShadcnModal/_closeShadcnModal) re-inyecte el dangerouslySetInnerHTML y
+// borre el DOM que el JS legacy manipula imperativamente (tabla de equipo,
+// panel de evaluación, badges, etc.). spec 0013-e.
+const LegacyBody = memo(function LegacyBody() {
+  return (
+    <div suppressHydrationWarning dangerouslySetInnerHTML={{ __html: promotionDetailBody }} />
+  );
+});
 
 export default function PromotionPage() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -310,9 +321,10 @@ export default function PromotionPage() {
         </div>
       </nav>
 
-      {/* ── Resto del HTML legacy (main content + 19 modales restantes) ───── */}
-      {/* eslint-disable-next-line react/no-danger */}
-      <div suppressHydrationWarning dangerouslySetInnerHTML={{ __html: promotionDetailBody }} />
+      {/* ── Resto del HTML legacy (main content + modales restantes) ───── */}
+      {/* Inyectado UNA sola vez vía <LegacyBody> memoizado (def. arriba) para que
+          un re-render no re-inyecte y borre el DOM que manipula el JS legacy. */}
+      <LegacyBody />
 
       {/* ──────────────────────────────────────────────────────────────────────
           MODALES SHADCN (spec 0013-b en adelante)
