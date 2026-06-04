@@ -1059,17 +1059,10 @@ export default function PromotionPage() {
                 </div>
               </div>
               <div className="border rounded-lg">
-                <div className="border-b px-3 py-2 flex justify-between items-center">
+                <div className="border-b px-3 py-2">
                   <span className="font-semibold text-sm">Proyectos</span>
-                  <Button
-                    type="button"
-                    size="sm"
-                    variant="outline"
-                    className="border-crok text-crok hover:bg-crok-soft"
-                    onClick={() => (window as unknown as { openAssignProjectModal?: () => void }).openAssignProjectModal?.()}
-                  >
-                    + Asignar Proyecto
-                  </Button>
+                  {/* botón "+ Asignar Proyecto" eliminado (spec 0013-e 4/5):
+                      la feature assignProjectModal nunca se implementó. */}
                 </div>
                 <div className="p-3">
                   <div id="progress-student-projects">

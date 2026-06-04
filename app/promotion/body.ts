@@ -1545,51 +1545,10 @@ const promotionDetailBody = `
          studentSummaryModal removidos (spec 0013-d v2). shadcn Dialog en page.tsx. -->
 
     <!-- Assign Project Modal -->
-    <div class="modal fade" id="assignProjectModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Asignar Proyecto</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <form id="assign-project-form">
-                    <div class="modal-body">
-                        <div class="mb-3">
-                            <label class="form-label">Módulo</label>
-                            <select class="form-select" id="assign-module-select" required></select>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Proyecto</label>
-                            <select class="form-select" id="assign-project-select" required></select>
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Nombre del Equipo (opcional)</label>
-                            <input type="text" class="form-control" id="assign-group-name"
-                                placeholder="e.g., Team Alpha" />
-                        </div>
-                        <div class="mb-3">
-                            <label class="form-label">Compañeros (opcional)</label>
-                            <div id="assign-teammates-list" class="border rounded p-2"
-                                style="max-height: 200px; overflow-y: auto;">
-                                <!-- Populated dynamically with checkboxes -->
-                            </div>
-                            <small class="text-muted d-block">El estudiante actual se agrega automáticamente</small>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="assign-mark-done">
-                            <label class="form-check-label" for="assign-mark-done">
-                                Marcar como Hecho
-                            </label>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                        <button type="submit" class="btn btn-primary">Asignar</button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
+    <!-- assignProjectModal eliminado (spec 0013-e 4/5): feature incompleta.
+         openAssignProjectModal nunca se implementó (sin opener, sin poblado, sin
+         handler del submit de #assign-project-form). El botón "+ Asignar Proyecto"
+         de page.tsx también se elimina. -->
 
     <!-- Project Assignment Detail Modal -->
     <!-- projectAssignmentDetailModal eliminado (spec 0013-e 3/5): era codigo muerto.
