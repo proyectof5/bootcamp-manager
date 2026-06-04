@@ -1642,44 +1642,9 @@ const promotionDetailBody = `
     </div>
 
     <!-- Edit Collaborator info & Module Assignment modal -->
-    <div class="modal fade" id="collaboratorModulesModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content border-0 shadow">
-                <div class="modal-header border-0 bg-light py-3">
-                    <h5 class="modal-title fw-bold">
-                        <i class="bi bi-person-gear text-primary me-2"></i>Gestionar Colaborador
-                    </h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body px-4">
-                    <!-- Read-only header info -->
-                    <div class="alert alert-light border border-dashed rounded-3 p-3 mb-4">
-                        <div class="fw-bold fs-5 text-dark mb-1" id="collab-name-display"></div>
-                        <div class="text-muted small d-flex align-items-center gap-1 mb-2">
-                            <i class="bi bi-envelope"></i><span id="collab-email-display"></span>
-                        </div>
-                        <span class="badge bg-primary px-2" id="collab-role-display"></span>
-                    </div>
-
-                    <div class="mb-3">
-                        <label class="form-label fw-bold">Módulos Asignados</label>
-                        <p class="text-muted extra-small mb-2">Selecciona los módulos donde el colaborador tendrá presencia:</p>
-                        <div id="collab-modules-checklist" class="d-flex flex-column gap-2 border rounded-3 p-3 bg-light" 
-                             style="max-height:220px; overflow-y:auto;">
-                            <!-- Checkboxes generated dynamically -->
-                        </div>
-                        <div class="form-text small mt-2">Los cambios se guardarán para esta promoción en curso.</div>
-                    </div>
-                </div>
-                <div class="modal-footer border-0 px-4 pb-4">
-                    <button type="button" class="btn btn-light px-4" data-bs-dismiss="modal">Cerrar</button>
-                    <button type="button" class="btn btn-primary px-4 shadow-sm" onclick="saveCollaboratorModules()">
-                        <i class="bi bi-save me-1"></i>Guardar Cambios
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
+    <!-- collaboratorModulesModal migrado (spec 0013-e/f): shadcn Dialog en page.tsx.
+         Header (#collab-name/email/role-display) y checklist (#collab-modules-checklist)
+         se siguen poblando por openCollaboratorModulesModal() en promotion-detail.js. -->
 
 
 

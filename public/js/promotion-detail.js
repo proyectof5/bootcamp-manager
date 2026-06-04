@@ -7800,15 +7800,16 @@ async function displayCollaborators(collaborators) {
     }
 }
 
-let collaboratorModulesModal;
+// collaboratorModulesModal: shadcn Dialog (spec 0013-e/f).
 let _currentCollabModulesId = null;
 let _currentCollabModulesList = [];
 
 function openCollaboratorModulesModal(collaboratorId) {
-    if (!collaboratorModulesModal) {
-        collaboratorModulesModal = new bootstrap.Modal(document.getElementById('collaboratorModulesModal'));
-    }
     _currentCollabModulesId = collaboratorId;
+
+    // shadcn Dialog (spec 0013-e/f): abrir primero, poblar cuando Radix monte.
+    window._openShadcnModal?.("collaboratorModulesModal");
+    _whenMounted('collab-modules-checklist', () => {
 
     const allCollabs = _currentCollabModulesList || [];
     const entry = allCollabs.find(c => c.id === collaboratorId);
@@ -7828,19 +7829,19 @@ function openCollaboratorModulesModal(collaboratorId) {
     if (modules.length === 0) {
         checklist.innerHTML = '<p class="text-muted small">No hay módulos definidos en el roadmap.</p>';
     } else {
-        modules.forEach(mod => {
+        // innerHTML como string (un solo set) para evitar que un re-render de
+        // React borre los checkboxes inyectados imperativamente.
+        checklist.innerHTML = modules.map(mod => {
             const checked = selected.includes(mod.id) ? 'checked' : '';
-            const div = document.createElement('div');
-            div.className = 'form-check';
-            div.innerHTML = `
-                <input class="form-check-input" type="checkbox" value="${mod.id}" id="collab-mod-${mod.id}" ${checked}>
-                <label class="form-check-label" for="collab-mod-${mod.id}">${escapeHtml(mod.name)}</label>
-            `;
-            checklist.appendChild(div);
-        });
+            const mid = escapeHtml(String(mod.id));
+            return `<div class="form-check">`
+                + `<input class="form-check-input" type="checkbox" value="${mid}" id="collab-mod-${mid}" ${checked}>`
+                + `<label class="form-check-label" for="collab-mod-${mid}">${escapeHtml(mod.name)}</label>`
+                + `</div>`;
+        }).join('');
     }
 
-    collaboratorModulesModal.show();
+    });
 }
 
 async function saveCollaboratorModules() {
@@ -7855,7 +7856,7 @@ async function saveCollaboratorModules() {
             body: JSON.stringify({ moduleIds })
         });
         if (response.ok) {
-            collaboratorModulesModal.hide();
+            window._closeShadcnModal?.("collaboratorModulesModal");
 
             // Update local list for instant render
             const collabEntry = (_currentCollabModulesList || []).find(c => c.id === _currentCollabModulesId);

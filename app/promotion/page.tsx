@@ -19,6 +19,7 @@ import {
   InfoIcon,
   Mail,
   ClipboardCheck,
+  UserCog,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -1410,6 +1411,55 @@ export default function PromotionPage() {
             >
               <Save className="mr-1 h-4 w-4" />
               Guardar evaluación
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── collaboratorModulesModal (gestionar modulos de colaborador) ── spec 0013-e/f */}
+      <Dialog
+        open={isModalOpen('collaboratorModulesModal')}
+        onOpenChange={(o) => setModalOpen('collaboratorModulesModal', o)}
+      >
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-crok">
+              <UserCog className="h-5 w-5" />
+              Gestionar Colaborador
+            </DialogTitle>
+          </DialogHeader>
+          <div className="rounded border border-dashed p-3">
+            <div className="text-lg font-bold" id="collab-name-display" />
+            <div className="text-text-muted text-sm flex items-center gap-1">
+              <Mail className="h-3 w-3" />
+              <span id="collab-email-display" />
+            </div>
+            <span className="badge bg-primary mt-1 inline-block" id="collab-role-display" />
+          </div>
+          <div className="space-y-1">
+            <Label className="font-bold">Módulos Asignados</Label>
+            <p className="text-text-muted text-xs">
+              Selecciona los módulos donde el colaborador tendrá presencia:
+            </p>
+            {/* checklist poblado por JS (openCollaboratorModulesModal) */}
+            <div
+              id="collab-modules-checklist"
+              className="flex flex-col gap-2 rounded border bg-gray-50 p-3"
+              style={{ maxHeight: 220, overflowY: 'auto' }}
+            />
+            <p className="text-text-muted text-xs">Los cambios se guardarán para esta promoción en curso.</p>
+          </div>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button type="button" variant="outline">Cerrar</Button>
+            </DialogClose>
+            <Button
+              type="button"
+              className="bg-crok hover:bg-crok-hover text-crok-on"
+              onClick={() => (window as unknown as { saveCollaboratorModules?: () => void }).saveCollaboratorModules?.()}
+            >
+              <Save className="mr-1 h-4 w-4" />
+              Guardar Cambios
             </Button>
           </DialogFooter>
         </DialogContent>
