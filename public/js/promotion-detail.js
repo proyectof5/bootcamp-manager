@@ -225,7 +225,7 @@ let promotionId = null;
 // editTeamModal removido (spec 0013-e v2 1/5): shadcn Dialog.
 // teamModal removido (spec 0013-e 2/5): shadcn Dialog.
 // projectAssignmentDetailModal eliminado (spec 0013-e 3/5): codigo muerto (nunca se abria, sin handler).
-let collaboratorModal;
+// collaboratorModal: shadcn Dialog (spec 0013-f).
 // Always read role fresh from localStorage so external auth (users.coderf5.es),
 // which writes 'role' after the page loads, is picked up correctly.
 // 'superadmin' has the same edit rights as 'teacher'.
@@ -408,8 +408,7 @@ __onDomReady( () => {
         // resourceModal: shadcn Dialog (spec 0013-c).
         // deletePromotionModal: ahora es shadcn Dialog (spec 0013-b). Sin init Bootstrap.
 
-        const collaboratorModalEl = document.getElementById('collaboratorModal');
-        if (collaboratorModalEl) collaboratorModal = new bootstrap.Modal(collaboratorModalEl);
+        // collaboratorModal: shadcn Dialog (spec 0013-f).
 
         // editTeamModal: shadcn Dialog (spec 0013-e v2 1/5).
 
@@ -7904,74 +7903,73 @@ async function saveCollaboratorModules() {
 }
 
 async function openCollaboratorModal() {
-    const select = document.getElementById('collaborator-select');
-    if (!select) return;
+    // shadcn Dialog (spec 0013-f): abrir primero, poblar cuando Radix monte.
+    window._openShadcnModal?.("collaboratorModal");
 
-    // Reset preview
-    document.getElementById('collaborator-info-preview').classList.add('d-none');
-
-    // Populate module checkboxes
-    const moduleChecklist = document.getElementById('collaborator-module-checklist');
-    const modules = window.promotionModules || [];
-    if (modules.length === 0) {
-        moduleChecklist.innerHTML = '<span class="text-muted small">No hay módulos definidos en el roadmap.</span>';
-    } else {
-        moduleChecklist.innerHTML = '';
-        modules.forEach(mod => {
-            const div = document.createElement('div');
-            div.className = 'form-check';
-            div.innerHTML = `
-                <input class="form-check-input" type="checkbox" value="${mod.id}" id="add-collab-mod-${mod.id}">
-                <label class="form-check-label" for="add-collab-mod-${mod.id}">${escapeHtml(mod.name)}</label>
-            `;
-            moduleChecklist.appendChild(div);
-        });
-    }
-
-    select.innerHTML = '<option value="">Loading users...</option>';
-    collaboratorModal.show();
-
+    // Fetch de usuarios disponibles (no depende del DOM del modal).
     const token = localStorage.getItem('token');
+    let available = null; // null = error de carga
     try {
         const [teachersRes, collabRes, promoRes] = await Promise.all([
             fetch(`${API_URL}/api/teachers`, { headers: { 'Authorization': `Bearer ${token}` } }),
             fetch(`${API_URL}/api/promotions/${promotionId}/collaborators`, { headers: { 'Authorization': `Bearer ${token}` } }),
             fetch(`${API_URL}/api/promotions/${promotionId}`, { headers: { 'Authorization': `Bearer ${token}` } })
         ]);
-
         if (teachersRes.ok && collabRes.ok && promoRes.ok) {
             const allTeachers = await teachersRes.json();
             const currentCollaborators = await collabRes.json();
             const promo = await promoRes.json();
-
             const existingIds = new Set(currentCollaborators.map(c => c.id));
-
-            const available = allTeachers.filter(t =>
+            available = allTeachers.filter(t =>
                 t.id !== currentUser.id &&
                 t.id !== promo.teacherId &&
                 !existingIds.has(t.id)
             );
-
-            // Store teacher data for preview use
-            select._teacherData = {};
-            available.forEach(t => { select._teacherData[t.id] = t; });
-
-            if (available.length === 0) {
-                select.innerHTML = '<option value="">No other users available</option>';
-            } else {
-                select.innerHTML = '<option value="">Select a user...</option>';
-                available.forEach(t => {
-                    const opt = document.createElement('option');
-                    opt.value = t.id;
-                    opt.textContent = `${t.name} — ${t.userRole || 'Formador/a'} (${t.email})`;
-                    select.appendChild(opt);
-                });
-            }
         }
     } catch (error) {
         console.error('Error loading users:', error);
-        if (select) select.innerHTML = '<option value="">Error loading users</option>';
     }
+
+    _whenMounted('collaborator-select', () => {
+        const select = document.getElementById('collaborator-select');
+        if (!select) return;
+
+        // Reset preview
+        document.getElementById('collaborator-info-preview')?.classList.add('d-none');
+
+        // Module checkboxes (innerHTML como string, evita reconciliacion React).
+        const moduleChecklist = document.getElementById('collaborator-module-checklist');
+        const modules = window.promotionModules || [];
+        if (moduleChecklist) {
+            if (modules.length === 0) {
+                moduleChecklist.innerHTML = '<span class="text-muted small">No hay módulos definidos en el roadmap.</span>';
+            } else {
+                moduleChecklist.innerHTML = modules.map(mod => {
+                    const mid = escapeHtml(String(mod.id));
+                    return `<div class="form-check">`
+                        + `<input class="form-check-input" type="checkbox" value="${mid}" id="add-collab-mod-${mid}">`
+                        + `<label class="form-check-label" for="add-collab-mod-${mid}">${escapeHtml(mod.name)}</label>`
+                        + `</div>`;
+                }).join('');
+            }
+        }
+
+        // Select de usuarios.
+        if (available === null) {
+            select.innerHTML = '<option value="">Error loading users</option>';
+            return;
+        }
+        select._teacherData = {};
+        available.forEach(t => { select._teacherData[t.id] = t; });
+        if (available.length === 0) {
+            select.innerHTML = '<option value="">No other users available</option>';
+        } else {
+            select.innerHTML = '<option value="">Select a user...</option>'
+                + available.map(t =>
+                    `<option value="${escapeHtml(t.id)}">${escapeHtml(t.name)} — ${escapeHtml(t.userRole || 'Formador/a')} (${escapeHtml(t.email)})</option>`
+                ).join('');
+        }
+    });
 }
 
 function onCollaboratorSelected() {
@@ -8006,7 +8004,7 @@ async function addCollaboratorById() {
     console.log('[addCollaboratorById] teacherId to add:', teacherId, '| moduleIds:', moduleIds);
 
     // Disable button while request is in flight
-    const addBtn = document.querySelector('#collaboratorModal .btn-primary');
+    const addBtn = document.getElementById('add-collaborator-btn');
     if (addBtn) { addBtn.disabled = true; addBtn.textContent = 'Agregando...'; }
 
     const token = localStorage.getItem('token');
@@ -8024,7 +8022,7 @@ async function addCollaboratorById() {
         console.log('[addCollaboratorById] response status:', response.status, '| body:', JSON.stringify(data));
 
         if (response.ok) {
-            collaboratorModal.hide();
+            window._closeShadcnModal?.("collaboratorModal");
             await loadCollaborators();
         } else {
             console.error('[addCollaboratorById] Server error:', response.status, data);

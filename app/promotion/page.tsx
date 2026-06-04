@@ -1464,6 +1464,73 @@ export default function PromotionPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* ── collaboratorModal (agregar colaborador) ── spec 0013-f */}
+      <Dialog
+        open={isModalOpen('collaboratorModal')}
+        onOpenChange={(o) => setModalOpen('collaboratorModal', o)}
+      >
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-crok">
+              <UserPlus className="h-5 w-5" />
+              Agregar Colaborador
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <Label htmlFor="collaborator-select">Seleccionar usuario</Label>
+              {/* poblado por JS (openCollaboratorModal) via innerHTML */}
+              <select
+                id="collaborator-select"
+                onChange={() => (window as unknown as { onCollaboratorSelected?: () => void }).onCollaboratorSelected?.()}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+              />
+              <p className="text-text-muted text-xs">
+                Los usuarios registrados recientemente deben al menos haber hecho un login para aparecer aquí.
+              </p>
+            </div>
+            <div id="collaborator-info-preview" className="d-none">
+              <div className="flex items-center gap-3 rounded border bg-gray-50 p-2">
+                <CircleUser className="h-7 w-7 text-crok" />
+                <div>
+                  <div className="font-semibold" id="collab-preview-name" />
+                  <div className="text-text-muted text-sm" id="collab-preview-email" />
+                  <span className="badge mt-1" id="collab-preview-role-badge" />
+                </div>
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label>
+                Asignación de módulo <span className="text-text-muted text-xs">(Opcional)</span>
+              </Label>
+              <div
+                id="collaborator-module-checklist"
+                className="flex flex-col gap-2 rounded border p-2"
+                style={{ maxHeight: 180, overflowY: 'auto' }}
+              >
+                <span className="text-text-muted text-xs">Cargando módulos...</span>
+              </div>
+              <p className="text-text-muted text-xs">
+                Selecciona los módulos en los que estará presente. Puede ser más de uno o todos.
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button type="button" variant="outline">Cancelar</Button>
+            </DialogClose>
+            <Button
+              type="button"
+              id="add-collaborator-btn"
+              className="bg-crok hover:bg-crok-hover text-crok-on"
+              onClick={() => (window as unknown as { addCollaboratorById?: () => void }).addCollaboratorById?.()}
+            >
+              Agregar Colaborador
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

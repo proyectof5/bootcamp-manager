@@ -1595,51 +1595,10 @@ const promotionDetailBody = `
     <!-- resourceModal removido (spec 0013-c). shadcn Dialog en page.tsx. -->
 
     <!-- Collaborator Selection Modal -->
-    <div class="modal fade" id="collaboratorModal" tabindex="-1">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title">Agregar Colaborador</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label for="collaborator-select" class="form-label">Seleccionar usuario</label>
-                        <select class="form-select" id="collaborator-select" onchange="onCollaboratorSelected()">
-                            <option value="">Loading users...</option>
-                        </select>
-                        <div class="form-text">Los usuarios registrados recientemente deben almenos haber hecho un login
-                            para aparecer aquí.</div>
-                    </div>
-                    <div id="collaborator-info-preview" class="d-none">
-                        <div class="alert alert-light border d-flex align-items-center gap-3 mb-3">
-                            <i class="bi bi-person-badge fs-4 text-primary"></i>
-                            <div>
-                                <div class="fw-semibold" id="collab-preview-name"></div>
-                                <div class="text-muted small" id="collab-preview-email"></div>
-                                <span class="badge mt-1" id="collab-preview-role-badge"></span>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Asignación de módulo <span
-                                class="text-muted small">(Opcional)</span></label>
-                        <div id="collaborator-module-checklist" class="d-flex flex-column gap-2 border rounded p-2"
-                            style="max-height:180px; overflow-y:auto;">
-                            <span class="text-muted small">Cargando módulos...</span>
-                        </div>
-                        <div class="form-text">Selecciona los módulos en los que estará presente. Puede ser más de uno o
-                            todos.</div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" class="btn btn-primary" onclick="addCollaboratorById()">Agregar
-                        Colaborador</button>
-                </div>
-            </div>
-        </div>
-    </div>
+    <!-- collaboratorModal migrado (spec 0013-f): shadcn Dialog en page.tsx.
+         #collaborator-select, #collaborator-info-preview y #collaborator-module-checklist
+         se siguen poblando por openCollaboratorModal()/onCollaboratorSelected() en
+         promotion-detail.js. El botón "Agregar Colaborador" ahora tiene id=add-collaborator-btn. -->
 
     <!-- Edit Collaborator info & Module Assignment modal -->
     <!-- collaboratorModulesModal migrado (spec 0013-e/f): shadcn Dialog en page.tsx.
