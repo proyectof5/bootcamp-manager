@@ -403,20 +403,15 @@
 
     // ─── Abre modal para añadir competencia del catálogo ──────────────────────
     function openAddCompetenceModal() {
-        _buildAddCompetenceModal();
-        const el = document.getElementById('addCompetenceModal');
-        _getOrCreateModalInstance(el).show();
+        // spec 0014 Fase A: shadcn Dialog. Abre y construye el body cuando Radix monte.
+        window._openShadcnModal?.('addCompetenceModal');
+        if (window._whenMounted) window._whenMounted('add-competence-host', _buildAddCompetenceModal);
+        else setTimeout(_buildAddCompetenceModal, 80);
     }
 
     function _buildAddCompetenceModal() {
-        let modal = document.getElementById('addCompetenceModal');
-        if (!modal) {
-            modal = document.createElement('div');
-            modal.id = 'addCompetenceModal';
-            modal.className = 'modal fade';
-            modal.tabIndex = -1;
-            document.body.appendChild(modal);
-        }
+        const host = document.getElementById('add-competence-host');
+        if (!host) return;
 
         const areaOptions = AREAS.map(a =>
             `<option value="${_esc(a)}">${_esc(a)}</option>`
@@ -442,30 +437,17 @@
             </div>`;
         }).join('');
 
-        modal.innerHTML = `
-        <div class="modal-dialog modal-lg modal-dialog-scrollable">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title"><i class="bi bi-award me-2"></i>Añadir Competencia al Programa</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="form-label">Filtrar por área</label>
-                        <select class="form-select" id="catalog-area-filter" onchange="window.ProgramCompetences._filterCatalog()">
-                            <option value="">Todas las áreas</option>
-                            ${areaOptions}
-                        </select>
-                    </div>
-                    <div class="row" id="catalog-cards-container">
-                        ${catalogCards}
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
-                </div>
+        host.innerHTML = `
+            <div class="mb-3">
+                <label class="form-label">Filtrar por área</label>
+                <select class="form-select" id="catalog-area-filter" onchange="window.ProgramCompetences._filterCatalog()">
+                    <option value="">Todas las áreas</option>
+                    ${areaOptions}
+                </select>
             </div>
-        </div>`;
+            <div class="row" id="catalog-cards-container">
+                ${catalogCards}
+            </div>`;
     }
 
     function _filterCatalog() {
@@ -568,17 +550,8 @@
         const comp = _programCompetences[idx];
         if (!comp) return;
 
-        let modal = document.getElementById('toolsEditorModal');
-        if (!modal) {
-            modal = document.createElement('div');
-            modal.id = 'toolsEditorModal';
-            modal.className = 'modal fade';
-            modal.tabIndex = -1;
-            document.body.appendChild(modal);
-        }
-
-        // Store current editing index on the modal element for use by _addCustomToolToEditor
-        modal._editingIdx = idx;
+        // spec 0014 Fase A: shadcn Dialog. idx en window para el botón Guardar del Dialog.
+        window._toolsEditorIdx = idx;
 
         const checkboxes = (comp.allTools || []).map(tool => {
             const checked = (comp.selectedTools || []).includes(tool) ? 'checked' : '';
@@ -599,50 +572,37 @@
             </div>`;
         }).join('');
 
-        modal.innerHTML = `
-        <div class="modal-dialog modal-dialog-scrollable">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title"><i class="bi bi-tools me-2"></i>Herramientas — ${_esc(comp.name)}</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <p class="text-muted small mb-3">
-                        Selecciona las herramientas del catálogo y/o añade herramientas personalizadas.
-                    </p>
-
-                    <!-- Tool checklist -->
-                    <div id="tools-checklist" class="mb-3">
-                        ${checkboxes || '<span class="text-muted small fst-italic">No hay herramientas en el catálogo para esta competencia.</span>'}
-                    </div>
-
-                    <!-- Add custom tool -->
-                    <div class="border-top pt-3 mt-2">
-                        <label class="form-label small fw-semibold">
-                            <i class="bi bi-plus-circle me-1 text-primary"></i>Añadir herramienta personalizada
-                        </label>
-                        <div class="d-flex gap-2">
-                            <input type="text" id="custom-tool-editor-input" class="form-control form-control-sm"
-                                placeholder="Ej: Figma, Storybook, Postman..."
-                                onkeydown="if(event.key==='Enter'){event.preventDefault(); window.ProgramCompetences._addCustomToolToEditor(${idx});}">
-                            <button type="button" class="btn btn-sm btn-outline-primary px-3" style="white-space:nowrap;"
-                                onclick="window.ProgramCompetences._addCustomToolToEditor(${idx})">
-                                <i class="bi bi-plus-lg me-1"></i>Añadir
-                            </button>
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" class="btn btn-primary" onclick="window.ProgramCompetences._saveToolsSelection(${idx})">
-                        <i class="bi bi-floppy me-1"></i>Guardar
+        const bodyHtml = `
+            <p class="text-muted small mb-3">
+                Selecciona las herramientas del catálogo y/o añade herramientas personalizadas.
+            </p>
+            <div id="tools-checklist" class="mb-3">
+                ${checkboxes || '<span class="text-muted small fst-italic">No hay herramientas en el catálogo para esta competencia.</span>'}
+            </div>
+            <div class="border-top pt-3 mt-2">
+                <label class="form-label small fw-semibold">
+                    <i class="bi bi-plus-circle me-1 text-primary"></i>Añadir herramienta personalizada
+                </label>
+                <div class="d-flex gap-2">
+                    <input type="text" id="custom-tool-editor-input" class="form-control form-control-sm"
+                        placeholder="Ej: Figma, Storybook, Postman..."
+                        onkeydown="if(event.key==='Enter'){event.preventDefault(); window.ProgramCompetences._addCustomToolToEditor(${idx});}">
+                    <button type="button" class="btn btn-sm btn-outline-primary px-3" style="white-space:nowrap;"
+                        onclick="window.ProgramCompetences._addCustomToolToEditor(${idx})">
+                        <i class="bi bi-plus-lg me-1"></i>Añadir
                     </button>
                 </div>
-            </div>
-        </div>`;
+            </div>`;
 
-        bootstrap.Modal.getInstance(modal)?.hide();
-        _getOrCreateModalInstance(modal).show();
+        window._openShadcnModal?.('toolsEditorModal');
+        const build = () => {
+            const titleEl = document.getElementById('tools-editor-title');
+            if (titleEl) titleEl.textContent = `Herramientas — ${comp.name}`;
+            const host = document.getElementById('tools-editor-host');
+            if (host) host.innerHTML = bodyHtml;
+        };
+        if (window._whenMounted) window._whenMounted('tools-editor-host', build);
+        else setTimeout(build, 80);
     }
 
     // Add a custom tool to the checklist inside the modal (does NOT save yet)
@@ -720,11 +680,10 @@
 
     function _saveToolsSelection(idx) {
         const selected = Array.from(
-            document.querySelectorAll('#toolsEditorModal .tools-checkbox:checked')
+            document.querySelectorAll('#tools-editor-host .tools-checkbox:checked')
         ).map(cb => cb.value);
         _programCompetences[idx].selectedTools = selected;
-        const toolsModal = document.getElementById('toolsEditorModal');
-        bootstrap.Modal.getInstance(toolsModal)?.hide();
+        window._closeShadcnModal?.('toolsEditorModal');
         _render();
         _markUnsaved();
     }

@@ -138,6 +138,15 @@ const GroupsModalBody = memo(function GroupsModalBody() {
   return <div id="groups-modal-body" />;
 });
 
+// Hosts de los modales de program-competences.js (spec 0014 Fase A). El body lo
+// llenan _buildAddCompetenceModal / _openToolsEditor imperativamente (opaco a React).
+const AddCompetenceHost = memo(function AddCompetenceHost() {
+  return <div id="add-competence-host" />;
+});
+const ToolsEditorHost = memo(function ToolsEditorHost() {
+  return <div id="tools-editor-host" />;
+});
+
 export default function PromotionPage() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [teacherName, setTeacherName] = useState('Teacher');
@@ -1794,6 +1803,53 @@ export default function PromotionPage() {
               onClick={() => (window as unknown as { saveGroups?: () => void }).saveGroups?.()}
             >
               Guardar grupos
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── addCompetenceModal (program-competences.js) ── spec 0014 Fase A */}
+      <Dialog open={isModalOpen('addCompetenceModal')} onOpenChange={(o) => setModalOpen('addCompetenceModal', o)}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-crok">
+              <BookOpen className="h-5 w-5" />
+              Añadir Competencia al Programa
+            </DialogTitle>
+          </DialogHeader>
+          <AddCompetenceHost />
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button type="button" variant="outline">Cerrar</Button>
+            </DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── toolsEditorModal (program-competences.js) ── spec 0014 Fase A */}
+      <Dialog open={isModalOpen('toolsEditorModal')} onOpenChange={(o) => setModalOpen('toolsEditorModal', o)}>
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle><span id="tools-editor-title">Herramientas</span></DialogTitle>
+          </DialogHeader>
+          <ToolsEditorHost />
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button type="button" variant="outline">Cancelar</Button>
+            </DialogClose>
+            <Button
+              type="button"
+              className="bg-crok hover:bg-crok-hover text-crok-on"
+              onClick={() => {
+                const w = window as unknown as {
+                  ProgramCompetences?: { _saveToolsSelection?: (i: number) => void };
+                  _toolsEditorIdx?: number;
+                };
+                w.ProgramCompetences?._saveToolsSelection?.(w._toolsEditorIdx ?? -1);
+              }}
+            >
+              <Save className="mr-1 h-4 w-4" />
+              Guardar
             </Button>
           </DialogFooter>
         </DialogContent>
