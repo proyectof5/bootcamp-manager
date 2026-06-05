@@ -15187,20 +15187,11 @@ function _showConfirmModal(htmlMessage, onConfirm, confirmLabel = 'Confirmar', c
 }
 
 function showToast(message, type = 'info') {
-    // Create a simple Bootstrap toast
-    const id = 'toast-' + Date.now();
-    const bg = type === 'success' ? 'bg-success' : type === 'danger' ? 'bg-danger' : 'bg-primary';
-    const toastHtml = `<div id="${id}" class="toast align-items-center text-white ${bg} border-0 position-fixed bottom-0 end-0 m-3" role="alert" style="z-index:9999">
-        <div class="d-flex">
-            <div class="toast-body">${escapeHtml(message)}</div>
-            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
-        </div>
-    </div>`;
-    document.body.insertAdjacentHTML('beforeend', toastHtml);
-    const toastEl = document.getElementById(id);
-    const t = new bootstrap.Toast(toastEl, { delay: 3000 });
-    t.show();
-    toastEl.addEventListener('hidden.bs.toast', () => toastEl.remove());
+    // spec 0014 (Fase A): delega en showApiToast (shared.js), que ya tiene fallback
+    // sin bootstrap.Toast. Unifica los toasts y elimina la dependencia de bootstrap.Toast.
+    const t = type === 'error' ? 'danger' : type;
+    if (window.showApiToast) window.showApiToast(message, t, 3000);
+    else console.log('[toast]', t, message);
 }
 
 // ==================== SYLLABUS PDF (PROMOCIÓN ACTIVA) ====================
