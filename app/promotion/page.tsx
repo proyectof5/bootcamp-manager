@@ -203,28 +203,37 @@ export default function PromotionPage() {
     fields: InputField[];
     title: string;
     onConfirm: (values: Record<string, string>) => void;
+    onCancel?: () => void;
     confirmLabel: string;
   } | null>(null);
   const [inputValues, setInputValues] = useState<Record<string, string>>({});
+  const inputSettledRef = useRef(false);
   useEffect(() => {
     (window as unknown as {
       __showInputDialog?: (o: {
         fields: InputField[];
         title: string;
         onConfirm: (v: Record<string, string>) => void;
+        onCancel?: () => void;
         confirmLabel?: string;
       }) => void;
     }).__showInputDialog = (o) => {
+      inputSettledRef.current = false;
       setInputValues(Object.fromEntries(o.fields.map((f) => [f.id, f.value || ''])));
-      setInputDialog({ fields: o.fields, title: o.title, onConfirm: o.onConfirm, confirmLabel: o.confirmLabel || 'Aceptar' });
+      setInputDialog({ fields: o.fields, title: o.title, onConfirm: o.onConfirm, onCancel: o.onCancel, confirmLabel: o.confirmLabel || 'Aceptar' });
     };
   }, []);
-  const submitInputDialog = () => {
-    const cb = inputDialog?.onConfirm;
+  // Resuelve UNA sola vez (confirm o cancel) — cubre OK, Cancelar, y Esc/overlay/X.
+  const settleInputDialog = (confirmed: boolean) => {
+    if (inputSettledRef.current) return;
+    inputSettledRef.current = true;
+    const d = inputDialog;
     const vals = inputValues;
     setInputDialog(null);
-    cb?.(vals);
+    if (confirmed) d?.onConfirm?.(vals);
+    else d?.onCancel?.();
   };
+  const submitInputDialog = () => settleInputDialog(true);
 
   useEffect(() => {
     // ── Inject CSS files not in globals.css ──────────────────────────────
@@ -1715,7 +1724,10 @@ export default function PromotionPage() {
       </Dialog>
 
       {/* ── Input dialog reutilizable (reemplaza _showInputModal de Bootstrap) ── spec 0013 */}
-      <Dialog open={!!inputDialog} onOpenChange={(o) => { if (!o) setInputDialog(null); }}>
+      <Dialog
+        open={!!inputDialog}
+        onOpenChange={(o) => { if (!o) settleInputDialog(false); }}
+      >
         <DialogContent className="max-w-sm">
           <DialogHeader>
             <DialogTitle>{inputDialog?.title ?? ''}</DialogTitle>
@@ -1724,19 +1736,28 @@ export default function PromotionPage() {
             {inputDialog?.fields.map((f) => (
               <div key={f.id} className="space-y-1">
                 <Label htmlFor={`__inp-${f.id}`}>{f.label}</Label>
-                <Input
-                  id={`__inp-${f.id}`}
-                  type={f.type || 'text'}
-                  placeholder={f.placeholder || ''}
-                  value={inputValues[f.id] ?? ''}
-                  onChange={(e) => setInputValues((v) => ({ ...v, [f.id]: e.target.value }))}
-                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); submitInputDialog(); } }}
-                />
+                {f.type === 'textarea' ? (
+                  <Textarea
+                    id={`__inp-${f.id}`}
+                    placeholder={f.placeholder || ''}
+                    value={inputValues[f.id] ?? ''}
+                    onChange={(e) => setInputValues((v) => ({ ...v, [f.id]: e.target.value }))}
+                  />
+                ) : (
+                  <Input
+                    id={`__inp-${f.id}`}
+                    type={f.type || 'text'}
+                    placeholder={f.placeholder || ''}
+                    value={inputValues[f.id] ?? ''}
+                    onChange={(e) => setInputValues((v) => ({ ...v, [f.id]: e.target.value }))}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); submitInputDialog(); } }}
+                  />
+                )}
               </div>
             ))}
           </div>
           <DialogFooter>
-            <Button type="button" variant="outline" onClick={() => setInputDialog(null)}>
+            <Button type="button" variant="outline" onClick={() => settleInputDialog(false)}>
               Cancelar
             </Button>
             <Button

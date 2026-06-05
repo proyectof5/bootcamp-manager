@@ -645,9 +645,25 @@
      *   - null when the user cancels
      */
     function _askRazon(title) {
-        //console.log('[Reports] Showing _askRazon modal for:', title);
         return new Promise(resolve => {
-            // ── Hide any currently-open Bootstrap modal so they don't stack ──
+            // spec 0014 Fase A: delega en el input dialog shadcn reutilizable (page.tsx).
+            if (window.__showInputDialog) {
+                window.__showInputDialog({
+                    title: title || 'Informe de Seguimiento Técnico',
+                    fields: [{
+                        id: 'reason',
+                        label: 'Motivo del informe (opcional)',
+                        type: 'textarea',
+                        placeholder: 'Ej: Seguimiento mensual de progreso, revisión por financiador, evaluación de fin de módulo…'
+                    }],
+                    onConfirm: (vals) => resolve((vals.reason || '').trim()),
+                    onCancel: () => resolve(null),
+                    confirmLabel: 'Generar PDF',
+                });
+                return;
+            }
+
+            // ── (legacy, inalcanzable con __showInputDialog) Hide any open Bootstrap modal ──
             const openModalEl   = document.querySelector('.modal.show');
             const openModalInst = openModalEl ? (window.bootstrap?.Modal.getInstance(openModalEl) || null) : null;
             if (openModalInst) {
