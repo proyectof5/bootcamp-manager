@@ -110,6 +110,28 @@ const ActaInicioBody = memo(function ActaInicioBody() {
   );
 });
 
+// Body del selector de competencias de proyecto (epcp). El #epcp-list y las
+// options de #epcp-area-filter los puebla openEvalProjectCompetencePicker(); los
+// listeners de filtro se re-enganchan en cada apertura. Opaco a React (memo). spec 0013-h.
+const evalProjPickerBodyHtml = `
+    <div class="p-3 border-bottom bg-light d-flex flex-wrap gap-2 align-items-center">
+        <div class="input-group input-group-sm" style="max-width:260px;">
+            <span class="input-group-text"><i class="bi bi-search"></i></span>
+            <input type="text" class="form-control" id="epcp-search" placeholder="Buscar competencia...">
+        </div>
+        <select class="form-select form-select-sm w-auto" id="epcp-area-filter">
+            <option value="">Todas las áreas</option>
+        </select>
+        <span class="ms-auto badge bg-light text-dark border" id="epcp-selected-count">0 seleccionadas</span>
+    </div>
+    <div id="epcp-list" class="p-3" style="max-height:60vh;overflow-y:auto;"></div>
+`;
+const EvalProjPickerBody = memo(function EvalProjPickerBody() {
+  return (
+    <div suppressHydrationWarning dangerouslySetInnerHTML={{ __html: evalProjPickerBodyHtml }} />
+  );
+});
+
 export default function PromotionPage() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [teacherName, setTeacherName] = useState('Teacher');
@@ -1704,6 +1726,37 @@ export default function PromotionPage() {
             >
               {inputDialog?.confirmLabel ?? 'Aceptar'}
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── epcp: selector de competencias de proyecto (eval) ── spec 0013-h */}
+      <Dialog open={isModalOpen('evalProjCompModal')} onOpenChange={(o) => setModalOpen('evalProjCompModal', o)}>
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto p-0">
+          <DialogHeader className="p-4 pb-2">
+            <DialogTitle className="flex items-center gap-2 text-crok">
+              <BookOpen className="h-5 w-5" />
+              <span>Competencias del proyecto: <span id="epcp-proj-title" /></span>
+            </DialogTitle>
+            <p className="text-text-muted text-xs" id="epcp-mod-subtitle" />
+          </DialogHeader>
+          <EvalProjPickerBody />
+          <DialogFooter className="p-4 pt-2 sm:justify-between">
+            <span className="text-text-muted text-xs">
+              Selecciona las competencias y elige qué herramientas se evaluarán en este proyecto.
+            </span>
+            <div className="flex gap-2">
+              <DialogClose asChild>
+                <Button type="button" variant="outline">Cancelar</Button>
+              </DialogClose>
+              <Button
+                type="button"
+                className="bg-crok hover:bg-crok-hover text-crok-on"
+                onClick={() => (window as unknown as { saveEvalProjectCompetences?: () => void }).saveEvalProjectCompetences?.()}
+              >
+                Guardar competencias
+              </Button>
+            </div>
           </DialogFooter>
         </DialogContent>
       </Dialog>

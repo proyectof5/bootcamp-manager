@@ -11308,75 +11308,24 @@ function openEvalProjectCompetencePicker(mIdx, pIdx) {
         catalog: fullCatalog
     };
 
-    // Build modal HTML
+    // Area options para el filtro (el shell del modal vive en page.tsx).
     const areaSet = new Set(fullCatalog.map(c => c.area || 'Sin área'));
     const areaOptions = [...areaSet].sort().map(a =>
         `<option value="${escapeHtml(a)}">${escapeHtml(a)}</option>`
     ).join('');
 
-    const rows = fullCatalog.map(c => _buildPickerRow(c, window._evalProjPickerState)).join('');
-
-    // Inject or create modal
-    let modal = document.getElementById('eval-proj-comp-modal');
-    if (!modal) {
-        modal = document.createElement('div');
-        modal.id = 'eval-proj-comp-modal';
-        modal.className = 'modal fade';
-        modal.setAttribute('tabindex', '-1');
-        modal.innerHTML = `<div class="modal-dialog modal-xl modal-dialog-scrollable">
-            <div class="modal-content">
-                <div class="modal-header" style="background:linear-gradient(135deg,#fff8f5,#fff3ee);border-bottom:2px solid #E85D26;">
-                    <div>
-                        <h5 class="modal-title fw-bold mb-0">
-                            <i class="bi bi-award me-2" style="color:#E85D26;"></i>
-                            Competencias del proyecto: <span id="epcp-proj-title"></span>
-                        </h5>
-                        <small class="text-muted" id="epcp-mod-subtitle"></small>
-                    </div>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body p-0">
-                    <div class="p-3 border-bottom bg-light d-flex flex-wrap gap-2 align-items-center">
-                        <div class="input-group input-group-sm" style="max-width:260px;">
-                            <span class="input-group-text"><i class="bi bi-search"></i></span>
-                            <input type="text" class="form-control" id="epcp-search" placeholder="Buscar competencia...">
-                        </div>
-                        <select class="form-select form-select-sm w-auto" id="epcp-area-filter">
-                            <option value="">Todas las áreas</option>
-                            ${areaOptions}
-                        </select>
-                        <span class="ms-auto badge bg-light text-dark border" id="epcp-selected-count">0 seleccionadas</span>
-                    </div>
-                    <div id="epcp-list" class="p-3" style="max-height:60vh;overflow-y:auto;">
-                    </div>
-                </div>
-                <div class="modal-footer justify-content-between">
-                    <small class="text-muted"><i class="bi bi-info-circle me-1"></i>Selecciona las competencias y elige qué herramientas se evaluarán en este proyecto.</small>
-                    <div class="d-flex gap-2">
-                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                        <button type="button" class="btn btn-primary" style="background:#E85D26;border-color:#E85D26;" onclick="saveEvalProjectCompetences()">
-                            <i class="bi bi-check-lg me-1"></i>Guardar competencias
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>`;
-        document.body.appendChild(modal);
-
-        // Live filter
-        modal.querySelector('#epcp-search').addEventListener('input', _filterEvalProjPicker);
-        modal.querySelector('#epcp-area-filter').addEventListener('change', _filterEvalProjPicker);
-    }
-
-    // Update modal header
-    modal.querySelector('#epcp-proj-title').textContent = proj.name;
-    modal.querySelector('#epcp-mod-subtitle').textContent = mod.name || `Módulo ${mIdx + 1}`;
-
-    // Re-render list (fresh state)
-    _renderEvalProjPickerList();
-
-    const bsModal = bootstrap.Modal.getOrCreateInstance(modal);
-    bsModal.show();
+    // shadcn Dialog (spec 0013-h): abrir primero, poblar cuando Radix monte.
+    window._openShadcnModal?.("evalProjCompModal");
+    _whenMounted('epcp-list', () => {
+        const areaSel = document.getElementById('epcp-area-filter');
+        if (areaSel) areaSel.innerHTML = '<option value="">Todas las áreas</option>' + areaOptions;
+        // Re-enganchar filtros (el contenido se monta/desmonta con el Dialog).
+        document.getElementById('epcp-search')?.addEventListener('input', _filterEvalProjPicker);
+        document.getElementById('epcp-area-filter')?.addEventListener('change', _filterEvalProjPicker);
+        const t = document.getElementById('epcp-proj-title'); if (t) t.textContent = proj.name;
+        const s = document.getElementById('epcp-mod-subtitle'); if (s) s.textContent = mod.name || `Módulo ${mIdx + 1}`;
+        _renderEvalProjPickerList();
+    });
 }
 
 function _buildPickerRow(comp, state) {
@@ -11551,9 +11500,8 @@ async function saveEvalProjectCompetences() {
     // Also aggregate → update extendedInfo.competences for the program tab
     await _aggregateAndSyncCompetencesToProgram();
 
-    // Close modal
-    const modal = document.getElementById('eval-proj-comp-modal');
-    if (modal) bootstrap.Modal.getOrCreateInstance(modal).hide();
+    // Close modal (shadcn Dialog, spec 0013-h)
+    window._closeShadcnModal?.("evalProjCompModal");
 
     // Re-render evaluation tab to update badge count
     renderEvaluationTab();
