@@ -30,11 +30,10 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Homemade+Apple&display=swap"
           rel="stylesheet"
         />
-        {/* Bootstrap 5 JS bundle — needed for modals, toasts, dropdowns */}
-        <script
-          src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"
-          async
-        />
+        {/* Bootstrap 5 JS bundle ELIMINADO (spec 0014 Fase A): modales → shadcn Dialog;
+            toasts → showApiToast; collapse/dropdown/tabs → shim guardado en shared.js.
+            reports.js degrada a defaults (sus modales guardan window.bootstrap?.Modal).
+            El CSS de Bootstrap (arriba) se mantiene hasta el barrido de clases (Fase B). */}
         <link
           rel="icon"
           type="image/png"
