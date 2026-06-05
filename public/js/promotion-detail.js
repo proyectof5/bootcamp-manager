@@ -12072,46 +12072,13 @@ function openGroupsModal(mIdx, pIdx) {
     window._evalCurrentSaved = saved;
     _normalizeGrupalEvalKeys(saved);
 
-    // Get or create the modal
-    let modalEl = document.getElementById('groupsModal');
-    if (!modalEl) {
-        modalEl = document.createElement('div');
-        modalEl.className = 'modal fade';
-        modalEl.id = 'groupsModal';
-        modalEl.tabIndex = -1;
-        modalEl.innerHTML = `
-        <div class="modal-dialog modal-lg modal-dialog-scrollable">
-            <div class="modal-content">
-                <div class="modal-header" style="background:linear-gradient(135deg,#0ea5e9,#0284c7);color:#fff;">
-                    <h5 class="modal-title fw-bold">
-                        <i class="bi bi-diagram-3 me-2"></i>
-                        <span id="groups-modal-title">Definir grupos</span>
-                    </h5>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body" id="groups-modal-body"></div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
-                    <button type="button" class="btn btn-outline-warning" onclick="sendTeamEmailsFromGroupsModal()">
-                        <i class="bi bi-envelope me-1"></i>Notificar equipos
-                    </button>
-                    <button type="button" class="btn btn-primary" onclick="saveGroups()"
-                        style="background:#0ea5e9;border-color:#0ea5e9;">
-                        <i class="bi bi-save me-1"></i>Guardar grupos
-                    </button>
-                </div>
-            </div>
-        </div>`;
-        document.body.appendChild(modalEl);
-    }
-
-    document.getElementById('groups-modal-title').textContent =
-        `Grupos — ${escapeHtml(proj.name)} (${escapeHtml(mod.name || `Módulo ${mIdx + 1}`)})`;
-
-    // Render body AFTER modal is in the DOM
-    _renderGroupsModalBody(saved, students, mod, proj);
-
-    new bootstrap.Modal(modalEl).show();
+    // shadcn Dialog (spec 0013-h): abrir primero, poblar cuando Radix monte.
+    window._openShadcnModal?.("groupsModal");
+    _whenMounted('groups-modal-body', () => {
+        const t = document.getElementById('groups-modal-title');
+        if (t) t.textContent = `Grupos — ${proj.name} (${mod.name || `Módulo ${mIdx + 1}`})`;
+        _renderGroupsModalBody(saved, students, mod, proj);
+    });
 }
 
 function _renderGroupsModalBody(saved, students, mod, proj) {
@@ -12363,7 +12330,7 @@ async function saveGroups() {
 
     await _persistEvaluations();
 
-    bootstrap.Modal.getInstance(document.getElementById('groupsModal'))?.hide();
+    window._closeShadcnModal?.("groupsModal");
 
     // If the split view is open, refresh it; otherwise refresh the card grid
     const splitView = document.getElementById('eval-project-view');

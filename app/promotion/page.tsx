@@ -132,6 +132,12 @@ const EvalProjPickerBody = memo(function EvalProjPickerBody() {
   );
 });
 
+// #groups-modal-body lo llena _renderGroupsModalBody() imperativamente. memo (sin
+// props) lo deja opaco a React para que el contenido inyectado no se borre. spec 0013-h.
+const GroupsModalBody = memo(function GroupsModalBody() {
+  return <div id="groups-modal-body" />;
+});
+
 export default function PromotionPage() {
   const containerRef = useRef<HTMLDivElement>(null);
   const [teacherName, setTeacherName] = useState('Teacher');
@@ -1757,6 +1763,38 @@ export default function PromotionPage() {
                 Guardar competencias
               </Button>
             </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── groupsModal (definir grupos de un proyecto) ── spec 0013-h */}
+      <Dialog open={isModalOpen('groupsModal')} onOpenChange={(o) => setModalOpen('groupsModal', o)}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-crok">
+              <User className="h-5 w-5" />
+              <span id="groups-modal-title">Definir grupos</span>
+            </DialogTitle>
+          </DialogHeader>
+          <GroupsModalBody />
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button type="button" variant="outline">Cancelar</Button>
+            </DialogClose>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => (window as unknown as { sendTeamEmailsFromGroupsModal?: () => void }).sendTeamEmailsFromGroupsModal?.()}
+            >
+              Notificar equipos
+            </Button>
+            <Button
+              type="button"
+              className="bg-crok hover:bg-crok-hover text-crok-on"
+              onClick={() => (window as unknown as { saveGroups?: () => void }).saveGroups?.()}
+            >
+              Guardar grupos
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
