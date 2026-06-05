@@ -396,10 +396,7 @@
         </div>`;
     }
 
-    // ─── Helper: obtener o crear instancia de Modal ───────────────────────────
-    function _getOrCreateModalInstance(el) {
-        return bootstrap.Modal.getInstance(el) || new bootstrap.Modal(el);
-    }
+    // _getOrCreateModalInstance eliminado (spec 0014 Fase A): ya no se usa bootstrap.Modal.
 
     // ─── Abre modal para añadir competencia del catálogo ──────────────────────
     function openAddCompetenceModal() {
