@@ -12245,7 +12245,11 @@ function _addGroupInline() {
     _renderGroupsModalBody(saved, window._evalState.students);
     // Auto-open the new group's accordion
     const collapseEl = document.getElementById(`grp-collapse-${newIdx}`);
-    if (collapseEl) new bootstrap.Collapse(collapseEl, { toggle: false }).show();
+    if (collapseEl) {
+        // spec 0014 (Fase A): usa Bootstrap si está, si no toggle manual de .show.
+        if (window.bootstrap && window.bootstrap.Collapse) new bootstrap.Collapse(collapseEl, { toggle: false }).show();
+        else collapseEl.classList.add('show');
+    }
 }
 
 function _removeGroupInline(gIdx) {

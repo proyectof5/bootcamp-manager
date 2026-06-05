@@ -137,3 +137,51 @@ function showApiToast(message, type = 'danger', delay = 4000) {
     }
 }
 window.showApiToast = showApiToast;
+
+// ── spec 0014 (Fase A): shim de Bootstrap collapse/dropdown sin bundle.js ──
+// INERTE mientras bootstrap.bundle.js esté cargado (Bootstrap lo maneja; evita
+// el doble-toggle). Cuando se quite bundle.js, replica el toggle de `.show`
+// reusando el CSS de Bootstrap (que de momento sigue cargado). Cubre todas las vistas.
+(function _bootstrapJsShim() {
+  document.addEventListener('click', (e) => {
+    if (window.bootstrap) return; // Bootstrap JS presente → no interferir.
+
+    // ── collapse / accordion ──
+    const cTrigger = e.target.closest('[data-bs-toggle="collapse"]');
+    if (cTrigger) {
+      e.preventDefault();
+      const sel = cTrigger.getAttribute('data-bs-target') || cTrigger.getAttribute('href');
+      const target = sel && document.querySelector(sel);
+      if (target) {
+        const willShow = !target.classList.contains('show');
+        const parentSel = target.getAttribute('data-bs-parent'); // accordion: cerrar hermanos
+        if (parentSel && willShow) {
+          document.querySelectorAll(parentSel + ' .collapse.show').forEach((el) => {
+            if (el !== target) {
+              el.classList.remove('show');
+              document.querySelectorAll('[data-bs-target="#' + el.id + '"],[href="#' + el.id + '"]')
+                .forEach((t) => { t.classList.add('collapsed'); t.setAttribute('aria-expanded', 'false'); });
+            }
+          });
+        }
+        target.classList.toggle('show', willShow);
+        cTrigger.classList.toggle('collapsed', !willShow);
+        cTrigger.setAttribute('aria-expanded', String(willShow));
+      }
+      return;
+    }
+
+    // ── dropdown ──
+    const dTrigger = e.target.closest('[data-bs-toggle="dropdown"]');
+    // cerrar menús abiertos cuyo trigger no sea el clicado
+    document.querySelectorAll('.dropdown-menu.show').forEach((m) => {
+      const host = m.closest('.dropdown, .btn-group');
+      if (!dTrigger || !host || !host.contains(dTrigger)) m.classList.remove('show');
+    });
+    if (dTrigger) {
+      e.preventDefault();
+      const menu = dTrigger.closest('.dropdown, .btn-group')?.querySelector('.dropdown-menu');
+      if (menu) menu.classList.toggle('show');
+    }
+  });
+})();
