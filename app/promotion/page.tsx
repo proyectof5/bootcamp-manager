@@ -146,6 +146,11 @@ const AddCompetenceHost = memo(function AddCompetenceHost() {
 const ToolsEditorHost = memo(function ToolsEditorHost() {
   return <div id="tools-editor-host" />;
 });
+// Host de la ficha de student-tracking.js (spec 0014 Fase A). _showFichaModal inyecta
+// aquí el #ficha-content del template (sin el modal-header, que va en el DialogHeader).
+const FichaHost = memo(function FichaHost() {
+  return <div id="ficha-content-host" />;
+});
 
 export default function PromotionPage() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -1852,6 +1857,21 @@ export default function PromotionPage() {
               Guardar
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── fichaModal (student-tracking.js) ── spec 0014 Fase A */}
+      <Dialog open={isModalOpen('fichaModal')} onOpenChange={(o) => setModalOpen('fichaModal', o)}>
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto p-0">
+          <DialogHeader className="bg-gray-100 p-4">
+            <DialogTitle className="flex items-center gap-2">
+              <User className="h-5 w-5 text-crok" />
+              Ficha de Seguimiento del Coder
+            </DialogTitle>
+            <small className="text-text-muted" id="ficha-student-subtitle">—</small>
+          </DialogHeader>
+          {/* #ficha-content lo inyecta _showFichaModal() (sin el modal-header) */}
+          <FichaHost />
         </DialogContent>
       </Dialog>
     </div>

@@ -92,8 +92,8 @@
         _currentStudentId = studentId;
         _hasUnsavedTechnical = false;
 
-        // Mostrar spinner mientras carga
-        _showFichaModal();
+        // Mostrar spinner mientras carga (await: esperar a que el body de la ficha monte)
+        await _showFichaModal();
         _setFichaLoading(true);
 
         try {
@@ -209,20 +209,26 @@
     }
 
     function _showFichaModal() {
-        const modal = _getOrCreateModal();
-        const bsModal = bootstrap.Modal.getOrCreateInstance(modal);
-        bsModal.show();
+        // spec 0014 Fase A: shadcn Dialog. Abre y devuelve una Promise que resuelve cuando
+        // el body de la ficha está montado e inyectado (openFicha la await antes de poblar).
+        window._openShadcnModal?.('fichaModal');
+        return new Promise((resolve) => {
+            const inject = () => { _injectFichaBody(); resolve(); };
+            if (window._whenMounted) window._whenMounted('ficha-content-host', inject);
+            else setTimeout(inject, 80);
+        });
     }
 
-    function _getOrCreateModal() {
-        let modal = document.getElementById('fichaModal');
-        if (!modal) {
-            modal = document.createElement('div');
-            modal.innerHTML = _fichaModalTemplate();
-            document.body.appendChild(modal.firstElementChild);
-            modal = document.getElementById('fichaModal');
-        }
-        return modal;
+    // Inyecta el #ficha-content del template (sin el .modal-header, que vive en el
+    // DialogHeader de page.tsx) dentro del host memoizado. Opaco a React.
+    function _injectFichaBody() {
+        const host = document.getElementById('ficha-content-host');
+        if (!host) return;
+        const tmp = document.createElement('div');
+        tmp.innerHTML = _fichaModalTemplate();
+        tmp.querySelector('.modal-header')?.remove();
+        const content = tmp.querySelector('.modal-content');
+        host.innerHTML = content ? content.innerHTML : tmp.innerHTML;
     }
 
     function _fichaModalTemplate() {
