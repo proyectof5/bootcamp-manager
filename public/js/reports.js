@@ -757,8 +757,88 @@
      * Returns Promise<number|null>: the index of the selected option, or null if cancelled.
      */
     function _askWeekSelect(title, options, collaborators = []) {
-        //console.log('[Reports] Showing _askWeekSelect modal with collaborators');
         return new Promise(resolve => {
+            // spec 0014 Fase A: implementación shadcn (el bloque Bootstrap de abajo queda
+            // inalcanzable como fallback). Inyecta el body en #week-select-host (opaco a React),
+            // cablea los handlers y resuelve {weekIdx, action, ...}.
+            if (window._openShadcnModal && window._whenMounted) {
+                const id = '_week-select-modal';
+                const optHtml = options.map((opt, idx) => `<option value="${idx}">${_esc(opt.label)}</option>`).join('');
+                let collHtml = `<option value="students">✉️ Estudiantes (todos)</option>`;
+                collaborators.forEach(c => { collHtml += `<option value="${c.email}">${_esc(c.name)} (${_esc(c.email)})</option>`; });
+                collHtml += `<option value="manual">Añadir otro email manualmente...</option>`;
+                const bodyHtml = `
+      <div class="modal-body pb-2">
+        <label class="form-label fw-semibold mb-1" style="font-size:.875rem;color:#4A4A6A;">Elige la semana para el informe</label>
+        <select id="${id}-select" class="form-select mb-3" style="font-size:.875rem;">${optHtml}</select>
+        <div class="p-3 mb-2 rounded border" style="background: #f8f9fa;">
+            <div class="form-check form-switch mb-2">
+              <input class="form-check-input" type="checkbox" id="${id}-send-check">
+              <label class="form-check-label fw-semibold" for="${id}-send-check" style="color: #1A1A2E;">Enviar por email tras generar</label>
+            </div>
+            <div id="${id}-email-section" style="display:none;">
+              <label class="form-label small text-muted mb-1">Destinatario:</label>
+              <select id="${id}-dest-select" class="form-select form-select-sm mb-2" style="font-size:.8rem;">${collHtml}</select>
+              <input type="email" id="${id}-manual-email" class="form-control form-control-sm mb-2" placeholder="ejemplo@email.com" style="display:none;font-size:.8rem;">
+              <div id="${id}-format-section">
+                <label class="form-label small text-muted mb-1">Formato a enviar:</label>
+                <div class="d-flex gap-3">
+                  <div class="form-check"><input class="form-check-input" type="radio" name="${id}-format" id="${id}-format-pdf" value="pdf" checked><label class="form-check-label small" for="${id}-format-pdf"><i class="bi bi-file-earmark-pdf me-1 text-danger"></i>PDF</label></div>
+                  <div class="form-check"><input class="form-check-input" type="radio" name="${id}-format" id="${id}-format-excel" value="excel"><label class="form-check-label small" for="${id}-format-excel"><i class="bi bi-file-earmark-spreadsheet me-1 text-success"></i>Excel</label></div>
+                </div>
+              </div>
+            </div>
+        </div>
+        <div class="form-text mt-1 text-muted small">Al elegir "Enviar", el sistema generará el informe y lo hará llegar por email al destino seleccionado.</div>
+      </div>
+      <div class="modal-footer pt-1">
+        <button type="button" class="btn btn-outline-secondary btn-sm" onclick="window._closeShadcnModal && window._closeShadcnModal('weekSelectModal')"><i class="bi bi-x me-1"></i>Cancelar</button>
+        <button type="button" class="btn btn-sm" id="${id}-excel-btn" style="background:#1D6F42;color:#fff;border:none;"><i class="bi bi-file-earmark-spreadsheet me-1"></i>Descargar Excel</button>
+        <button type="button" class="btn btn-sm" id="${id}-download-btn" style="background:#f1f3f5;color:#4A4A6A;border:1px solid #dee2e6;"><i class="bi bi-download me-1"></i>Descargar PDF</button>
+        <button type="button" class="btn btn-sm" id="${id}-send-btn" style="background:#FF6B35;color:#fff;border:none;display:none;"><i class="bi bi-send me-1"></i>Generar y Enviar</button>
+      </div>`;
+                let settled = false;
+                const settle = (res) => { if (settled) return; settled = true; window.__weekSelectOnClose = null; resolve(res); };
+                window.__weekSelectOnClose = () => settle(null); // Esc/overlay/X/Cancelar → cancelado
+                window._openShadcnModal('weekSelectModal');
+                window._whenMounted('week-select-host', () => {
+                    const host = document.getElementById('week-select-host');
+                    if (!host) { settle(options.length ? { weekIdx: 0, action: 'download' } : null); return; }
+                    host.innerHTML = bodyHtml;
+                    const g = (s) => document.getElementById(`${id}-${s}`);
+                    const sendCheck = g('send-check'), emailSec = g('email-section'), destSel = g('dest-select'),
+                          manualIn = g('manual-email'), formatSec = g('format-section'),
+                          downBtn = g('download-btn'), excelBtn = g('excel-btn'), sendBtn = g('send-btn');
+                    const wk = () => { const v = parseInt(g('select').value, 10); return isNaN(v) ? 0 : v; };
+                    const close = () => window._closeShadcnModal && window._closeShadcnModal('weekSelectModal');
+                    sendCheck?.addEventListener('change', () => {
+                        const c = sendCheck.checked;
+                        emailSec.style.display = c ? 'block' : 'none';
+                        sendBtn.style.display = c ? 'inline-block' : 'none';
+                        downBtn.style.display = c ? 'none' : 'inline-block';
+                        excelBtn.style.display = c ? 'none' : 'inline-block';
+                    });
+                    destSel?.addEventListener('change', () => {
+                        const v = destSel.value;
+                        manualIn.style.display = (v === 'manual') ? 'block' : 'none';
+                        formatSec.style.display = (v === 'students') ? 'none' : 'block';
+                    });
+                    downBtn?.addEventListener('click', () => { settle({ weekIdx: wk(), action: 'download' }); close(); });
+                    excelBtn?.addEventListener('click', () => { settle({ weekIdx: wk(), action: 'excel' }); close(); });
+                    sendBtn?.addEventListener('click', () => {
+                        const dest = destSel.value;
+                        if (dest === 'students') { settle({ weekIdx: wk(), action: 'send-students' }); close(); return; }
+                        let email = dest;
+                        if (email === 'manual') { email = manualIn.value.trim(); if (!email || !email.includes('@')) { alert('Por favor, indica un email válido.'); return; } }
+                        const fr = document.querySelector(`input[name="${id}-format"]:checked`);
+                        settle({ weekIdx: wk(), action: 'send', email, sendFormat: fr ? fr.value : 'pdf' });
+                        close();
+                    });
+                });
+                return;
+            }
+
+            //console.log('[Reports] Showing _askWeekSelect modal with collaborators');
             const openModalEl   = document.querySelector('.modal.show');
             const openModalInst = openModalEl ? (window.bootstrap?.Modal.getInstance(openModalEl) || null) : null;
             if (openModalInst) openModalInst.hide();

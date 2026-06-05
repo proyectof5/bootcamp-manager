@@ -151,6 +151,10 @@ const ToolsEditorHost = memo(function ToolsEditorHost() {
 const FichaHost = memo(function FichaHost() {
   return <div id="ficha-content-host" />;
 });
+// Host del modal de config de informe (reports.js _askWeekSelect). spec 0014 Fase A.
+const WeekSelectHost = memo(function WeekSelectHost() {
+  return <div id="week-select-host" />;
+});
 
 export default function PromotionPage() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -1893,6 +1897,28 @@ export default function PromotionPage() {
           </DialogHeader>
           {/* #ficha-content lo inyecta _showFichaModal() (sin el modal-header) */}
           <FichaHost />
+        </DialogContent>
+      </Dialog>
+
+      {/* ── weekSelectModal (reports.js _askWeekSelect, config de informe) ── spec 0014 Fase A */}
+      <Dialog
+        open={isModalOpen('weekSelectModal')}
+        onOpenChange={(o) => {
+          if (!o) {
+            (window as unknown as { __weekSelectOnClose?: () => void }).__weekSelectOnClose?.();
+            setModalOpen('weekSelectModal', false);
+          }
+        }}
+      >
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto p-0">
+          <DialogHeader className="p-4 pb-0">
+            <DialogTitle className="flex items-center gap-2 text-crok">
+              <ClipboardCheck className="h-5 w-5" />
+              Seleccionar Semana
+            </DialogTitle>
+          </DialogHeader>
+          {/* body inyectado por _askWeekSelect() */}
+          <WeekSelectHost />
         </DialogContent>
       </Dialog>
     </div>
