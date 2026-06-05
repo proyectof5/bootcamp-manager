@@ -6178,48 +6178,15 @@ async function sendEvaluationToAllStudents() {
  * @param {string} [confirmLabel='Aceptar']
  */
 function _showInputModal(fields, title, onConfirm, confirmLabel = 'Aceptar') {
-    const existingModal = document.getElementById('_globalInputModal');
-    if (existingModal) existingModal.remove();
-    const id = '_globalInputModal';
-    const fieldsHtml = fields.map(f => `
-        <div class="mb-3">
-            <label class="form-label small fw-semibold" for="${id}-${f.id}">${escapeHtml(f.label)}</label>
-            <input type="${f.type || 'text'}" class="form-control form-control-sm" id="${id}-${f.id}"
-                placeholder="${escapeHtml(f.placeholder || '')}" value="${escapeHtml(f.value || '')}">
-        </div>`).join('');
-    const html = `
-    <div class="modal fade" id="${id}" tabindex="-1" aria-hidden="true">
-      <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-          <div class="modal-header py-2 px-3 border-bottom">
-            <span class="fw-semibold small">${escapeHtml(title)}</span>
-            <button type="button" class="btn-close btn-sm" data-bs-dismiss="modal"></button>
-          </div>
-          <div class="modal-body py-3 px-3">${fieldsHtml}</div>
-          <div class="modal-footer border-0 pt-0">
-            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
-            <button type="button" class="btn btn-primary btn-sm" id="${id}-confirm">${escapeHtml(confirmLabel)}</button>
-          </div>
-        </div>
-      </div>
-    </div>`;
-    document.body.insertAdjacentHTML('beforeend', html);
-    const modalEl = document.getElementById(id);
-    const modal = new bootstrap.Modal(modalEl);
-    document.getElementById(`${id}-confirm`).addEventListener('click', () => {
+    // shadcn Dialog (spec 0013): delega en el input dialog de React (page.tsx).
+    if (window.__showInputDialog) {
+        window.__showInputDialog({ fields, title, onConfirm, confirmLabel });
+    } else {
+        // Fallback minimal: prompt nativo por campo.
         const values = {};
-        fields.forEach(f => { values[f.id] = document.getElementById(`${id}-${f.id}`)?.value || ''; });
-        modal.hide();
+        for (const f of fields) values[f.id] = window.prompt(f.label, f.value || '') || '';
         onConfirm(values);
-    });
-    // Submit on Enter in inputs
-    modalEl.querySelectorAll('input').forEach(inp => {
-        inp.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); document.getElementById(`${id}-confirm`).click(); } });
-    });
-    modalEl.addEventListener('hidden.bs.modal', () => modalEl.remove());
-    modal.show();
-    // Focus first input
-    modalEl.addEventListener('shown.bs.modal', () => { document.getElementById(`${id}-${fields[0]?.id}`)?.focus(); }, { once: true });
+    }
 }
 
 /**

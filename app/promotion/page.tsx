@@ -155,6 +155,35 @@ export default function PromotionPage() {
       });
   }, []);
 
+  // ── Input dialog reutilizable (reemplaza el _showInputModal de Bootstrap) ──
+  type InputField = { id: string; label: string; placeholder?: string; value?: string; type?: string };
+  const [inputDialog, setInputDialog] = useState<{
+    fields: InputField[];
+    title: string;
+    onConfirm: (values: Record<string, string>) => void;
+    confirmLabel: string;
+  } | null>(null);
+  const [inputValues, setInputValues] = useState<Record<string, string>>({});
+  useEffect(() => {
+    (window as unknown as {
+      __showInputDialog?: (o: {
+        fields: InputField[];
+        title: string;
+        onConfirm: (v: Record<string, string>) => void;
+        confirmLabel?: string;
+      }) => void;
+    }).__showInputDialog = (o) => {
+      setInputValues(Object.fromEntries(o.fields.map((f) => [f.id, f.value || ''])));
+      setInputDialog({ fields: o.fields, title: o.title, onConfirm: o.onConfirm, confirmLabel: o.confirmLabel || 'Aceptar' });
+    };
+  }, []);
+  const submitInputDialog = () => {
+    const cb = inputDialog?.onConfirm;
+    const vals = inputValues;
+    setInputDialog(null);
+    cb?.(vals);
+  };
+
   useEffect(() => {
     // ── Inject CSS files not in globals.css ──────────────────────────────
     if (!cssInjected) {
@@ -1638,6 +1667,42 @@ export default function PromotionPage() {
               }}
             >
               {confirmDialog?.confirmLabel ?? 'Confirmar'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Input dialog reutilizable (reemplaza _showInputModal de Bootstrap) ── spec 0013 */}
+      <Dialog open={!!inputDialog} onOpenChange={(o) => { if (!o) setInputDialog(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>{inputDialog?.title ?? ''}</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            {inputDialog?.fields.map((f) => (
+              <div key={f.id} className="space-y-1">
+                <Label htmlFor={`__inp-${f.id}`}>{f.label}</Label>
+                <Input
+                  id={`__inp-${f.id}`}
+                  type={f.type || 'text'}
+                  placeholder={f.placeholder || ''}
+                  value={inputValues[f.id] ?? ''}
+                  onChange={(e) => setInputValues((v) => ({ ...v, [f.id]: e.target.value }))}
+                  onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); submitInputDialog(); } }}
+                />
+              </div>
+            ))}
+          </div>
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setInputDialog(null)}>
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              className="bg-crok hover:bg-crok-hover text-crok-on"
+              onClick={submitInputDialog}
+            >
+              {inputDialog?.confirmLabel ?? 'Aceptar'}
             </Button>
           </DialogFooter>
         </DialogContent>
