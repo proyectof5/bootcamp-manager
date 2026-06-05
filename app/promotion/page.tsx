@@ -129,6 +129,32 @@ export default function PromotionPage() {
     window._closeShadcnModal = (id) => setModalOpen(id, false);
   }, [setModalOpen]);
 
+  // ── Confirm reutilizable (reemplaza el _showConfirmModal de Bootstrap) ──
+  // El JS legacy llama window.__showConfirmDialog({...}); aquí se renderiza un
+  // shadcn Dialog en vez de un bootstrap.Modal dinámico. spec 0013.
+  const [confirmDialog, setConfirmDialog] = useState<{
+    htmlMessage: string;
+    onConfirm: () => void;
+    confirmLabel: string;
+    confirmClass: string;
+  } | null>(null);
+  useEffect(() => {
+    (window as unknown as {
+      __showConfirmDialog?: (o: {
+        htmlMessage: string;
+        onConfirm: () => void;
+        confirmLabel?: string;
+        confirmClass?: string;
+      }) => void;
+    }).__showConfirmDialog = (o) =>
+      setConfirmDialog({
+        htmlMessage: o.htmlMessage,
+        onConfirm: o.onConfirm,
+        confirmLabel: o.confirmLabel || 'Confirmar',
+        confirmClass: o.confirmClass || 'btn-danger',
+      });
+  }, []);
+
   useEffect(() => {
     // ── Inject CSS files not in globals.css ──────────────────────────────
     if (!cssInjected) {
@@ -1580,6 +1606,38 @@ export default function PromotionPage() {
             >
               <Save className="mr-1 h-4 w-4" />
               Guardar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── Confirm reutilizable (reemplaza _showConfirmModal de Bootstrap) ── spec 0013 */}
+      <Dialog open={!!confirmDialog} onOpenChange={(o) => { if (!o) setConfirmDialog(null); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Confirmar</DialogTitle>
+          </DialogHeader>
+          {confirmDialog && (
+            <div dangerouslySetInnerHTML={{ __html: confirmDialog.htmlMessage }} />
+          )}
+          <DialogFooter>
+            <Button type="button" variant="outline" onClick={() => setConfirmDialog(null)}>
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              className={
+                confirmDialog?.confirmClass?.includes('danger')
+                  ? 'bg-danger text-white hover:opacity-90'
+                  : 'bg-crok hover:bg-crok-hover text-crok-on'
+              }
+              onClick={() => {
+                const cb = confirmDialog?.onConfirm;
+                setConfirmDialog(null);
+                cb?.();
+              }}
+            >
+              {confirmDialog?.confirmLabel ?? 'Confirmar'}
             </Button>
           </DialogFooter>
         </DialogContent>

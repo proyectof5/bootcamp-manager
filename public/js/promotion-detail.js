@@ -15295,31 +15295,13 @@ const _bgTaskManager = (() => {
  * @param {string} [confirmClass='btn-danger'] - Bootstrap class for the confirm button
  */
 function _showConfirmModal(htmlMessage, onConfirm, confirmLabel = 'Confirmar', confirmClass = 'btn-danger') {
-    const existingModal = document.getElementById('_globalConfirmModal');
-    if (existingModal) existingModal.remove();
-
-    const id = '_globalConfirmModal';
-    const html = `
-    <div class="modal fade" id="${id}" tabindex="-1" aria-hidden="true">
-      <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content">
-          <div class="modal-body py-4 px-4">${htmlMessage}</div>
-          <div class="modal-footer border-0 pt-0">
-            <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Cancelar</button>
-            <button type="button" class="btn ${confirmClass} btn-sm" id="${id}-confirm">${confirmLabel}</button>
-          </div>
-        </div>
-      </div>
-    </div>`;
-    document.body.insertAdjacentHTML('beforeend', html);
-    const modalEl = document.getElementById(id);
-    const modal = new bootstrap.Modal(modalEl);
-    document.getElementById(`${id}-confirm`).addEventListener('click', () => {
-        modal.hide();
+    // shadcn Dialog (spec 0013): delega en el confirm de React expuesto por page.tsx.
+    // Fallback a confirm() nativo si aún no está montado.
+    if (window.__showConfirmDialog) {
+        window.__showConfirmDialog({ htmlMessage, onConfirm, confirmLabel, confirmClass });
+    } else if (window.confirm(String(htmlMessage).replace(/<[^>]+>/g, ''))) {
         onConfirm();
-    });
-    modalEl.addEventListener('hidden.bs.modal', () => modalEl.remove());
-    modal.show();
+    }
 }
 
 function showToast(message, type = 'info') {
