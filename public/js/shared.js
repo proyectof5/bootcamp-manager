@@ -171,6 +171,27 @@ window.showApiToast = showApiToast;
       return;
     }
 
+    // ── tab (nav-tabs / nav-pills) ──
+    const tabTrigger = e.target.closest('[data-bs-toggle="tab"], [data-bs-toggle="pill"]');
+    if (tabTrigger) {
+      e.preventDefault();
+      const sel = tabTrigger.getAttribute('data-bs-target') || tabTrigger.getAttribute('href');
+      const pane = sel && document.querySelector(sel);
+      const tabList = tabTrigger.closest('[role="tablist"], .nav');
+      if (tabList) {
+        tabList.querySelectorAll('.nav-link.active, [role="tab"].active').forEach((t) => {
+          t.classList.remove('active'); t.setAttribute('aria-selected', 'false');
+        });
+      }
+      tabTrigger.classList.add('active');
+      tabTrigger.setAttribute('aria-selected', 'true');
+      if (pane && pane.parentElement) {
+        pane.parentElement.querySelectorAll(':scope > .tab-pane').forEach((p) => p.classList.remove('active', 'show'));
+        pane.classList.add('active', 'show');
+      }
+      return;
+    }
+
     // ── dropdown ──
     const dTrigger = e.target.closest('[data-bs-toggle="dropdown"]');
     // cerrar menús abiertos cuyo trigger no sea el clicado
