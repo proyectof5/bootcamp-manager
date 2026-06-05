@@ -421,10 +421,8 @@ __onDomReady( () => {
         initEmployabilityModal();
         // initProfileModal removido (spec 0013-b): profileModal es shadcn Dialog.
 
-        // Wire funder Enter key
-        document.getElementById('acta-funder-input')?.addEventListener('keydown', e => {
-            if (e.key === 'Enter') { e.preventDefault(); actaAddFunder(); }
-        });
+        // funder Enter key: se engancha dentro de openActaModal (spec 0013-g),
+        // porque el input vive en un shadcn Dialog y no existe al DOM-ready.
 
         // 1. Load Promotion basics (Populates modules list for all other components)
         // Always resolve the local DB UUID via /api/me so that teacherId comparisons work correctly,
@@ -2491,6 +2489,15 @@ function _actaToday() {
 function openActaModal() {
     const d = extendedInfoData;
 
+    // shadcn Dialog (spec 0013-g): abrir primero, poblar cuando Radix monte.
+    window._openShadcnModal?.("actaInicioModal");
+    _whenMounted('acta-school', () => {
+    // Re-enganchar el Enter del input de financiadores: en shadcn el input vive
+    // en el Dialog y no existe al DOM-ready (cada apertura monta uno nuevo).
+    document.getElementById('acta-funder-input')?.addEventListener('keydown', e => {
+        if (e.key === 'Enter') { e.preventDefault(); actaAddFunder(); }
+    });
+
     // Simple fields
     document.getElementById('acta-school').value = d.school || '';
     document.getElementById('acta-project-type').value = d.projectType || 'Bootcamp';
@@ -2579,8 +2586,7 @@ function openActaModal() {
     document.getElementById('acta-approval-name').value = d.approvalName || '';
     document.getElementById('acta-approval-role').value = d.approvalRole || '';
 
-    const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('actaInicioModal'));
-    modal.show();
+    });
 }
 
 // (funder Enter key is wired inside the main DOMContentLoaded block)
@@ -2673,7 +2679,7 @@ async function saveActaData() {
             body: JSON.stringify(actaPayload)
         });
         if (response.ok) {
-            bootstrap.Modal.getInstance(document.getElementById('actaInicioModal'))?.hide();
+            window._closeShadcnModal?.("actaInicioModal");
             window.showApiToast('Acta de inicio guardada correctamente', 'success');
         } else {
             const err = await response.json().catch(() => ({}));

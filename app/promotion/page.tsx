@@ -45,6 +45,7 @@ import {
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 
 import promotionDetailBody from './body';
+import actaInicioFormHtml from './acta-inicio-body';
 
 // ── CSS injected once ────────────────────────────────────────────────────────
 let cssInjected = false;
@@ -97,6 +98,15 @@ declare global {
 const LegacyBody = memo(function LegacyBody() {
   return (
     <div suppressHydrationWarning dangerouslySetInnerHTML={{ __html: promotionDetailBody }} />
+  );
+});
+
+// El form de Acta de Inicio se inyecta una sola vez (memo) dentro de su Dialog.
+// Al ser opaco a React, el JS legacy (openActaModal) puede poblar/appendChild sin
+// que un re-render lo borre. spec 0013-g.
+const ActaInicioBody = memo(function ActaInicioBody() {
+  return (
+    <div suppressHydrationWarning dangerouslySetInnerHTML={{ __html: actaInicioFormHtml }} />
   );
 });
 
@@ -1527,6 +1537,49 @@ export default function PromotionPage() {
               onClick={() => (window as unknown as { addCollaboratorById?: () => void }).addCollaboratorById?.()}
             >
               Agregar Colaborador
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── actaInicioModal (datos confidenciales) ── spec 0013-g */}
+      <Dialog
+        open={isModalOpen('actaInicioModal')}
+        onOpenChange={(o) => setModalOpen('actaInicioModal', o)}
+      >
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-crok">
+              <ShieldCheck className="h-5 w-5" />
+              Acta de Inicio — Datos Confidenciales
+            </DialogTitle>
+            <p className="text-text-muted text-xs">
+              Solo visible para el equipo. No se muestra a los estudiantes.
+            </p>
+          </DialogHeader>
+          {/* form inyectado una sola vez (memo); poblado por openActaModal() */}
+          <ActaInicioBody />
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button type="button" variant="outline">Cancelar</Button>
+            </DialogClose>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                const id = new URLSearchParams(window.location.search).get('id');
+                (window as unknown as { Reports?: { printActaInicio?: (id: string | null) => void } }).Reports?.printActaInicio?.(id);
+              }}
+            >
+              Generar PDF
+            </Button>
+            <Button
+              type="button"
+              className="bg-crok hover:bg-crok-hover text-crok-on"
+              onClick={() => (window as unknown as { saveActaData?: () => void }).saveActaData?.()}
+            >
+              <Save className="mr-1 h-4 w-4" />
+              Guardar
             </Button>
           </DialogFooter>
         </DialogContent>
