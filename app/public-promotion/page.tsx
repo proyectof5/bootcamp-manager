@@ -12,11 +12,6 @@ import {
   Map,
   PlayCircle,
   Laptop,
-  Video,
-  MessageSquare,
-  Code2,
-  Globe,
-  ExternalLink,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -59,14 +54,16 @@ const API_URL = getApiUrl();
 
 type Access = 'checking' | 'password' | 'ready' | 'notfound';
 
-function platformIcon(link: PPQuickLink): { Icon: React.ComponentType<{ className?: string }>; color: string } {
+// Iconos de marca vía bootstrap-icons (la fuente .bi sigue cargada en layout.tsx),
+// fieles al legacy: logos reales de GitHub/Discord/Zoom en vez de genéricos lucide.
+function platformIcon(link: PPQuickLink): { icon: string; color: string } {
   const name = (link.name || '').toLowerCase();
   const platform = (link.platform || '').toLowerCase();
-  if (platform === 'zoom' || name.includes('zoom')) return { Icon: Video, color: '#2D8CFF' };
-  if (platform === 'discord' || name.includes('discord')) return { Icon: MessageSquare, color: '#5865F2' };
-  if (platform === 'github' || name.includes('github')) return { Icon: Code2, color: '#333' };
-  if (name.includes('meet')) return { Icon: Globe, color: '#ea4335' };
-  return { Icon: ExternalLink, color: 'var(--principal-1)' };
+  if (platform === 'zoom' || name.includes('zoom')) return { icon: 'bi-camera-video', color: '#2D8CFF' };
+  if (platform === 'discord' || name.includes('discord')) return { icon: 'bi-discord', color: '#5865F2' };
+  if (platform === 'github' || name.includes('github')) return { icon: 'bi-github', color: '#333' };
+  if (name.includes('meet')) return { icon: 'bi-google', color: '#ea4335' };
+  return { icon: 'bi-box-arrow-up-right', color: 'var(--principal-1)' };
 }
 
 function formatDateShort(d?: string): string {
@@ -413,14 +410,16 @@ export default function PublicPromotionPage() {
                   <h5>Acciones Rápidas</h5>
                 </div>
                 <div className="pp-section-body">
-                  <div className="flex flex-wrap gap-3">
+                  <div id="quick-links-list" className="flex flex-wrap gap-3">
                     {quickLinks.map((link, i) => {
-                      const { Icon, color } = platformIcon(link);
+                      const { icon, color } = platformIcon(link);
                       return (
-                        <a key={i} href={link.url} target="_blank" rel="noopener noreferrer" title={link.name} className="quick-action-link">
-                          <div className="quick-action-icon" style={{ color }}><Icon className="h-5 w-5" /></div>
-                          <div className="quick-action-label">{link.name}</div>
-                        </a>
+                        <div key={i} className="quick-action-card">
+                          <a href={link.url} target="_blank" rel="noopener noreferrer" title={link.name} className="quick-action-link">
+                            <div className="quick-action-icon" style={{ color }}><i className={`bi ${icon}`} /></div>
+                            <div className="quick-action-label">{link.name}</div>
+                          </a>
+                        </div>
                       );
                     })}
                   </div>
