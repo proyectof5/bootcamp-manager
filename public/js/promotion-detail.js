@@ -472,13 +472,9 @@ __onDomReady( () => {
         loadPromoResources();
 
         // 4. Feature modules
-        if (typeof NotesManager !== 'undefined' && typeof NotesUI !== 'undefined') {
-            const notesManager = new NotesManager('promotionNotes', promotionId);
-            const notesUI = new NotesUI(notesManager, 'notes-container');
-            notesUI.init(); // async: loads shared notes from server then renders
-            window.notesManager = notesManager;
-            window.notesUI = notesUI;
-        }
+        // Bloc de notas migrado a React (spec 0014 Fase C): lo monta
+        // <NotesPanelHost> en app/promotion/page.tsx vía portal a #notes-container.
+        // (NotesManager/NotesUI de notes.js eliminados.)
 
         if (typeof window.StudentTracking !== 'undefined') {
             window.StudentTracking.init(promotionId);

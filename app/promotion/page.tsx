@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback, memo } from 'react';
+import { NotesPanelHost } from './_components/NotesPanel';
 import {
   Menu,
   CircleUser,
@@ -287,7 +288,6 @@ export default function PromotionPage() {
         await loadScript('/js/config.js');
         await loadScript('/js/shared.js');
         await loadScript('/js/sidebar-desktop-toggle.js');
-        await loadScript('/js/notes.js');
         await loadScript('/js/reports.js');
         await loadScript('/js/syllabus-pdf.js');
         await loadScript('/js/program-competences.js');
@@ -446,6 +446,10 @@ export default function PromotionPage() {
       {/* Inyectado UNA sola vez vía <LegacyBody> memoizado (def. arriba) para que
           un re-render no re-inyecte y borre el DOM que manipula el JS legacy. */}
       <LegacyBody />
+
+      {/* Bloc de notas (spec 0014 Fase C): React portal a #notes-container,
+          reemplaza public/js/notes.js (NotesManager/NotesUI). */}
+      <NotesPanelHost />
 
       {/* ──────────────────────────────────────────────────────────────────────
           MODALES SHADCN (spec 0013-b en adelante)
