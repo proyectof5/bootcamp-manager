@@ -11,6 +11,7 @@ import {
   Zap,
   Map,
   PlayCircle,
+  Laptop,
   Video,
   MessageSquare,
   Code2,
@@ -40,6 +41,7 @@ import {
 } from './_components/InfoSections';
 import { PildorasSection } from './_components/Pildoras';
 import { CompetencesSection } from './_components/Competences';
+import { AulaVirtual } from './_components/AulaVirtual';
 import type {
   PPPromotion,
   PPQuickLink,
@@ -48,6 +50,7 @@ import type {
   PPSection,
   PPPromoResource,
   PPExtendedInfo,
+  PPVirtualClassroom,
 } from './_components/types';
 
 import './public-promotion.css';
@@ -86,6 +89,8 @@ export default function PublicPromotionPage() {
   const [sections, setSections] = useState<PPSection[]>([]);
   const [promoResources, setPromoResources] = useState<PPPromoResource[]>([]);
   const [extended, setExtended] = useState<PPExtendedInfo | null>(null);
+  const [vc, setVc] = useState<PPVirtualClassroom | null>(null);
+  const [aulaOpen, setAulaOpen] = useState(false);
 
   const [activeTab, setActiveTab] = useState<'progreso' | 'info'>('progreso');
 
@@ -111,6 +116,8 @@ export default function PublicPromotionPage() {
       get<PPPromoResource[]>('/promotion-resources', []),
       get<PPExtendedInfo | null>(`/extended-info?t=${Date.now()}`, null),
     ]);
+    const vcData = await get<PPVirtualClassroom | null>('/virtual-classroom', null);
+    setVc(vcData && vcData.active ? vcData : null);
     if (promo) {
       setPromotion(promo);
       document.title = `${promo.name} - Bootcamp`;
@@ -289,6 +296,21 @@ export default function PublicPromotionPage() {
     return <div className="alert alert-danger m-5">Promotion not found</div>;
   }
 
+  // Aula Virtual ocupa toda la vista (como "página") cuando se abre
+  if (aulaOpen && vc && promotionId) {
+    return (
+      <div style={{ flex: '1 1 100%', width: '100%', minHeight: '100vh' }}>
+        <div className="container">
+          <div className="row">
+            <main className="col-12 py-4">
+              <AulaVirtual vc={vc} students={students} promotionId={promotionId} onClose={() => setAulaOpen(false)} />
+            </main>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   const sub = promotion?.startDate && promotion?.endDate
     ? `${formatDateShort(promotion.startDate)} → ${formatDateShort(promotion.endDate)}`
     : '';
@@ -403,6 +425,15 @@ export default function PublicPromotionPage() {
                     })}
                   </div>
                 </div>
+              </div>
+            )}
+
+            {/* ── CTA Aula Virtual ── */}
+            {vc && (
+              <div className="mb-4">
+                <button type="button" className="pp-cta-btn inline-flex items-center gap-2" onClick={() => setAulaOpen(true)}>
+                  <Laptop className="h-4 w-4" />Ir al Aula Virtual
+                </button>
               </div>
             )}
 

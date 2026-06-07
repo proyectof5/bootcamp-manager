@@ -140,6 +140,49 @@ export interface PPExtendedInfo {
   projectCompetences?: PPProjectCompetence[];
 }
 
+// ── Aula Virtual ──
+export interface PPVCTool {
+  name: string;
+  description?: string;
+  indicators?: { name: string; levelId: number }[];
+}
+export interface PPVCCompetence {
+  name?: string;
+  area?: string;
+  description?: string;
+  levels?: PPLevel[];
+  competenceIndicators?: {
+    initial?: (string | { name?: string })[];
+    medio?: (string | { name?: string })[];
+    advance?: (string | { name?: string })[];
+  };
+  toolsWithIndicators?: PPVCTool[];
+}
+export interface PPVCGroup {
+  groupName: string;
+  studentIds?: string[];
+}
+export interface PPVirtualClassroom {
+  active: boolean;
+  projectType?: string;
+  project?: { projectName?: string };
+  briefingUrl?: string;
+  dueDate?: string;
+  competences?: PPVCCompetence[];
+  repoBaseUrl?: string;
+  groups?: PPVCGroup[];
+}
+export interface PPSubmission {
+  targetId: string;
+  submissionLink: string;
+  submittedAt?: string;
+  submissionStatus?: string;
+}
+
+export function indName(i: string | { name?: string }): string {
+  return typeof i === 'string' ? i : i.name || '';
+}
+
 export const PROMO_RES_META: Record<string, { color: string; label: string }> = {
   video: { color: '#dc3545', label: 'Vídeo' },
   repository: { color: '#212529', label: 'Repositorio' },
