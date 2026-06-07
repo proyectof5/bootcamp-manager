@@ -11,6 +11,13 @@ const config: Config = {
     './public/js/**/*.js',
   ],
 
+  // Al escanear public/js (legacy), Tailwind veía la clase `collapse` (que el
+  // legacy usa como COMPONENTE Bootstrap de colapso) y generaba su utilidad
+  // `.collapse{visibility:collapse!important}`, que con important:true ocultaba
+  // el contenido de TODOS los acordeones/colapsos del legacy. La bloqueamos:
+  // el colapso lo maneja bootstrap-compat.css (display) + el shim de shared.js.
+  blocklist: ['collapse'],
+
   // Convivencia con Bootstrap durante la migración (specs 0008-0013).
   // Reactivar (quitar esta línea) en el spec 0014 cuando se quite Bootstrap.
   corePlugins: { preflight: false },
