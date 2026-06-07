@@ -4,7 +4,11 @@ const config: Config = {
   content: [
     './app/**/*.{ts,tsx,js,jsx,mdx}',
     './components/**/*.{ts,tsx,js,jsx}',
-    // public/js/ NO entra: es vanilla legacy con clases Bootstrap.
+    // spec 0014 Fase B: ahora que NO está Bootstrap, las clases utilitarias
+    // que comparten nombre con Tailwind (mb-*, ps-*, pe-*, ms-*, gap-*…) usadas
+    // SOLO en el JS legacy ya no las provee Bootstrap → hay que escanearlas para
+    // que Tailwind las emita. (Antes se excluía porque Bootstrap las cubría.)
+    './public/js/**/*.js',
   ],
 
   // Convivencia con Bootstrap durante la migración (specs 0008-0013).

@@ -14,10 +14,17 @@ export default function RootLayout({
   return (
     <html lang="es">
       <head>
+        {/* Bootstrap 5 CSS (CDN) ELIMINADO — spec 0014 Fase B.
+            Lo reemplaza css/bootstrap-compat.css (importado en globals.css):
+            Reboot + utilidades/componentes Bootstrap-only que la app usa.
+            Para REVERTIR temporalmente, descomenta este <link>:
         <link
           href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
           rel="stylesheet"
         />
+        */}
+        {/* bootstrap-icons (fuente .bi) se MANTIENE: migrar iconos a lucide es
+            una decisión aparte, fuera del alcance de Fase B. */}
         <link
           href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css"
           rel="stylesheet"

@@ -20,6 +20,12 @@
 @import url('../css/style.css');
 @import url('../css/dashboard.css');
 @import url('../css/promotion-detail.css');
+/* Fase B (spec 0014): capa de compatibilidad que reimplementa las clases
+   Bootstrap-ONLY usadas en el HTML legacy. Va DESPUÉS de design-system.css
+   (consume sus --bs-*) y ANTES de @tailwind (Tailwind gana en clases
+   compartidas vía important:true). Mientras el CDN de Bootstrap siga en
+   layout.tsx ambos coexisten; al quitar el CDN esta capa toma el relevo. */
+@import url('../css/bootstrap-compat.css');
 
 /* ── 2. Tailwind directives ─────────────────────────────────────────────── */
 @tailwind base;
