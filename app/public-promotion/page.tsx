@@ -38,6 +38,8 @@ import {
   ProgramResourcesSection,
   InternalResourcesSection,
 } from './_components/InfoSections';
+import { PildorasSection } from './_components/Pildoras';
+import { CompetencesSection } from './_components/Competences';
 import type {
   PPPromotion,
   PPQuickLink,
@@ -121,6 +123,31 @@ export default function PublicPromotionPage() {
     setExtended(ext);
     setAccess('ready');
   }, []);
+
+  // Recarga solo extended-info (tras auto-asignarse a una píldora, y por polling)
+  const reloadExtended = useCallback(async (id: string) => {
+    try {
+      const r = await fetch(`${API_URL}/api/promotions/${id}/extended-info?t=${Date.now()}`);
+      if (r.ok) setExtended(await r.json());
+    } catch {
+      /* noop */
+    }
+  }, []);
+
+  // Polling de extended-info cada 30s (estado de auto-asignación de píldoras),
+  // en pausa cuando la pestaña está oculta.
+  useEffect(() => {
+    if (access !== 'ready' || !promotionId) return;
+    let timer: ReturnType<typeof setInterval> | null = null;
+    const start = () => { timer = setInterval(() => reloadExtended(promotionId), 30000); };
+    const onVis = () => {
+      if (document.hidden) { if (timer) clearInterval(timer); timer = null; }
+      else if (!timer) { reloadExtended(promotionId); start(); }
+    };
+    start();
+    document.addEventListener('visibilitychange', onVis);
+    return () => { if (timer) clearInterval(timer); document.removeEventListener('visibilitychange', onVis); };
+  }, [access, promotionId, reloadExtended]);
 
   // ── Flujo de acceso (preview / pwd en URL / contraseña) ──
   useEffect(() => {
@@ -235,6 +262,27 @@ export default function PublicPromotionPage() {
       }
     }
     return { active, pct, weeksDone, weeksLeft, totalWeeks };
+  })();
+
+  // Próxima píldora (de modulesPildoras o legacy)
+  const nextPildora = (() => {
+    if (!extended) return null;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const fromModules = (extended.modulesPildoras || []).filter((mp) => mp.pildoras?.length);
+    const all = fromModules.length ? fromModules.flatMap((mp) => mp.pildoras || []) : extended.pildoras || [];
+    let best: { title?: string; date?: string; mode?: string } | null = null;
+    let bestDate: Date | null = null;
+    all.forEach((p) => {
+      if (!p.date || !p.date.trim()) return;
+      const d = new Date(p.date);
+      d.setHours(0, 0, 0, 0);
+      if (d >= today && (!bestDate || d < bestDate)) {
+        bestDate = d;
+        best = p;
+      }
+    });
+    return best;
   })();
 
   if (access === 'notfound') {
@@ -366,8 +414,15 @@ export default function PublicPromotionPage() {
                     <Lightbulb className="h-5 w-5 text-yellow-500" />
                     <span className="font-bold" style={{ color: 'var(--principal-1)' }}>Próxima Píldora</span>
                   </div>
-                  {/* Step 2: próxima píldora (pendiente de migración) */}
-                  <div className="text-text-muted text-sm"><em>Sin píldoras próximas.</em></div>
+                  {nextPildora ? (
+                    <div className="text-sm">
+                      <p className="mb-1 font-semibold">{(nextPildora as { title?: string }).title || 'Píldora'}</p>
+                      <p className="mb-1">📅 {(nextPildora as { date?: string }).date}</p>
+                      {(nextPildora as { mode?: string }).mode && <p className="mb-0">📡 {(nextPildora as { mode?: string }).mode}</p>}
+                    </div>
+                  ) : (
+                    <div className="text-text-muted text-sm"><em>Sin píldoras próximas.</em></div>
+                  )}
                 </div>
               </div>
               <div className="min-w-0">
@@ -421,7 +476,15 @@ export default function PublicPromotionPage() {
                   </div>
                 </div>
               </div>
-              {/* Step 3 (pendiente): píldoras */}
+              {extended && promotionId && (
+                <PildorasSection
+                  info={extended}
+                  students={students}
+                  promotion={promotion}
+                  promotionId={promotionId}
+                  onReload={() => reloadExtended(promotionId)}
+                />
+              )}
               <ProgramResourcesSection resources={extended?.resources} />
               <InternalResourcesSection resources={promoResources} />
               <GenericSections sections={sections} />
@@ -432,7 +495,7 @@ export default function PublicPromotionPage() {
               <ScheduleSection schedule={extended?.schedule} />
               <EvaluationSection evaluation={extended?.evaluation} />
               <TeamSection team={extended?.team} />
-              {/* Step 3 (pendiente): competencias */}
+              {extended && <CompetencesSection info={extended} />}
             </div>
 
             {/* Step 4 (pendiente): Aula Virtual */}

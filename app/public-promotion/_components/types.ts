@@ -45,8 +45,45 @@ export interface PPCalendar {
 }
 
 export interface PPStudent {
+  id?: string;
+  name?: string;
+  lastname?: string;
   isWithdrawn?: boolean;
   withdrawn?: boolean;
+}
+
+export interface PPPildora {
+  mode?: string;
+  date?: string;
+  title?: string;
+  status?: string;
+  students?: { id?: string; name?: string; lastname?: string }[];
+}
+
+export interface PPModulePildoras {
+  moduleId?: string;
+  moduleName?: string;
+  pildoras?: PPPildora[];
+}
+
+export interface PPLevel {
+  level: number;
+  description?: string;
+  indicators?: string[];
+}
+
+export interface PPCompetence {
+  id?: string | number;
+  name?: string;
+  area?: string;
+  description?: string;
+  selectedTools?: string[];
+  allTools?: string[];
+  levels?: PPLevel[];
+}
+
+export interface PPProjectCompetence {
+  competenceIds?: (string | number)[];
 }
 
 export interface PPSection {
@@ -90,13 +127,17 @@ export interface PPPromoResource {
   description?: string;
 }
 
-// extended-info trae más (píldoras/competencias) que se migran en pasos 3-4.
 export interface PPExtendedInfo {
   schedule?: PPSchedule | null;
   team?: PPTeamMember[] | null;
   evaluation?: string | null;
   resources?: PPResource[] | null;
   showEmployability?: boolean;
+  pildoras?: PPPildora[];
+  modulesPildoras?: PPModulePildoras[];
+  pildorasAssignmentOpen?: boolean;
+  competences?: PPCompetence[];
+  projectCompetences?: PPProjectCompetence[];
 }
 
 export const PROMO_RES_META: Record<string, { color: string; label: string }> = {
