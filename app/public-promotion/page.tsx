@@ -30,7 +30,23 @@ import {
 } from '@/components/ui/dialog';
 import { getApiUrl } from '@/lib/api';
 import { PublicGanttTable } from './_components/PublicGanttTable';
-import type { PPPromotion, PPQuickLink, PPCalendar, PPStudent } from './_components/types';
+import {
+  GenericSections,
+  ScheduleSection,
+  TeamSection,
+  EvaluationSection,
+  ProgramResourcesSection,
+  InternalResourcesSection,
+} from './_components/InfoSections';
+import type {
+  PPPromotion,
+  PPQuickLink,
+  PPCalendar,
+  PPStudent,
+  PPSection,
+  PPPromoResource,
+  PPExtendedInfo,
+} from './_components/types';
 
 import './public-promotion.css';
 
@@ -65,6 +81,9 @@ export default function PublicPromotionPage() {
   const [quickLinks, setQuickLinks] = useState<PPQuickLink[]>([]);
   const [calendar, setCalendar] = useState<PPCalendar | null>(null);
   const [students, setStudents] = useState<PPStudent[]>([]);
+  const [sections, setSections] = useState<PPSection[]>([]);
+  const [promoResources, setPromoResources] = useState<PPPromoResource[]>([]);
+  const [extended, setExtended] = useState<PPExtendedInfo | null>(null);
 
   const [activeTab, setActiveTab] = useState<'progreso' | 'info'>('progreso');
 
@@ -79,19 +98,27 @@ export default function PublicPromotionPage() {
   const [appointmentUrl, setAppointmentUrl] = useState('');
 
   const loadContent = useCallback(async (id: string) => {
-    const [promo, ql, cal, studs] = await Promise.all([
-      fetch(`${API_URL}/api/promotions/${id}`).then((r) => (r.ok ? r.json() : null)).catch(() => null),
-      fetch(`${API_URL}/api/promotions/${id}/quick-links`).then((r) => (r.ok ? r.json() : [])).catch(() => []),
-      fetch(`${API_URL}/api/promotions/${id}/calendar`).then((r) => (r.ok ? r.json() : null)).catch(() => null),
-      fetch(`${API_URL}/api/promotions/${id}/public-students`).then((r) => (r.ok ? r.json() : [])).catch(() => []),
+    const get = <T,>(path: string, fallback: T): Promise<T> =>
+      fetch(`${API_URL}/api/promotions/${id}${path}`).then((r) => (r.ok ? r.json() : fallback)).catch(() => fallback);
+    const [promo, ql, cal, studs, secs, promoRes, ext] = await Promise.all([
+      get<PPPromotion | null>('', null),
+      get<PPQuickLink[]>('/quick-links', []),
+      get<PPCalendar | null>('/calendar', null),
+      get<PPStudent[]>('/public-students', []),
+      get<PPSection[]>('/sections', []),
+      get<PPPromoResource[]>('/promotion-resources', []),
+      get<PPExtendedInfo | null>(`/extended-info?t=${Date.now()}`, null),
     ]);
     if (promo) {
       setPromotion(promo);
       document.title = `${promo.name} - Bootcamp`;
     }
     setQuickLinks(Array.isArray(ql) ? ql : []);
-    setCalendar(cal && cal.googleCalendarId ? cal : cal);
+    setCalendar(cal);
     setStudents(Array.isArray(studs) ? studs : []);
+    setSections(Array.isArray(secs) ? secs : []);
+    setPromoResources(Array.isArray(promoRes) ? promoRes : []);
+    setExtended(ext);
     setAccess('ready');
   }, []);
 
@@ -394,12 +421,18 @@ export default function PublicPromotionPage() {
                   </div>
                 </div>
               </div>
-              {/* Step 2 (pendiente): píldoras, recursos, secciones */}
+              {/* Step 3 (pendiente): píldoras */}
+              <ProgramResourcesSection resources={extended?.resources} />
+              <InternalResourcesSection resources={promoResources} />
+              <GenericSections sections={sections} />
             </div>
 
             {/* ── Tab: Información General ── */}
             <div className={activeTab === 'info' ? '' : 'hidden'}>
-              {/* Step 3 (pendiente): horario, evaluación, competencias, equipo */}
+              <ScheduleSection schedule={extended?.schedule} />
+              <EvaluationSection evaluation={extended?.evaluation} />
+              <TeamSection team={extended?.team} />
+              {/* Step 3 (pendiente): competencias */}
             </div>
 
             {/* Step 4 (pendiente): Aula Virtual */}
