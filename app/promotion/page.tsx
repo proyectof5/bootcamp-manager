@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback, memo } from 'react';
 import { NotesPanelHost } from './_components/NotesPanel';
+import { SidebarDesktopToggle } from './_components/SidebarDesktopToggle';
 import {
   Menu,
   CircleUser,
@@ -287,7 +288,6 @@ export default function PromotionPage() {
         // App scripts
         await loadScript('/js/config.js');
         await loadScript('/js/shared.js');
-        await loadScript('/js/sidebar-desktop-toggle.js');
         await loadScript('/js/reports.js');
         await loadScript('/js/syllabus-pdf.js');
         await loadScript('/js/program-competences.js');
@@ -450,6 +450,7 @@ export default function PromotionPage() {
       {/* Bloc de notas (spec 0014 Fase C): React portal a #notes-container,
           reemplaza public/js/notes.js (NotesManager/NotesUI). */}
       <NotesPanelHost />
+      <SidebarDesktopToggle />
 
       {/* ──────────────────────────────────────────────────────────────────────
           MODALES SHADCN (spec 0013-b en adelante)
