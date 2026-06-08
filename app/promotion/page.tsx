@@ -13,6 +13,7 @@ import { TeamManagerHost } from './_components/TeamManager';
 import { ResourcesManagerHost } from './_components/ResourcesManager';
 import { PromoResourcesManagerHost } from './_components/PromoResourcesManager';
 import { EvaluationCriteriaHost } from './_components/EvaluationCriteria';
+import { VirtualClassroomPanelHost } from './_components/VirtualClassroomPanel';
 import { initReports } from './_lib/reports';
 import { initSyllabusPdf } from './_lib/syllabus-pdf';
 import {
@@ -505,6 +506,11 @@ export default function PromotionPage() {
           inicial lo expone el orquestador en window.__evaluationHtml/__refreshEvaluation; las
           acciones (insertEvalLink/insertEvalImage/saveEvaluationFeedback) siguen legacy. */}
       <EvaluationCriteriaHost />
+      {/* Sub-tab "Aula Virtual" de Contenido del Programa (spec 0014 Fase C): React vía portal a
+          #program-details-virtual-classroom. Renderiza el panel #virtual-classroom-panel con los ids
+          legacy vc-*; la lógica (initVirtualClassroomPanel/saveVirtualClassroom/…) sigue en el
+          orquestador y los pobla/lee por id. */}
+      <VirtualClassroomPanelHost />
 
       {/* ──────────────────────────────────────────────────────────────────────
           MODALES SHADCN (spec 0013-b en adelante)

@@ -1130,115 +1130,16 @@ const promotionDetailBody = `
                                  lo expone el orquestador en window.__evaluationHtml + __refreshEvaluation. -->
                         </div>
 
-                        <!-- Quick Links Tab -->
+                        <!-- Virtual Classroom Tab -->
                         <div class="tab-pane fade" id="program-details-virtual-classroom" role="tabpanel"
                             aria-labelledby="program-details-virtual-classroom-tab">
-                            <!-- Aula Virtual panel (moved from Evaluation tab) -->
-                            <div class="card mb-3" id="virtual-classroom-panel">
-                                <div class="card-body">
-                                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
-                                        <div>
-                                            <h5 class="mb-1">
-                                                <i class="bi bi-laptop me-2 text-primary"></i>Aula Virtual
-                                            </h5>
-                                            <p class="text-muted small mb-0">
-                                                Activa un proyecto para que el estudiantado entregue su repositorio
-                                                desde la vista pública.
-                                            </p>
-                                        </div>
-                                        <div class="text-end">
-                                            <span class="badge bg-secondary" id="vc-status-badge">Sin proyecto
-                                                activo</span>
-                                        </div>
-                                    </div>
-
-                                    <div class="row g-3 align-items-end">
-                                        <div class="col-md-5">
-                                            <label for="vc-project-select"
-                                                class="form-label small fw-semibold text-muted">
-                                                Proyecto vinculado
-                                            </label>
-                                            <select id="vc-project-select" class="form-select form-select-sm"
-                                                onchange="onVirtualClassroomProjectChange()">
-                                                <option value="">Selecciona módulo y proyecto…</option>
-                                            </select>
-                                            <div class="form-text small" id="vc-project-help">
-                                                Los proyectos se configuran en la sección Evaluación.
-                                            </div>
-                                        </div>
-                                        <div class="col-md-3">
-                                            <label for="vc-repo-base" class="form-label small fw-semibold text-muted">
-                                                URL base del repositorio
-                                                <span id="vc-repo-base-source" class="badge bg-success text-white ms-1 small d-none">
-                                                    <i class="bi bi-github me-1"></i>desde GitHub
-                                                </span>
-                                            </label>
-                                            <input type="text" id="vc-repo-base" class="form-control form-control-sm"
-                                                placeholder="https://github.com/proyectof5/">
-                                            <div id="vc-repo-base-hint" class="form-text small text-muted d-none">
-                                                URL tomada del quick link de GitHub. Puedes editarla manualmente.
-                                            </div>
-                                        </div>
-                                        <div class="col-md-4">
-                                            <label for="vc-briefing-url"
-                                                class="form-label small fw-semibold text-muted">
-                                                Link al briefing del proyecto
-                                                <span id="vc-briefing-source" class="badge bg-info text-dark ms-1 small d-none">
-                                                    <i class="bi bi-link-45deg me-1"></i>desde roadmap
-                                                </span>
-                                            </label>
-                                            <input type="text" id="vc-briefing-url" class="form-control form-control-sm"
-                                                placeholder="https://github.com/organizacion/briefing-proyecto">
-                                            <div id="vc-briefing-hint" class="form-text small text-muted d-none">
-                                                URL definida en el roadmap. Puedes editarla manualmente si lo necesitas.
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="row g-3 align-items-end mt-1">
-                                        <div class="col-md-3">
-                                            <label for="vc-due-date" class="form-label small fw-semibold text-muted">
-                                                <i class="bi bi-calendar-event me-1"></i>Fecha de entrega
-                                                <span class="text-muted fw-normal">(opcional)</span>
-                                            </label>
-                                            <input type="date" id="vc-due-date" class="form-control form-control-sm">
-                                            <div class="form-text small text-muted">
-                                                Se mostrará de forma destacada en el Aula Virtual pública.
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div class="row g-3 mt-3">
-                                        <div class="col-md-8">
-                                            <div class="border rounded p-2 bg-light">
-                                                <div class="d-flex justify-content-between align-items-center mb-1">
-                                                    <span class="small fw-semibold text-muted">
-                                                        Competencias a evaluar (definidas en Evaluación)
-                                                    </span>
-                                                    <span class="badge bg-light text-dark border small"
-                                                        id="vc-competences-count">
-                                                        0 competencias
-                                                    </span>
-                                                </div>
-                                                <div id="vc-competences-list" class="small text-muted">
-                                                    <span class="fst-italic">Selecciona un proyecto para ver sus
-                                                        competencias.</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <div
-                                            class="col-md-4 d-flex justify-content-md-end align-items-start gap-2 mt-2 mt-md-0">
-                                            <button type="button" class="btn btn-sm btn-outline-secondary"
-                                                id="vc-deactivate-btn" onclick="deactivateVirtualClassroom()" disabled>
-                                                <i class="bi bi-x-circle me-1"></i>Desactivar
-                                            </button>
-                                            <button type="button" class="btn btn-sm btn-primary" id="vc-activate-btn"
-                                                onclick="saveVirtualClassroom(true)">
-                                                <i class="bi bi-play-circle me-1"></i>Activar Aula Virtual
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                            <!-- spec 0014 Fase C: contenido portado a React. El componente
+                                 VirtualClassroomPanelHost (_components/VirtualClassroomPanel.tsx) monta
+                                 aquí por portal el panel #virtual-classroom-panel conservando todos los
+                                 ids legacy (vc-*). La lógica sigue en el orquestador:
+                                 initVirtualClassroomPanel (lo llama switchProgramDetailsTab/loadEvaluation)
+                                 puebla/lee por id; los controles llaman a window.onVirtualClassroomProjectChange/
+                                 saveVirtualClassroom/deactivateVirtualClassroom. -->
                         </div>
 
                         <div class="tab-pane fade" id="program-details-quicklinks" role="tabpanel"
