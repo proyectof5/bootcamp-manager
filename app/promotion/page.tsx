@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useCallback, memo } from 'react';
 import { NotesPanelHost } from './_components/NotesPanel';
 import { SidebarDesktopToggle } from './_components/SidebarDesktopToggle';
+import { ProgramCompetencesHost } from './_components/ProgramCompetences';
 import {
   Menu,
   CircleUser,
@@ -290,7 +291,6 @@ export default function PromotionPage() {
         await loadScript('/js/shared.js');
         await loadScript('/js/reports.js');
         await loadScript('/js/syllabus-pdf.js');
-        await loadScript('/js/program-competences.js');
         await loadScript('/js/student-tracking.js');
         await loadScript('/js/promotion-detail.js');
       } catch (e) {
@@ -451,6 +451,10 @@ export default function PromotionPage() {
           reemplaza public/js/notes.js (NotesManager/NotesUI). */}
       <NotesPanelHost />
       <SidebarDesktopToggle />
+      {/* Editor de competencias del programa (spec 0014 Fase C): React vía portal
+          a #competences-list-container + puente window.ProgramCompetences que
+          consume promotion-detail.js. Reemplaza public/js/program-competences.js. */}
+      <ProgramCompetencesHost />
 
       {/* ──────────────────────────────────────────────────────────────────────
           MODALES SHADCN (spec 0013-b en adelante)
