@@ -16,6 +16,7 @@ import { EvaluationCriteriaHost } from './_components/EvaluationCriteria';
 import { VirtualClassroomPanelHost } from './_components/VirtualClassroomPanel';
 import { RoadmapPanelHost } from './_components/RoadmapPanel';
 import { PildorasPanelHost } from './_components/PildorasPanel';
+import { CollaboratorsPanelHost } from './_components/CollaboratorsPanel';
 import { initReports } from './_lib/reports';
 import { initSyllabusPdf } from './_lib/syllabus-pdf';
 import {
@@ -522,6 +523,11 @@ export default function PromotionPage() {
           (displayPildoras/updateModuleNavigation/navegación) sigue en el orquestador y lo pobla por id.
           Con esto Contenido del Programa queda 100% React. */}
       <PildorasPanelHost />
+      {/* Sección "Colaboradores" (spec 0014 Fase C): React vía portal a #collaborators-tab.
+          Renderiza cabecera + #collaborators-list (list-group) con ids legacy; la lógica
+          (loadCollaborators/displayCollaborators) sigue en el orquestador y lo pobla por id. Se
+          eliminó el segundo #collaborators-tab duplicado (tabla muerta) del body.ts. */}
+      <CollaboratorsPanelHost />
 
       {/* ──────────────────────────────────────────────────────────────────────
           MODALES SHADCN (spec 0013-b en adelante)

@@ -882,21 +882,13 @@ const promotionDetailBody = `
 
                 <!-- Collaborators Tab -->
                 <div id="collaborators-tab" class="section-content hidden">
-                    <div class="d-flex justify-content-between align-items-center my-4">
-                        <h2>Program Collaborators</h2>
-                        <button class="btn btn-primary" onclick="openCollaboratorModal()">
-                            <i class="bi bi-person-plus me-2"></i>Agregar colaborador
-                        </button>
-                    </div>
-
-                    <div class="card">
-                        <div class="card-body">
-                            <p class="text-muted mb-3">Personas del equipo con acceso para modificar este programa:</p>
-                            <div id="collaborators-list" class="list-group">
-                                <!-- Collaborators will be loaded here -->
-                            </div>
-                        </div>
-                    </div>
+                    <!-- spec 0014 Fase C: contenido portado a React. El componente
+                         CollaboratorsPanelHost (_components/CollaboratorsPanel.tsx) monta aquí por portal
+                         la cabecera + #collaborators-list (list-group). La lógica sigue en el orquestador:
+                         loadCollaborators()/displayCollaborators() (null-safe, lo llama switchTab al abrir)
+                         puebla #collaborators-list por id; el botón llama a window.openCollaboratorModal()
+                         y las filas a openCollaboratorModulesModal/removeCollaborator. (Se eliminó el
+                         segundo #collaborators-tab duplicado —tabla muerta y oculta— más abajo.) -->
                 </div>
 
                 <!-- Program Info Tab (New) -->
@@ -1073,36 +1065,11 @@ const promotionDetailBody = `
                     </div>
                 </div>
 
-                <!-- Collaborators Tab -->
-                <div id="collaborators-tab" class="section-content hidden">
-                    <div class="d-flex justify-content-between align-items-center my-4">
-                        <h2>Colaboradores del Programa</h2>
-                        <button class="btn btn-primary" onclick="openCollaboratorModal()" id="add-collaborator-btn">
-                            <i class="bi bi-person-plus me-2"></i>Agregar Colaborador
-                        </button>
-                    </div>
-
-                    <div class="card shadow-sm">
-                        <div class="card-body">
-                            <div class="table-responsive">
-                                <table class="table table-hover">
-                                    <thead>
-                                        <tr>
-                                            <th>Nombre</th>
-                                            <th>Rol</th>
-                                            <th>Email</th>
-                                            <th>Módulos</th>
-                                            <th>Acciones</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody id="collaborators-list-body">
-                                        <!-- Dynamic Content -->
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                <!-- spec 0014 Fase C: segundo #collaborators-tab (tabla "Colaboradores del Programa")
+                     ELIMINADO. Era un id DUPLICADO y código MUERTO: switchTab usa getElementById, que
+                     devolvía el primer #collaborators-tab (la list-group de arriba, ahora React), por lo
+                     que esta tabla nunca se mostraba. Sus ids (collaborators-list-body, add-collaborator-btn)
+                     tenían consumidores guardados en el orquestador → no-op tras quitarlos. -->
                 <!-- Evaluación Tab -->
 
 
