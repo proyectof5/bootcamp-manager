@@ -1123,75 +1123,11 @@ const promotionDetailBody = `
                         <!-- Evaluation Tab -->
                         <div class="tab-pane fade" id="program-details-evaluation" role="tabpanel"
                             aria-labelledby="program-details-evaluation-tab">
-                            <div class="card">
-                                <div class="card-header bg-light">
-                                    <h6 class="mb-0"><i class="bi bi-clipboard-check me-2"></i>Criterio de Evaluación
-                                    </h6>
-                                </div>
-                                <div class="card-body p-0">
-                                    <!-- Rich-text toolbar — sticky durante el scroll de página -->
-                                    <div id="eval-rte-toolbar" class="eval-toolbar-sticky" style="display:flex;flex-wrap:wrap;gap:4px;padding:8px 12px;background:#f8f9fa;border-bottom:1px solid #dee2e6;">
-                                        <button type="button" class="btn btn-sm btn-outline-secondary" title="Negrita (Ctrl+B)"
-                                            onclick="document.execCommand('bold');document.getElementById('evaluation-text').focus()">
-                                            <i class="bi bi-type-bold"></i>
-                                        </button>
-                                        <button type="button" class="btn btn-sm btn-outline-secondary" title="Cursiva (Ctrl+I)"
-                                            onclick="document.execCommand('italic');document.getElementById('evaluation-text').focus()">
-                                            <i class="bi bi-type-italic"></i>
-                                        </button>
-                                        <button type="button" class="btn btn-sm btn-outline-secondary" title="Subrayado (Ctrl+U)"
-                                            onclick="document.execCommand('underline');document.getElementById('evaluation-text').focus()">
-                                            <i class="bi bi-type-underline"></i>
-                                        </button>
-                                        <div style="width:1px;background:#ced4da;margin:0 4px;"></div>
-                                        <button type="button" class="btn btn-sm btn-outline-secondary" title="Lista con viñetas"
-                                            onclick="document.execCommand('insertUnorderedList');document.getElementById('evaluation-text').focus()">
-                                            <i class="bi bi-list-ul"></i>
-                                        </button>
-                                        <button type="button" class="btn btn-sm btn-outline-secondary" title="Lista numerada"
-                                            onclick="document.execCommand('insertOrderedList');document.getElementById('evaluation-text').focus()">
-                                            <i class="bi bi-list-ol"></i>
-                                        </button>
-                                        <div style="width:1px;background:#ced4da;margin:0 4px;"></div>
-                                        <button type="button" class="btn btn-sm btn-outline-secondary" title="Deshacer (Ctrl+Z)"
-                                            onclick="document.execCommand('undo');document.getElementById('evaluation-text').focus()">
-                                            <i class="bi bi-arrow-counterclockwise"></i>
-                                        </button>
-                                        <button type="button" class="btn btn-sm btn-outline-secondary" title="Rehacer (Ctrl+Y)"
-                                            onclick="document.execCommand('redo');document.getElementById('evaluation-text').focus()">
-                                            <i class="bi bi-arrow-clockwise"></i>
-                                        </button>
-                                        <div style="width:1px;background:#ced4da;margin:0 4px;"></div>
-                                        <button type="button" class="btn btn-sm btn-outline-secondary" title="Insertar enlace"
-                                            onclick="insertEvalLink()">
-                                            <i class="bi bi-link-45deg"></i>
-                                        </button>
-                                        <button type="button" class="btn btn-sm btn-outline-secondary" title="Insertar imagen"
-                                            onclick="insertEvalImage()">
-                                            <i class="bi bi-image"></i>
-                                        </button>
-                                        <div style="width:1px;background:#ced4da;margin:0 4px;"></div>
-                                        <button type="button" class="btn btn-sm btn-outline-primary" title="Guardar"
-                                            onclick="saveEvaluationFeedback()">
-                                            <i class="bi bi-floppy me-1"></i>Guardar
-                                        </button>
-                                    </div>
-                                    <!-- Editable area
-                                         AUDITORÍA TASK-EVAL-05 — Comportamiento de Enter:
-                                         ✅ Este div NO está dentro de ningún <form>, por lo que Enter es libre por diseño:
-                                            el navegador no intercepta la tecla como "submit".
-                                         ✅ Comportamiento estándar de contenteditable en browsers modernos:
-                                            - Enter simple → inserta un nuevo bloque <div> (Chrome/Edge) o <p> (Firefox).
-                                            - Shift+Enter → inserta <br> (salto de línea suave) en todos los browsers.
-                                         ✅ No se añade ningún handler de teclado — el comportamiento por defecto es correcto
-                                            para un editor de texto enriquecido como este.
-                                    -->
-                                    <div id="evaluation-text" contenteditable="true"
-                                        style="min-height:340px;padding:14px 16px;outline:none;font-size:0.92rem;line-height:1.6;border:none;"
-                                        data-placeholder="Describe los criterios de evaluación...">
-                                    </div>
-                                </div>
-                            </div>
+                            <!-- spec 0014 Fase C: contenido portado a React. El componente
+                                 EvaluationCriteriaHost (_components/EvaluationCriteria.tsx) monta aquí
+                                 por portal (toolbar + editor contenteditable #evaluation-text). Conserva
+                                 el id legacy evaluation-text (saveExtendedInfo lo lee). El HTML inicial
+                                 lo expone el orquestador en window.__evaluationHtml + __refreshEvaluation. -->
                         </div>
 
                         <!-- Quick Links Tab -->

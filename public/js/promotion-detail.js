@@ -522,8 +522,6 @@ async function loadExtendedInfo() {
             // _components/ScheduleSettings.tsx, portal a #program-details-schedule).
             // Aquí ya no se puebla ni se enganchan listeners: React es dueño de esos
             // inputs (que conservan sus IDs legacy para que saveExtendedInfo los lea).
-            // _set se conserva porque lo reutiliza la población de #evaluation-text (abajo).
-            const _set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
 
             // Populate Additional Lists
             displayTeam();
@@ -559,23 +557,18 @@ Evaluación Global al Final del Bootcamp
 • Valoración de las píldoras realizadas
 • Valoración de competencias transversales`;
 
-            _set('evaluation-text', extendedInfoData.evaluation || defaultEvaluation);
-
-            // evaluation-text is now a contenteditable div — set innerHTML directly
-            // (the _set above is a no-op for divs; this block handles it properly)
-            const evalEl = document.getElementById('evaluation-text');
-            if (evalEl) {
+            // spec 0014 Fase C: el editor de Criterios se migró a React
+            // (_components/EvaluationCriteria.tsx, portal a #program-details-evaluation). Calculamos
+            // aquí el HTML inicial (default + conversión de texto plano) y lo exponemos en
+            // window.__evaluationHtml; React lo pinta en #evaluation-text al montar y cuando
+            // disparamos window.__refreshEvaluation(). saveExtendedInfo sigue leyendo #evaluation-text.
+            {
                 const raw = extendedInfoData.evaluation || defaultEvaluation;
-                // Detect plain text (no block-level HTML) so we render it nicely
                 const hasHtml = /<(p|ul|ol|li|br|b|strong|em|i|u)\b/i.test(raw);
-                if (hasHtml) {
-                    evalEl.innerHTML = raw;
-                } else {
-                    // Convert plain text with \n to <p> blocks for the rich editor
-                    evalEl.innerHTML = raw.split(/\n\n+/).map(para =>
-                        `<p>${para.replace(/\n/g, '<br>')}</p>`
-                    ).join('');
-                }
+                window.__evaluationHtml = hasHtml
+                    ? raw
+                    : raw.split(/\n\n+/).map(para => `<p>${para.replace(/\n/g, '<br>')}</p>`).join('');
+                if (window.__refreshEvaluation) window.__refreshEvaluation();
             }
 
             // Acta de Inicio fields are loaded into extendedInfoData and populated

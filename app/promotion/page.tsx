@@ -12,6 +12,7 @@ import { QuickLinksManagerHost } from './_components/QuickLinksManager';
 import { TeamManagerHost } from './_components/TeamManager';
 import { ResourcesManagerHost } from './_components/ResourcesManager';
 import { PromoResourcesManagerHost } from './_components/PromoResourcesManager';
+import { EvaluationCriteriaHost } from './_components/EvaluationCriteria';
 import { initReports } from './_lib/reports';
 import { initSyllabusPdf } from './_lib/syllabus-pdf';
 import {
@@ -499,6 +500,11 @@ export default function PromotionPage() {
           módulo). El modal promoResourceModal + acciones siguen legacy; loadPromoResources() →
           window.__refreshPromoResources(). */}
       <PromoResourcesManagerHost />
+      {/* Sub-tab "Criterios" de Contenido del Programa (spec 0014 Fase C): React vía portal a
+          #program-details-evaluation (toolbar + editor contenteditable #evaluation-text). El HTML
+          inicial lo expone el orquestador en window.__evaluationHtml/__refreshEvaluation; las
+          acciones (insertEvalLink/insertEvalImage/saveEvaluationFeedback) siguen legacy. */}
+      <EvaluationCriteriaHost />
 
       {/* ──────────────────────────────────────────────────────────────────────
           MODALES SHADCN (spec 0013-b en adelante)
