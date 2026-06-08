@@ -5162,7 +5162,10 @@ function displayCalendar(calendarId) {
     const preview = document.getElementById('calendar-preview');
     const iframe = document.getElementById('calendar-iframe');
 
-    if (calendarId) {
+    // spec 0014 Fase C: el tab de Calendario lo gestiona React (CalendarSettings).
+    // Estos elementos ya no existen en body.ts → guard null-safe (loadCalendar sigue
+    // seteando currentCalendarId para el preview del overview, que NO se toca).
+    if (calendarId && iframe && preview) {
         iframe.src = `https://calendar.google.com/calendar/embed?src=${encodeURIComponent(calendarId)}&ctz=Europe/Madrid`;
         preview.classList.remove('hidden');
     }
@@ -6796,8 +6799,9 @@ function setupForms() {
         }
     });
 
-    // Calendar form
-    document.getElementById('calendar-form').addEventListener('submit', async (e) => {
+    // Calendar form — spec 0014 Fase C: migrado a React (CalendarSettings). El form
+    // legacy ya no está en body.ts; guard optional-chaining para no romper el setup.
+    document.getElementById('calendar-form')?.addEventListener('submit', async (e) => {
         e.preventDefault();
 
         const googleCalendarId = document.getElementById('google-calendar-id').value;

@@ -1000,34 +1000,10 @@ const promotionDetailBody = `
                         <!-- Calendario Tab -->
                         <div class="tab-pane fade" id="program-details-calendar" role="tabpanel"
                             aria-labelledby="program-details-calendar-tab">
-                            <div class="card">
-                                <div class="card-body">
-                                    <h5 class="card-title">Configuración del Calendario</h5>
-                                    <form id="calendar-form">
-                                        <div class="mb-3">
-                                            <label for="google-calendar-id" class="form-label">Google Calendar
-                                                ID</label>
-                                            <input type="text" class="form-control" id="google-calendar-id"
-                                                placeholder="your-calendar@group.calendar.google.com" />
-                                            <small class="text-muted">Encuentra el Google Calendar ID en las
-                                                configuraciones de Google Calendar</small>
-                                        </div>
-                                        <div class="mb-3">
-                                            <label for="google-appointment-url" class="form-label">URL de citas (Google Calendar)</label>
-                                            <input type="url" class="form-control" id="google-appointment-url"
-                                                placeholder="https://calendar.google.com/calendar/appointments/..." />
-                                            <small class="text-muted">URL de la página de reserva de citas de Google Calendar. Si se configura, se mostrará un botón de reserva en la vista del estudiante.</small>
-                                        </div>
-                                        <button type="submit" class="btn btn-primary">Guardar calendario</button>
-                                    </form>
-                                </div>
-                            </div>
-                            <div id="calendar-preview" class="mt-4 hidden">
-                                <h5>Previsualización del calendario</h5>
-                                <div class="ratio ratio-16x9">
-                                    <iframe id="calendar-iframe"></iframe>
-                                </div>
-                            </div>
+                            <!-- spec 0014 Fase C: contenido portado a React. El componente
+                                 CalendarSettingsHost (_components/CalendarSettings.tsx) monta
+                                 aquí por portal (config de Google Calendar + URL de citas + preview). -->
+
                         </div>
 
                         <!-- Schedule Tab -->
