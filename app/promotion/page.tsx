@@ -8,6 +8,7 @@ import { StudentTrackingHost } from './_components/StudentTracking';
 import { CalendarSettingsHost } from './_components/CalendarSettings';
 import { ScheduleSettingsHost } from './_components/ScheduleSettings';
 import { SectionsManagerHost } from './_components/SectionsManager';
+import { QuickLinksManagerHost } from './_components/QuickLinksManager';
 import { initReports } from './_lib/reports';
 import { initSyllabusPdf } from './_lib/syllabus-pdf';
 import {
@@ -478,6 +479,10 @@ export default function PromotionPage() {
           a #program-details-sections (lista + CRUD con Dialog propio). El sectionModal de
           abajo queda inerte (nada lo abre). */}
       <SectionsManagerHost />
+      {/* Sub-tab "Quick Links" de Contenido del Programa (spec 0014 Fase C): React vía portal
+          a #program-details-quicklinks (lista + alta/borrado). El quickLinkModal de abajo queda
+          inerte. Tras CRUD refresca el overview vía window.loadQuickLinks/refreshQuickActions. */}
+      <QuickLinksManagerHost />
 
       {/* ──────────────────────────────────────────────────────────────────────
           MODALES SHADCN (spec 0013-b en adelante)

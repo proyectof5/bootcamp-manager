@@ -1367,19 +1367,10 @@ const promotionDetailBody = `
 
                         <div class="tab-pane fade" id="program-details-quicklinks" role="tabpanel"
                             aria-labelledby="program-details-quicklinks-tab">
-                            <div class="card">
-                                <div class="card-header bg-light d-flex justify-content-between align-items-center">
-                                    <h6 class="mb-0"><i class="bi bi-lightning me-2"></i>Quick Links</h6>
-                                    <button class="btn btn-sm btn-primary" onclick="openQuickLinkModal()">
-                                        <i class="bi bi-plus-circle me-2"></i>Agregar Link
-                                    </button>
-                                </div>
-                                <div class="card-body">
-                                    <div id="quick-links-list" class="row">
-                                        <!-- Quick links will be loaded here -->
-                                    </div>
-                                </div>
-                            </div>
+                            <!-- spec 0014 Fase C: contenido portado a React. El componente
+                                 QuickLinksManagerHost (_components/QuickLinksManager.tsx) monta aquí por
+                                 portal (lista + alta/borrado). Tras CRUD refresca el overview vía
+                                 window.loadQuickLinks/refreshQuickActions (que el orquestador expone). -->
                         </div>
 
                         <!-- Sections Tab -->

@@ -4156,9 +4156,18 @@ async function loadQuickLinks() {
         console.error('Error loading quick links:', error);
     }
 }
+// spec 0014 Fase C: expuestos para que QuickLinksManager (React) refresque el overview
+// (refreshQuickActions) y _githubQuickLinkUrl (loadQuickLinks) tras su CRUD. La pestaña
+// Quick Links la gestiona React; loadQuickLinks aún corre en init y setea esos globals.
+window.loadQuickLinks = loadQuickLinks;
+window.refreshQuickActions = refreshQuickActions;
 
 function displayQuickLinks(links) {
     const list = document.getElementById('quick-links-list');
+    // spec 0014 Fase C: la pestaña Quick Links la gestiona React (QuickLinksManager).
+    // #quick-links-list ya no existe → guard null-safe (loadQuickLinks sigue seteando
+    // _githubQuickLinkUrl + refrescando el overview, que NO se toca).
+    if (!list) return;
     list.innerHTML = '';
 
     if (links.length === 0) {
