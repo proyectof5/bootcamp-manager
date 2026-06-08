@@ -5,6 +5,7 @@ import { NotesPanelHost } from './_components/NotesPanel';
 import { SidebarDesktopToggle } from './_components/SidebarDesktopToggle';
 import { ProgramCompetencesHost } from './_components/ProgramCompetences';
 import { StudentTrackingHost } from './_components/StudentTracking';
+import { initReports } from './_lib/reports';
 import {
   Menu,
   CircleUser,
@@ -290,7 +291,10 @@ export default function PromotionPage() {
         // App scripts
         await loadScript('/js/config.js');
         await loadScript('/js/shared.js');
-        await loadScript('/js/reports.js');
+        // reports.js migrado a módulo TS (spec 0014 Fase C): se ejecuta aquí en la
+        // misma posición de la secuencia (tras shared.js, antes de promotion-detail.js
+        // que consume window.Reports). Reemplaza loadScript('/js/reports.js').
+        initReports();
         await loadScript('/js/syllabus-pdf.js');
         await loadScript('/js/promotion-detail.js');
       } catch (e) {
