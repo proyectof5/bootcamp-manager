@@ -6,6 +6,7 @@ import { SidebarDesktopToggle } from './_components/SidebarDesktopToggle';
 import { ProgramCompetencesHost } from './_components/ProgramCompetences';
 import { StudentTrackingHost } from './_components/StudentTracking';
 import { CalendarSettingsHost } from './_components/CalendarSettings';
+import { ScheduleSettingsHost } from './_components/ScheduleSettings';
 import { initReports } from './_lib/reports';
 import { initSyllabusPdf } from './_lib/syllabus-pdf';
 import {
@@ -469,6 +470,9 @@ export default function PromotionPage() {
       {/* Sub-tab "Calendario" de Contenido del Programa (spec 0014 Fase C): React vía
           portal a #program-details-calendar. Primer bloque extraído de promotion-detail.js. */}
       <CalendarSettingsHost />
+      {/* Sub-tab "Horario" de Contenido del Programa (spec 0014 Fase C): React vía portal
+          a #program-details-schedule (ids legacy sched-* preservados para saveExtendedInfo). */}
+      <ScheduleSettingsHost />
 
       {/* ──────────────────────────────────────────────────────────────────────
           MODALES SHADCN (spec 0013-b en adelante)

@@ -1009,75 +1009,10 @@ const promotionDetailBody = `
                         <!-- Schedule Tab -->
                         <div class="tab-pane fade" id="program-details-schedule" role="tabpanel"
                             aria-labelledby="program-details-schedule-tab">
-                            <div class="card">
-                                <div class="card-body">
-                                    <div class="row">
-                                        <div class="col-md-6 border-end pb-md-0 pb-4">
-                                            <h6 class="text-primary fw-bold mb-3"><i
-                                                    class="bi bi-laptop me-2"></i>Online</h6>
-                                            <div class="mb-3">
-                                                <label class="form-label form-label-sm">Hora de entrada</label>
-                                                <input type="time" class="form-control form-control-sm"
-                                                    id="sched-online-entry">
-                                            </div>
-                                            <div class="mb-3">
-                                                <label class="form-label form-label-sm">Inicio Píldoras</label>
-                                                <input type="time" class="form-control form-control-sm"
-                                                    id="sched-online-start">
-                                            </div>
-                                            <div class="mb-3">
-                                                <label class="form-label form-label-sm">Break</label>
-                                                <input type="time" class="form-control form-control-sm"
-                                                    id="sched-online-break">
-                                            </div>
-                                            <div class="mb-3">
-                                                <label class="form-label form-label-sm">Comida (si se toma)</label>
-                                                <input type="text" class="form-control form-control-sm"
-                                                    id="sched-online-lunch" placeholder="Use text if needed">
-                                            </div>
-                                            <div class="mb-0">
-                                                <label class="form-label form-label-sm">Hora de salida</label>
-                                                <input type="time" class="form-control form-control-sm"
-                                                    id="sched-online-finish">
-                                            </div>
-                                        </div>
-                                        <div class="col-md-6 ps-md-4">
-                                            <h6 class=" fw-bold mb-3"><i class="bi bi-people me-2"></i>Presencial</h6>
-                                            <div class="mb-3">
-                                                <label class="form-label form-label-sm">Hora de entrada</label>
-                                                <input type="time" class="form-control form-control-sm"
-                                                    id="sched-presential-entry">
-                                            </div>
-                                            <div class="mb-3">
-                                                <label class="form-label form-label-sm">Inicio Píldoras</label>
-                                                <input type="time" class="form-control form-control-sm"
-                                                    id="sched-presential-start">
-                                            </div>
-                                            <div class="mb-3">
-                                                <label class="form-label form-label-sm">Break</label>
-                                                <input type="time" class="form-control form-control-sm"
-                                                    id="sched-presential-break">
-                                            </div>
-                                            <div class="mb-3">
-                                                <label class="form-label form-label-sm">Comida</label>
-                                                <input type="time" class="form-control form-control-sm"
-                                                    id="sched-presential-lunch">
-                                            </div>
-                                            <div class="mb-0">
-                                                <label class="form-label form-label-sm">Hora de salida</label>
-                                                <input type="time" class="form-control form-control-sm"
-                                                    id="sched-presential-finish">
-                                            </div>
-                                        </div>
-                                    </div>
-                                    <div class="mt-4 pt-3 border-top">
-                                        <label class="form-label form-label-sm">Notas adicionales sobre el
-                                            horario</label>
-                                        <textarea class="form-control form-control-sm" id="sched-notes"
-                                            rows="2"></textarea>
-                                    </div>
-                                </div>
-                            </div>
+                            <!-- spec 0014 Fase C: contenido portado a React. El componente
+                                 ScheduleSettingsHost (_components/ScheduleSettings.tsx) monta aquí por
+                                 portal (franjas online/presencial + notas, auto-guardado). Usa los IDs
+                                 legacy (sched-*) porque saveExtendedInfo() los lee al "guardar todo". -->
                         </div>
 
                         <!-- Team Tab -->

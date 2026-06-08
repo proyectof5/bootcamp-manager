@@ -518,35 +518,12 @@ async function loadExtendedInfo() {
             // even before ProgramCompetences.init() runs
             window._extendedInfoCompetences = extendedInfoData.competences || [];
 
-            // Populate Schedule
-            const sched = extendedInfoData.schedule || {};
+            // Populate Schedule + auto-save: migrado a React (spec 0014 Fase C →
+            // _components/ScheduleSettings.tsx, portal a #program-details-schedule).
+            // Aquí ya no se puebla ni se enganchan listeners: React es dueño de esos
+            // inputs (que conservan sus IDs legacy para que saveExtendedInfo los lea).
+            // _set se conserva porque lo reutiliza la población de #evaluation-text (abajo).
             const _set = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
-            if (sched.online) {
-                _set('sched-online-entry', sched.online.entry);
-                _set('sched-online-start', sched.online.start);
-                _set('sched-online-break', sched.online.break);
-                _set('sched-online-lunch', sched.online.lunch);
-                _set('sched-online-finish', sched.online.finish);
-            }
-            if (sched.presential) {
-                _set('sched-presential-entry', sched.presential.entry);
-                _set('sched-presential-start', sched.presential.start);
-                _set('sched-presential-break', sched.presential.break);
-                _set('sched-presential-lunch', sched.presential.lunch);
-                _set('sched-presential-finish', sched.presential.finish);
-            }
-            _set('sched-notes', sched.notes);
-
-            // Attach auto-save listeners on schedule fields
-            const _schedIds = [
-                'sched-online-entry','sched-online-start','sched-online-break','sched-online-lunch','sched-online-finish',
-                'sched-presential-entry','sched-presential-start','sched-presential-break','sched-presential-lunch','sched-presential-finish',
-                'sched-notes'
-            ];
-            _schedIds.forEach(id => {
-                const el = document.getElementById(id);
-                if (el) el.addEventListener('change', _scheduleAutoSave);
-            });
 
             // Populate Additional Lists
             displayTeam();
@@ -2156,24 +2133,17 @@ async function saveExtendedInfo() {
         extendedInfoData.pildorasAssignmentOpen = assignmentToggle.checked;
     }
 
-    // Gather Schedule Data
-    const schedule = {
-        online: {
-            entry: document.getElementById('sched-online-entry').value,
-            start: document.getElementById('sched-online-start').value,
-            break: document.getElementById('sched-online-break').value,
-            lunch: document.getElementById('sched-online-lunch').value,
-            finish: document.getElementById('sched-online-finish').value
-        },
-        presential: {
-            entry: document.getElementById('sched-presential-entry').value,
-            start: document.getElementById('sched-presential-start').value,
-            break: document.getElementById('sched-presential-break').value,
-            lunch: document.getElementById('sched-presential-lunch').value,
-            finish: document.getElementById('sched-presential-finish').value
-        },
-        notes: document.getElementById('sched-notes').value
-    };
+    // Gather Schedule Data — spec 0014 Fase C: el tab Horario lo gestiona React
+    // (ScheduleSettings) con los IDs legacy. Si están montados, leemos sus valores;
+    // si no, conservamos extendedInfoData.schedule (no lo pisamos con vacíos).
+    if (document.getElementById('sched-online-entry')) {
+        const _sv = (id) => document.getElementById(id)?.value || '';
+        extendedInfoData.schedule = {
+            online: { entry: _sv('sched-online-entry'), start: _sv('sched-online-start'), break: _sv('sched-online-break'), lunch: _sv('sched-online-lunch'), finish: _sv('sched-online-finish') },
+            presential: { entry: _sv('sched-presential-entry'), start: _sv('sched-presential-start'), break: _sv('sched-presential-break'), lunch: _sv('sched-presential-lunch'), finish: _sv('sched-presential-finish') },
+            notes: _sv('sched-notes')
+        };
+    }
 
     const pildorasRows = document.querySelectorAll('#pildoras-list-body tr');
 
@@ -2190,8 +2160,7 @@ async function saveExtendedInfo() {
     // Note: Acta de Inicio fields are saved separately via saveActaData() from the modal.
     // extendedInfoData already holds them from the last load or saveActaData() call.
 
-    // Update global object
-    extendedInfoData.schedule = schedule;
+    // Update global object (schedule ya se asignó arriba de forma null-safe)
     extendedInfoData.evaluation = evaluation;
 
     // Gather Competencias — now aggregated from per-project definitions (in evaluation tab)
