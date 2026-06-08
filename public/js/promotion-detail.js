@@ -8780,7 +8780,19 @@ async function deleteSelectedStudents() {
 }
 
 // Attendance Control Functions
+// spec 0014 Fase C: wrapper para el botón "Informe semanal" del panel React (la versión inline
+// usaba los globales de módulo promotionId/currentAttendanceMonth, inaccesibles desde React).
+window.__printWeeklyAttendance = function () {
+    if (window.Reports && window.Reports.printWeeklyAttendance) {
+        window.Reports.printWeeklyAttendance(promotionId, currentAttendanceMonth);
+    }
+};
+
 async function loadAttendance() {
+    // spec 0014 Fase C: #attendance-* lo monta React (AttendancePanel) por portal → no-op si aún no
+    // está montado (evita el acceso sin guard a #current-attendance-month-display). React redispara
+    // loadAttendance tras montar; switchTeacherAreaSubTab('attendance') también la llama al abrir.
+    if (!document.getElementById('attendance-body')) return;
     try {
         const token = localStorage.getItem('token');
         const [year, month] = currentAttendanceMonth.split('-');
@@ -8826,6 +8838,7 @@ function renderAttendanceTable() {
     const headerRow = document.getElementById('attendance-header-row');
     const weekdayRow = document.getElementById('attendance-weekday-row');
     const body = document.getElementById('attendance-body');
+    if (!headerRow || !body) return; // spec 0014 Fase C: la tabla la monta React (AttendancePanel)
 
     // Clear previous
     headerRow.innerHTML = '<th class="sticky-column" style="min-width: 250px; z-index: 10;">Estudiantes</th>';

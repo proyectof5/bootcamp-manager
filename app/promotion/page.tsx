@@ -19,6 +19,7 @@ import { PildorasPanelHost } from './_components/PildorasPanel';
 import { CollaboratorsPanelHost } from './_components/CollaboratorsPanel';
 import { StudentsPanelHost } from './_components/StudentsPanel';
 import { TeacherOverviewPanelHost } from './_components/TeacherOverviewPanel';
+import { AttendancePanelHost } from './_components/AttendancePanel';
 import { initReports } from './_lib/reports';
 import { initSyllabusPdf } from './_lib/syllabus-pdf';
 import {
@@ -537,6 +538,10 @@ export default function PromotionPage() {
       {/* Sub-tab "Accesos Rápidos" (overview) de la Teacher-Area (spec 0014 Fase C): React vía portal a
           #teacher-area-overview. Renderiza #teacher-area-quick-actions; loadTeacherAreaOverview lo pobla. */}
       <TeacherOverviewPanelHost />
+      {/* Sub-tab "Asistencia" de la Teacher-Area (spec 0014 Fase C): React vía portal a
+          #teacher-area-attendance. Renderiza nav de mes + stats + leyenda + tabla con ids legacy;
+          loadAttendance/renderAttendanceTable (guards añadidos) los pueblan por id. */}
+      <AttendancePanelHost />
 
       {/* ──────────────────────────────────────────────────────────────────────
           MODALES SHADCN (spec 0013-b en adelante)
