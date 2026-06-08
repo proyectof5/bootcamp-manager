@@ -18,13 +18,15 @@ const config: Config = {
   // el colapso lo maneja bootstrap-compat.css (display) + el shim de shared.js.
   blocklist: ['collapse'],
 
-  // Convivencia con Bootstrap durante la migración (specs 0008-0013).
-  // Reactivar (quitar esta línea) en el spec 0014 cuando se quite Bootstrap.
+  // spec 0014 Fase C (entrega 2026-06-08): preflight:false se MANTIENE — la capa
+  // bootstrap-compat.css es el reset por diseño; reactivar el preflight de Tailwind
+  // colisiona (gana sobre el Reboot por orden de cascada) y colapsa los headings
+  // del UI legacy a font-weight/​size inherit. Verificado y descartado.
   corePlugins: { preflight: false },
 
-  // Bootstrap utilities usan !important. Sin esto, Tailwind pierde por
-  // especificidad (`bg-primary`, `text-primary`, etc.). Quitar en spec 0014.
-  important: true,
+  // important:true RETIRADO: ya no hay CDN de Bootstrap que pelee por especificidad
+  // y body.ts es 100% React. Las utilidades Tailwind ganan por orden de cascada
+  // (emitidas DESPUÉS de bootstrap-compat.css). Verificado sin regresión visual.
 
   // ── shadcn/ui (estilo "new-york") usa `darkMode: 'class'` por defecto ──
   darkMode: 'class',
