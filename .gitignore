@@ -9,3 +9,9 @@ next-env.d.ts
 
 # TypeScript — artefacto incremental de tsc --noEmit
 tsconfig.tsbuildinfo
+
+# Playwright e2e — reportes y artefactos (los binarios van a caché global, no al repo)
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/
