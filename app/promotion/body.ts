@@ -203,86 +203,14 @@ const promotionDetailBody = `
                             <!-- Students Tab -->
                             <div class="tab-pane fade" id="teacher-area-students" role="tabpanel"
                                 aria-labelledby="teacher-area-students-tab">
-                                <div id="students-tab">
-                                    <div class="d-flex justify-content-between align-items-center my-4">
-                                        <h2 class="subtitle-page">Estudiantes</h2>
-                                        <div class="d-flex flex-wrap gap-2">
-                                            <button class="btn btn-primary" id="create-student-btn" onclick="openStudentModal()">
-                                                <i class="bi bi-person-plus me-2"></i>Crear Estudiante
-                                            </button>
-                                            <button class="btn btn-outline-secondary" onclick="exportAllStudentsExcel()"
-                                                id="export-all-students-btn">
-                                                <i class="bi bi-file-earmark-excel me-2"></i>Descarga Excel
-                                            </button>
-                                            <button class="btn btn-outline-success"
-                                                onclick="exportSelectedStudentsExcel()" id="export-selected-btn"
-                                                style="display:none;">
-                                                <i class="bi bi-file-earmark-excel me-2"></i>Descarga Seleccionados
-                                                Excel
-                                            </button>
-                                            <button class="btn btn-outline-danger" onclick="deleteSelectedStudents()"
-                                                id="delete-selected-btn" style="display:none;">
-                                                <i class="bi bi-trash me-2"></i>Borrar Estudiante(s)
-                                            </button>
-
-                                            <!-- ── Import from Excel ── -->
-                                            <button class="btn btn-outline-primary"
-                                                onclick="document.getElementById('students-excel-input').click()"
-                                                id="import-students-excel-btn"
-                                                title="Importar estudiantes desde un archivo Excel o CSV">
-                                                <i class="bi bi-upload me-2"></i>Importar Excel
-                                            </button>
-                                            <input type="file" id="students-excel-input" accept=".xlsx,.xls,.csv"
-                                                style="display:none;" onchange="importStudentsFromExcel(this)">
-
-                                            <!-- ── Download blank template ── -->
-                                            <button class="btn btn-outline-secondary"
-                                                onclick="downloadStudentsExcelTemplate()"
-                                                id="download-students-template-btn"
-                                                title="Descarga la plantilla Excel con las columnas necesarias">
-                                                <i class="bi bi-file-earmark-arrow-down me-2"></i>Plantilla Excel
-                                            </button>
-
-                                            <!-- ── Bulk PDF Reports ── -->
-                                            <div class="dropdown" id="bulk-reports-dropdown" style="display:none;">
-                                                <button class="btn btn-outline-warning dropdown-toggle" type="button"
-                                                    data-bs-toggle="dropdown" aria-expanded="false">
-                                                    <i class="bi bi-file-earmark-pdf me-1"></i>PDF Informes
-                                                </button>
-                                                <ul class="dropdown-menu dropdown-menu-end shadow">
-                                                </ul>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div class="mb-4">
-                                        <div class="input-group">
-                                            <span class="input-group-text bg-white"><i class="bi bi-search"></i></span>
-                                            <input type="text" id="student-search-input" class="form-control"
-                                                placeholder="Buscar por nombre, email, nacionalidad o profesión..."
-                                                onkeyup="filterStudents(this.value)">
-                                        </div>
-                                    </div>
-
-                                    <div class="table-responsive">
-                                        <table class="table table-hover align-middle">
-                                            <thead class="table-light">
-                                                <tr>
-                                                    <th style="width: 40px;">
-                                                        <input type="checkbox" class="form-check-input"
-                                                            id="select-all-students" onclick="toggleAllStudents(this)">
-                                                    </th>
-                                                    <th>Nombre</th>
-                                                    <th>Email</th>
-                                                    <th class="text-end">Acciones</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody id="students-list">
-                                                <!-- Students will be loaded here -->
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
+                                <!-- spec 0014 Fase C: contenido portado a React. El componente
+                                     StudentsPanelHost (_components/StudentsPanel.tsx) monta aquí por portal el
+                                     #students-tab (cabecera + buscador + tabla #students-list) conservando los
+                                     ids legacy. La lógica sigue en el orquestador: loadStudents/displayStudents
+                                     (null-safe, lo llama switchTeacherAreaSubTab('students')) puebla por id; los
+                                     controles llaman a window.openStudentModal/exportAllStudentsExcel/
+                                     exportSelectedStudentsExcel/deleteSelectedStudents/importStudentsFromExcel/
+                                     downloadStudentsExcelTemplate/toggleAllStudents/filterStudents. -->
                             </div>
 
                             <!-- Attendance Tab -->

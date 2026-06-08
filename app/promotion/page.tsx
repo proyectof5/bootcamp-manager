@@ -17,6 +17,7 @@ import { VirtualClassroomPanelHost } from './_components/VirtualClassroomPanel';
 import { RoadmapPanelHost } from './_components/RoadmapPanel';
 import { PildorasPanelHost } from './_components/PildorasPanel';
 import { CollaboratorsPanelHost } from './_components/CollaboratorsPanel';
+import { StudentsPanelHost } from './_components/StudentsPanel';
 import { initReports } from './_lib/reports';
 import { initSyllabusPdf } from './_lib/syllabus-pdf';
 import {
@@ -528,6 +529,10 @@ export default function PromotionPage() {
           (loadCollaborators/displayCollaborators) sigue en el orquestador y lo pobla por id. Se
           eliminó el segundo #collaborators-tab duplicado (tabla muerta) del body.ts. */}
       <CollaboratorsPanelHost />
+      {/* Sub-tab "Lista de estudiantes" de la Teacher-Area (spec 0014 Fase C): React vía portal a
+          #teacher-area-students. Renderiza el #students-tab con ids legacy; la lógica
+          (loadStudents/displayStudents) sigue en el orquestador y lo pobla por id. */}
+      <StudentsPanelHost />
 
       {/* ──────────────────────────────────────────────────────────────────────
           MODALES SHADCN (spec 0013-b en adelante)
