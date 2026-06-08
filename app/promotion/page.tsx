@@ -22,6 +22,7 @@ import { TeacherOverviewPanelHost } from './_components/TeacherOverviewPanel';
 import { AttendancePanelHost } from './_components/AttendancePanel';
 import { AccessSettingsPanelHost } from './_components/AccessSettingsPanel';
 import { OverviewPanelHost } from './_components/OverviewPanel';
+import { EvaluationGridPanelHost } from './_components/EvaluationGridPanel';
 import { initReports } from './_lib/reports';
 import { initSyllabusPdf } from './_lib/syllabus-pdf';
 import {
@@ -554,6 +555,12 @@ export default function PromotionPage() {
           NotesPanel) con ids legacy; loadPromotion/loadQuickActions/updateCourseProgressBar/
           loadOverview* los pueblan por id. Es la vista por defecto del programa. */}
       <OverviewPanelHost />
+      {/* Sub-tab "Evaluación" de la Teacher-Area (spec 0014 Fase C, 18º y ÚLTIMO bloque): React vía
+          portal a #teacher-area-evaluation. Renderiza #evaluation-tab con sus 4 sub-vistas
+          (lista #evaluation-content, #team-history-panel, split-view #eval-project-view, #student-eval-panel)
+          con ids legacy; loadEvaluation/renderEvaluationTab y el flujo de evaluación los pueblan/togglean
+          por id. Con esto promotion-detail.js deja de ser dueño de ninguna sección de body.ts. */}
+      <EvaluationGridPanelHost />
 
       {/* ──────────────────────────────────────────────────────────────────────
           MODALES SHADCN (spec 0013-b en adelante)

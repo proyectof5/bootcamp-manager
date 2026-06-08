@@ -85,101 +85,18 @@ const promotionDetailBody = `
                             <!-- Evaluation Tab -->
                             <div class="tab-pane fade" id="teacher-area-evaluation" role="tabpanel"
                                 aria-labelledby="teacher-area-evaluation-tab">
-                                <div id="evaluation-tab">
-                                    <div id="evaluation-tab-view">
-                                        <div class="d-flex justify-content-between align-items-center my-4">
-                                            <div>
-                                                <h2 class="subtitle-page"><i class="bi bi-clipboard-check me-2 text-primary"></i>Evaluación de
-                                                    Proyectos</h2>
-                                            </div>
-                                        </div>
-                                        <div id="evaluation-content">
-                                            <!-- populated by JS -->
-                                        </div>
-                                    </div>
-
-                                    <div id="team-history-panel" class="hidden">
-                                        <div class="d-flex align-items-center gap-3 my-4">
-                                            <button type="button" class="btn btn-outline-secondary btn-sm"
-                                                onclick="closeTeamHistoryView()"><i
-                                                    class="bi bi-arrow-left me-1"></i>Volver</button>
-                                            <h4 class="mb-0 fw-bold">Histórico de equipos</h4>
-                                        </div>
-                                        <div id="team-history-panel-body" class="pb-4"></div>
-                                    </div>
-
-                                    <div id="eval-project-view" class="hidden">
-                                        <!-- Split view content (header, sidebar, right panel) -->
-                                        <div class="eval-view-topbar d-flex align-items-center gap-3 py-3 mb-0">
-                                            <button type="button" class="btn btn-outline-secondary btn-sm"
-                                                onclick="closeEvaluationView()"><i
-                                                    class="bi bi-arrow-left me-1"></i>Volver</button>
-                                            <div class="flex-grow-1 min-w-0">
-                                                <h5 class="mb-0 fw-bold text-truncate" id="eval-view-title">Evaluación
-                                                </h5>
-                                                <p class="mb-0 text-muted small" id="eval-view-subtitle"></p>
-                                            </div>
-                                            <button type="button" class="btn btn-sm btn-primary"
-                                                onclick="saveIndividualStudentEval()"><i
-                                                    class="bi bi-save me-1"></i>Guardar</button>
-                                            <button type="button" class="btn btn-sm btn-outline-secondary" id="preview-eval-splitview-btn"
-                                                onclick="previewStudentEvalReport(document.getElementById('eval-project-view').dataset.targetStudentId)" title="Ver preview del informe de evaluación PDF"><i
-                                                    class="bi bi-eye me-1"></i>Preview informe</button>
-                                            <button type="button" class="btn btn-sm btn-outline-success" id="send-eval-splitview-btn"
-                                                onclick="sendEvaluationByEmail()" title="Guardar y enviar informe PDF al correo del estudiante"><i
-                                                    class="bi bi-envelope-arrow-up me-1"></i>Enviar evaluación</button>
-                                            <button type="button" class="btn btn-sm btn-outline-primary" id="send-eval-all-splitview-btn"
-                                                onclick="sendEvaluationToAllInProject()" title="Guardar y enviar la evaluación individual a todos los estudiantes evaluados en este proyecto"><i
-                                                    class="bi bi-send me-1"></i>Enviar a todos</button>
-                                        </div>
-                                        <div class="eval-split-layout">
-                                            <aside class="eval-targets-sidebar">
-                                                <ul class="eval-targets-list list-unstyled mb-0" id="eval-targets-list">
-                                                </ul>
-                                            </aside>
-                                            <!-- AUDITORÍA TASK-EVAL-05 — Comportamiento de Enter en .eval-feedback-rte:
-                                                 Los editores .eval-feedback-rte se generan dinámicamente por JS e inyectan
-                                                 en #eval-right-body y #student-eval-panel-body, ambos son <div> simples.
-                                                 ✅ NO están dentro de ningún <form>, por lo que Enter es libre por diseño:
-                                                    el navegador nunca interceptará la tecla como "submit".
-                                                 ✅ Comportamiento estándar de contenteditable en browsers modernos:
-                                                    - Enter simple     → nuevo bloque <div> (Chrome/Edge) o <p> (Firefox).
-                                                    - Shift+Enter      → <br> (salto de línea suave) en todos los browsers.
-                                                 ✅ Se registra un listener keydown con delegación en #teacher-area-evaluation
-                                                    (ver promotion-detail.js, función _initEvalFeedbackRteKeyHandler) que
-                                                    normaliza Shift+Enter a <br> para garantizar consistencia cross-browser.
-                                            -->
-                                            <main class="eval-right-panel" id="eval-right-panel">
-                                                <div id="eval-right-empty" class="text-center py-5">Selecciona un alumno
-                                                </div>
-                                                <div id="eval-right-content" class="d-none">
-                                                    <div id="eval-right-header" class="p-3 border-bottom"></div>
-                                                    <div id="eval-right-body" class="p-3"></div>
-                                                </div>
-                                            </main>
-                                        </div>
-                                    </div>
-
-                                    <div id="student-eval-panel" class="hidden">
-                                        <div class="d-flex align-items-center gap-3 my-4">
-                                            <button type="button" class="btn btn-outline-secondary btn-sm"
-                                                onclick="cancelStudentEvalPanel()"><i
-                                                    class="bi bi-arrow-left me-1"></i>Volver</button>
-                                            <h4 class="mb-0 fw-bold">Evaluación Individual</h4>
-                                        </div>
-                                        <div id="student-eval-panel-body"></div>
-                                        <div class="d-flex gap-2 mt-4 mb-4">
-                                            <button type="button" class="btn btn-primary" id="save-eval-panel-btn"
-                                                onclick="saveIndividualStudentEval()">
-                                                <i class="bi bi-save me-1"></i>Guardar evaluación
-                                            </button>
-                                            <button type="button" class="btn btn-outline-success" id="send-eval-panel-btn"
-                                                onclick="sendEvaluationByEmail()" title="Guardar y enviar informe PDF al correo del estudiante">
-                                                <i class="bi bi-envelope-arrow-up me-1"></i>Enviar evaluación
-                                            </button>
-                                        </div>
-                                    </div>
-                                </div>
+                                <!-- spec 0014 Fase C (18º y ÚLTIMO bloque): contenido portado a React. El componente
+                                     EvaluationGridPanelHost (_components/EvaluationGridPanel.tsx) monta aquí por portal
+                                     el #evaluation-tab con sus 4 sub-vistas (#evaluation-tab-view/#evaluation-content,
+                                     #team-history-panel, #eval-project-view split-view, #student-eval-panel) conservando
+                                     TODOS los ids legacy. La lógica sigue en el orquestador: loadEvaluation/
+                                     renderEvaluationTab (null-safe, lo llama switchTeacherAreaSubTab('evaluation'))
+                                     pueblan #evaluation-content y togglean las sub-vistas por id; los controles llaman a
+                                     window.closeTeamHistoryView/closeEvaluationView/saveIndividualStudentEval/
+                                     previewStudentEvalReport/sendEvaluationByEmail/sendEvaluationToAllInProject/
+                                     cancelStudentEvalPanel. El keydown handler de los .eval-feedback-rte se delega en
+                                     este #teacher-area-evaluation (persistente). Con esto promotion-detail.js ya no es
+                                     dueño de ninguna sección de body.ts. -->
                             </div>
 
                             <!-- Accesos Tab (Área del Docente) -->
