@@ -21,6 +21,7 @@ import { StudentsPanelHost } from './_components/StudentsPanel';
 import { TeacherOverviewPanelHost } from './_components/TeacherOverviewPanel';
 import { AttendancePanelHost } from './_components/AttendancePanel';
 import { AccessSettingsPanelHost } from './_components/AccessSettingsPanel';
+import { OverviewPanelHost } from './_components/OverviewPanel';
 import { initReports } from './_lib/reports';
 import { initSyllabusPdf } from './_lib/syllabus-pdf';
 import {
@@ -547,6 +548,12 @@ export default function PromotionPage() {
           #teacher-area-accesos. Renderiza las tarjetas (contraseña/link/teaching/asana/zoom) con ids
           legacy; loadAccessSettingsInTeacherArea los pobla/lee por id. */}
       <AccessSettingsPanelHost />
+      {/* Sección "Overview" del programa (spec 0014 Fase C): React vía portal a #overview-tab.
+          Renderiza título + Acciones Rápidas + Progreso + Agenda (#calendar-preview-iframe) + Avisos
+          (#next-pildora-content / #attendance-alert-content) + #notes-container (target del portal de
+          NotesPanel) con ids legacy; loadPromotion/loadQuickActions/updateCourseProgressBar/
+          loadOverview* los pueblan por id. Es la vista por defecto del programa. */}
+      <OverviewPanelHost />
 
       {/* ──────────────────────────────────────────────────────────────────────
           MODALES SHADCN (spec 0013-b en adelante)

@@ -492,18 +492,21 @@ __onDomReady( () => {
 });
 
 function setupCalendarPreviewHandler() {
-    const calendarPreviewIframe = document.getElementById('calendar-preview-iframe');
-    if (calendarPreviewIframe) {
-        window.setupCalendarPreview = function () {
-            const calendarId = currentCalendarId || '';
-            if (calendarId) {
-                const embedUrl = `https://calendar.google.com/calendar/embed?src=${encodeURIComponent(calendarId)}&ctz=Europe/Madrid&mode=AGENDA`;
-                calendarPreviewIframe.src = embedUrl;
-            } else {
-                calendarPreviewIframe.src = '';
-            }
-        };
-    }
+    // spec 0014 Fase C: el iframe #calendar-preview-iframe lo monta React (OverviewPanel) por
+    // portal y puede NO existir cuando esto corre en init. Antes se capturaba el iframe aquí y, si
+    // no estaba, window.setupCalendarPreview quedaba sin definir → la agenda nunca cargaba. Ahora
+    // se define SIEMPRE y se resuelve el iframe en cada llamada (timing-independiente).
+    window.setupCalendarPreview = function () {
+        const calendarPreviewIframe = document.getElementById('calendar-preview-iframe');
+        if (!calendarPreviewIframe) return;
+        const calendarId = currentCalendarId || '';
+        if (calendarId) {
+            const embedUrl = `https://calendar.google.com/calendar/embed?src=${encodeURIComponent(calendarId)}&ctz=Europe/Madrid&mode=AGENDA`;
+            calendarPreviewIframe.src = embedUrl;
+        } else {
+            calendarPreviewIframe.src = '';
+        }
+    };
 }
 
 async function loadExtendedInfo() {
