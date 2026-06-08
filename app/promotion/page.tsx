@@ -11,6 +11,7 @@ import { SectionsManagerHost } from './_components/SectionsManager';
 import { QuickLinksManagerHost } from './_components/QuickLinksManager';
 import { TeamManagerHost } from './_components/TeamManager';
 import { ResourcesManagerHost } from './_components/ResourcesManager';
+import { PromoResourcesManagerHost } from './_components/PromoResourcesManager';
 import { initReports } from './_lib/reports';
 import { initSyllabusPdf } from './_lib/syllabus-pdf';
 import {
@@ -493,6 +494,11 @@ export default function PromotionPage() {
           a #program-details-resources-template. Mismo PUENTE inverso que Team (displayResources()
           → window.__refreshResources()). La 2ª card "Recursos de la Promoción" sigue legacy. */}
       <ResourcesManagerHost />
+      {/* Card "Recursos de la Promoción" del sub-tab Recursos (spec 0014 Fase C): React vía portal
+          a #program-details-promo-resources (self-fetch /promotion-resources/all + accordions por
+          módulo). El modal promoResourceModal + acciones siguen legacy; loadPromoResources() →
+          window.__refreshPromoResources(). */}
+      <PromoResourcesManagerHost />
 
       {/* ──────────────────────────────────────────────────────────────────────
           MODALES SHADCN (spec 0013-b en adelante)

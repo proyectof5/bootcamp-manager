@@ -1035,31 +1035,13 @@ const promotionDetailBody = `
                                  dispara el refresco vía window.__refreshResources(). -->
                             <div id="program-details-resources-template" class="mb-3"></div>
 
-                            <!-- Recursos de la Promoción (publicables) -->
-                            <div class="card border-0 shadow-sm">
-                                <div class="card-header bg-light d-flex justify-content-between align-items-center flex-wrap gap-2">
-                                    <div class="d-flex align-items-center gap-2">
-                                        <i class="bi bi-collection-play text-primary"></i>
-                                        <h6 class="mb-0">Recursos de la Promoción</h6>
-                                        <span class="badge bg-secondary" id="promo-resources-count">0</span>
-                                    </div>
-                                    <button class="btn btn-sm btn-primary" onclick="openPromoResourceModal()">
-                                        <i class="bi bi-plus-circle me-1"></i>Nuevo Recurso
-                                    </button>
-                                </div>
-                                <div class="card-body p-3">
-                                    <p class="text-muted small mb-3">
-                                        <i class="bi bi-info-circle me-1"></i>
-                                        Los recursos en <strong>borrador</strong> solo los ves tú. Los <strong>publicados</strong> (o programados y con fecha cumplida) aparecen en la página pública bajo "En Progreso".
-                                    </p>
-                                    <div id="promo-resources-list">
-                                        <div class="text-center text-muted py-4">
-                                            <i class="bi bi-collection-play fs-2 d-block mb-2 opacity-25"></i>
-                                            <span class="small">Sin recursos aún. Crea el primero.</span>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
+                            <!-- Recursos de la Promoción (publicables): spec 0014 Fase C → React.
+                                 PromoResourcesManagerHost (_components/PromoResourcesManager.tsx) monta
+                                 aquí por portal (self-fetch /promotion-resources/all + accordions por
+                                 módulo). El modal promoResourceModal y las acciones (publish/unpublish/
+                                 delete/editar) siguen en el orquestador; loadPromoResources() dispara el
+                                 refresco vía window.__refreshPromoResources(). -->
+                            <div id="program-details-promo-resources"></div>
                         </div>
 
                         <!-- Píldoras Tab -->

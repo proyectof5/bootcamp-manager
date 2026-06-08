@@ -4467,19 +4467,13 @@ const PROMO_RESOURCE_TYPE_ICONS = {
     other:       { icon: 'bi-paperclip',            color: '#6c757d', label: 'Otro' }
 };
 
+// spec 0014 Fase C: la card "Recursos de la Promoción" se migró a React
+// (_components/PromoResourcesManager.tsx, portal a #program-details-promo-resources). El componente
+// hace su propio fetch a /promotion-resources/all; loadPromoResources() solo dispara su refresco
+// (lo llaman init + las acciones publish/unpublish/delete + el guardado del modal, que siguen en el
+// orquestador). renderPromoResources() queda como dead-code null-safe (sin callers).
 async function loadPromoResources() {
-    const token = localStorage.getItem('token');
-    if (!token) return;
-    try {
-        const res = await fetch(`${API_URL}/api/promotions/${promotionId}/promotion-resources/all`, {
-            headers: { Authorization: `Bearer ${token}` }
-        });
-        if (!res.ok) return;
-        const resources = await res.json();
-        renderPromoResources(resources);
-    } catch (err) {
-        console.error('[loadPromoResources] Error:', err);
-    }
+    if (window.__refreshPromoResources) window.__refreshPromoResources();
 }
 
 function renderPromoResources(resources) {
@@ -4586,6 +4580,14 @@ function renderPromoResources(resources) {
 }
 
 function openPromoResourceModal(resourceId = null) {
+    window._openShadcnModal?.("promoResourceModal");
+    // spec 0014 Fase C: el contenido del Dialog lo monta Radix de forma async tras abrir; diferir
+    // el acceso a los inputs (antes se tocaban en el mismo tick y petaba con "Cannot read properties
+    // of null (reading 'reset')" → "Nuevo Recurso"/editar estaban ROTOS).
+    _whenMounted('promo-resource-form', () => { _populatePromoResourceModal(resourceId); });
+}
+
+function _populatePromoResourceModal(resourceId = null) {
     const form = document.getElementById('promo-resource-form');
     form.reset();
     document.getElementById('promo-resource-id').value = '';
@@ -4633,8 +4635,6 @@ function openPromoResourceModal(resourceId = null) {
             }
         });
     }
-
-    window._openShadcnModal?.("promoResourceModal");
 }
 
 function togglePublishAtField(value) {
