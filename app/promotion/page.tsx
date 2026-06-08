@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useCallback, memo } from 'react';
 import { NotesPanelHost } from './_components/NotesPanel';
 import { SidebarDesktopToggle } from './_components/SidebarDesktopToggle';
 import { ProgramCompetencesHost } from './_components/ProgramCompetences';
+import { StudentTrackingHost } from './_components/StudentTracking';
 import {
   Menu,
   CircleUser,
@@ -291,7 +292,6 @@ export default function PromotionPage() {
         await loadScript('/js/shared.js');
         await loadScript('/js/reports.js');
         await loadScript('/js/syllabus-pdf.js');
-        await loadScript('/js/student-tracking.js');
         await loadScript('/js/promotion-detail.js');
       } catch (e) {
         console.error('Script load error:', e);
@@ -455,6 +455,10 @@ export default function PromotionPage() {
           a #competences-list-container + puente window.ProgramCompetences que
           consume promotion-detail.js. Reemplaza public/js/program-competences.js. */}
       <ProgramCompetencesHost />
+      {/* Ficha de seguimiento del coder (spec 0014 Fase C): React vía portal a
+          #ficha-content-host + puente window.StudentTracking (init/openFicha +
+          getters que usa reports.js). Reemplaza public/js/student-tracking.js. */}
+      <StudentTrackingHost />
 
       {/* ──────────────────────────────────────────────────────────────────────
           MODALES SHADCN (spec 0013-b en adelante)
