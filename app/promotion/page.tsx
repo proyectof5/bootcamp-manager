@@ -20,6 +20,7 @@ import { CollaboratorsPanelHost } from './_components/CollaboratorsPanel';
 import { StudentsPanelHost } from './_components/StudentsPanel';
 import { TeacherOverviewPanelHost } from './_components/TeacherOverviewPanel';
 import { AttendancePanelHost } from './_components/AttendancePanel';
+import { AccessSettingsPanelHost } from './_components/AccessSettingsPanel';
 import { initReports } from './_lib/reports';
 import { initSyllabusPdf } from './_lib/syllabus-pdf';
 import {
@@ -542,6 +543,10 @@ export default function PromotionPage() {
           #teacher-area-attendance. Renderiza nav de mes + stats + leyenda + tabla con ids legacy;
           loadAttendance/renderAttendanceTable (guards añadidos) los pueblan por id. */}
       <AttendancePanelHost />
+      {/* Sub-tab "Accesos" de la Teacher-Area (spec 0014 Fase C): React vía portal a
+          #teacher-area-accesos. Renderiza las tarjetas (contraseña/link/teaching/asana/zoom) con ids
+          legacy; loadAccessSettingsInTeacherArea los pobla/lee por id. */}
+      <AccessSettingsPanelHost />
 
       {/* ──────────────────────────────────────────────────────────────────────
           MODALES SHADCN (spec 0013-b en adelante)
