@@ -1082,50 +1082,9 @@ function deletePildoraRow(index) {
     }, 'Eliminar', 'btn-danger');
 }
 
-// Debounce timer for schedule auto-save
-let _scheduleSaveTimer = null;
-
-function _scheduleAutoSave() {
-    if (_scheduleSaveTimer) clearTimeout(_scheduleSaveTimer);
-    _scheduleSaveTimer = setTimeout(_saveScheduleNow, 800);
-}
-
-async function _saveScheduleNow() {
-    const token = localStorage.getItem('token');
-    if (!token) return;
-    const schedule = {
-        online: {
-            entry: document.getElementById('sched-online-entry').value,
-            start: document.getElementById('sched-online-start').value,
-            break: document.getElementById('sched-online-break').value,
-            lunch: document.getElementById('sched-online-lunch').value,
-            finish: document.getElementById('sched-online-finish').value
-        },
-        presential: {
-            entry: document.getElementById('sched-presential-entry').value,
-            start: document.getElementById('sched-presential-start').value,
-            break: document.getElementById('sched-presential-break').value,
-            lunch: document.getElementById('sched-presential-lunch').value,
-            finish: document.getElementById('sched-presential-finish').value
-        },
-        notes: document.getElementById('sched-notes').value
-    };
-    extendedInfoData.schedule = schedule;
-    try {
-        const response = await fetch(`${API_URL}/api/promotions/${promotionId}/extended-info`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-            body: JSON.stringify({ schedule })
-        });
-        if (response.ok) {
-            window.showApiToast('Horario guardado', 'success', 2000);
-        } else {
-            window.showApiToast('Error al guardar horario', 'danger');
-        }
-    } catch (err) {
-        window.showApiToast('Error al guardar horario', 'danger');
-    }
-}
+// spec 0014 Fase C (limpieza entrega): el auto-save del Horario (_scheduleAutoSave/
+// _saveScheduleNow + _scheduleSaveTimer) se ELIMINÓ — era dead-code sin callers; la
+// sub-tab Horario es React (_components/ScheduleSettings.tsx) con su propio auto-save.
 
 // Debounce map for savePildorasToServer: moduleId -> { timer, successMsg }
 const _pildoraSaveDebounce = new Map();
@@ -1306,7 +1265,6 @@ function syncPildorasFromUIToState() {
     }
     modulePildoras.pildoras = currentModulePildoras;
     
-    console.log('[Navigation] Píldoras synced for module', currentModule.name);
 }
 
 // Helper function to update student selection for píldoras
@@ -2638,7 +2596,7 @@ async function togglePildorasAssignment(isOpen) {
             console.warn('Failed to sync assignment status to server, will retry on next save');
             // El siguiente saveExtendedInfo() reintentar sincronizar
         } else {
-            console.log('Assignment status synced to server');
+            // sincronización OK (sin acción)
         }
     } catch (error) {
         console.warn('Error syncing assignment status to server:', error);
@@ -4469,113 +4427,13 @@ const PROMO_RESOURCE_TYPE_ICONS = {
 // (_components/PromoResourcesManager.tsx, portal a #program-details-promo-resources). El componente
 // hace su propio fetch a /promotion-resources/all; loadPromoResources() solo dispara su refresco
 // (lo llaman init + las acciones publish/unpublish/delete + el guardado del modal, que siguen en el
-// orquestador). renderPromoResources() queda como dead-code null-safe (sin callers).
+// orquestador).
 async function loadPromoResources() {
     if (window.__refreshPromoResources) window.__refreshPromoResources();
 }
 
-function renderPromoResources(resources) {
-    const container = document.getElementById('promo-resources-list');
-    const countEl = document.getElementById('promo-resources-count');
-    if (!container) return;
-    if (countEl) countEl.textContent = resources.length;
-
-    if (!resources.length) {
-        container.innerHTML = `
-            <div class="text-center text-muted py-4">
-                <i class="bi bi-collection-play fs-2 d-block mb-2 opacity-25"></i>
-                <span class="small">Sin recursos aún. Crea el primero.</span>
-            </div>`;
-        return;
-    }
-
-    // Group by module
-    const grouped = {};
-    resources.forEach(r => {
-        const key = r.module || '__sin_modulo__';
-        if (!grouped[key]) grouped[key] = [];
-        grouped[key].push(r);
-    });
-
-    const now = new Date();
-    let html = '';
-
-    Object.entries(grouped).forEach(([moduleName, items]) => {
-        const groupLabel = moduleName === '__sin_modulo__' ? 'Sin módulo' : escapeHtml(moduleName);
-        html += `
-        <div class="mb-4">
-            <div class="d-flex align-items-center gap-2 mb-2">
-                <span class="fw-bold text-primary"><i class="bi bi-folder2-open me-1"></i>${groupLabel}</span>
-                <span class="badge bg-light text-dark border">${items.length}</span>
-            </div>
-            <div class="accordion" id="promo-res-acc-${encodeURIComponent(moduleName)}">`;
-
-        items.forEach((r, idx) => {
-            const meta = PROMO_RESOURCE_TYPE_ICONS[r.type] || PROMO_RESOURCE_TYPE_ICONS.other;
-            const accId = `promo-res-item-${r.id}`;
-
-            // Status badge
-            let statusBadge;
-            if (r.status === 'published') {
-                statusBadge = `<span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>Publicado</span>`;
-            } else if (r.publishAt && new Date(r.publishAt) <= now) {
-                statusBadge = `<span class="badge bg-success"><i class="bi bi-clock-history me-1"></i>Publicado (programado)</span>`;
-            } else if (r.publishAt) {
-                const dateStr = new Date(r.publishAt).toLocaleDateString('es-ES', { day:'2-digit', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
-                statusBadge = `<span class="badge bg-warning text-dark"><i class="bi bi-calendar-event me-1"></i>Programado: ${escapeHtml(dateStr)}</span>`;
-            } else {
-                statusBadge = `<span class="badge bg-secondary"><i class="bi bi-pencil-square me-1"></i>Borrador</span>`;
-            }
-
-            html += `
-            <div class="accordion-item border rounded mb-2 shadow-sm">
-                <h2 class="accordion-header">
-                    <button class="accordion-button collapsed py-2 px-3" type="button"
-                            data-bs-toggle="collapse" data-bs-target="#${accId}" aria-expanded="false">
-                        <div class="d-flex align-items-center gap-2 w-100 flex-wrap">
-                            <i class="bi ${meta.icon} fs-5" style="color:${meta.color}; min-width:1.2rem;"></i>
-                            <span class="fw-semibold flex-grow-1">${escapeHtml(r.title)}</span>
-                            <div class="d-flex gap-1 flex-wrap">
-                                <span class="badge bg-light text-dark border" style="font-size:0.7rem;">${meta.label}</span>
-                                ${statusBadge}
-                            </div>
-                        </div>
-                    </button>
-                </h2>
-                <div id="${accId}" class="accordion-collapse collapse">
-                    <div class="accordion-body py-2 px-3">
-                        ${r.description ? `<p class="text-muted small mb-2">${escapeHtml(r.description)}</p>` : ''}
-                        <div class="mb-2">
-                            <a href="${escapeHtml(r.url)}" target="_blank" rel="noopener noreferrer"
-                               class="btn btn-sm btn-outline-primary">
-                                <i class="bi bi-box-arrow-up-right me-1"></i>Abrir recurso
-                            </a>
-                        </div>
-                        <div class="d-flex gap-2 flex-wrap mt-2">
-                            <button class="btn btn-sm btn-outline-secondary" onclick="editPromoResource('${r.id}')">
-                                <i class="bi bi-pencil me-1"></i>Editar
-                            </button>
-                            ${r.status !== 'published' ? `
-                            <button class="btn btn-sm btn-success" onclick="publishPromoResource('${r.id}')">
-                                <i class="bi bi-globe me-1"></i>Publicar
-                            </button>` : `
-                            <button class="btn btn-sm btn-outline-secondary" onclick="unpublishPromoResource('${r.id}')">
-                                <i class="bi bi-eye-slash me-1"></i>Volver a borrador
-                            </button>`}
-                            <button class="btn btn-sm btn-outline-danger" onclick="deletePromoResource('${r.id}')">
-                                <i class="bi bi-trash me-1"></i>Eliminar
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            </div>`;
-        });
-
-        html += `</div></div>`;
-    });
-
-    container.innerHTML = html;
-}
+// renderPromoResources() ELIMINADO (limpieza entrega): era dead-code sin callers
+// (#promo-resources-list ya no existe; React lo rinde en PromoResourcesManager.tsx).
 
 function openPromoResourceModal(resourceId = null) {
     window._openShadcnModal?.("promoResourceModal");
@@ -7589,7 +7447,6 @@ async function loadCollaborators() {
 
         if (response.ok) {
             const collaborators = await response.json();
-            console.log('[loadCollaborators] received:', JSON.stringify(collaborators));
             _currentCollabModulesList = collaborators;
             displayCollaborators(collaborators);
         } else {
@@ -7885,12 +7742,6 @@ async function addCollaboratorById() {
     const checked = document.querySelectorAll('#collaborator-module-checklist .form-check-input:checked');
     const moduleIds = Array.from(checked).map(cb => cb.value);
 
-    // Diagnostic: log what we're sending vs what the promotion has
-    console.log('[addCollaboratorById] currentUser.id:', currentUser.id);
-    console.log('[addCollaboratorById] promotion.teacherId:', window.currentPromotion?.teacherId);
-    console.log('[addCollaboratorById] match:', currentUser.id === window.currentPromotion?.teacherId);
-    console.log('[addCollaboratorById] teacherId to add:', teacherId, '| moduleIds:', moduleIds);
-
     // Disable button while request is in flight
     const addBtn = document.getElementById('add-collaborator-btn');
     if (addBtn) { addBtn.disabled = true; addBtn.textContent = 'Agregando...'; }
@@ -7907,7 +7758,6 @@ async function addCollaboratorById() {
         });
 
         const data = await response.json();
-        console.log('[addCollaboratorById] response status:', response.status, '| body:', JSON.stringify(data));
 
         if (response.ok) {
             window._closeShadcnModal?.("collaboratorModal");
@@ -9594,10 +9444,6 @@ async function clearDayAttendance(dateKey) {
     // Update stats
     updateAttendanceStats();
 
-    // Show success message
-    if (clearCount > 0) {
-        console.log(`✓ Limpied ${clearCount} attendance records for ${dateKey}`);
-    }
     }, 'Limpiar', 'btn-warning');
 }
 
