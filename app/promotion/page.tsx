@@ -7,6 +7,7 @@ import { ProgramCompetencesHost } from './_components/ProgramCompetences';
 import { StudentTrackingHost } from './_components/StudentTracking';
 import { CalendarSettingsHost } from './_components/CalendarSettings';
 import { ScheduleSettingsHost } from './_components/ScheduleSettings';
+import { SectionsManagerHost } from './_components/SectionsManager';
 import { initReports } from './_lib/reports';
 import { initSyllabusPdf } from './_lib/syllabus-pdf';
 import {
@@ -473,6 +474,10 @@ export default function PromotionPage() {
       {/* Sub-tab "Horario" de Contenido del Programa (spec 0014 Fase C): React vía portal
           a #program-details-schedule (ids legacy sched-* preservados para saveExtendedInfo). */}
       <ScheduleSettingsHost />
+      {/* Sub-tab "Secciones" de Contenido del Programa (spec 0014 Fase C): React vía portal
+          a #program-details-sections (lista + CRUD con Dialog propio). El sectionModal de
+          abajo queda inerte (nada lo abre). */}
+      <SectionsManagerHost />
 
       {/* ──────────────────────────────────────────────────────────────────────
           MODALES SHADCN (spec 0013-b en adelante)

@@ -1385,19 +1385,9 @@ const promotionDetailBody = `
                         <!-- Sections Tab -->
                         <div class="tab-pane fade" id="program-details-sections" role="tabpanel"
                             aria-labelledby="program-details-sections-tab">
-                            <div class="card">
-                                <div class="card-header bg-light d-flex justify-content-between align-items-center">
-                                    <h6 class="mb-0"><i class="bi bi-file-text me-2"></i>Secciones</h6>
-                                    <button class="btn btn-sm btn-primary" onclick="openSectionModal()">
-                                        <i class="bi bi-plus-circle me-2"></i>Agregar sección
-                                    </button>
-                                </div>
-                                <div class="card-body">
-                                    <div id="sections-list">
-                                        <!-- Sections will be loaded here -->
-                                    </div>
-                                </div>
-                            </div>
+                            <!-- spec 0014 Fase C: contenido portado a React. El componente
+                                 SectionsManagerHost (_components/SectionsManager.tsx) monta aquí por
+                                 portal (lista de secciones + alta/edición/borrado con su propio Dialog). -->
                         </div>
 
                     </div>

@@ -4472,6 +4472,9 @@ async function loadSections() {
 
 function displaySections(sections) {
     const list = document.getElementById('sections-list');
+    // spec 0014 Fase C: la pestaña Secciones la gestiona React (SectionsManager).
+    // #sections-list ya no existe en body.ts → guard (loadSections() de init no debe romper).
+    if (!list) return;
     list.innerHTML = '';
 
     if (sections.length === 0) {
