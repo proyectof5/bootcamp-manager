@@ -3462,6 +3462,7 @@ function updateProgressInfo(promotion, students) {
 
 function displayModules(modules) {
     const list = document.getElementById('modules-list');
+    if (!list) return; // spec 0014 Fase C: #modules-list lo monta React (RoadmapPanel) por portal
     list.innerHTML = '';
 
     if (modules.length === 0) {
@@ -3497,6 +3498,7 @@ function displayModules(modules) {
 
 function generateGanttChart(promotion) {
     const table = document.getElementById('gantt-table');
+    if (!table) return; // spec 0014 Fase C: #gantt-table lo monta React (RoadmapPanel) por portal
     table.innerHTML = '';
 
     // Use the module-level helper so superadmin also gets edit buttons.

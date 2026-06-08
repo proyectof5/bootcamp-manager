@@ -964,37 +964,12 @@ const promotionDetailBody = `
                         <!-- Roadmap Tab -->
                         <div class="tab-pane fade show active" id="program-details-roadmap" role="tabpanel"
                             aria-labelledby="program-details-roadmap-tab">
-                            <div class="justify-content-between align-items-center mb-4 detail-card">
-                                <h5 class="mb-0">Roadmap & Módulos</h5>
-                                <div class="d-flex flex-wrap gap-2 align-items-center">
-                                    <div class="form-check form-switch mb-0 me-2">
-                                        <input class="form-check-input" type="checkbox"
-                                            id="show-employability-toggle"
-                                            onchange="toggleShowEmployability(this.checked)" checked>
-                                        <label class="form-check-label small fw-semibold"
-                                            for="show-employability-toggle">
-                                            Mostrar Empleabilidad
-                                        </label>
-                                    </div>
-                                    <button class="btn btn-outline-warning btn-sm" onclick="openEmployabilityModal()">
-                                        <i class="bi bi-briefcase me-2"></i>Sesiones Empleabilidad
-                                    </button>
-                                    <button class="btn btn-primary btn-sm" onclick="openModuleModal()">
-                                        <i class="bi bi-plus-circle me-2"></i>Agregar Módulo
-                                    </button>
-                                </div>
-                            </div>
-                            <div id="modules-list" class="row">
-                                <!-- Modules will be loaded here -->
-                            </div>
-                            <div class="mt-4">
-                                <h6 class="mb-3">Diagrama Gantt</h6>
-                                <div class="table-responsive">
-                                    <table id="gantt-table" class="table">
-                                        <!-- Gantt will be generated here -->
-                                    </table>
-                                </div>
-                            </div>
+                            <!-- spec 0014 Fase C: contenido portado a React. El componente
+                                 RoadmapPanelHost (_components/RoadmapPanel.tsx) monta aquí por portal la
+                                 cabecera + #modules-list + #gantt-table conservando los ids legacy. La
+                                 lógica sigue en el orquestador: loadModules() (lo llama
+                                 switchProgramDetailsTab y el CRUD de módulos) puebla por id; los controles
+                                 llaman a window.toggleShowEmployability/openEmployabilityModal/openModuleModal. -->
                         </div>
 
                         <!-- Calendario Tab -->
