@@ -185,19 +185,11 @@ const promotionDetailBody = `
                             <!-- Overview Tab -->
                             <div class="tab-pane fade show active" id="teacher-area-overview" role="tabpanel"
                                 aria-labelledby="teacher-area-overview-tab">
-                                <div class="mb-4">
-                                    <h6 class="mb-3 text-dark fw-bold">
-                                        <i class="bi bi-lightning-charge text-warning me-2"></i>Accesos Rápidos
-                                    </h6>
-                                    <div id="teacher-area-quick-actions" class="p-3 bg-light rounded-3 border">
-                                        <!-- Teacher quick actions will be loaded here -->
-                                        <div class="text-center py-4">
-                                            <div class="spinner-border text-primary spinner-border-sm" role="status">
-                                            </div>
-                                            <span class="ms-2">Cargando acciones...</span>
-                                        </div>
-                                    </div>
-                                </div>
+                                <!-- spec 0014 Fase C: contenido portado a React. El componente
+                                     TeacherOverviewPanelHost (_components/TeacherOverviewPanel.tsx) monta aquí
+                                     por portal el #teacher-area-quick-actions. La lógica sigue en el
+                                     orquestador: loadTeacherAreaOverview/displayTeacherAreaQuickActions
+                                     (null-safe, lo llama switchTeacherAreaSubTab('overview')) puebla por id. -->
                             </div>
 
                             <!-- Students Tab -->

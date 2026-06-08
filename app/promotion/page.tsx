@@ -18,6 +18,7 @@ import { RoadmapPanelHost } from './_components/RoadmapPanel';
 import { PildorasPanelHost } from './_components/PildorasPanel';
 import { CollaboratorsPanelHost } from './_components/CollaboratorsPanel';
 import { StudentsPanelHost } from './_components/StudentsPanel';
+import { TeacherOverviewPanelHost } from './_components/TeacherOverviewPanel';
 import { initReports } from './_lib/reports';
 import { initSyllabusPdf } from './_lib/syllabus-pdf';
 import {
@@ -533,6 +534,9 @@ export default function PromotionPage() {
           #teacher-area-students. Renderiza el #students-tab con ids legacy; la lógica
           (loadStudents/displayStudents) sigue en el orquestador y lo pobla por id. */}
       <StudentsPanelHost />
+      {/* Sub-tab "Accesos Rápidos" (overview) de la Teacher-Area (spec 0014 Fase C): React vía portal a
+          #teacher-area-overview. Renderiza #teacher-area-quick-actions; loadTeacherAreaOverview lo pobla. */}
+      <TeacherOverviewPanelHost />
 
       {/* ──────────────────────────────────────────────────────────────────────
           MODALES SHADCN (spec 0013-b en adelante)
