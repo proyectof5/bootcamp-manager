@@ -591,8 +591,7 @@ body {
 
 .student-name-cell {
     cursor: pointer;
-    /* !important para vencer .sticky-column { color: #fff !important } (texto blanco). */
-    color: var(--principal-1) !important;
+    color: var(--principal-1);
     font-weight: 500;
 }
 
@@ -641,9 +640,9 @@ body {
 }
 
 .attendance-row-highlight .student-name-cell {
-    background-color: var(--app-color-primary-soft) !important;
+    background-color: #ffffff !important;
     color: var(--principal-1) !important;
-    font-weight: 700 !important;
+    font-weight: 600 !important;
 }
 
 .attendance-row-highlight-active {
