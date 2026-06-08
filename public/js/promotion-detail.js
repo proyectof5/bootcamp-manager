@@ -656,45 +656,15 @@ function displayTeam() {
     if (window.__refreshTeam) window.__refreshTeam();
 }
 
+// spec 0014 Fase C: la tabla "Recursos del Programa" se migró a React
+// (_components/ResourcesManager.tsx, portal a #program-details-resources-template). Mismo
+// patrón PUENTE inverso que Team: los datos viven en extendedInfoData.resources, que mutan el
+// modal de catálogo (addResourceFromCatalog/removeResourceFromCatalog) y deleteResource ANTES
+// de llamar aquí; exponemos un getter y displayResources() solo dispara el re-render. El modal
+// de catálogo (openResourceModal/resourceModal) sigue en el orquestador (ids propios).
+window.__getPromotionResources = () => (extendedInfoData.resources || []);
 function displayResources() {
-    const tbody = document.getElementById('resources-list-body');
-    if (!tbody) return;
-    tbody.innerHTML = '';
-    (extendedInfoData.resources || []).forEach((res, index) => {
-        const tr = document.createElement('tr');
-
-        // Build category/type cell
-        const categoryHtml = (res.types && res.types.length)
-            ? res.types.map(t => `<span class="badge bg-primary-subtle text-primary border border-primary-subtle me-1">${escapeHtml(t.name)}</span>`).join('')
-            : `<span class="badge bg-info text-dark">${escapeHtml(res.category || '')}</span>`;
-
-        // Build area badges
-        const areaBadges = (res.areas && res.areas.length)
-            ? res.areas.slice(0, 3).map(a => `<span class="badge bg-light text-dark border small me-1">${escapeHtml(a.name)}</span>`).join('')
-            : '';
-
-        // Build tool chips
-        const toolChips = (res.tools && res.tools.length)
-            ? res.tools.slice(0, 4).map(t => `<span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle small me-1">${escapeHtml(t.name)}</span>`).join('')
-            : '';
-
-        const extraHtml = (areaBadges || toolChips)
-            ? `<div class="mt-1">${areaBadges}${toolChips}</div>`
-            : '';
-
-        tr.innerHTML = `
-            <td>
-                <div class="fw-semibold">${escapeHtml(res.title)}</div>
-                ${extraHtml}
-            </td>
-            <td>${categoryHtml}</td>
-            <td><a href="${escapeHtml(res.url)}" target="_blank" class="text-truncate d-inline-block" style="max-width: 180px;">${escapeHtml(res.url)}</a></td>
-            <td>
-                <button class="btn btn-sm btn-danger" onclick="deleteResource(${index})"><i class="bi bi-trash"></i></button>
-            </td>
-        `;
-        tbody.appendChild(tr);
-    });
+    if (window.__refreshResources) window.__refreshResources();
 }
 
 // Load modules and píldoras data
@@ -1699,9 +1669,15 @@ function updateTeamMember() {
 let _resourceCatalogAll = [];   // full list fetched from API
 let _resourceCatalogFiltered = [];
 
-async function openResourceModal() {
+function openResourceModal() {
     window._openShadcnModal?.("resourceModal");
+    // spec 0014 Fase C: el contenido del Dialog (inputs/grid) lo monta Radix de forma async tras
+    // abrir; esperar a que exista antes de tocarlo. Antes se accedía en el mismo tick y petaba con
+    // "Cannot set properties of null (setting 'value')" (bug latente al migrar el modal a shadcn).
+    _whenMounted('resource-search-input', () => { _populateResourceCatalog(); });
+}
 
+async function _populateResourceCatalog() {
     const grid = document.getElementById('resource-catalog-grid');
     const loading = document.getElementById('resource-catalog-loading');
     const emptyEl = document.getElementById('resource-catalog-empty');

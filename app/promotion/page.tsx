@@ -10,6 +10,7 @@ import { ScheduleSettingsHost } from './_components/ScheduleSettings';
 import { SectionsManagerHost } from './_components/SectionsManager';
 import { QuickLinksManagerHost } from './_components/QuickLinksManager';
 import { TeamManagerHost } from './_components/TeamManager';
+import { ResourcesManagerHost } from './_components/ResourcesManager';
 import { initReports } from './_lib/reports';
 import { initSyllabusPdf } from './_lib/syllabus-pdf';
 import {
@@ -488,6 +489,10 @@ export default function PromotionPage() {
           #program-details-team (tabla de miembros). Los modales de alta/edición/borrado
           siguen en el orquestador (ya shadcn); displayTeam() dispara window.__refreshTeam(). */}
       <TeamManagerHost />
+      {/* Card "Recursos del Programa" del sub-tab Recursos (spec 0014 Fase C): React vía portal
+          a #program-details-resources-template. Mismo PUENTE inverso que Team (displayResources()
+          → window.__refreshResources()). La 2ª card "Recursos de la Promoción" sigue legacy. */}
+      <ResourcesManagerHost />
 
       {/* ──────────────────────────────────────────────────────────────────────
           MODALES SHADCN (spec 0013-b en adelante)

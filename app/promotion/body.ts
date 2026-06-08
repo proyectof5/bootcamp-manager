@@ -1028,32 +1028,12 @@ const promotionDetailBody = `
                         <!-- Resources Tab -->
                         <div class="tab-pane fade" id="program-details-resources" role="tabpanel"
                             aria-labelledby="program-details-resources-tab">
-                            <!-- Recursos del programa (plantilla/template) -->
-                            <div class="card mb-3">
-                                <div class="card-header bg-light d-flex justify-content-between align-items-center">
-                                    <h6 class="mb-0"><i class="bi bi-tools me-2"></i>Recursos del Programa</h6>
-                                    <button class="btn btn-sm btn-outline-primary" onclick="openResourceModal()">
-                                        <i class="bi bi-plus"></i> Agrega Recurso
-                                    </button>
-                                </div>
-                                <div class="card-body p-0">
-                                    <div class="table-responsive">
-                                        <table class="table table-hover mb-0">
-                                            <thead>
-                                                <tr>
-                                                    <th>Título</th>
-                                                    <th>Categoría (tipo)</th>
-                                                    <th>URL</th>
-                                                    <th>Acción</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody id="resources-list-body">
-                                                <!-- Dynamic Content -->
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
+                            <!-- Recursos del programa (plantilla/template): spec 0014 Fase C →
+                                 React. ResourcesManagerHost (_components/ResourcesManager.tsx) monta
+                                 aquí por portal (tabla #resources-list-body). El modal de catálogo
+                                 (openResourceModal/resourceModal) sigue en el orquestador; displayResources()
+                                 dispara el refresco vía window.__refreshResources(). -->
+                            <div id="program-details-resources-template" class="mb-3"></div>
 
                             <!-- Recursos de la Promoción (publicables) -->
                             <div class="card border-0 shadow-sm">
