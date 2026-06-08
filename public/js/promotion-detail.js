@@ -647,53 +647,13 @@ function _showExtendedInfoLoading(show) {
     }
 }
 
+// spec 0014 Fase C: la tabla de equipo se migró a React (_components/TeamManager.tsx,
+// portal a #program-details-team). Los datos siguen viviendo en extendedInfoData.team (los
+// mutan los modales shadcn de equipo y los flujos de colaboradores ANTES de llamar aquí), así
+// que exponemos un getter para que React los lea y displayTeam() solo dispara el re-render.
+window.__getPromotionTeam = () => (extendedInfoData.team || []);
 function displayTeam() {
-    const tbody = document.getElementById('team-list-body');
-    if (!tbody) return;
-    tbody.innerHTML = '';
-
-    (extendedInfoData.team || []).forEach((member, index) => {
-        // Find assigned modules from central state (currentPromotion)
-        let moduleIds = [];
-        const promo = window.currentPromotion || {};
-        const isOwner = promo.teacherId === member.collaboratorId;
-        
-        if (isOwner) {
-            moduleIds = promo.ownerModules || [];
-        } else {
-            const entry = (promo.collaboratorModules || []).find(m => m.teacherId === member.collaboratorId);
-            moduleIds = entry ? (entry.moduleIds || []) : [];
-        }
-
-        // Map to names
-        const modNames = [];
-        (moduleIds || []).forEach(mid => {
-            const found = (window.promotionModules || []).find(m => String(m.id) === String(mid));
-            if (found) modNames.push(found.name);
-        });
-
-        const moduleCell = modNames.length > 0
-            ? modNames.map(name => `<span class="badge bg-light text-dark border me-1">${escapeHtml(name)}</span>`).join('')
-            : '<span class="text-muted small">—</span>';
-
-        const linkedinCell = member.linkedin
-            ? `<a href="${escapeHtml(member.linkedin)}" target="_blank"><i class="bi bi-linkedin"></i></a>`
-            : '<span class="text-muted small">—</span>';
-            
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-            <td>${escapeHtml(member.name)}</td>
-            <td>${escapeHtml(member.role || '')}</td>
-            <td>${escapeHtml(member.email || '')}</td>
-            <td>${moduleCell}</td>
-            <td>${linkedinCell}</td>
-            <td>
-                <button class="btn btn-sm btn-outline-primary me-1" onclick="openEditTeamModal(${index})" title="Editar"><i class="bi bi-pencil"></i></button>
-                <button class="btn btn-sm btn-outline-danger" onclick="deleteTeamMember(${index})" title="Eliminar"><i class="bi bi-trash"></i></button>
-            </td>
-        `;
-        tbody.appendChild(tr);
-    });
+    if (window.__refreshTeam) window.__refreshTeam();
 }
 
 function displayResources() {

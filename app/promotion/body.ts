@@ -1018,33 +1018,11 @@ const promotionDetailBody = `
                         <!-- Team Tab -->
                         <div class="tab-pane fade" id="program-details-team" role="tabpanel"
                             aria-labelledby="program-details-team-tab">
-                            <div class="card">
-                                <div class="card-header bg-light d-flex justify-content-between align-items-center">
-                                    <h6 class="mb-0"><i class="bi bi-people me-2"></i>Miembros del equipo</h6>
-                                    <button class="btn btn-sm btn-outline-primary" onclick="openTeamModal()">
-                                        <i class="bi bi-plus"></i> Agregar miembro
-                                    </button>
-                                </div>
-                                <div class="card-body p-0">
-                                    <div class="table-responsive">
-                                        <table class="table table-hover mb-0">
-                                            <thead>
-                                                <tr>
-                                                    <th>Nombre</th>
-                                                    <th>Role</th>
-                                                    <th>Email</th>
-                                                    <th>Módulo</th>
-                                                    <th>LinkedIn</th>
-                                                    <th>Acción</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody id="team-list-body">
-                                                <!-- Dynamic Content -->
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
+                            <!-- spec 0014 Fase C: contenido portado a React. El componente
+                                 TeamManagerHost (_components/TeamManager.tsx) monta aquí por portal
+                                 (tabla de miembros del equipo). Los modales de alta/edición/borrado
+                                 siguen en el orquestador (ya shadcn); displayTeam() dispara el
+                                 refresco vía window.__refreshTeam(). -->
                         </div>
 
                         <!-- Resources Tab -->

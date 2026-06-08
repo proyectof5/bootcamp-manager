@@ -9,6 +9,7 @@ import { CalendarSettingsHost } from './_components/CalendarSettings';
 import { ScheduleSettingsHost } from './_components/ScheduleSettings';
 import { SectionsManagerHost } from './_components/SectionsManager';
 import { QuickLinksManagerHost } from './_components/QuickLinksManager';
+import { TeamManagerHost } from './_components/TeamManager';
 import { initReports } from './_lib/reports';
 import { initSyllabusPdf } from './_lib/syllabus-pdf';
 import {
@@ -483,6 +484,10 @@ export default function PromotionPage() {
           a #program-details-quicklinks (lista + alta/borrado). El quickLinkModal de abajo queda
           inerte. Tras CRUD refresca el overview vía window.loadQuickLinks/refreshQuickActions. */}
       <QuickLinksManagerHost />
+      {/* Sub-tab "Team" de Contenido del Programa (spec 0014 Fase C): React vía portal a
+          #program-details-team (tabla de miembros). Los modales de alta/edición/borrado
+          siguen en el orquestador (ya shadcn); displayTeam() dispara window.__refreshTeam(). */}
+      <TeamManagerHost />
 
       {/* ──────────────────────────────────────────────────────────────────────
           MODALES SHADCN (spec 0013-b en adelante)
