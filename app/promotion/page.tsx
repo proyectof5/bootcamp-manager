@@ -6,6 +6,7 @@ import { SidebarDesktopToggle } from './_components/SidebarDesktopToggle';
 import { ProgramCompetencesHost } from './_components/ProgramCompetences';
 import { StudentTrackingHost } from './_components/StudentTracking';
 import { initReports } from './_lib/reports';
+import { initSyllabusPdf } from './_lib/syllabus-pdf';
 import {
   Menu,
   CircleUser,
@@ -295,7 +296,8 @@ export default function PromotionPage() {
         // misma posición de la secuencia (tras shared.js, antes de promotion-detail.js
         // que consume window.Reports). Reemplaza loadScript('/js/reports.js').
         initReports();
-        await loadScript('/js/syllabus-pdf.js');
+        // syllabus-pdf.js migrado a módulo TS (spec 0014 Fase C): expone window.SyllabusPDF.
+        initSyllabusPdf();
         await loadScript('/js/promotion-detail.js');
       } catch (e) {
         console.error('Script load error:', e);
