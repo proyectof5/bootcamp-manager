@@ -15,6 +15,7 @@ import { PromoResourcesManagerHost } from './_components/PromoResourcesManager';
 import { EvaluationCriteriaHost } from './_components/EvaluationCriteria';
 import { VirtualClassroomPanelHost } from './_components/VirtualClassroomPanel';
 import { RoadmapPanelHost } from './_components/RoadmapPanel';
+import { PildorasPanelHost } from './_components/PildorasPanel';
 import { initReports } from './_lib/reports';
 import { initSyllabusPdf } from './_lib/syllabus-pdf';
 import {
@@ -516,6 +517,11 @@ export default function PromotionPage() {
           #program-details-roadmap. Renderiza cabecera + #modules-list + #gantt-table con ids legacy;
           la lógica (loadModules/generateGanttChart) sigue en el orquestador y los pobla por id. */}
       <RoadmapPanelHost />
+      {/* Sub-tab "Píldoras" de Contenido del Programa (spec 0014 Fase C): React vía portal a
+          #program-details-pildoras. Renderiza el panel con ids legacy; la lógica
+          (displayPildoras/updateModuleNavigation/navegación) sigue en el orquestador y lo pobla por id.
+          Con esto Contenido del Programa queda 100% React. */}
+      <PildorasPanelHost />
 
       {/* ──────────────────────────────────────────────────────────────────────
           MODALES SHADCN (spec 0013-b en adelante)

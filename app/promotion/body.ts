@@ -1022,77 +1022,14 @@ const promotionDetailBody = `
                         <!-- Píldoras Tab -->
                         <div class="tab-pane fade" id="program-details-pildoras" role="tabpanel"
                             aria-labelledby="program-details-pildoras-tab">
-                            <div class="card">
-                                <div class="card-header bg-light">
-                                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
-                                        <div class="d-flex align-items-center gap-2">
-                                            <h6 class="mb-0"><i class="bi bi-lightbulb me-2"></i>Píldoras</h6>
-                                            <!-- Module Navigation -->
-                                            <div class="d-flex align-items-center gap-2" id="pildoras-module-nav">
-                                                <button class="btn btn-sm btn-outline-secondary" id="prev-module-btn"
-                                                    onclick="navigateToPreviousModule()" disabled>
-                                                    <i class="bi bi-chevron-left"></i>
-                                                </button>
-                                                <span class="fw-semibold text-primary" id="current-module-name">Módulo
-                                                    I</span>
-                                                <button class="btn btn-sm btn-outline-secondary" id="next-module-btn"
-                                                    onclick="navigateToNextModule()">
-                                                    <i class="bi bi-chevron-right"></i>
-                                                </button>
-                                            </div>
-                                            <div class="badge text-dark" id="current-module-stats">
-                                                <span id="module-pildoras-count">0</span> píldoras
-                                            </div>
-                                        </div>
-                                        <div class="form-check form-switch">
-                                            <input class="form-check-input" type="checkbox"
-                                                id="pildoras-assignment-toggle"
-                                                onchange="togglePildorasAssignment(this.checked)">
-                                            <label class="form-check-label fw-semibold"
-                                                for="pildoras-assignment-toggle">
-                                                Self-Assignment
-                                            </label>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="card-header bg-white border-bottom pt-3 pb-2">
-                                    <div class="d-flex flex-wrap gap-2">
-                                        <button class="btn btn-sm btn-outline-primary" type="button"
-                                            onclick="addPildoraRow()">
-                                            <i class="bi bi-plus"></i> Agregar Píldora
-                                        </button>
-                                        <button class="btn btn-sm btn-outline-secondary" type="button"
-                                            id="pildoras-excel-template-btn" onclick="downloadPildorasExcelTemplate()">
-                                            <i class="bi bi-download"></i> Plantilla Excel
-                                        </button>
-                                        <input type="file" id="pildoras-excel-input" accept=".xlsx,.xls,.csv" class="d-none"
-                                            onchange="importPildorasFromExcel(this)">
-                                        <button class="btn btn-sm btn-outline-success" type="button"
-                                            id="pildoras-import-excel-btn"
-                                            onclick="document.getElementById('pildoras-excel-input').click()">
-                                            <i class="bi bi-file-earmark-spreadsheet"></i> Importar Excel
-                                        </button>
-                                    </div>
-                                </div>
-                                <div class="card-body p-0">
-                                    <div class="table-responsive">
-                                        <table class="table table-hover align-middle mb-0">
-                                            <thead>
-                                                <tr>
-                                                    <th>Presentación</th>
-                                                    <th>Fecha</th>
-                                                    <th>Píldora</th>
-                                                    <th>Estudiante</th>
-                                                    <th>Estado</th>
-                                                    <th>Acciones</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody id="pildoras-list-body">
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
+                            <!-- spec 0014 Fase C: contenido portado a React. El componente
+                                 PildorasPanelHost (_components/PildorasPanel.tsx) monta aquí por portal el
+                                 panel (navegación de módulos + toggle + botones + #pildoras-list-body)
+                                 conservando los ids legacy. La lógica sigue en el orquestador:
+                                 displayPildoras/updateModuleNavigation (null-safe) pueblan por id; los
+                                 controles llaman a window.navigateToPreviousModule/navigateToNextModule/
+                                 togglePildorasAssignment/addPildoraRow/downloadPildorasExcelTemplate/
+                                 importPildorasFromExcel. -->
                         </div>
 
                         <!-- Evaluation Tab -->
