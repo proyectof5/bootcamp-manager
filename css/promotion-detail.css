@@ -1195,7 +1195,33 @@ th, td {
     color: #fff;
 }
 
+/* ─── Icono de "arrastra para reordenar" en cursos/proyectos/lecciones ─── */
+.gantt-row-text {
+    vertical-align: middle;
+}
 
+.gantt-drag-handle-slot {
+    display: inline-block;
+    width: 16px;
+    text-align: center;
+    vertical-align: middle;
+    margin-right: 4px;
+}
+
+.gantt-drag-handle {
+    color: var(--app-color-text-muted);
+    opacity: 0.55;
+    cursor: grab;
+    font-size: var(--app-font-size-sm);
+}
+
+.gantt_row:hover .gantt-drag-handle,
+.gantt_cell:hover .gantt-drag-handle {
+    opacity: 1;
+    color: var(--app-color-primary);
+}
+
+@media (max-width: 576px) {
     .page-title {
         font-size: 1.5rem;
         margin-inline-start: 0.5rem;

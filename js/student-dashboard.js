@@ -470,6 +470,32 @@ function renderEvaluation(evaluation) {
     //console.log('Evaluation rendered successfully');
 }
 
+/**
+ * Devuelve el inicio (en semanas, absoluto) del módulo en `moduleIndex`.
+ * Si el módulo tiene `startOffset` explícito (se movió libremente desde el
+ * Gantt del docente), se usa ese valor. Si no, se deriva encadenando
+ * secuencialmente desde el fin del módulo anterior — mismo criterio que el
+ * antiguo `weekCounter` acumulado (compatibilidad con promociones sin
+ * módulos movidos nunca). Duplicado localmente (sin importar gantt-adapter.js)
+ * para no acoplar este dashboard a la vista de administración.
+ * @param {Array<Object>} modules
+ * @param {number} moduleIndex
+ * @returns {number}
+ */
+function getModuleStartWeeks(modules, moduleIndex) {
+    let cursor = 0;
+    for (let i = 0; i <= moduleIndex; i++) {
+        const m = modules[i] || {};
+        const explicitOffset = m.startOffset;
+        const startWeeks = (typeof explicitOffset === 'number' && !Number.isNaN(explicitOffset))
+            ? explicitOffset
+            : cursor;
+        if (i === moduleIndex) return startWeeks;
+        cursor = startWeeks + (Number(m.duration) || 1);
+    }
+    return cursor;
+}
+
 function generateGantt(promotion) {
     const table = document.getElementById('gantt-table');
     table.innerHTML = '';
@@ -538,12 +564,12 @@ function generateGantt(promotion) {
     table.appendChild(headerRow);
 
     // Data Rows
-    let weekCounter = 0;
-
     // Define colors/classes based on user CSS
     const classTypes = ['tema', 'proyecto', 'transicion'];
 
     modules.forEach((module, index) => {
+        const weekCounter = getModuleStartWeeks(modules, index);
+
         // Module Row
         const row = document.createElement('tr');
         const label = document.createElement('td');
@@ -630,8 +656,6 @@ function generateGantt(promotion) {
                 table.appendChild(projRow);
             });
         }
-
-        weekCounter += module.duration;
     });
 
     // Employability Section

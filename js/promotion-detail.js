@@ -3628,7 +3628,21 @@ function initGanttInstance() {
         { unit: 'week', step: 1, format: 'Sem. %W' }
     ];
     gantt.config.columns = [
-        { name: 'text', label: 'Nombre', tree: true, width: 220 }
+        {
+            name: 'text',
+            label: 'Nombre',
+            tree: true,
+            width: 220,
+            template: function (task) {
+                const isOrderable = canEdit && (
+                    task.itemType === 'course' || task.itemType === 'project' || task.itemType === 'leccion'
+                );
+                const dragHandle = isOrderable
+                    ? '<i class="bi bi-grip-vertical gantt-drag-handle" title="Arrastra para reordenar"></i>'
+                    : '';
+                return `<span class="gantt-drag-handle-slot">${dragHandle}</span><span class="gantt-row-text">${escapeHtml(task.text)}</span>`;
+            }
+        }
     ];
     gantt.config.readonly = !canEdit;
     gantt.config.drag_move = canEdit;
@@ -3636,6 +3650,17 @@ function initGanttInstance() {
     gantt.config.drag_progress = false;
     gantt.config.drag_links = false;
     gantt.config.show_links = false;
+
+    // Permite reordenar (arriba/abajo) cursos, proyectos y lecciones dentro de
+    // su mismo padre (módulo o grupo "Lecciones") arrastrando la fila en la
+    // rejilla. Los módulos y el grupo "Lecciones" no se reordenan así — su
+    // posición se controla con el drag temporal (mover en el tiempo).
+    gantt.config.order_branch = canEdit
+        ? function (task) {
+            return task.itemType === 'course' || task.itemType === 'project' || task.itemType === 'leccion';
+        }
+        : false;
+    gantt.config.order_branch_free = false;
 
     // Colorea cada barra según el tipo de elemento (módulo/curso/proyecto/lección)
     gantt.templates.task_class = function (start, end, task) {
@@ -3716,6 +3741,13 @@ function bindGanttEditingEvents() {
     gantt.attachEvent('onAfterTaskDrag', function (id) {
         const task = gantt.getTask(id);
         persistGanttTaskChange(task);
+    });
+
+    // Arrastrar una fila arriba/abajo dentro de su mismo padre (reordenar
+    // cursos/proyectos dentro del módulo, o lecciones dentro de "Lecciones").
+    gantt.attachEvent('onRowDragEnd', function (id) {
+        const task = gantt.getTask(id);
+        persistGanttRowOrder(task);
     });
 
     // Doble click: abre el modal donde se edita el módulo (nombre, duración,
@@ -3914,6 +3946,92 @@ async function persistGanttTaskChange(task) {
     } catch (error) {
         console.error('Error persisting gantt change:', error);
         window.showApiToast('Error al guardar el cambio en el Gantt', 'danger');
+    }
+}
+
+/**
+ * Persiste en el backend el nuevo orden (arriba/abajo) de un curso, proyecto
+ * o lección tras arrastrar su fila dentro de la rejilla del Gantt (mismo
+ * padre: el módulo para cursos/proyectos, el grupo "Lecciones" para lecciones).
+ * @param {Object} task - Tarea de DHTMLX Gantt cuya fila se acaba de reordenar
+ */
+async function persistGanttRowOrder(task) {
+    if (task.itemType !== 'course' && task.itemType !== 'project' && task.itemType !== 'leccion') {
+        return;
+    }
+
+    const parentId = gantt.getParent(task.id);
+    if (parentId === undefined || parentId === null) return;
+
+    // Orden visual actual de los hermanos (mismo padre) tras el drag.
+    const orderedPlannerIds = gantt.getChildren(parentId)
+        .map(id => gantt.getTask(id))
+        .filter(t => t.itemType === 'course' || t.itemType === 'project' || t.itemType === 'leccion')
+        .map(t => t.plannerItemId)
+        .filter(Boolean);
+
+    if (orderedPlannerIds.length === 0) return;
+
+    const token = localStorage.getItem('token');
+    try {
+        const response = await fetch(`${API_URL}/api/promotions/${promotionId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!response.ok) {
+            window.showApiToast('Error loading promotion', 'danger');
+            return;
+        }
+
+        const promotion = await response.json();
+        const module = promotion.modules.find(m => m.id === task.moduleId);
+
+        if (!module || !Array.isArray(module.plannerItems) || module.plannerItems.length === 0) {
+            window.showApiToast('No se pudo reordenar (módulo sin planificador)', 'warning');
+            return;
+        }
+
+        // Reordena solo las posiciones ("slots") ocupadas por los items afectados,
+        // preservando la posición del resto (p.ej. lecciones si se reordenaron
+        // cursos/proyectos, o viceversa).
+        const affectedSlots = [];
+        module.plannerItems.forEach((item, idx) => {
+            if (orderedPlannerIds.includes(item.id)) affectedSlots.push(idx);
+        });
+        const reorderedItems = orderedPlannerIds
+            .map(id => module.plannerItems.find(i => i.id === id))
+            .filter(Boolean);
+        affectedSlots.forEach((idx, i) => {
+            module.plannerItems[idx] = reorderedItems[i];
+        });
+
+        // Resincroniza los arrays legacy derivados (mismo criterio que usa el
+        // modal de módulo al guardar el planificador).
+        module.courses = module.plannerItems
+            .filter(i => i.type === 'curso')
+            .map(i => ({ name: i.name, url: i.url || '', duration: Number(i.duration) || 1, startOffset: Number(i.startOffset) || 0 }));
+        module.projects = module.plannerItems
+            .filter(i => i.type === 'proyecto')
+            .map(i => ({ name: i.name, url: i.url || '', duration: Number(i.duration) || 1, startOffset: Number(i.startOffset) || 0, competenceIds: i.competenceIds || [] }));
+
+        const updateResponse = await fetch(`${API_URL}/api/promotions/${promotionId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(promotion)
+        });
+
+        if (updateResponse.ok) {
+            window.showApiToast('Orden actualizado', 'success');
+            loadModules();
+        } else {
+            window.showApiToast('Error al guardar el nuevo orden', 'danger');
+        }
+    } catch (error) {
+        console.error('Error persisting gantt row order:', error);
+        window.showApiToast('Error al guardar el nuevo orden', 'danger');
     }
 }
 
