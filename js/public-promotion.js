@@ -364,6 +364,32 @@ async function loadModules() {
     }
 }
 
+/**
+ * Devuelve el inicio (en semanas, absoluto) del módulo en `moduleIndex`.
+ * Si el módulo tiene `startOffset` explícito (se movió libremente desde el
+ * Gantt del docente), se usa ese valor. Si no, se deriva encadenando
+ * secuencialmente desde el fin del módulo anterior — mismo criterio que el
+ * antiguo `weekCounter` acumulado (compatibilidad con promociones sin
+ * módulos movidos nunca). Duplicado localmente (sin importar gantt-adapter.js)
+ * para no acoplar esta vista pública a la vista de administración.
+ * @param {Array<Object>} modules
+ * @param {number} moduleIndex
+ * @returns {number}
+ */
+function getModuleStartWeeks(modules, moduleIndex) {
+    let cursor = 0;
+    for (let i = 0; i <= moduleIndex; i++) {
+        const m = modules[i] || {};
+        const explicitOffset = m.startOffset;
+        const startWeeks = (typeof explicitOffset === 'number' && !Number.isNaN(explicitOffset))
+            ? explicitOffset
+            : cursor;
+        if (i === moduleIndex) return startWeeks;
+        cursor = startWeeks + (Number(m.duration) || 1);
+    }
+    return cursor;
+}
+
 function generateGanttChart(promotion) {
     const table = document.getElementById('gantt-table');
     table.innerHTML = '';
@@ -560,9 +586,9 @@ function generateGanttChart(promotion) {
     }
 
     // Create rows for modules (below Sesiones Empleabilidad)
-    let weekCounter = 0;
     modules.forEach((module, index) => {
         const moduleId = `module-${index}`;
+        const weekCounter = getModuleStartWeeks(modules, index);
 
         // Main module row with dropdown toggle
         const row = document.createElement('tr');
@@ -702,9 +728,6 @@ function generateGanttChart(promotion) {
                 }, 10);
             });
         }
-
-        // Correct position for weekCounter update
-        weekCounter += module.duration;
     });
 }
 

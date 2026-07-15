@@ -3607,357 +3607,336 @@ function displayModules(modules) {
     });
 }
 
-function generateGanttChart(promotion) {
-    const table = document.getElementById('gantt-table');
-    table.innerHTML = '';
+// Guards so gantt.init() only runs once per page load
+let _ganttInitialized = false;
 
-    // Use the module-level helper so superadmin also gets edit buttons.
-    const isTeacher = isTeacherOrAdmin();
+/**
+ * Inicializa la instancia de DHTMLX Gantt sobre #gantt-container.
+ * Docentes/admins obtienen edición interactiva (drag/resize) con
+ * persistencia automática vía PUT /api/promotions/:id; el resto de
+ * usuarios ve el Gantt en modo solo lectura.
+ */
+function initGanttInstance() {
+    if (_ganttInitialized) return;
+    _ganttInitialized = true;
 
-    const weeks = promotion.weeks || 0;
-    const modules = promotion.modules || [];
-    const employability = promotion.employability || [];
+    const canEdit = isTeacherOrAdmin();
 
-    if (modules.length === 0) {
-        table.innerHTML = '<tbody><tr><td class="text-muted">No modules configured</td></tr></tbody>';
+    gantt.config.date_format = window.GANTT_DATE_FORMAT;
+    gantt.config.scales = [
+        { unit: 'month', step: 1, format: '%F %Y' },
+        { unit: 'week', step: 1, format: 'Sem. %W' }
+    ];
+    gantt.config.columns = [
+        { name: 'text', label: 'Nombre', tree: true, width: 220 }
+    ];
+    gantt.config.readonly = !canEdit;
+    gantt.config.drag_move = canEdit;
+    gantt.config.drag_resize = canEdit;
+    gantt.config.drag_progress = false;
+    gantt.config.drag_links = false;
+    gantt.config.show_links = false;
+
+    // Colorea cada barra según el tipo de elemento (módulo/curso/proyecto/lección)
+    gantt.templates.task_class = function (start, end, task) {
+        const type = task.itemType === 'leccion-group' ? 'leccion' : (task.itemType || 'default');
+        return `gantt-task-${type}`;
+    };
+
+    // Tooltip con nombre, rango de fechas y enlace(s) (si existen)
+    gantt.templates.tooltip_text = function (start, end, task) {
+        const range = `${window.formatGanttDate(start)} – ${window.formatGanttDate(end)}`;
+        let linksHtml = '';
+        if (Array.isArray(task.links) && task.links.length > 0) {
+            linksHtml = '<br>' + task.links
+                .map(l => `<a href="${escapeHtml(l.url)}" target="_blank" rel="noopener">${escapeHtml(l.label || l.url)}</a>`)
+                .join('<br>');
+        } else if (task.url) {
+            linksHtml = `<br><a href="${escapeHtml(task.url)}" target="_blank" rel="noopener">Ver enlace</a>`;
+        }
+        return `<b>${escapeHtml(task.text)}</b><br>${range}${linksHtml}`;
+    };
+
+    gantt.init('gantt-container');
+    setGanttZoomLevel('week');
+
+    if (canEdit) {
+        bindGanttEditingEvents();
+    }
+}
+
+/**
+ * Cambia la escala de tiempo visible del Gantt (día/semana/mes).
+ * Implementación propia y ligera (sin depender de la extensión ext/zoom
+ * de DHTMLX) para no añadir otro recurso CDN.
+ * @param {'day'|'week'|'month'} level
+ */
+function setGanttZoomLevel(level) {
+    const scaleConfigs = {
+        day: {
+            scales: [{ unit: 'day', step: 1, format: '%d %M' }],
+            min_column_width: 40
+        },
+        week: {
+            scales: [
+                { unit: 'month', step: 1, format: '%F %Y' },
+                { unit: 'week', step: 1, format: 'Sem. %W' }
+            ],
+            min_column_width: 60
+        },
+        month: {
+            scales: [{ unit: 'month', step: 1, format: '%F %Y' }],
+            min_column_width: 100
+        }
+    };
+    const config = scaleConfigs[level] || scaleConfigs.week;
+
+    if (typeof gantt === 'undefined' || !_ganttInitialized) return;
+
+    gantt.config.scales = config.scales;
+    gantt.config.min_column_width = config.min_column_width;
+    gantt.render();
+
+    document.querySelectorAll('.gantt-zoom-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.zoomLevel === level);
+    });
+}
+
+/**
+ * Registra los listeners que permiten editar el Gantt arrastrando/redimensionando
+ * tareas y persisten el cambio contra la API. Módulos, cursos, proyectos y
+ * lecciones se pueden mover y redimensionar libremente.
+ * También registra doble-click (abrir edición) y clic derecho (eliminar).
+ */
+function bindGanttEditingEvents() {
+    gantt.attachEvent('onBeforeTaskDrag', function () {
+        return true;
+    });
+
+    gantt.attachEvent('onAfterTaskDrag', function (id) {
+        const task = gantt.getTask(id);
+        persistGanttTaskChange(task);
+    });
+
+    // Doble click: abre el modal donde se edita el módulo (nombre, duración,
+    // planificador de cursos/proyectos/lecciones) — mismo modal que el botón
+    // "Editar módulo" de antes.
+    gantt.attachEvent('onTaskDblClick', function (id) {
+        const task = gantt.getTask(id);
+        if (task.moduleId) {
+            editModule(task.moduleId);
+        }
+        return false; // evita que se abra el lightbox nativo de DHTMLX
+    });
+
+    // Clic derecho: menú contextual ligero con la opción "Eliminar".
+    gantt.attachEvent('onContextMenu', function (taskId, linkId, e) {
+        if (!taskId) return true;
+        e.preventDefault();
+        const task = gantt.getTask(taskId);
+        showGanttContextMenu(task, e.clientX, e.clientY);
+        return false;
+    });
+}
+
+/**
+ * Muestra un menú contextual mínimo (sin depender de la extensión
+ * ext/contextmenu de DHTMLX) con la opción de eliminar la tarea seleccionada.
+ * @param {Object} task - Tarea de DHTMLX Gantt sobre la que se hizo clic derecho
+ * @param {number} x - Coordenada X del clic (viewport)
+ * @param {number} y - Coordenada Y del clic (viewport)
+ */
+function showGanttContextMenu(task, x, y) {
+    removeGanttContextMenu();
+
+    const menu = document.createElement('div');
+    menu.id = 'gantt-context-menu';
+    menu.className = 'dropdown-menu show';
+    menu.style.position = 'fixed';
+    menu.style.left = `${x}px`;
+    menu.style.top = `${y}px`;
+    menu.style.zIndex = '3000';
+
+    const deleteBtn = document.createElement('button');
+    deleteBtn.type = 'button';
+    deleteBtn.className = 'dropdown-item text-danger';
+    deleteBtn.innerHTML = '<i class="bi bi-trash me-2"></i>Eliminar';
+    deleteBtn.onclick = () => {
+        removeGanttContextMenu();
+        confirmDeleteGanttTask(task);
+    };
+    menu.appendChild(deleteBtn);
+
+    document.body.appendChild(menu);
+
+    // Cerrar el menú al hacer clic fuera o al pulsar Escape
+    setTimeout(() => {
+        document.addEventListener('click', removeGanttContextMenu, { once: true });
+        document.addEventListener('keydown', _ganttContextMenuEscHandler);
+    }, 0);
+}
+
+function _ganttContextMenuEscHandler(e) {
+    if (e.key === 'Escape') removeGanttContextMenu();
+}
+
+function removeGanttContextMenu() {
+    const existing = document.getElementById('gantt-context-menu');
+    if (existing) existing.remove();
+    document.removeEventListener('keydown', _ganttContextMenuEscHandler);
+}
+
+/**
+ * Enruta el borrado de una tarea del Gantt según su tipo:
+ * módulo completo, o curso/proyecto/lección dentro de un módulo.
+ * @param {Object} task
+ */
+function confirmDeleteGanttTask(task) {
+    if (task.itemType === 'module') {
+        deleteModule(task.moduleId);
         return;
     }
 
-    // Compact table — override the generous default padding from style.css
-    table.className = 'table table-sm table-bordered gantt-table';
-    table.style.fontSize = '0.65rem';
-    table.style.borderCollapse = 'collapse';
-    table.style.tableLayout = 'auto';
-
-    // Inject a scoped style block once to force tight cell sizing
-    if (!document.getElementById('gantt-compact-style')) {
-        const s = document.createElement('style');
-        s.id = 'gantt-compact-style';
-        s.textContent = `
-            #gantt-table th, #gantt-table td {
-                padding: 1px 2px !important;
-                font-size: 0.6rem;
-                border: 1px solid #dee2e6 !important;
-                box-sizing: border-box;
-            }
-            #gantt-table .gantt-label-cell {
-                white-space: nowrap;
-                overflow: visible;
-                position: sticky;
-                left: 0;
-                background: white;
-                z-index: 2;
-            }
-            #gantt-table .gantt-week-cell {
-                writing-mode: vertical-rl;
-                text-orientation: mixed;
-                padding: 3px 1px !important;
-            }
-        `;
-        document.head.appendChild(s);
+    // El grupo "Lecciones" es un contenedor virtual, no un item real: no se elimina.
+    if (task.itemType === 'leccion-group') {
+        return;
     }
 
-    const tableContainer = table.closest('.table-responsive') || table.parentElement;
-    if (tableContainer) {
-        tableContainer.style.overflowX = 'auto';
-        tableContainer.style.maxWidth = '100%';
+    if (task.itemType === 'course' || task.itemType === 'project' || task.itemType === 'leccion') {
+        _showConfirmModal(`¿Eliminar "${task.text}"? Esta acción no se puede deshacer.`, () => {
+            deleteGanttPlannerItem(task);
+        }, 'Eliminar', 'btn-danger');
     }
-
-    // ── 1. Header: month + week rows go in <thead> ────────────────────────────
-    // Group every 4 weeks into one month (Mes 1, Mes 2, ...)
-    const thead = document.createElement('thead');
-
-    const monthRow = document.createElement('tr');
-    const monthHeaderCell = document.createElement('th');
-    monthHeaderCell.innerHTML = '<strong>Meses</strong>';
-    monthHeaderCell.className = 'gantt-label-cell';
-    monthRow.appendChild(monthHeaderCell);
-
-    // Each group of 4 weeks = 1 month
-    let currentMonthKey = null, monthSpan = 0, monthCell = null;
-    for (let i = 0; i < weeks; i++) {
-        const m = Math.floor(i / 4) + 1;
-        const monthKey = `m${m}`;
-        if (monthKey !== currentMonthKey) {
-            if (monthCell) monthCell.colSpan = monthSpan;
-            currentMonthKey = monthKey;
-            monthCell = document.createElement('th');
-            monthCell.innerHTML = `<strong>Mes ${m}</strong>`;
-            monthCell.style.textAlign = 'center';
-            monthCell.style.backgroundColor = '#e8f4f8';
-            monthCell.style.borderLeft = '2px solid #6c757d';
-            monthRow.appendChild(monthCell);
-            monthSpan = 1;
-        } else { monthSpan++; }
-    }
-    if (monthCell) monthCell.colSpan = monthSpan;
-    thead.appendChild(monthRow);
-
-    const weekRow = document.createElement('tr');
-    const weekHeaderCell = document.createElement('th');
-    weekHeaderCell.innerHTML = '<strong>Sem.</strong>';
-    weekHeaderCell.className = 'gantt-label-cell';
-    weekRow.appendChild(weekHeaderCell);
-    for (let i = 0; i < weeks; i++) {
-        const th = document.createElement('th');
-        th.textContent = `${i + 1}`;
-        th.title = `Semana ${i + 1}`;
-        if (i % 4 === 0) th.style.borderLeft = '2px solid #6c757d';
-        th.className = 'gantt-week-cell text-center';
-        weekRow.appendChild(th);
-    }
-    thead.appendChild(weekRow);
-    table.appendChild(thead);
-
-    // ── 2. Employability section — one <tbody> for header + sessions ──────────
-    const employabilityId = 'employability-section';
-    const isEmpExpanded = localStorage.getItem(`gantt-expanded-${employabilityId}`) !== 'false';
-
-    const empTbody = document.createElement('tbody');
-    empTbody.id = `tbody-${employabilityId}`;
-
-    // Compute overall span for the header bar
-    const empStarts = employability.map(e => (e.startMonth - 1) * 4);
-    const empEnds = employability.map(e => (e.startMonth - 1) * 4 + e.duration * 4);
-    const empMin = empStarts.length ? Math.min(...empStarts) : -1;
-    const empMax = empEnds.length ? Math.min(Math.max(...empEnds), weeks) : -1;
-
-    // Header row (always visible — lives in empTbody)
-    const empHeaderRow = document.createElement('tr');
-    empHeaderRow.className = 'gantt-employability-header';
-    empHeaderRow.style.cursor = 'pointer';
-    empHeaderRow.title = 'Click para expandir/colapsar';
-
-    const empLabelCell = document.createElement('td');
-    empLabelCell.className = 'gantt-label-cell';
-    empLabelCell.colSpan = weeks + 1;
-    empLabelCell.style.backgroundColor = '#fff8e1';
-    empLabelCell.style.position = 'sticky';
-    empLabelCell.style.left = '0';
-
-    // Build inline span bar: a thin colored strip showing the overall range
-    let spanBarHtml = '';
-    if (empMin >= 0 && empMax > empMin) {
-        const leftPct = ((empMin / weeks) * 100).toFixed(1);
-        const widthPct = (((empMax - empMin) / weeks) * 100).toFixed(1);
-        spanBarHtml = `
-            <div style="position:relative;height:4px;background:#f3e5ab;border-radius:2px;margin-top:2px;overflow:hidden;">
-                <div style="position:absolute;left:${leftPct}%;width:${widthPct}%;height:100%;background:#f59e0b;border-radius:2px;"></div>
-            </div>`;
-    }
-
-    empLabelCell.innerHTML = `
-        <div class="d-flex align-items-center gap-1">
-            <i class="bi ${isEmpExpanded ? 'bi-chevron-down' : 'bi-chevron-right'} gantt-emp-chevron" style="font-size:0.6rem;"></i>
-            <strong>Empleabilidad</strong>
-            <span class="badge bg-warning text-dark" style="font-size:0.55rem;">${employability.length}</span>
-        </div>
-        ${spanBarHtml}`;
-    empHeaderRow.appendChild(empLabelCell);
-    empHeaderRow.addEventListener('click', () => toggleEmployabilityExpansion());
-    empTbody.appendChild(empHeaderRow);
-
-    // Session rows — in a separate <tbody> that gets hidden/shown as a unit
-    const empContentTbody = document.createElement('tbody');
-    empContentTbody.id = `tbody-content-${employabilityId}`;
-    empContentTbody.style.display = isEmpExpanded ? '' : 'none';
-
-    employability.forEach((item, index) => {
-        const itemRow = document.createElement('tr');
-
-        const itemCell = document.createElement('td');
-        itemCell.className = 'gantt-label-cell';
-        itemCell.style.backgroundColor = '#fffff8';
-
-        const itemUrl = item.url
-            ? `<a href="${escapeHtml(item.url)}" target="_blank" class="text-decoration-none">${escapeHtml(item.name)}</a>`
-            : escapeHtml(item.name);
-        const editBtn = isTeacher
-            ? `<button class="btn btn-xs btn-outline-warning py-0 px-1" style="font-size:0.55rem;" onclick="event.stopPropagation();editEmployabilityItem(${index})"><i class="bi bi-pencil"></i></button>` : '';
-        const delBtn = isTeacher
-            ? `<button class="btn btn-xs btn-outline-danger py-0 px-1" style="font-size:0.55rem;" onclick="event.stopPropagation();deleteEmployabilityItem(${index})"><i class="bi bi-trash"></i></button>` : '';
-
-        itemCell.innerHTML = `
-            <div class="d-flex align-items-center justify-content-between gap-1" style="padding-left:14px;">
-                <small style="font-size:0.58rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:110px;">${itemUrl}</small>
-                <div class="d-flex gap-1">${editBtn}${delBtn}</div>
-            </div>`;
-        itemRow.appendChild(itemCell);
-
-        const sw = (item.startMonth - 1) * 4;
-        const ew = sw + item.duration * 4;
-        for (let i = 0; i < weeks; i++) {
-            const cell = document.createElement('td');
-            cell.style.height = '18px';
-            if (i >= sw && i < ew) cell.style.backgroundColor = '#fff3cd';
-            itemRow.appendChild(cell);
-        }
-        empContentTbody.appendChild(itemRow);
-    });
-
-    table.appendChild(empTbody);
-    table.appendChild(empContentTbody);
-
-    // ── 3. Module rows — one <tbody> per module (header + sub-rows) ───────────
-    let weekCounter = 0;
-    modules.forEach((module, index) => {
-        const moduleId = `module-${index}`;
-        const isExpanded = localStorage.getItem(`gantt-expanded-${moduleId}`) !== 'false';
-
-        // Module header gets its own single-row <tbody>
-        const modHeaderTbody = document.createElement('tbody');
-        modHeaderTbody.id = `tbody-header-${moduleId}`;
-
-        const moduleRow = document.createElement('tr');
-        moduleRow.className = 'gantt-module-header';
-        moduleRow.dataset.moduleIndex = index;
-        moduleRow.style.cursor = 'pointer';
-        moduleRow.title = 'Click para expandir/colapsar';
-
-        const moduleCell = document.createElement('td');
-        moduleCell.className = 'gantt-label-cell';
-
-        const editBtn = isTeacher
-            ? `<button class="btn btn-xs btn-outline-warning py-0 px-1" style="font-size:0.55rem;" onclick="event.stopPropagation();editModule('${escapeHtml(module.id)}')"><i class="bi bi-pencil"></i></button>` : '';
-        const deleteBtn = isTeacher
-            ? `<button class="btn btn-xs btn-outline-danger py-0 px-1" style="font-size:0.55rem;" onclick="event.stopPropagation();deleteModule('${escapeHtml(module.id)}')"><i class="bi bi-trash"></i></button>` : '';
-
-        moduleCell.innerHTML = `
-            <div class="d-flex align-items-center justify-content-between gap-1">
-                <div class="d-flex align-items-center gap-1">
-                    <i class="bi ${isExpanded ? 'bi-chevron-down' : 'bi-chevron-right'} gantt-mod-chevron" style="font-size:0.6rem;"></i>
-                    <strong>M${index + 1}: ${escapeHtml(module.name)}</strong>
-                </div>
-                <div class="d-flex gap-1">${editBtn}${deleteBtn}</div>
-            </div>`;
-        moduleRow.appendChild(moduleCell);
-
-        for (let i = 0; i < weeks; i++) {
-            const cell = document.createElement('td');
-            cell.style.height = '22px';
-            if (i >= weekCounter && i < weekCounter + module.duration) {
-                cell.style.backgroundColor = '#667eea';
-            }
-            moduleRow.appendChild(cell);
-        }
-        moduleRow.addEventListener('click', () => toggleModuleExpansion(moduleId, index));
-        modHeaderTbody.appendChild(moduleRow);
-        table.appendChild(modHeaderTbody);
-
-        // Sub-rows (courses + projects) go in a single collapsible <tbody>
-        const modContentTbody = document.createElement('tbody');
-        modContentTbody.id = `tbody-content-${moduleId}`;
-        modContentTbody.style.display = isExpanded ? '' : 'none';
-
-        // Course rows
-        (module.courses || []).forEach((courseObj, courseIndex) => {
-            const courseName = typeof courseObj === 'string' ? courseObj : (courseObj.name || 'Unnamed');
-            const courseUrl = typeof courseObj === 'object' ? (courseObj.url || '') : '';
-            const courseDur = typeof courseObj === 'object' ? (Number(courseObj.duration) || 1) : 1;
-            const courseOff = typeof courseObj === 'object' ? (Number(courseObj.startOffset) || 0) : 0;
-
-            const courseRow = document.createElement('tr');
-            const courseCell = document.createElement('td');
-            courseCell.className = 'gantt-label-cell';
-            courseCell.style.backgroundColor = '#f8fffc';
-
-            const link = courseUrl
-                ? `<a href="${escapeHtml(courseUrl)}" target="_blank" class="text-decoration-none">${escapeHtml(courseName)}</a>`
-                : escapeHtml(courseName);
-            const delBtn = isTeacher
-                ? `<button class="btn btn-xs btn-outline-danger py-0 px-1" style="font-size:0.55rem;" onclick="event.stopPropagation();deleteCourseFromModule('${escapeHtml(module.id)}',${courseIndex})"><i class="bi bi-trash"></i></button>` : '';
-
-            courseCell.innerHTML = `
-                <div class="d-flex align-items-center justify-content-between gap-1" style="padding-left:14px;">
-                    <small style="font-size:0.58rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:115px;">${link}</small>
-                    <div>${delBtn}</div>
-                </div>`;
-            courseRow.appendChild(courseCell);
-
-            const as = weekCounter + courseOff, ae = as + courseDur;
-            for (let i = 0; i < weeks; i++) {
-                const cell = document.createElement('td');
-                cell.style.height = '18px';
-                if (i >= as && i < ae) cell.style.backgroundColor = '#d1e7dd';
-                courseRow.appendChild(cell);
-            }
-            modContentTbody.appendChild(courseRow);
-        });
-
-        // Project rows
-        (module.projects || []).forEach((projectObj, projectIndex) => {
-            const projectName = typeof projectObj === 'string' ? projectObj : (projectObj.name || 'Unnamed');
-            const projectUrl = typeof projectObj === 'object' ? (projectObj.url || '') : '';
-            const projectDur = typeof projectObj === 'object' ? (Number(projectObj.duration) || 1) : 1;
-            const projectOff = typeof projectObj === 'object' ? (Number(projectObj.startOffset) || 0) : 0;
-
-            const projectRow = document.createElement('tr');
-            const projectCell = document.createElement('td');
-            projectCell.className = 'gantt-label-cell';
-            projectCell.style.backgroundColor = '#fff8f8';
-
-            const link = projectUrl
-                ? `<a href="${escapeHtml(projectUrl)}" target="_blank" class="text-decoration-none">${escapeHtml(projectName)}</a>`
-                : escapeHtml(projectName);
-            const delBtn = isTeacher
-                ? `<button class="btn btn-xs btn-outline-danger py-0 px-1" style="font-size:0.55rem;" onclick="event.stopPropagation();deleteProjectFromModule('${escapeHtml(module.id)}',${projectIndex})"><i class="bi bi-trash"></i></button>` : '';
-
-            projectCell.innerHTML = `
-                <div class="d-flex align-items-center justify-content-between gap-1" style="padding-left:14px;">
-                    <small style="font-size:0.58rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:115px;">${link}</small>
-                    <div>${delBtn}</div>
-                </div>`;
-            projectRow.appendChild(projectCell);
-
-            const as = weekCounter + projectOff, ae = as + projectDur;
-            for (let i = 0; i < weeks; i++) {
-                const cell = document.createElement('td');
-                cell.style.height = '18px';
-                if (i >= as && i < ae) cell.style.backgroundColor = '#fce4e4';
-                projectRow.appendChild(cell);
-            }
-            modContentTbody.appendChild(projectRow);
-        });
-
-        table.appendChild(modContentTbody);
-        weekCounter += module.duration;
-    });
 }
 
-// Toggle module expansion
-function toggleModuleExpansion(moduleId, index) {
-    const contentTbody = document.getElementById(`tbody-content-${moduleId}`);
-    const chevron = document.querySelector(`[data-module-index="${index}"] .gantt-mod-chevron`);
-    const isCurrentlyExpanded = contentTbody?.style.display !== 'none';
+/**
+ * Elimina un curso/proyecto/lección de un módulo, tanto si el módulo usa
+ * `plannerItems` (fuente de verdad, se borra por id y se resincronizan
+ * `courses`/`projects` derivados) como si es un módulo legacy (se borra
+ * directamente del array `courses`/`projects` por índice).
+ * @param {Object} task - Tarea de DHTMLX Gantt (course/project/leccion)
+ */
+async function deleteGanttPlannerItem(task) {
+    const token = localStorage.getItem('token');
+    try {
+        const response = await fetch(`${API_URL}/api/promotions/${promotionId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
 
-    if (contentTbody) contentTbody.style.display = isCurrentlyExpanded ? 'none' : '';
+        if (!response.ok) {
+            window.showApiToast('Error loading promotion', 'danger');
+            return;
+        }
 
-    if (chevron) {
-        chevron.className = isCurrentlyExpanded
-            ? 'bi bi-chevron-right gantt-mod-chevron'
-            : 'bi bi-chevron-down gantt-mod-chevron';
+        const promotion = await response.json();
+        const module = promotion.modules.find(m => m.id === task.moduleId);
+
+        if (!module) {
+            window.showApiToast('Module not found', 'warning');
+            return;
+        }
+
+        if (Array.isArray(module.plannerItems) && module.plannerItems.length > 0 && task.plannerItemId) {
+            module.plannerItems = module.plannerItems.filter(i => i.id !== task.plannerItemId);
+            module.courses = module.plannerItems
+                .filter(i => i.type === 'curso')
+                .map(i => ({ name: i.name, url: i.url || '', duration: Number(i.duration) || 1, startOffset: Number(i.startOffset) || 0 }));
+            module.projects = module.plannerItems
+                .filter(i => i.type === 'proyecto')
+                .map(i => ({ name: i.name, url: i.url || '', duration: Number(i.duration) || 1, startOffset: Number(i.startOffset) || 0, competenceIds: i.competenceIds || [] }));
+        } else if (task.itemType === 'course' && Array.isArray(module.courses) && task.legacyIndex !== undefined) {
+            module.courses.splice(task.legacyIndex, 1);
+        } else if (task.itemType === 'project' && Array.isArray(module.projects) && task.legacyIndex !== undefined) {
+            module.projects.splice(task.legacyIndex, 1);
+        } else {
+            window.showApiToast('No se pudo eliminar el elemento', 'warning');
+            return;
+        }
+
+        const updateResponse = await fetch(`${API_URL}/api/promotions/${promotionId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(promotion)
+        });
+
+        if (updateResponse.ok) {
+            window.showApiToast('Elemento eliminado correctamente', 'success');
+            loadModules();
+            loadPromotion();
+        } else {
+            window.showApiToast('Error al eliminar el elemento', 'danger');
+        }
+    } catch (error) {
+        console.error('Error deleting gantt planner item:', error);
+        window.showApiToast('Error al eliminar el elemento', 'danger');
     }
-
-    localStorage.setItem(`gantt-expanded-${moduleId}`, !isCurrentlyExpanded);
 }
 
-// Toggle employability expansion
-function toggleEmployabilityExpansion() {
-    const employabilityId = 'employability-section';
-    const contentTbody = document.getElementById(`tbody-content-${employabilityId}`);
-    const headerRow = document.querySelector('.gantt-employability-header');
-    const chevron = headerRow?.querySelector('.gantt-emp-chevron');
-    const isCurrentlyExpanded = contentTbody?.style.display !== 'none';
+/**
+ * Persiste en el backend el cambio de fechas/duración que el docente hizo
+ * arrastrando o redimensionando una tarea del Gantt.
+ * @param {Object} task - Tarea de DHTMLX Gantt tras el drag/resize
+ */
+async function persistGanttTaskChange(task) {
+    const token = localStorage.getItem('token');
+    try {
+        const response = await fetch(`${API_URL}/api/promotions/${promotionId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
 
-    if (contentTbody) contentTbody.style.display = isCurrentlyExpanded ? 'none' : '';
+        if (!response.ok) {
+            window.showApiToast('Error loading promotion', 'danger');
+            return;
+        }
 
-    if (chevron) {
-        chevron.className = isCurrentlyExpanded
-            ? 'bi bi-chevron-right gantt-emp-chevron'
-            : 'bi bi-chevron-down gantt-emp-chevron';
+        const promotion = await response.json();
+        const changed = applyGanttTaskChange(promotion, task);
+        if (!changed) return;
+
+        const updateResponse = await fetch(`${API_URL}/api/promotions/${promotionId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(promotion)
+        });
+
+        if (updateResponse.ok) {
+            window.showApiToast('Roadmap actualizado', 'success');
+            loadModules();
+        } else {
+            window.showApiToast('Error al guardar el cambio en el Gantt', 'danger');
+        }
+    } catch (error) {
+        console.error('Error persisting gantt change:', error);
+        window.showApiToast('Error al guardar el cambio en el Gantt', 'danger');
+    }
+}
+
+function generateGanttChart(promotion) {
+    const container = document.getElementById('gantt-container');
+    if (!container) return;
+
+    const modules = promotion.modules || [];
+
+    if (modules.length === 0) {
+        if (_ganttInitialized) {
+            gantt.clearAll();
+        } else {
+            container.innerHTML = '<p class="text-muted p-3 mb-0">No modules configured</p>';
+        }
+        return;
     }
 
-    localStorage.setItem(`gantt-expanded-${employabilityId}`, !isCurrentlyExpanded);
+    initGanttInstance();
+
+    const dataset = buildGanttDataset(promotion);
+    gantt.clearAll();
+    gantt.parse(dataset);
 }
 
 async function editModule(moduleId) {

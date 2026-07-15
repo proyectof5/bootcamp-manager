@@ -1130,334 +1130,72 @@ th, td {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   Gantt Chart Styling — rediseño usando tokens del design-system.
-   Mantiene la estructura (sticky headers, sub-items, toggles) pero mejora
-   tipografía, contraste y paleta para alinear con la marca naranja.
+   Gantt Chart Styling — DHTMLX Gantt (GPL) overrides.
+   Las reglas .gantt-table/#gantt-table/.gantt-row-actions/etc. de la tabla
+   HTML manual quedaron obsoletas al migrar a DHTMLX Gantt y se eliminaron.
+   Aquí solo se sobreescribe el tema por defecto de DHTMLX para alinearlo
+   con los tokens del design-system.
    ═══════════════════════════════════════════════════════════════════════════ */
-.gantt-table {
-    border-collapse: collapse;
-    width: 100%;
-    font-family: var(--app-font-sans);
-}
-
-.gantt-header-row {
-    background-color: var(--app-color-neutral-50);
-    position: sticky;
-    top: 0;
-    z-index: 20;
-    border-bottom: 2px solid var(--app-color-primary);
-}
-
-.gantt-month-row {
-    background-color: var(--app-color-neutral-100);
-    z-index: 21;
-}
-
-.gantt-week-row {
-    background-color: var(--app-color-neutral-50);
-    z-index: 20;
-}
-
-.gantt-sticky-header {
-    position: sticky;
-    left: 0;
-    z-index: 22;
-    background-color: var(--app-color-bg-surface);
-    border-right: 2px solid var(--app-color-border);
-}
-
-.gantt-label-cell {
-    min-width: 380px;
-    max-width: none;
-    /* Sin width: con table-layout:auto el navegador da a TODA la columna
-       el ancho del contenido más largo. Más predecible que width:1% (que
-       hacía que cada fila se ajustase a su propio contenido y rompía la
-       alineación entre filas). */
-    position: sticky;
-    left: 0;
-    background-color: var(--app-color-bg-surface);
-    z-index: 5;
-    padding: 0.75rem 1rem;
-    font-size: var(--app-font-size-sm);     /* 14px — antes 0.9rem fijo */
-    font-weight: var(--app-font-weight-medium);
-    color: var(--app-color-text);
-    border-right: 1px solid var(--app-color-border);
-    word-wrap: break-word;
-    overflow-wrap: break-word;
-    white-space: normal;
-    line-height: var(--app-line-height-base);
-}
-
-.gantt-sticky-cell {
-    position: sticky;
-    left: 0;
-    z-index: 5;
-    background-color: var(--app-color-bg-surface);
-}
-
-.gantt-cell {
-    text-align: center;
-    min-width: 36px;
-    width: 36px;
-    height: 32px;                                 /* antes 24 — más aire */
-    padding: 2px;
-    border-right: 1px solid var(--app-color-border);
-    transition: background-color var(--app-transition-fast),
-                box-shadow var(--app-transition-fast);
-    font-size: var(--app-font-size-xs);            /* 12px — antes 11.2 */
-    color: var(--app-color-text);
-}
-
-.gantt-cell:hover {
-    box-shadow: inset 0 0 0 2px var(--app-color-primary);
-}
-
-.gantt-month-cell {
-    text-align: center;
-    font-size: var(--app-font-size-xs);             /* 12px legible */
-    padding: 0.5rem 0.25rem;
-    font-weight: var(--app-font-weight-semi);
-    color: var(--app-color-text);
-    text-transform: uppercase;
-    letter-spacing: 0.03em;
-    border-right: 1px solid var(--app-color-border);
-    border-bottom: 1px solid var(--app-color-border);
-    min-width: 36px;
-    width: 36px;
-}
-
-.gantt-week-cell {
-    font-size: var(--app-font-size-xs);             /* 12px */
-    padding: 0.4rem 0.25rem;
-    font-weight: var(--app-font-weight-medium);
-    color: var(--app-color-text-muted);
-    border-right: 1px solid var(--app-color-border);
-    min-width: 36px;
-    width: 36px;
-}
-
-.gantt-module-header {
-    background-color: var(--app-color-bg-surface);
-    border-bottom: 2px solid var(--app-color-border);
-}
-
-.gantt-module-header .gantt-label-cell {
-    /* El layout interno lo hace el <div class="d-flex justify-content-between">
-       generado por el JS. Si ponemos display:flex en el <td>, el <div> hijo no
-       se estira y los •••  quedan superpuestos al texto. */
-    padding: 0.75rem 1rem;
-    font-weight: var(--app-font-weight-semi);
-}
-
-.gantt-employability-header {
-    background-color: var(--app-color-primary-soft);
-    border-bottom: 2px solid var(--app-color-primary);
-}
-
-.gantt-employability-header td {
-    /* Mismo motivo que .gantt-module-header .gantt-label-cell: el layout
-       interno lo hace el <div class="d-flex"> generado por el JS. */
-    vertical-align: middle;
-}
-
-.gantt-toggle-btn {
-    flex-shrink: 0;
-    padding: 0 !important;
-    min-width: 28px;
-    height: 28px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--app-color-text-muted);
-    border-radius: var(--app-radius-sm);
-    transition: color var(--app-transition-fast),
-                background-color var(--app-transition-fast);
-}
-
-.gantt-toggle-btn:hover {
-    color: var(--app-color-primary);
-    background-color: var(--app-color-primary-soft);
-}
-
-.gantt-module-bar {
-    border-radius: var(--app-radius-sm);
-    opacity: 0.9;
-    font-weight: var(--app-font-weight-medium);
-}
-
-.gantt-content-row {
-    background-color: var(--app-color-neutral-50);
-    border-bottom: 1px solid var(--app-color-border);
-}
-
-.gantt-sub-item-label {
-    padding: 0.5rem 0.75rem 0.5rem 2.5rem;
-    font-size: var(--app-font-size-sm);
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--app-space-2);
-    color: var(--app-color-text);
-}
-
-.gantt-course-bar {
-    background-color: #d1e7dd;       /* verde suave para cursos/certif. */
-    opacity: 0.85;
-    border-radius: var(--app-radius-sm);
-}
-
-.gantt-project-bar {
-    background-color: var(--app-color-brand-100);    /* naranja muy claro */
-    opacity: 0.85;
-    border-radius: var(--app-radius-sm);
-}
-
-.gantt-table tbody tr:hover {
-    background-color: var(--app-color-neutral-50);
-}
-
-.gantt-table .btn-xs {
-    padding: 0.125rem 0.5rem;
-    font-size: var(--app-font-size-xs);
-}
-
-/* ─── Botones de acción del bloque Roadmap (mismo tamaño y forma) ─── */
-.gantt-action-btn {
-    min-width: 210px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-}
-
-@media (max-width: 575.98px) {
-    .gantt-action-btn {
-        min-width: 0;
-        flex: 1 1 auto;       /* en móvil ocupan ancho disponible equitativo */
-    }
-}
-
-/* ─── Reglas que sustituyen al <style id="gantt-compact-style"> inyectado ─── */
-#gantt-table {
-    font-size: var(--app-font-size-xs);
-    border-collapse: collapse;
-    table-layout: auto;
-}
-
-#gantt-table th,
-#gantt-table td {
-    padding: 0.25rem 0.375rem;
+#gantt-container {
     border: 1px solid var(--app-color-border);
-    box-sizing: border-box;
-}
-
-#gantt-table .gantt-label-cell {
-    white-space: nowrap;
-    overflow: visible;
-    position: sticky;
-    left: 0;
-    background: var(--app-color-bg-surface);
-    z-index: 2;
-    padding: 0.5rem 2.25rem 0.5rem 0.75rem;   /* padding-right reserva sitio al ••• absoluto */
-}
-
-#gantt-table .gantt-week-cell {
-    writing-mode: vertical-rl;
-    text-orientation: mixed;
-    padding: 0.5rem 0.125rem;
-}
-
-#gantt-table .gantt-label-cell small {
-    font-size: var(--app-font-size-xs);
-    white-space: nowrap;
-    vertical-align: middle;
-}
-
-/* El ••• se posiciona absoluto al borde derecho del td (que es sticky =
-   contenedor relativo). Así sale del flujo flex y nunca compite con el
-   texto del título, independientemente del largo. El padding-right del
-   td label cell (3rem) reserva el espacio físico para que el texto
-   tampoco pueda solaparse visualmente con el botón. */
-#gantt-table .gantt-label-cell .gantt-row-actions {
-    position: absolute;
-    right: 0;              /* totalmente pegado al borde derecho del td */
-    top: 50%;
-    transform: translateY(-50%);
-}
-
-#gantt-table .gantt-mod-chevron,
-#gantt-table .gantt-emp-chevron {
-    font-size: var(--app-font-size-sm);
-    color: var(--app-color-text-muted);
-}
-
-/* ─── Dropdown •••  de acciones (módulo/curso/proyecto/empleabilidad) ─── */
-.gantt-row-actions {
-    display: inline-flex;
-    flex-shrink: 0;
-}
-
-.gantt-row-actions .btn-icon {
-    width: 28px;
-    height: 28px;
-    padding: 0;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    color: var(--app-color-text-muted);
-    background: transparent;
-    border: 1px solid transparent;
     border-radius: var(--app-radius-sm);
-    cursor: pointer;
-    transition: color var(--app-transition-fast),
-                background-color var(--app-transition-fast);
+    background-color: var(--app-color-bg-surface);
+}
+
+.gantt_grid_scale,
+.gantt_task_scale {
+    background-color: var(--app-color-neutral-50);
+    color: var(--app-color-text);
+    font-family: var(--app-font-sans);
+    font-size: var(--app-font-size-xs);
+}
+
+.gantt_grid_head_cell,
+.gantt_row,
+.gantt_cell {
+    font-family: var(--app-font-sans);
     font-size: var(--app-font-size-sm);
+    color: var(--app-color-text);
 }
 
-.gantt-row-actions .btn-icon:hover,
-.gantt-row-actions .btn-icon:focus-visible {
-    color: var(--app-color-primary);
-    background: var(--app-color-primary-soft);
-    border-color: var(--app-color-primary-soft);
-    outline: none;
+.gantt_task_row.gantt_selected,
+.gantt_row.gantt_selected {
+    background-color: var(--app-color-primary-soft);
 }
 
-.gantt-row-actions .dropdown-menu {
-    font-size: var(--app-font-size-sm);
-    min-width: 140px;
-    box-shadow: var(--app-shadow-md);
-    z-index: 1080;             /* sobre cualquier celda sticky o módulo siguiente */
+/* Colores por tipo de elemento (mismos usados en la vista anterior) */
+.gantt_task_line.gantt-task-module {
+    background-color: #667eea;
+    border-color: #5a67d8;
 }
 
-.gantt-row-actions .dropdown-item {
-    padding: 0.4rem 0.75rem;
+.gantt_task_line.gantt-task-course {
+    background-color: #6bbf9c;
+    border-color: #4ea380;
 }
 
-/* ─── Línea vertical "esta semana" sobre el wrapper del gantt ─── */
-.gantt-today-line {
-    position: absolute;
-    top: 0;
-    bottom: 0;
-    width: 2px;
-    background: var(--app-color-primary);
-    box-shadow: 0 0 0 1px rgba(255, 71, 0, 0.15);
-    pointer-events: none;
-    z-index: 6;
+.gantt_task_line.gantt-task-project {
+    background-color: var(--app-color-brand-300, #f59e0b);
+    border-color: var(--app-color-primary);
 }
 
-.gantt-today-line::before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 50%;
-    transform: translateX(-50%);
-    width: 10px;
-    height: 10px;
-    border-radius: 50%;
-    background: var(--app-color-primary);
-    box-shadow: 0 0 0 2px var(--app-color-bg-surface);
+.gantt_task_line.gantt-task-leccion {
+    background-color: #8e7cc3;
+    border-color: #6f5aa8;
 }
 
-@media (max-width: 576px) {
+.gantt_task_progress {
+    background-color: rgba(0, 0, 0, 0.15);
+}
+
+/* ─── Botones de zoom (día/semana/mes) ─── */
+.gantt-zoom-btn.active {
+    background-color: var(--app-color-primary);
+    border-color: var(--app-color-primary);
+    color: #fff;
+}
+
+
     .page-title {
         font-size: 1.5rem;
         margin-inline-start: 0.5rem;
@@ -1537,28 +1275,14 @@ th, td {
         width: 100%;
     }
 
-    /* Gantt table responsive */
-    .gantt-label-cell {
-        min-width: 180px;
-        max-width: 180px;
-        padding: 0.5rem 0.75rem;
-        font-size: var(--app-font-size-xs);
+    /* Gantt responsive (DHTMLX Gantt) */
+    #gantt-container {
+        height: 380px;
     }
 
-    .gantt-cell {
-        min-width: 32px;
-        width: 32px;
-        height: 28px;
-    }
-
-    .gantt-toggle-btn {
-        min-width: 24px;
-        height: 24px;
-    }
-
-    .gantt-sub-item-label {
-        padding: 0.4rem 0.5rem 0.4rem 2rem;
-        font-size: var(--app-font-size-xs);
+    .gantt_grid_scale,
+    .gantt_task_scale {
+        font-size: 0.65rem;
     }
 
     /* Access Settings responsive */

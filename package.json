@@ -3,8 +3,8 @@
   "version": "1.0.0",
   "description": "Frontend (HTML/CSS/JS) for Roadmap Manager Service",
   "scripts": {
-    "start": "npx serve . -p 5000 --no-clipboard --config serve.json",
-    "dev": "npx serve . -p 5000 --no-clipboard --config serve.json"
+    "start": "npx serve . -p 5500 --no-clipboard --config serve.json",
+    "dev": "npx serve . -p 5500 --no-clipboard --config serve.json"
   },
   "keywords": [],
   "author": "",
