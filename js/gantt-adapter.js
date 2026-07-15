@@ -258,6 +258,26 @@ function buildGanttDataset(promotion) {
         }
     });
 
+    // ── Bloques de "Tiempo flexible" (vacaciones/festivos) ──────────────────────
+    // Nivel superior, sin `parent` (mismo nivel que un módulo). Posición y
+    // duración son siempre absolutas (`startOffset`/`duration` en semanas desde
+    // `promotion.startDate`) y no dependen de módulos vecinos.
+    (promotion.flexibleBlocks || []).forEach((block) => {
+        const blockStartOffset = Number(block.startOffset) || 0;
+        const blockDurationWeeks = Number(block.duration) || 1;
+        const blockStartDate = addDays(baseDate, blockStartOffset * 7);
+
+        data.push({
+            id: `flexible-${block.id}`,
+            text: block.name || 'Tiempo flexible',
+            start_date: formatGanttDate(blockStartDate),
+            duration: blockDurationWeeks * 7,
+            progress: 0,
+            itemType: 'flexible',
+            flexibleBlockId: block.id,
+        });
+    });
+
     return { data, links };
 }
 
@@ -302,6 +322,16 @@ function applyGanttTaskChange(promotion, task) {
         const startWeeks = Math.max(0, Math.round(startDays / 7));
         module.startOffset = startWeeks;
         module.duration = durationWeeks;
+        return true;
+    }
+
+    if (task.itemType === 'flexible') {
+        const block = (promotion.flexibleBlocks || []).find(b => b.id === task.flexibleBlockId);
+        if (!block) return false;
+
+        const startWeeks = Math.max(0, Math.round(startDays / 7));
+        block.startOffset = startWeeks;
+        block.duration = durationWeeks;
         return true;
     }
 

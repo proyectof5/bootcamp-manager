@@ -702,6 +702,53 @@ function generateGantt(promotion) {
             table.appendChild(itemRow);
         });
     }
+
+    // Bloques de "Tiempo flexible" (vacaciones/festivos) — sección independiente,
+    // mismo patrón que Empleabilidad. Posición/duración son absolutas (mismo
+    // índice de semana 0..weeks-1 que usan los módulos), sin depender de
+    // getModuleStartWeeks.
+    const flexibleBlocks = promotion.flexibleBlocks || [];
+    if (flexibleBlocks.length > 0) {
+        // Separator row
+        const flexSeparatorRow = document.createElement('tr');
+        flexSeparatorRow.style.height = '10px';
+        const flexSeparatorCell = document.createElement('td');
+        flexSeparatorCell.colSpan = weeks + 1;
+        flexSeparatorRow.appendChild(flexSeparatorCell);
+        table.appendChild(flexSeparatorRow);
+
+        // Section header
+        const flexHeaderRow = document.createElement('tr');
+        const flexHeaderCell = document.createElement('td');
+        flexHeaderCell.className = 'label';
+        flexHeaderCell.innerHTML = '<strong>🌴 Tiempo flexible</strong>';
+        flexHeaderCell.colSpan = weeks + 1;
+        flexHeaderRow.appendChild(flexHeaderCell);
+        table.appendChild(flexHeaderRow);
+
+        // Flexible block items
+        flexibleBlocks.forEach((block) => {
+            const blockRow = document.createElement('tr');
+            const blockLabel = document.createElement('td');
+            blockLabel.className = 'label';
+            blockLabel.innerHTML = `<small>${escapeHtml(block.name || 'Tiempo flexible')}</small>`;
+            blockRow.appendChild(blockLabel);
+
+            const blockStart = Number(block.startOffset) || 0;
+            const blockEnd = blockStart + (Number(block.duration) || 1);
+
+            for (let i = 0; i < weeks; i++) {
+                const cell = document.createElement('td');
+                if (i >= blockStart && i < blockEnd) {
+                    cell.className = 'block flexible';
+                } else {
+                    cell.className = 'empty';
+                }
+                blockRow.appendChild(cell);
+            }
+            table.appendChild(blockRow);
+        });
+    }
 }
 
 async function loadCalendar(promotionId) {

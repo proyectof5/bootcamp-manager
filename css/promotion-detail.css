@@ -1184,6 +1184,11 @@ th, td {
     border-color: #6f5aa8;
 }
 
+.gantt_task_line.gantt-task-flexible {
+    background-color: var(--purple-f5, #6f42c1);
+    border-color: var(--purple-light-f5, #d1c4e9);
+}
+
 .gantt_task_progress {
     background-color: rgba(0, 0, 0, 0.15);
 }

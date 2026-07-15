@@ -585,6 +585,102 @@ function generateGanttChart(promotion) {
         table.appendChild(collapseBody);
     }
 
+    // Bloques de "Tiempo flexible" (vacaciones/festivos) — sección independiente,
+    // mismo patrón que Sesiones Empleabilidad (header colapsable + una fila por
+    // bloque). Posición/duración son absolutas (mismo índice de semana 0..weeks-1
+    // que usan los módulos), sin depender de getModuleStartWeeks.
+    const flexibleBlocks = promotion.flexibleBlocks || [];
+    if (flexibleBlocks.length > 0) {
+        const flexGroupId = 'flexible-blocks-group';
+
+        const flexHeaderRow = document.createElement('tr');
+        flexHeaderRow.style.cursor = 'pointer';
+        flexHeaderRow.setAttribute('data-bs-toggle', 'collapse');
+        flexHeaderRow.setAttribute('data-bs-target', `#${flexGroupId}`);
+        flexHeaderRow.setAttribute('aria-expanded', 'false');
+        flexHeaderRow.setAttribute('aria-controls', flexGroupId);
+
+        const flexHeaderLabel = document.createElement('td');
+        flexHeaderLabel.innerHTML = `
+            <div class="d-flex align-items-center">
+                <button class="btn btn-link p-0 me-1" type="button" style="font-size: 0.7rem;">
+                    <i class="bi bi-chevron-right" id="chevron-${flexGroupId}"></i>
+                </button>
+                <strong style="font-size: 0.7rem;">Tiempo flexible</strong>
+                <span class="badge ms-2" style="font-size: 0.6rem; background-color: #6f42c1; color: #fff;">${flexibleBlocks.length}</span>
+            </div>
+        `;
+        flexHeaderLabel.style.minWidth = '150px';
+        flexHeaderLabel.style.maxWidth = '200px';
+        flexHeaderLabel.style.padding = '4px';
+        flexHeaderLabel.style.textAlign = 'left';
+        flexHeaderRow.appendChild(flexHeaderLabel);
+
+        const flexStartWeeks = flexibleBlocks.map(b => Number(b.startOffset) || 0);
+        const flexEndWeeks = flexibleBlocks.map(b => (Number(b.startOffset) || 0) + (Number(b.duration) || 1));
+        const flexMinStart = Math.min(...flexStartWeeks);
+        const flexMaxEnd = Math.min(Math.max(...flexEndWeeks), weeks);
+
+        for (let i = 0; i < weeks; i++) {
+            const cell = document.createElement('td');
+            cell.style.textAlign = 'center';
+            cell.style.height = '28px';
+            cell.style.minWidth = '20px';
+            cell.style.maxWidth = '25px';
+            cell.style.padding = '1px';
+            if (i >= flexMinStart && i < flexMaxEnd) {
+                cell.style.backgroundColor = '#d1c4e9';
+            }
+            flexHeaderRow.appendChild(cell);
+        }
+        table.appendChild(flexHeaderRow);
+
+        flexHeaderRow.addEventListener('click', () => {
+            const chevron = document.getElementById(`chevron-${flexGroupId}`);
+            const collapseEl = document.getElementById(flexGroupId);
+            const isExpanded = collapseEl.classList.contains('show');
+            if (chevron) {
+                chevron.style.transform = isExpanded ? '' : 'rotate(90deg)';
+                chevron.style.transition = 'transform 0.2s';
+            }
+        });
+
+        const flexCollapseBody = document.createElement('tbody');
+        flexCollapseBody.className = 'collapse';
+        flexCollapseBody.id = flexGroupId;
+
+        flexibleBlocks.forEach((block) => {
+            const blockRow = document.createElement('tr');
+            const blockLabel = document.createElement('td');
+            blockLabel.innerHTML = `<small style="margin-left: 1.5rem; font-size: 0.6rem;">${escapeHtml(block.name || 'Tiempo flexible')}</small>`;
+            blockLabel.style.minWidth = '150px';
+            blockLabel.style.maxWidth = '200px';
+            blockLabel.style.padding = '2px';
+            blockLabel.style.textAlign = 'left';
+            blockRow.appendChild(blockLabel);
+
+            const blockStart = Number(block.startOffset) || 0;
+            const blockEnd = blockStart + (Number(block.duration) || 1);
+
+            for (let i = 0; i < weeks; i++) {
+                const cell = document.createElement('td');
+                cell.style.textAlign = 'center';
+                cell.style.height = '22px';
+                cell.style.minWidth = '20px';
+                cell.style.maxWidth = '25px';
+                cell.style.padding = '1px';
+                cell.style.fontSize = '0.7rem';
+                if (i >= blockStart && i < blockEnd) {
+                    cell.style.backgroundColor = '#e6dbf5';
+                }
+                blockRow.appendChild(cell);
+            }
+            flexCollapseBody.appendChild(blockRow);
+        });
+
+        table.appendChild(flexCollapseBody);
+    }
+
     // Create rows for modules (below Sesiones Empleabilidad)
     modules.forEach((module, index) => {
         const moduleId = `module-${index}`;

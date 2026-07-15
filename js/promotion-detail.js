@@ -3752,10 +3752,13 @@ function bindGanttEditingEvents() {
 
     // Doble click: abre el modal donde se edita el módulo (nombre, duración,
     // planificador de cursos/proyectos/lecciones) — mismo modal que el botón
-    // "Editar módulo" de antes.
+    // "Editar módulo" de antes. En un bloque de "Tiempo flexible", pide un
+    // nuevo nombre en vez de abrir el modal (no aplica, no vive en un módulo).
     gantt.attachEvent('onTaskDblClick', function (id) {
         const task = gantt.getTask(id);
-        if (task.moduleId) {
+        if (task.itemType === 'flexible') {
+            renameFlexibleBlock(task);
+        } else if (task.moduleId) {
             editModule(task.moduleId);
         }
         return false; // evita que se abra el lightbox nativo de DHTMLX
@@ -3768,6 +3771,33 @@ function bindGanttEditingEvents() {
         const task = gantt.getTask(taskId);
         showGanttContextMenu(task, e.clientX, e.clientY);
         return false;
+    });
+
+    // Clic en un hueco vacío de la línea de tiempo: crea un bloque de
+    // "Tiempo flexible" (4 semanas) empezando en la semana donde se hizo clic.
+    // Nota: solo funciona si el clic cae dentro del área de la línea de tiempo
+    // (a la derecha del árbol de nombres) — un clic sobre el árbol/grid no
+    // corresponde a ninguna fecha y se ignora (con aviso en consola).
+    gantt.attachEvent('onEmptyClick', function (e) {
+        const timelineArea = gantt.$task || (gantt.$container && gantt.$container.querySelector('.gantt_task_bg'));
+        if (!timelineArea) {
+            console.warn('[Gantt] onEmptyClick: no se encontró el área de la línea de tiempo (gantt.$task)');
+            return true;
+        }
+
+        const timelineRect = timelineArea.getBoundingClientRect();
+        const scrollState = gantt.getScrollState();
+        const x = (e.clientX - timelineRect.left) + scrollState.x;
+        const clickDate = gantt.dateFromPos(x);
+        if (!clickDate) {
+            console.warn('[Gantt] onEmptyClick: clic fuera de la línea de tiempo (x calculada = ' + x + '). Haz clic sobre las semanas, no sobre el árbol de nombres.');
+            window.showApiToast('Haz clic sobre la línea de tiempo (semanas), no sobre el árbol de nombres', 'warning');
+            return true;
+        }
+
+        console.info('[Gantt] onEmptyClick: creando bloque de tiempo flexible en', clickDate);
+        createFlexibleBlockAt(clickDate);
+        return true;
     });
 }
 
@@ -3837,6 +3867,13 @@ function confirmDeleteGanttTask(task) {
     if (task.itemType === 'course' || task.itemType === 'project' || task.itemType === 'leccion') {
         _showConfirmModal(`¿Eliminar "${task.text}"? Esta acción no se puede deshacer.`, () => {
             deleteGanttPlannerItem(task);
+        }, 'Eliminar', 'btn-danger');
+        return;
+    }
+
+    if (task.itemType === 'flexible') {
+        _showConfirmModal(`¿Eliminar el bloque "${task.text}"? Esta acción no se puede deshacer.`, () => {
+            deleteFlexibleBlock(task);
         }, 'Eliminar', 'btn-danger');
     }
 }
@@ -4032,6 +4069,153 @@ async function persistGanttRowOrder(task) {
     } catch (error) {
         console.error('Error persisting gantt row order:', error);
         window.showApiToast('Error al guardar el nuevo orden', 'danger');
+    }
+}
+
+/**
+ * Crea un nuevo bloque de "Tiempo flexible" (vacaciones/festivos, 4 semanas
+ * de duración por defecto) en la semana correspondiente a `clickDate` y lo
+ * persiste como un item más de `promotion.flexibleBlocks[]`.
+ * @param {Date} clickDate - Fecha del hueco vacío donde el docente hizo clic
+ */
+async function createFlexibleBlockAt(clickDate) {
+    const token = localStorage.getItem('token');
+    try {
+        const response = await fetch(`${API_URL}/api/promotions/${promotionId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!response.ok) {
+            window.showApiToast('Error loading promotion', 'danger');
+            return;
+        }
+
+        const promotion = await response.json();
+        const baseDate = promotion.startDate ? new Date(promotion.startDate) : new Date();
+        const startOffset = Math.max(0, Math.round((clickDate - baseDate) / (7 * 86400000)));
+
+        if (!Array.isArray(promotion.flexibleBlocks)) promotion.flexibleBlocks = [];
+        promotion.flexibleBlocks.push({
+            id: 'flex-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7),
+            name: 'Tiempo flexible',
+            startOffset,
+            duration: 4
+        });
+
+        const updateResponse = await fetch(`${API_URL}/api/promotions/${promotionId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(promotion)
+        });
+
+        if (updateResponse.ok) {
+            window.showApiToast('Bloque de tiempo flexible creado', 'success');
+            loadModules();
+        } else {
+            window.showApiToast('Error al crear el bloque de tiempo flexible', 'danger');
+        }
+    } catch (error) {
+        console.error('Error creating flexible block:', error);
+        window.showApiToast('Error al crear el bloque de tiempo flexible', 'danger');
+    }
+}
+
+/**
+ * Pide un nuevo nombre para un bloque de "Tiempo flexible" (prompt simple,
+ * sin modal nuevo — decisión pragmática para no sobre-construir un
+ * componente para un caso de uso secundario) y lo persiste.
+ * @param {Object} task - Tarea de DHTMLX Gantt (itemType: 'flexible')
+ */
+async function renameFlexibleBlock(task) {
+    const newName = window.prompt('Nuevo nombre del bloque:', task.text);
+    if (newName === null) return; // cancelado
+    const trimmedName = newName.trim();
+    if (!trimmedName || trimmedName === task.text) return;
+
+    const token = localStorage.getItem('token');
+    try {
+        const response = await fetch(`${API_URL}/api/promotions/${promotionId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!response.ok) {
+            window.showApiToast('Error loading promotion', 'danger');
+            return;
+        }
+
+        const promotion = await response.json();
+        const block = (promotion.flexibleBlocks || []).find(b => b.id === task.flexibleBlockId);
+        if (!block) {
+            window.showApiToast('Bloque de tiempo flexible no encontrado', 'warning');
+            return;
+        }
+        block.name = trimmedName;
+
+        const updateResponse = await fetch(`${API_URL}/api/promotions/${promotionId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(promotion)
+        });
+
+        if (updateResponse.ok) {
+            window.showApiToast('Bloque renombrado', 'success');
+            loadModules();
+        } else {
+            window.showApiToast('Error al renombrar el bloque', 'danger');
+        }
+    } catch (error) {
+        console.error('Error renaming flexible block:', error);
+        window.showApiToast('Error al renombrar el bloque', 'danger');
+    }
+}
+
+/**
+ * Elimina un bloque de "Tiempo flexible" de `promotion.flexibleBlocks[]`.
+ * @param {Object} task - Tarea de DHTMLX Gantt (itemType: 'flexible')
+ */
+async function deleteFlexibleBlock(task) {
+    const token = localStorage.getItem('token');
+    try {
+        const response = await fetch(`${API_URL}/api/promotions/${promotionId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!response.ok) {
+            window.showApiToast('Error loading promotion', 'danger');
+            return;
+        }
+
+        const promotion = await response.json();
+        if (!Array.isArray(promotion.flexibleBlocks)) {
+            window.showApiToast('Bloque de tiempo flexible no encontrado', 'warning');
+            return;
+        }
+        promotion.flexibleBlocks = promotion.flexibleBlocks.filter(b => b.id !== task.flexibleBlockId);
+
+        const updateResponse = await fetch(`${API_URL}/api/promotions/${promotionId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(promotion)
+        });
+
+        if (updateResponse.ok) {
+            window.showApiToast('Bloque eliminado', 'success');
+            loadModules();
+        } else {
+            window.showApiToast('Error al eliminar el bloque', 'danger');
+        }
+    } catch (error) {
+        console.error('Error deleting flexible block:', error);
+        window.showApiToast('Error al eliminar el bloque', 'danger');
     }
 }
 
