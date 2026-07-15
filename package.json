@@ -1,12 +1,42 @@
 {
   "name": "roadmap-manager-frontend",
-  "version": "1.0.0",
-  "description": "Frontend (HTML/CSS/JS) for Roadmap Manager Service",
+  "version": "2.0.0",
+  "description": "Frontend (Next.js) for Roadmap Manager Service",
   "scripts": {
-    "start": "npx serve . -p 5500 --no-clipboard --config serve.json",
-    "dev": "npx serve . -p 5500 --no-clipboard --config serve.json"
+    "dev": "next dev -p 5500",
+    "build": "next build",
+    "start": "npx serve out -p 5500 --no-clipboard",
+    "lint": "next lint",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui"
   },
   "keywords": [],
   "author": "",
-  "license": "ISC"
+  "license": "ISC",
+  "dependencies": {
+    "@radix-ui/react-accordion": "^1.2.13",
+    "@radix-ui/react-dialog": "^1.1.15",
+    "@radix-ui/react-dropdown-menu": "^2.1.16",
+    "@radix-ui/react-label": "^2.1.8",
+    "@radix-ui/react-select": "^2.2.6",
+    "@radix-ui/react-slot": "^1.2.4",
+    "@radix-ui/react-tabs": "^1.1.13",
+    "class-variance-authority": "^0.7.1",
+    "clsx": "^2.1.1",
+    "lucide-react": "^1.16.0",
+    "next": "^15.5.18",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
+    "tailwind-merge": "^3.6.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.60.0",
+    "@types/node": "^25.9.1",
+    "@types/react": "^19.2.15",
+    "@types/react-dom": "^19.2.3",
+    "autoprefixer": "^10.5.0",
+    "postcss": "^8.5.15",
+    "tailwindcss": "3.4",
+    "typescript": "^6.0.3"
+  }
 }

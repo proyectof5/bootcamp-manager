@@ -29,33 +29,44 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # ── 2. Inject backend URL ─────────────────────────────────────────────────
-      # Replaces __BACKEND_URL_PLACEHOLDER__ in config.js with the real backend URL.
-      # Set the secret BACKEND_URL in:
-      #   GitHub repo → Settings → Secrets and variables → Actions → New repository secret
-      # Example value: https://roadmap-manager-latest.onrender.com
-      - name: Inject Backend URL into config.js
-        run: |
-          CONFIG="js/config.js"
-          if [ -n "${{ secrets.BACKEND_URL }}" ]; then
-            echo "✅ Injecting BACKEND_URL into $CONFIG"
-            sed -i "s|__BACKEND_URL_PLACEHOLDER__|${{ secrets.BACKEND_URL }}|g" "$CONFIG"
-          else
-            echo "⚠️  Secret BACKEND_URL is not set."
-            echo "   The frontend will fall back to window.location.origin as API URL."
-          fi
+      # ── 2. Set up Node.js ─────────────────────────────────────────────────────
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: package-lock.json
 
-      # ── 3. Configure GitHub Pages ─────────────────────────────────────────────
+      # ── 3. Install dependencies ───────────────────────────────────────────────
+      - name: Install dependencies
+        run: npm ci
+
+      # ── 4. Build Next.js static export ───────────────────────────────────────
+      # NEXT_PUBLIC_API_URL  – backend REST API (replaces the old __BACKEND_URL_PLACEHOLDER__)
+      #                        Set secret BACKEND_URL in:
+      #                        repo → Settings → Secrets and variables → Actions
+      #                        Example: https://roadmap-manager-latest.onrender.com
+      #
+      # NEXT_PUBLIC_BASE_PATH – set this secret if the site is served from a sub-path
+      #                         (e.g. /bootcamp-manager). Leave empty for a custom domain
+      #                         deployed at the root.
+      - name: Build
+        env:
+          NEXT_PUBLIC_API_URL: ${{ secrets.BACKEND_URL }}
+          NEXT_PUBLIC_BASE_PATH: ${{ secrets.BASE_PATH }}
+        run: npm run build
+
+      # ── 5. Configure GitHub Pages ─────────────────────────────────────────────
       - name: Setup GitHub Pages
         uses: actions/configure-pages@v5
 
-      # ── 4. Upload the repo root as the Pages artifact ─────────────────────────
+      # ── 6. Upload Next.js static export as the Pages artifact ────────────────
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
-          path: '.'
+          path: './out'
 
-      # ── 5. Deploy ─────────────────────────────────────────────────────────────
+      # ── 7. Deploy ─────────────────────────────────────────────────────────────
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
