@@ -14,19 +14,28 @@
     // ──────────────────────────────────────────────────────────────────────────
 
     const DEV_API_URL  = 'http://localhost:3000';           // backend in development
-    const PROD_API_URL = '__BACKEND_URL_PLACEHOLDER__';     // replaced by GitHub Actions
+    const PROD_API_URL = '__BACKEND_URL_PLACEHOLDER__';     // legacy placeholder, no longer substituted
 
-    let API_URL;
+    // Si la app Next.js ya fijó window.APP_CONFIG.API_URL antes de cargar este
+    // script (ver app/promotion/page.tsx: process.env.NEXT_PUBLIC_API_URL,
+    // inyectado en build-time por el workflow de deploy), lo respetamos — es el
+    // mecanismo real y correcto hoy. Sin este guard, este script lo sobreescribía
+    // sin condición y en producción caía al fallback de abajo (window.location.origin,
+    // el propio dominio de GitHub Pages en vez del backend), rompiendo toda
+    // llamada a la API en /promotion.
+    let API_URL = (window.APP_CONFIG && window.APP_CONFIG.API_URL) || null;
 
-    if (PROD_API_URL && !PROD_API_URL.startsWith('__')) {
-        // Injected by CI — we are in a real deployment
-        API_URL = PROD_API_URL;
-    } else if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-        // Local development (frontend served on any port: 5000, 5500, 3000…)
-        API_URL = DEV_API_URL;
-    } else {
-        // Fallback: same origin (monorepo mode — backend serves the frontend)
-        API_URL = window.location.origin;
+    if (!API_URL) {
+        if (PROD_API_URL && !PROD_API_URL.startsWith('__')) {
+            // Injected by CI — we are in a real deployment
+            API_URL = PROD_API_URL;
+        } else if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+            // Local development (frontend served on any port: 5000, 5500, 3000…)
+            API_URL = DEV_API_URL;
+        } else {
+            // Fallback: same origin (monorepo mode — backend serves the frontend)
+            API_URL = window.location.origin;
+        }
     }
 
     // Bootstrap with sensible defaults, then override from server

@@ -28,3 +28,14 @@
 - **Síntoma visible**: ninguno — es limpieza, no un bug.
 - **Detectada en**: Fase 7 del Gantt del docente (`docs/tasks/dhtmlx-gantt-roadmap.md`), TASK-34
 - **Estado**: Pendiente
+
+---
+**TD-3**: `img/` está duplicada en la raíz y en `public/img/` porque el CSS legacy usa rutas relativas
+- **Problema**: `css/dashboard.css` y `css/promotion-detail.css` (raíz, importados en build-time por `app/globals.css`) referencian imágenes con ruta relativa — `url("../img/Fondo-factoria-f5-color.png")` — que webpack resuelve contra `img/` de la raíz. La misma imagen (y el resto de `img/`) también vive en `public/img/`, servida en runtime como `/img/...` para todo lo que sí usa rutas absolutas (`app/`, `<img src>`, etc.). Como consecuencia hay dos copias idénticas (2.4 MB) que hay que mantener sincronizadas a mano — se descubrió al intentar borrar `img/` (raíz) por parecer un duplicado sin uso: el build falló con `Cannot find module '../img/Fondo-factoria-f5-color.png'`.
+- **Ubicación**: `bootcamp-manager/css/dashboard.css:93,229`, `bootcamp-manager/css/promotion-detail.css:25,994` (las `url("../img/...")`), vs. `bootcamp-manager/img/` y `bootcamp-manager/public/img/` (carpetas duplicadas)
+- **Impacto**: Bajo — no rompe nada mientras ambas copias se mantengan sincronizadas, pero es fácil que alguien actualice una imagen en una copia y se le olvide la otra.
+- **Esfuerzo**: Bajo — cambiar esas 4 `url("../img/...")` a `url("/img/...")` (ruta absoluta, resuelta en runtime contra `public/img/`) y borrar `img/` (raíz) una vez confirmado que ningún otro archivo CSS de la raíz usa rutas relativas a `img/`.
+- **Riesgo de tocar**: Bajo — cambio mecánico y fácil de verificar con un `npm run build` + revisión visual de las páginas que usan ese fondo.
+- **Síntoma visible**: ninguno mientras ambas copias sigan sincronizadas; si alguien actualiza solo una copia, la imagen se verá distinta según si se carga vía el CSS legacy o vía una ruta `/img/...` directa.
+- **Detectada en**: limpieza de archivos huérfanos (`docs/tasks/limpieza-archivos-huerfanos.md`), TASK-3
+- **Estado**: Pendiente
