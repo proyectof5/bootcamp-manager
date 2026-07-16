@@ -592,7 +592,6 @@ body {
 .student-name-cell {
     cursor: pointer;
     /* !important para vencer .sticky-column { color: #fff !important } (texto blanco). */
-    color: var(--principal-1) !important;
     font-weight: 500;
 }
 

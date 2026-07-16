@@ -11,9 +11,13 @@
  * Patrón "markup en React, lógica legacy por id" (como ScheduleSettings/VirtualClassroomPanel): el
  * roadmap es muy acoplado (gantt con botones de edición inline, drag, navegación). En vez de
  * replicar generateGanttChart (cientos de líneas), React solo renderiza el MARKUP conservando los
- * ids legacy (#modules-list, #gantt-table, #show-employability-toggle) y el orquestador los puebla:
+ * ids legacy (#modules-list, #gantt-container) y el orquestador los puebla:
  *  - loadModules() (fetch promo + displayModules + generateGanttChart) los rellena por id.
- *  - Los controles llaman a window.toggleShowEmployability / openEmployabilityModal / openModuleModal.
+ *  - Los controles llaman a window.openEmployabilityModal / openModuleModal.
+ *  - Fase 6 (dhtmlx-gantt-roadmap): el toggle "Mostrar Empleabilidad" se quitó — la empleabilidad
+ *    ya no se pinta en el Gantt DHTMLX desde la Fase 2 (TASK-7), así que el toggle no tenía efecto.
+ *    El botón "Sesiones Empleabilidad" se conserva: gestiona los datos (modal), algo independiente
+ *    de si se muestran o no en el Gantt.
  *  - #modules-list (cuyo render de tarjetas está comentado en el legacy → casi siempre vacío) y
  *    #gantt-table los puebla el legacy vía innerHTML → se renderizan vacíos y el componente no
  *    re-renderiza (sin estado) → no hay pelea de reconciliación.
@@ -71,18 +75,6 @@ function RoadmapPanel() {
       <div className="justify-content-between align-items-center mb-4 detail-card">
         <h5 className="mb-0">Roadmap &amp; Módulos</h5>
         <div className="d-flex flex-wrap gap-2 align-items-center">
-          <div className="form-check form-switch mb-0 me-2">
-            <input
-              className="form-check-input"
-              type="checkbox"
-              id="show-employability-toggle"
-              defaultChecked
-              onChange={(e) => w().toggleShowEmployability?.(e.target.checked)}
-            />
-            <label className="form-check-label small fw-semibold" htmlFor="show-employability-toggle">
-              Mostrar Empleabilidad
-            </label>
-          </div>
           <button type="button" className="btn btn-outline-warning btn-sm" onClick={() => w().openEmployabilityModal?.()}>
             <i className="bi bi-briefcase me-2" />Sesiones Empleabilidad
           </button>
@@ -95,11 +87,16 @@ function RoadmapPanel() {
         {/* Lo puebla el legacy (displayModules) por innerHTML. */}
       </div>
       <div className="mt-4">
-        <h6 className="mb-3">Diagrama Gantt</h6>
-        <div className="table-responsive">
-          {/* Lo puebla el legacy (generateGanttChart) por innerHTML. */}
-          <table id="gantt-table" className="table" />
+        <div className="d-flex justify-content-between align-items-center mb-3">
+          <h6 className="mb-0">Diagrama Gantt</h6>
+          <div className="btn-group btn-group-sm" role="group" aria-label="Zoom del Gantt">
+            <button type="button" className="btn btn-outline-secondary gantt-zoom-btn" data-zoom-level="day" onClick={() => w().setGanttZoomLevel?.('day')}>Día</button>
+            <button type="button" className="btn btn-outline-secondary gantt-zoom-btn active" data-zoom-level="week" onClick={() => w().setGanttZoomLevel?.('week')}>Semana</button>
+            <button type="button" className="btn btn-outline-secondary gantt-zoom-btn" data-zoom-level="month" onClick={() => w().setGanttZoomLevel?.('month')}>Mes</button>
+          </div>
         </div>
+        {/* Lo puebla el legacy (generateGanttChart → DHTMLX Gantt, Fase 6). */}
+        <div id="gantt-container" style={{ width: '100%', height: 500, overflow: 'auto' }} />
       </div>
     </>
   );

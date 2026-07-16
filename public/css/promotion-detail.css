@@ -591,7 +591,6 @@ body {
 
 .student-name-cell {
     cursor: pointer;
-    color: var(--principal-1);
     font-weight: 500;
 }
 

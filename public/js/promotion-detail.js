@@ -3457,358 +3457,825 @@ function displayModules(modules) {
     });
 }
 
-function generateGanttChart(promotion) {
-    const table = document.getElementById('gantt-table');
-    if (!table) return; // spec 0014 Fase C: #gantt-table lo monta React (RoadmapPanel) por portal
-    table.innerHTML = '';
 
-    // Use the module-level helper so superadmin also gets edit buttons.
-    const isTeacher = isTeacherOrAdmin();
+// Guards so gantt.init() only runs once per page load
+let _ganttInitialized = false;
 
-    const weeks = promotion.weeks || 0;
-    const modules = promotion.modules || [];
-    const employability = promotion.employability || [];
+/**
+ * Inicializa la instancia de DHTMLX Gantt sobre #gantt-container.
+ * Docentes/admins obtienen edición interactiva (drag/resize) con
+ * persistencia automática vía PUT /api/promotions/:id; el resto de
+ * usuarios ve el Gantt en modo solo lectura.
+ */
+function initGanttInstance() {
+    if (_ganttInitialized) return;
+    _ganttInitialized = true;
 
-    if (modules.length === 0) {
-        table.innerHTML = '<tbody><tr><td class="text-muted">No modules configured</td></tr></tbody>';
+    const canEdit = isTeacherOrAdmin();
+
+    gantt.config.date_format = window.GANTT_DATE_FORMAT;
+    gantt.config.scales = [
+        { unit: 'month', step: 1, format: '%F %Y' },
+        { unit: 'week', step: 1, format: 'Sem. %W' }
+    ];
+    gantt.config.columns = [
+        {
+            name: 'text',
+            label: 'Nombre',
+            tree: true,
+            width: 220,
+            template: function (task) {
+                const isOrderable = canEdit && (
+                    task.itemType === 'course' || task.itemType === 'project' || task.itemType === 'leccion'
+                );
+                const dragHandle = isOrderable
+                    ? '<i class="bi bi-grip-vertical gantt-drag-handle" title="Arrastra para reordenar"></i>'
+                    : '';
+                return `<span class="gantt-drag-handle-slot">${dragHandle}</span><span class="gantt-row-text">${escapeHtml(task.text)}</span>`;
+            }
+        }
+    ];
+    gantt.config.readonly = !canEdit;
+    gantt.config.drag_move = canEdit;
+    gantt.config.drag_resize = canEdit;
+    gantt.config.drag_progress = false;
+    gantt.config.drag_links = false;
+    gantt.config.show_links = false;
+
+    // Permite reordenar (arriba/abajo) cursos, proyectos y lecciones dentro de
+    // su mismo padre (módulo o grupo "Lecciones") arrastrando la fila en la
+    // rejilla. Los módulos y el grupo "Lecciones" no se reordenan así — su
+    // posición se controla con el drag temporal (mover en el tiempo).
+    gantt.config.order_branch = canEdit
+        ? function (task) {
+            return task.itemType === 'course' || task.itemType === 'project' || task.itemType === 'leccion';
+        }
+        : false;
+    gantt.config.order_branch_free = false;
+
+    // Colorea cada barra según el tipo de elemento (módulo/curso/proyecto/lección)
+    gantt.templates.task_class = function (start, end, task) {
+        const type = task.itemType === 'leccion-group' ? 'leccion' : (task.itemType || 'default');
+        return `gantt-task-${type}`;
+    };
+
+    // Tooltip con nombre, rango de fechas y enlace(s) (si existen)
+    gantt.templates.tooltip_text = function (start, end, task) {
+        const range = `${window.formatGanttDate(start)} – ${window.formatGanttDate(end)}`;
+        let linksHtml = '';
+        if (Array.isArray(task.links) && task.links.length > 0) {
+            linksHtml = '<br>' + task.links
+                .map(l => `<a href="${escapeHtml(l.url)}" target="_blank" rel="noopener">${escapeHtml(l.label || l.url)}</a>`)
+                .join('<br>');
+        } else if (task.url) {
+            linksHtml = `<br><a href="${escapeHtml(task.url)}" target="_blank" rel="noopener">Ver enlace</a>`;
+        }
+        return `<b>${escapeHtml(task.text)}</b><br>${range}${linksHtml}`;
+    };
+
+    gantt.init('gantt-container');
+    setGanttZoomLevel('week');
+
+    if (canEdit) {
+        bindGanttEditingEvents();
+    }
+}
+
+/**
+ * Cambia la escala de tiempo visible del Gantt (día/semana/mes).
+ * Implementación propia y ligera (sin depender de la extensión ext/zoom
+ * de DHTMLX) para no añadir otro recurso CDN.
+ * @param {'day'|'week'|'month'} level
+ */
+function setGanttZoomLevel(level) {
+    const scaleConfigs = {
+        day: {
+            scales: [{ unit: 'day', step: 1, format: '%d %M' }],
+            min_column_width: 40
+        },
+        week: {
+            scales: [
+                { unit: 'month', step: 1, format: '%F %Y' },
+                { unit: 'week', step: 1, format: 'Sem. %W' }
+            ],
+            min_column_width: 60
+        },
+        month: {
+            scales: [{ unit: 'month', step: 1, format: '%F %Y' }],
+            min_column_width: 100
+        }
+    };
+    const config = scaleConfigs[level] || scaleConfigs.week;
+
+    if (typeof gantt === 'undefined' || !_ganttInitialized) return;
+
+    gantt.config.scales = config.scales;
+    gantt.config.min_column_width = config.min_column_width;
+    gantt.render();
+
+    document.querySelectorAll('.gantt-zoom-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.zoomLevel === level);
+    });
+}
+
+/**
+ * Registra los listeners que permiten editar el Gantt arrastrando/redimensionando
+ * tareas y persisten el cambio contra la API. Módulos, cursos, proyectos y
+ * lecciones se pueden mover y redimensionar libremente.
+ * También registra doble-click (abrir edición) y clic derecho (eliminar).
+ */
+function bindGanttEditingEvents() {
+    gantt.attachEvent('onBeforeTaskDrag', function (id) {
+        const task = gantt.getTask(id);
+        // El grupo "Lecciones" es un contenedor puramente visual (Fase 5): su
+        // rango se deriva de sus lecciones hijas, no se arrastra/redimensiona
+        // como unidad.
+        if (task.itemType === 'leccion-group') return false;
+        return true;
+    });
+
+    gantt.attachEvent('onAfterTaskDrag', function (id) {
+        const task = gantt.getTask(id);
+        persistGanttTaskChange(task);
+    });
+
+    // Arrastrar una fila arriba/abajo dentro de su mismo padre (reordenar
+    // cursos/proyectos dentro del módulo, o lecciones dentro de "Lecciones").
+    gantt.attachEvent('onRowDragEnd', function (id) {
+        const task = gantt.getTask(id);
+        persistGanttRowOrder(task);
+    });
+
+    // Doble click: abre un modal enfocado según el tipo de tarea (Fase 7).
+    // Módulo → nombre/duración (editModule, ya simplificado en TASK-30).
+    // Curso/Proyecto/Lección → itemEditModal (TASK-31/32). Tiempo flexible →
+    // prompt de renombrado (sin cambios, Fase 4). El grupo "Lecciones" (nodo
+    // puramente visual, Fase 5) cae a editModule igual que un módulo — no
+    // representa un item real.
+    gantt.attachEvent('onTaskDblClick', function (id) {
+        const task = gantt.getTask(id);
+        if (task.itemType === 'flexible') {
+            renameFlexibleBlock(task);
+        } else if (task.itemType === 'course' || task.itemType === 'project' || task.itemType === 'leccion') {
+            openItemEditModal(task);
+        } else if (task.moduleId) {
+            editModule(task.moduleId);
+        }
+        return false; // evita que se abra el lightbox nativo de DHTMLX
+    });
+
+    // Clic derecho: menú contextual ligero con la opción "Eliminar".
+    gantt.attachEvent('onContextMenu', function (taskId, linkId, e) {
+        if (!taskId) return true;
+        e.preventDefault();
+        const task = gantt.getTask(taskId);
+        showGanttContextMenu(task, e.clientX, e.clientY);
+        return false;
+    });
+
+    // Clic en un hueco vacío de la línea de tiempo: abre el selector de tipo
+    // (Fase 7, TASK-33) — módulo/curso/proyecto/lección/tiempo flexible —
+    // precargado con la semana donde se hizo clic. Nota: solo funciona si el
+    // clic cae dentro del área de la línea de tiempo (a la derecha del árbol
+    // de nombres) — un clic sobre el árbol/grid no corresponde a ninguna
+    // fecha y se ignora (con aviso en consola).
+    gantt.attachEvent('onEmptyClick', function (e) {
+        const timelineArea = gantt.$task || (gantt.$container && gantt.$container.querySelector('.gantt_task_bg'));
+        if (!timelineArea) {
+            console.warn('[Gantt] onEmptyClick: no se encontró el área de la línea de tiempo (gantt.$task)');
+            return true;
+        }
+
+        const timelineRect = timelineArea.getBoundingClientRect();
+        const scrollState = gantt.getScrollState();
+        const x = (e.clientX - timelineRect.left) + scrollState.x;
+        const clickDate = gantt.dateFromPos(x);
+        if (!clickDate) {
+            console.warn('[Gantt] onEmptyClick: clic fuera de la línea de tiempo (x calculada = ' + x + '). Haz clic sobre las semanas, no sobre el árbol de nombres.');
+            window.showApiToast('Haz clic sobre la línea de tiempo (semanas), no sobre el árbol de nombres', 'warning');
+            return true;
+        }
+
+        openCreateItemModal(clickDate);
+        return true;
+    });
+}
+
+/**
+ * Muestra un menú contextual mínimo (sin depender de la extensión
+ * ext/contextmenu de DHTMLX) con la opción de eliminar la tarea seleccionada.
+ * @param {Object} task - Tarea de DHTMLX Gantt sobre la que se hizo clic derecho
+ * @param {number} x - Coordenada X del clic (viewport)
+ * @param {number} y - Coordenada Y del clic (viewport)
+ */
+function showGanttContextMenu(task, x, y) {
+    removeGanttContextMenu();
+
+    const menu = document.createElement('div');
+    menu.id = 'gantt-context-menu';
+    menu.className = 'dropdown-menu show';
+    menu.style.position = 'fixed';
+    menu.style.left = `${x}px`;
+    menu.style.top = `${y}px`;
+    menu.style.zIndex = '3000';
+
+    const deleteBtn = document.createElement('button');
+    deleteBtn.type = 'button';
+    deleteBtn.className = 'dropdown-item text-danger';
+    deleteBtn.innerHTML = '<i class="bi bi-trash me-2"></i>Eliminar';
+    deleteBtn.onclick = () => {
+        removeGanttContextMenu();
+        confirmDeleteGanttTask(task);
+    };
+    menu.appendChild(deleteBtn);
+
+    document.body.appendChild(menu);
+
+    // Cerrar el menú al hacer clic fuera o al pulsar Escape
+    setTimeout(() => {
+        document.addEventListener('click', removeGanttContextMenu, { once: true });
+        document.addEventListener('keydown', _ganttContextMenuEscHandler);
+    }, 0);
+}
+
+function _ganttContextMenuEscHandler(e) {
+    if (e.key === 'Escape') removeGanttContextMenu();
+}
+
+function removeGanttContextMenu() {
+    const existing = document.getElementById('gantt-context-menu');
+    if (existing) existing.remove();
+    document.removeEventListener('keydown', _ganttContextMenuEscHandler);
+}
+
+/**
+ * Enruta el borrado de una tarea del Gantt según su tipo:
+ * módulo completo, o curso/proyecto/lección dentro de un módulo.
+ * @param {Object} task
+ */
+function confirmDeleteGanttTask(task) {
+    if (task.itemType === 'module') {
+        deleteModule(task.moduleId);
         return;
     }
 
-    // Compact table — override the generous default padding from style.css
-    table.className = 'table table-sm table-bordered gantt-table';
-    table.style.fontSize = '0.65rem';
-    table.style.borderCollapse = 'collapse';
-    table.style.tableLayout = 'auto';
-
-    // Inject a scoped style block once to force tight cell sizing
-    if (!document.getElementById('gantt-compact-style')) {
-        const s = document.createElement('style');
-        s.id = 'gantt-compact-style';
-        s.textContent = `
-            #gantt-table th, #gantt-table td {
-                padding: 1px 2px !important;
-                font-size: 0.6rem;
-                border: 1px solid #dee2e6 !important;
-                box-sizing: border-box;
-            }
-            #gantt-table .gantt-label-cell {
-                white-space: nowrap;
-                overflow: visible;
-                position: sticky;
-                left: 0;
-                background: white;
-                z-index: 2;
-            }
-            #gantt-table .gantt-week-cell {
-                writing-mode: vertical-rl;
-                text-orientation: mixed;
-                padding: 3px 1px !important;
-            }
-        `;
-        document.head.appendChild(s);
+    // El grupo "Lecciones" es un contenedor virtual, no un item real: no se elimina.
+    if (task.itemType === 'leccion-group') {
+        return;
     }
 
-    const tableContainer = table.closest('.table-responsive') || table.parentElement;
-    if (tableContainer) {
-        tableContainer.style.overflowX = 'auto';
-        tableContainer.style.maxWidth = '100%';
+    if (task.itemType === 'course' || task.itemType === 'project' || task.itemType === 'leccion') {
+        _showConfirmModal(`¿Eliminar "${task.text}"? Esta acción no se puede deshacer.`, () => {
+            deleteGanttPlannerItem(task);
+        }, 'Eliminar', 'btn-danger');
+        return;
     }
 
-    // ── 1. Header: month + week rows go in <thead> ────────────────────────────
-    // Group every 4 weeks into one month (Mes 1, Mes 2, ...)
-    const thead = document.createElement('thead');
-
-    const monthRow = document.createElement('tr');
-    const monthHeaderCell = document.createElement('th');
-    monthHeaderCell.innerHTML = '<strong>Meses</strong>';
-    monthHeaderCell.className = 'gantt-label-cell';
-    monthRow.appendChild(monthHeaderCell);
-
-    // Each group of 4 weeks = 1 month
-    let currentMonthKey = null, monthSpan = 0, monthCell = null;
-    for (let i = 0; i < weeks; i++) {
-        const m = Math.floor(i / 4) + 1;
-        const monthKey = `m${m}`;
-        if (monthKey !== currentMonthKey) {
-            if (monthCell) monthCell.colSpan = monthSpan;
-            currentMonthKey = monthKey;
-            monthCell = document.createElement('th');
-            monthCell.innerHTML = `<strong>Mes ${m}</strong>`;
-            monthCell.style.textAlign = 'center';
-            monthCell.style.backgroundColor = '#e8f4f8';
-            monthCell.style.borderLeft = '2px solid #6c757d';
-            monthRow.appendChild(monthCell);
-            monthSpan = 1;
-        } else { monthSpan++; }
+    if (task.itemType === 'flexible') {
+        _showConfirmModal(`¿Eliminar el bloque "${task.text}"? Esta acción no se puede deshacer.`, () => {
+            deleteFlexibleBlock(task);
+        }, 'Eliminar', 'btn-danger');
     }
-    if (monthCell) monthCell.colSpan = monthSpan;
-    thead.appendChild(monthRow);
-
-    const weekRow = document.createElement('tr');
-    const weekHeaderCell = document.createElement('th');
-    weekHeaderCell.innerHTML = '<strong>Sem.</strong>';
-    weekHeaderCell.className = 'gantt-label-cell';
-    weekRow.appendChild(weekHeaderCell);
-    for (let i = 0; i < weeks; i++) {
-        const th = document.createElement('th');
-        th.textContent = `${i + 1}`;
-        th.title = `Semana ${i + 1}`;
-        if (i % 4 === 0) th.style.borderLeft = '2px solid #6c757d';
-        th.className = 'gantt-week-cell text-center';
-        weekRow.appendChild(th);
-    }
-    thead.appendChild(weekRow);
-    table.appendChild(thead);
-
-    // ── 2. Employability section — one <tbody> for header + sessions ──────────
-    const employabilityId = 'employability-section';
-    const isEmpExpanded = localStorage.getItem(`gantt-expanded-${employabilityId}`) !== 'false';
-
-    const empTbody = document.createElement('tbody');
-    empTbody.id = `tbody-${employabilityId}`;
-
-    // Compute overall span for the header bar
-    const empStarts = employability.map(e => (e.startMonth - 1) * 4);
-    const empEnds = employability.map(e => (e.startMonth - 1) * 4 + e.duration * 4);
-    const empMin = empStarts.length ? Math.min(...empStarts) : -1;
-    const empMax = empEnds.length ? Math.min(Math.max(...empEnds), weeks) : -1;
-
-    // Header row (always visible — lives in empTbody)
-    const empHeaderRow = document.createElement('tr');
-    empHeaderRow.className = 'gantt-employability-header';
-    empHeaderRow.style.cursor = 'pointer';
-    empHeaderRow.title = 'Click para expandir/colapsar';
-
-    const empLabelCell = document.createElement('td');
-    empLabelCell.className = 'gantt-label-cell';
-    empLabelCell.colSpan = weeks + 1;
-    empLabelCell.style.backgroundColor = '#fff8e1';
-    empLabelCell.style.position = 'sticky';
-    empLabelCell.style.left = '0';
-
-    // Build inline span bar: a thin colored strip showing the overall range
-    let spanBarHtml = '';
-    if (empMin >= 0 && empMax > empMin) {
-        const leftPct = ((empMin / weeks) * 100).toFixed(1);
-        const widthPct = (((empMax - empMin) / weeks) * 100).toFixed(1);
-        spanBarHtml = `
-            <div style="position:relative;height:4px;background:#f3e5ab;border-radius:2px;margin-top:2px;overflow:hidden;">
-                <div style="position:absolute;left:${leftPct}%;width:${widthPct}%;height:100%;background:#f59e0b;border-radius:2px;"></div>
-            </div>`;
-    }
-
-    empLabelCell.innerHTML = `
-        <div class="d-flex align-items-center gap-1">
-            <i class="bi ${isEmpExpanded ? 'bi-chevron-down' : 'bi-chevron-right'} gantt-emp-chevron" style="font-size:0.6rem;"></i>
-            <strong>Empleabilidad</strong>
-            <span class="badge bg-warning text-dark" style="font-size:0.55rem;">${employability.length}</span>
-        </div>
-        ${spanBarHtml}`;
-    empHeaderRow.appendChild(empLabelCell);
-    empHeaderRow.addEventListener('click', () => toggleEmployabilityExpansion());
-    empTbody.appendChild(empHeaderRow);
-
-    // Session rows — in a separate <tbody> that gets hidden/shown as a unit
-    const empContentTbody = document.createElement('tbody');
-    empContentTbody.id = `tbody-content-${employabilityId}`;
-    empContentTbody.style.display = isEmpExpanded ? '' : 'none';
-
-    employability.forEach((item, index) => {
-        const itemRow = document.createElement('tr');
-
-        const itemCell = document.createElement('td');
-        itemCell.className = 'gantt-label-cell';
-        itemCell.style.backgroundColor = '#fffff8';
-
-        const itemUrl = item.url
-            ? `<a href="${escapeHtml(item.url)}" target="_blank" class="text-decoration-none">${escapeHtml(item.name)}</a>`
-            : escapeHtml(item.name);
-        const editBtn = isTeacher
-            ? `<button class="btn btn-xs btn-outline-warning py-0 px-1" style="font-size:0.55rem;" onclick="event.stopPropagation();editEmployabilityItem(${index})"><i class="bi bi-pencil"></i></button>` : '';
-        const delBtn = isTeacher
-            ? `<button class="btn btn-xs btn-outline-danger py-0 px-1" style="font-size:0.55rem;" onclick="event.stopPropagation();deleteEmployabilityItem(${index})"><i class="bi bi-trash"></i></button>` : '';
-
-        itemCell.innerHTML = `
-            <div class="d-flex align-items-center justify-content-between gap-1" style="padding-left:14px;">
-                <small style="font-size:0.58rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:110px;">${itemUrl}</small>
-                <div class="d-flex gap-1">${editBtn}${delBtn}</div>
-            </div>`;
-        itemRow.appendChild(itemCell);
-
-        const sw = (item.startMonth - 1) * 4;
-        const ew = sw + item.duration * 4;
-        for (let i = 0; i < weeks; i++) {
-            const cell = document.createElement('td');
-            cell.style.height = '18px';
-            if (i >= sw && i < ew) cell.style.backgroundColor = '#fff3cd';
-            itemRow.appendChild(cell);
-        }
-        empContentTbody.appendChild(itemRow);
-    });
-
-    table.appendChild(empTbody);
-    table.appendChild(empContentTbody);
-
-    // ── 3. Module rows — one <tbody> per module (header + sub-rows) ───────────
-    let weekCounter = 0;
-    modules.forEach((module, index) => {
-        const moduleId = `module-${index}`;
-        const isExpanded = localStorage.getItem(`gantt-expanded-${moduleId}`) !== 'false';
-
-        // Module header gets its own single-row <tbody>
-        const modHeaderTbody = document.createElement('tbody');
-        modHeaderTbody.id = `tbody-header-${moduleId}`;
-
-        const moduleRow = document.createElement('tr');
-        moduleRow.className = 'gantt-module-header';
-        moduleRow.dataset.moduleIndex = index;
-        moduleRow.style.cursor = 'pointer';
-        moduleRow.title = 'Click para expandir/colapsar';
-
-        const moduleCell = document.createElement('td');
-        moduleCell.className = 'gantt-label-cell';
-
-        const editBtn = isTeacher
-            ? `<button class="btn btn-xs btn-outline-warning py-0 px-1" style="font-size:0.55rem;" onclick="event.stopPropagation();editModule('${escapeHtml(module.id)}')"><i class="bi bi-pencil"></i></button>` : '';
-        const deleteBtn = isTeacher
-            ? `<button class="btn btn-xs btn-outline-danger py-0 px-1" style="font-size:0.55rem;" onclick="event.stopPropagation();deleteModule('${escapeHtml(module.id)}')"><i class="bi bi-trash"></i></button>` : '';
-
-        moduleCell.innerHTML = `
-            <div class="d-flex align-items-center justify-content-between gap-1">
-                <div class="d-flex align-items-center gap-1">
-                    <i class="bi ${isExpanded ? 'bi-chevron-down' : 'bi-chevron-right'} gantt-mod-chevron" style="font-size:0.6rem;"></i>
-                    <strong>M${index + 1}: ${escapeHtml(module.name)}</strong>
-                </div>
-                <div class="d-flex gap-1">${editBtn}${deleteBtn}</div>
-            </div>`;
-        moduleRow.appendChild(moduleCell);
-
-        for (let i = 0; i < weeks; i++) {
-            const cell = document.createElement('td');
-            cell.style.height = '22px';
-            if (i >= weekCounter && i < weekCounter + module.duration) {
-                cell.style.backgroundColor = '#667eea';
-            }
-            moduleRow.appendChild(cell);
-        }
-        moduleRow.addEventListener('click', () => toggleModuleExpansion(moduleId, index));
-        modHeaderTbody.appendChild(moduleRow);
-        table.appendChild(modHeaderTbody);
-
-        // Sub-rows (courses + projects) go in a single collapsible <tbody>
-        const modContentTbody = document.createElement('tbody');
-        modContentTbody.id = `tbody-content-${moduleId}`;
-        modContentTbody.style.display = isExpanded ? '' : 'none';
-
-        // Course rows
-        (module.courses || []).forEach((courseObj, courseIndex) => {
-            const courseName = typeof courseObj === 'string' ? courseObj : (courseObj.name || 'Unnamed');
-            const courseUrl = typeof courseObj === 'object' ? (courseObj.url || '') : '';
-            const courseDur = typeof courseObj === 'object' ? (Number(courseObj.duration) || 1) : 1;
-            const courseOff = typeof courseObj === 'object' ? (Number(courseObj.startOffset) || 0) : 0;
-
-            const courseRow = document.createElement('tr');
-            const courseCell = document.createElement('td');
-            courseCell.className = 'gantt-label-cell';
-            courseCell.style.backgroundColor = '#f8fffc';
-
-            const link = courseUrl
-                ? `<a href="${escapeHtml(courseUrl)}" target="_blank" class="text-decoration-none">${escapeHtml(courseName)}</a>`
-                : escapeHtml(courseName);
-            const delBtn = isTeacher
-                ? `<button class="btn btn-xs btn-outline-danger py-0 px-1" style="font-size:0.55rem;" onclick="event.stopPropagation();deleteCourseFromModule('${escapeHtml(module.id)}',${courseIndex})"><i class="bi bi-trash"></i></button>` : '';
-
-            courseCell.innerHTML = `
-                <div class="d-flex align-items-center justify-content-between gap-1" style="padding-left:14px;">
-                    <small style="font-size:0.58rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:115px;">${link}</small>
-                    <div>${delBtn}</div>
-                </div>`;
-            courseRow.appendChild(courseCell);
-
-            const as = weekCounter + courseOff, ae = as + courseDur;
-            for (let i = 0; i < weeks; i++) {
-                const cell = document.createElement('td');
-                cell.style.height = '18px';
-                if (i >= as && i < ae) cell.style.backgroundColor = '#d1e7dd';
-                courseRow.appendChild(cell);
-            }
-            modContentTbody.appendChild(courseRow);
-        });
-
-        // Project rows
-        (module.projects || []).forEach((projectObj, projectIndex) => {
-            const projectName = typeof projectObj === 'string' ? projectObj : (projectObj.name || 'Unnamed');
-            const projectUrl = typeof projectObj === 'object' ? (projectObj.url || '') : '';
-            const projectDur = typeof projectObj === 'object' ? (Number(projectObj.duration) || 1) : 1;
-            const projectOff = typeof projectObj === 'object' ? (Number(projectObj.startOffset) || 0) : 0;
-
-            const projectRow = document.createElement('tr');
-            const projectCell = document.createElement('td');
-            projectCell.className = 'gantt-label-cell';
-            projectCell.style.backgroundColor = '#fff8f8';
-
-            const link = projectUrl
-                ? `<a href="${escapeHtml(projectUrl)}" target="_blank" class="text-decoration-none">${escapeHtml(projectName)}</a>`
-                : escapeHtml(projectName);
-            const delBtn = isTeacher
-                ? `<button class="btn btn-xs btn-outline-danger py-0 px-1" style="font-size:0.55rem;" onclick="event.stopPropagation();deleteProjectFromModule('${escapeHtml(module.id)}',${projectIndex})"><i class="bi bi-trash"></i></button>` : '';
-
-            projectCell.innerHTML = `
-                <div class="d-flex align-items-center justify-content-between gap-1" style="padding-left:14px;">
-                    <small style="font-size:0.58rem;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:115px;">${link}</small>
-                    <div>${delBtn}</div>
-                </div>`;
-            projectRow.appendChild(projectCell);
-
-            const as = weekCounter + projectOff, ae = as + projectDur;
-            for (let i = 0; i < weeks; i++) {
-                const cell = document.createElement('td');
-                cell.style.height = '18px';
-                if (i >= as && i < ae) cell.style.backgroundColor = '#fce4e4';
-                projectRow.appendChild(cell);
-            }
-            modContentTbody.appendChild(projectRow);
-        });
-
-        table.appendChild(modContentTbody);
-        weekCounter += module.duration;
-    });
 }
 
-// Toggle module expansion
-function toggleModuleExpansion(moduleId, index) {
-    const contentTbody = document.getElementById(`tbody-content-${moduleId}`);
-    const chevron = document.querySelector(`[data-module-index="${index}"] .gantt-mod-chevron`);
-    const isCurrentlyExpanded = contentTbody?.style.display !== 'none';
+/**
+ * Elimina un curso/proyecto/lección de un módulo, tanto si el módulo usa
+ * `plannerItems` (fuente de verdad, se borra por id y se resincronizan
+ * `courses`/`projects` derivados) como si es un módulo legacy (se borra
+ * directamente del array `courses`/`projects` por índice).
+ * @param {Object} task - Tarea de DHTMLX Gantt (course/project/leccion)
+ */
+async function deleteGanttPlannerItem(task) {
+    const token = localStorage.getItem('token');
+    try {
+        const response = await fetch(`${API_URL}/api/promotions/${promotionId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
 
-    if (contentTbody) contentTbody.style.display = isCurrentlyExpanded ? 'none' : '';
+        if (!response.ok) {
+            window.showApiToast('Error loading promotion', 'danger');
+            return;
+        }
 
-    if (chevron) {
-        chevron.className = isCurrentlyExpanded
-            ? 'bi bi-chevron-right gantt-mod-chevron'
-            : 'bi bi-chevron-down gantt-mod-chevron';
+        const promotion = await response.json();
+        const module = promotion.modules.find(m => m.id === task.moduleId);
+
+        if (!module) {
+            window.showApiToast('Module not found', 'warning');
+            return;
+        }
+
+        if (Array.isArray(module.plannerItems) && module.plannerItems.length > 0 && task.plannerItemId) {
+            module.plannerItems = module.plannerItems.filter(i => i.id !== task.plannerItemId);
+            module.courses = module.plannerItems
+                .filter(i => i.type === 'curso')
+                .map(i => ({ name: i.name, url: i.url || '', duration: Number(i.duration) || 1, startOffset: Number(i.startOffset) || 0 }));
+            module.projects = module.plannerItems
+                .filter(i => i.type === 'proyecto')
+                .map(i => ({ name: i.name, url: i.url || '', duration: Number(i.duration) || 1, startOffset: Number(i.startOffset) || 0, competenceIds: i.competenceIds || [] }));
+        } else if (task.itemType === 'course' && Array.isArray(module.courses) && task.legacyIndex !== undefined) {
+            module.courses.splice(task.legacyIndex, 1);
+        } else if (task.itemType === 'project' && Array.isArray(module.projects) && task.legacyIndex !== undefined) {
+            module.projects.splice(task.legacyIndex, 1);
+        } else {
+            window.showApiToast('No se pudo eliminar el elemento', 'warning');
+            return;
+        }
+
+        const updateResponse = await fetch(`${API_URL}/api/promotions/${promotionId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(promotion)
+        });
+
+        if (updateResponse.ok) {
+            window.showApiToast('Elemento eliminado correctamente', 'success');
+            loadModules();
+            loadPromotion();
+        } else {
+            window.showApiToast('Error al eliminar el elemento', 'danger');
+        }
+    } catch (error) {
+        console.error('Error deleting gantt planner item:', error);
+        window.showApiToast('Error al eliminar el elemento', 'danger');
     }
-
-    localStorage.setItem(`gantt-expanded-${moduleId}`, !isCurrentlyExpanded);
 }
 
-// Toggle employability expansion
-function toggleEmployabilityExpansion() {
-    const employabilityId = 'employability-section';
-    const contentTbody = document.getElementById(`tbody-content-${employabilityId}`);
-    const headerRow = document.querySelector('.gantt-employability-header');
-    const chevron = headerRow?.querySelector('.gantt-emp-chevron');
-    const isCurrentlyExpanded = contentTbody?.style.display !== 'none';
+/**
+ * Persiste en el backend el cambio de fechas/duración que el docente hizo
+ * arrastrando o redimensionando una tarea del Gantt.
+ * @param {Object} task - Tarea de DHTMLX Gantt tras el drag/resize
+ */
+async function persistGanttTaskChange(task) {
+    const token = localStorage.getItem('token');
+    try {
+        const response = await fetch(`${API_URL}/api/promotions/${promotionId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
 
-    if (contentTbody) contentTbody.style.display = isCurrentlyExpanded ? 'none' : '';
+        if (!response.ok) {
+            window.showApiToast('Error loading promotion', 'danger');
+            return;
+        }
 
-    if (chevron) {
-        chevron.className = isCurrentlyExpanded
-            ? 'bi bi-chevron-right gantt-emp-chevron'
-            : 'bi bi-chevron-down gantt-emp-chevron';
+        const promotion = await response.json();
+        const changed = applyGanttTaskChange(promotion, task);
+        if (!changed) return;
+
+        const updateResponse = await fetch(`${API_URL}/api/promotions/${promotionId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(promotion)
+        });
+
+        if (updateResponse.ok) {
+            window.showApiToast('Roadmap actualizado', 'success');
+            loadModules();
+        } else {
+            window.showApiToast('Error al guardar el cambio en el Gantt', 'danger');
+        }
+    } catch (error) {
+        console.error('Error persisting gantt change:', error);
+        window.showApiToast('Error al guardar el cambio en el Gantt', 'danger');
+    }
+}
+
+/**
+ * Persiste en el backend el nuevo orden (arriba/abajo) de un curso, proyecto
+ * o lección tras arrastrar su fila dentro de la rejilla del Gantt (mismo
+ * padre: el módulo para cursos/proyectos, el grupo "Lecciones" para lecciones).
+ * @param {Object} task - Tarea de DHTMLX Gantt cuya fila se acaba de reordenar
+ */
+async function persistGanttRowOrder(task) {
+    if (task.itemType !== 'course' && task.itemType !== 'project' && task.itemType !== 'leccion') {
+        return;
     }
 
-    localStorage.setItem(`gantt-expanded-${employabilityId}`, !isCurrentlyExpanded);
+    const parentId = gantt.getParent(task.id);
+    if (parentId === undefined || parentId === null) return;
+
+    // Orden visual actual de los hermanos (mismo padre) tras el drag.
+    const orderedPlannerIds = gantt.getChildren(parentId)
+        .map(id => gantt.getTask(id))
+        .filter(t => t.itemType === 'course' || t.itemType === 'project' || t.itemType === 'leccion')
+        .map(t => t.plannerItemId)
+        .filter(Boolean);
+
+    if (orderedPlannerIds.length === 0) return;
+
+    const token = localStorage.getItem('token');
+    try {
+        const response = await fetch(`${API_URL}/api/promotions/${promotionId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!response.ok) {
+            window.showApiToast('Error loading promotion', 'danger');
+            return;
+        }
+
+        const promotion = await response.json();
+        const module = promotion.modules.find(m => m.id === task.moduleId);
+
+        if (!module || !Array.isArray(module.plannerItems) || module.plannerItems.length === 0) {
+            window.showApiToast('No se pudo reordenar (módulo sin planificador)', 'warning');
+            return;
+        }
+
+        // Reordena solo las posiciones ("slots") ocupadas por los items afectados,
+        // preservando la posición del resto (p.ej. lecciones si se reordenaron
+        // cursos/proyectos, o viceversa).
+        const affectedSlots = [];
+        module.plannerItems.forEach((item, idx) => {
+            if (orderedPlannerIds.includes(item.id)) affectedSlots.push(idx);
+        });
+        const reorderedItems = orderedPlannerIds
+            .map(id => module.plannerItems.find(i => i.id === id))
+            .filter(Boolean);
+        affectedSlots.forEach((idx, i) => {
+            module.plannerItems[idx] = reorderedItems[i];
+        });
+
+        // Resincroniza los arrays legacy derivados (mismo criterio que usa el
+        // modal de módulo al guardar el planificador).
+        module.courses = module.plannerItems
+            .filter(i => i.type === 'curso')
+            .map(i => ({ name: i.name, url: i.url || '', duration: Number(i.duration) || 1, startOffset: Number(i.startOffset) || 0 }));
+        module.projects = module.plannerItems
+            .filter(i => i.type === 'proyecto')
+            .map(i => ({ name: i.name, url: i.url || '', duration: Number(i.duration) || 1, startOffset: Number(i.startOffset) || 0, competenceIds: i.competenceIds || [] }));
+
+        const updateResponse = await fetch(`${API_URL}/api/promotions/${promotionId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(promotion)
+        });
+
+        if (updateResponse.ok) {
+            window.showApiToast('Orden actualizado', 'success');
+            loadModules();
+        } else {
+            window.showApiToast('Error al guardar el nuevo orden', 'danger');
+        }
+    } catch (error) {
+        console.error('Error persisting gantt row order:', error);
+        window.showApiToast('Error al guardar el nuevo orden', 'danger');
+    }
+}
+
+/**
+ * Crea un nuevo bloque de "Tiempo flexible" (vacaciones/festivos) en la
+ * semana correspondiente a `clickDate` y lo persiste como un item más de
+ * `promotion.flexibleBlocks[]`.
+ * @param {Date} clickDate - Fecha del hueco vacío donde el docente hizo clic
+ * @param {{name?: string, duration?: number}} [overrides] - Fase 7 (TASK-33):
+ *   nombre/duración elegidos en createItemModal. Por defecto "Tiempo flexible"
+ *   y 4 semanas (comportamiento original, Fase 4).
+ */
+async function createFlexibleBlockAt(clickDate, overrides = {}) {
+    const token = localStorage.getItem('token');
+    try {
+        const response = await fetch(`${API_URL}/api/promotions/${promotionId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!response.ok) {
+            window.showApiToast('Error loading promotion', 'danger');
+            return;
+        }
+
+        const promotion = await response.json();
+        const baseDate = promotion.startDate ? new Date(promotion.startDate) : new Date();
+        const startOffset = Math.max(0, Math.round((clickDate - baseDate) / (7 * 86400000)));
+
+        if (!Array.isArray(promotion.flexibleBlocks)) promotion.flexibleBlocks = [];
+        promotion.flexibleBlocks.push({
+            id: 'flex-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7),
+            name: overrides.name || 'Tiempo flexible',
+            startOffset,
+            duration: Math.max(1, Number(overrides.duration) || 4)
+        });
+
+        const updateResponse = await fetch(`${API_URL}/api/promotions/${promotionId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(promotion)
+        });
+
+        if (updateResponse.ok) {
+            window.showApiToast('Bloque de tiempo flexible creado', 'success');
+            loadModules();
+        } else {
+            window.showApiToast('Error al crear el bloque de tiempo flexible', 'danger');
+        }
+    } catch (error) {
+        console.error('Error creating flexible block:', error);
+        window.showApiToast('Error al crear el bloque de tiempo flexible', 'danger');
+    }
+}
+
+/**
+ * Pide un nuevo nombre para un bloque de "Tiempo flexible" (prompt simple,
+ * sin modal nuevo — decisión pragmática para no sobre-construir un
+ * componente para un caso de uso secundario) y lo persiste.
+ * @param {Object} task - Tarea de DHTMLX Gantt (itemType: 'flexible')
+ */
+async function renameFlexibleBlock(task) {
+    const newName = window.prompt('Nuevo nombre del bloque:', task.text);
+    if (newName === null) return; // cancelado
+    const trimmedName = newName.trim();
+    if (!trimmedName || trimmedName === task.text) return;
+
+    const token = localStorage.getItem('token');
+    try {
+        const response = await fetch(`${API_URL}/api/promotions/${promotionId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!response.ok) {
+            window.showApiToast('Error loading promotion', 'danger');
+            return;
+        }
+
+        const promotion = await response.json();
+        const block = (promotion.flexibleBlocks || []).find(b => b.id === task.flexibleBlockId);
+        if (!block) {
+            window.showApiToast('Bloque de tiempo flexible no encontrado', 'warning');
+            return;
+        }
+        block.name = trimmedName;
+
+        const updateResponse = await fetch(`${API_URL}/api/promotions/${promotionId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(promotion)
+        });
+
+        if (updateResponse.ok) {
+            window.showApiToast('Bloque renombrado', 'success');
+            loadModules();
+        } else {
+            window.showApiToast('Error al renombrar el bloque', 'danger');
+        }
+    } catch (error) {
+        console.error('Error renaming flexible block:', error);
+        window.showApiToast('Error al renombrar el bloque', 'danger');
+    }
+}
+
+/**
+ * Elimina un bloque de "Tiempo flexible" de `promotion.flexibleBlocks[]`.
+ * @param {Object} task - Tarea de DHTMLX Gantt (itemType: 'flexible')
+ */
+async function deleteFlexibleBlock(task) {
+    const token = localStorage.getItem('token');
+    try {
+        const response = await fetch(`${API_URL}/api/promotions/${promotionId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+
+        if (!response.ok) {
+            window.showApiToast('Error loading promotion', 'danger');
+            return;
+        }
+
+        const promotion = await response.json();
+        if (!Array.isArray(promotion.flexibleBlocks)) {
+            window.showApiToast('Bloque de tiempo flexible no encontrado', 'warning');
+            return;
+        }
+        promotion.flexibleBlocks = promotion.flexibleBlocks.filter(b => b.id !== task.flexibleBlockId);
+
+        const updateResponse = await fetch(`${API_URL}/api/promotions/${promotionId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify(promotion)
+        });
+
+        if (updateResponse.ok) {
+            window.showApiToast('Bloque eliminado', 'success');
+            loadModules();
+        } else {
+            window.showApiToast('Error al eliminar el bloque', 'danger');
+        }
+    } catch (error) {
+        console.error('Error deleting flexible block:', error);
+        window.showApiToast('Error al eliminar el bloque', 'danger');
+    }
+}
+
+// Fase 7 (TASK-33): fecha/semana del hueco vacío donde se hizo clic para
+// abrir createItemModal — se usa al guardar para posicionar el nuevo elemento.
+let currentCreateItemClickDate = null;
+let currentCreateItemWeekOffset = 0;
+
+/**
+ * Alterna la visibilidad de los campos de createItemModal según el tipo
+ * seleccionado (módulo/curso/proyecto/lección/tiempo flexible).
+ */
+function _updateCreateItemFieldsVisibility() {
+    const type = document.getElementById('create-item-type').value;
+    const show = (id, visible) => { const el = document.getElementById(id); if (el) el.style.display = visible ? '' : 'none'; };
+
+    show('create-item-module-wrapper', type !== 'modulo' && type !== 'flexible');
+    show('create-item-name-wrapper', type !== 'leccion');
+    show('create-item-title-wrapper', type === 'leccion');
+    show('create-item-lessontype-wrapper', type === 'leccion');
+    show('create-item-url-wrapper', type === 'curso' || type === 'proyecto');
+}
+
+/**
+ * Abre el modal selector de tipo (Fase 7, TASK-33) al hacer clic en un hueco
+ * vacío del Gantt. Precalcula la semana del clic y puebla el desplegable de
+ * módulo destino con los módulos existentes de la promoción.
+ * @param {Date} clickDate - Fecha del hueco vacío donde el docente hizo clic
+ */
+async function openCreateItemModal(clickDate) {
+    const token = localStorage.getItem('token');
+    try {
+        const response = await fetch(`${API_URL}/api/promotions/${promotionId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!response.ok) {
+            window.showApiToast('Error loading promotion', 'danger');
+            return;
+        }
+        const promotion = await response.json();
+        const baseDate = promotion.startDate ? new Date(promotion.startDate) : new Date();
+        currentCreateItemClickDate = clickDate;
+        currentCreateItemWeekOffset = Math.max(0, Math.round((clickDate - baseDate) / (7 * 86400000)));
+
+        window._openShadcnModal?.('createItemModal');
+        _whenMounted('create-item-type', () => {
+            document.getElementById('create-item-form')?.reset();
+
+            const weekInfo = document.getElementById('create-item-week-info');
+            if (weekInfo) weekInfo.textContent = `Empieza en la semana ${currentCreateItemWeekOffset + 1} del roadmap.`;
+
+            const moduleSelect = document.getElementById('create-item-module');
+            if (moduleSelect) {
+                moduleSelect.innerHTML = (promotion.modules || [])
+                    .map(m => `<option value="${escapeHtml(m.id)}">${escapeHtml(m.name || 'Sin nombre')}</option>`)
+                    .join('');
+            }
+
+            const typeSelect = document.getElementById('create-item-type');
+            typeSelect.value = 'modulo';
+            typeSelect.onchange = _updateCreateItemFieldsVisibility;
+            _updateCreateItemFieldsVisibility();
+        });
+    } catch (error) {
+        console.error('Error opening create item modal:', error);
+        window.showApiToast('Error loading promotion data', 'danger');
+    }
+}
+
+function generateGanttChart(promotion) {
+    const container = document.getElementById('gantt-container');
+    if (!container) return;
+
+    const modules = promotion.modules || [];
+
+    if (modules.length === 0) {
+        if (_ganttInitialized) {
+            gantt.clearAll();
+        } else {
+            container.innerHTML = '<p class="text-muted p-3 mb-0">No modules configured</p>';
+        }
+        return;
+    }
+
+    initGanttInstance();
+
+    const dataset = buildGanttDataset(promotion);
+    gantt.clearAll();
+    gantt.parse(dataset);
+}
+
+/**
+ * Abre el modal enfocado de edición para un curso, proyecto o lección
+ * (Fase 7, TASK-31/32) — doble-click en su barra del Gantt. Localiza el item
+ * en `module.plannerItems` (fuente de verdad; única fuente para lecciones) o
+ * en el array legacy `courses`/`projects` (por `legacyIndex`) si el módulo no
+ * tiene planificador — las lecciones nunca tienen fallback legacy.
+ * @param {Object} task - Tarea de DHTMLX Gantt (itemType 'course'|'project'|'leccion')
+ */
+async function openItemEditModal(task) {
+    const token = localStorage.getItem('token');
+    try {
+        const response = await fetch(`${API_URL}/api/promotions/${promotionId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!response.ok) {
+            window.showApiToast('Error loading promotion', 'danger');
+            return;
+        }
+        const promotion = await response.json();
+        const module = promotion.modules[task.moduleIndex];
+        if (!module) {
+            window.showApiToast('Module not found', 'warning');
+            return;
+        }
+
+        const isLesson = task.itemType === 'leccion';
+        let item = null;
+        if (isLesson) {
+            item = Array.isArray(module.plannerItems) ? module.plannerItems.find(i => i.id === task.plannerItemId) : null;
+        } else if (Array.isArray(module.plannerItems) && module.plannerItems.length > 0 && task.plannerItemId) {
+            item = module.plannerItems.find(i => i.id === task.plannerItemId);
+        } else {
+            const list = task.itemType === 'course' ? module.courses : module.projects;
+            const raw = Array.isArray(list) ? list[task.legacyIndex] : null;
+            if (raw) {
+                const isObj = raw && typeof raw === 'object';
+                item = {
+                    id: generatePlannerId(),
+                    name: isObj ? (raw.name || '') : String(raw),
+                    url: isObj ? (raw.url || '') : '',
+                    duration: isObj ? (Number(raw.duration) || 1) : 1,
+                    startOffset: isObj ? (Number(raw.startOffset) || 0) : 0,
+                    absoluteStartOffset: isObj && typeof raw.absoluteStartOffset === 'number' ? raw.absoluteStartOffset : null,
+                    competenceIds: isObj ? (raw.competenceIds || []) : [],
+                };
+            }
+        }
+        if (!item) {
+            window.showApiToast('Item not found', 'warning');
+            return;
+        }
+
+        currentEditingItemTask = task;
+        currentEditingModuleId = task.moduleId;
+        // Reutiliza currentPlannerItems (y por tanto los pickers de competencias/
+        // enlaces del planificador, ya construidos) con un único item.
+        currentPlannerItems = [item];
+
+        window._openShadcnModal?.('itemEditModal');
+        _whenMounted('item-edit-name', () => {
+            const isProject = task.itemType === 'project';
+            document.getElementById('itemEditModalTitle').textContent =
+                isLesson ? 'Editar Lección' : (isProject ? 'Editar Proyecto' : 'Editar Curso');
+
+            document.getElementById('item-edit-name-wrapper').style.display = isLesson ? 'none' : '';
+            document.getElementById('item-edit-url-wrapper').style.display = isLesson ? 'none' : '';
+            document.getElementById('item-edit-title-wrapper').style.display = isLesson ? '' : 'none';
+            document.getElementById('item-edit-lessontype-wrapper').style.display = isLesson ? '' : 'none';
+
+            if (isLesson) {
+                document.getElementById('item-edit-title').value = item.title || '';
+                const radios = document.getElementsByName('item-edit-lessontype');
+                radios.forEach(r => { r.checked = (r.value === (item.lessonType || 'teorica')); });
+            } else {
+                document.getElementById('item-edit-name').value = item.name || '';
+                document.getElementById('item-edit-url').value = item.url || '';
+            }
+
+            const startWeeks = _itemDisplayStartWeeks(item);
+            document.getElementById('item-edit-start').value = startWeeks + 1;
+            document.getElementById('item-edit-end').value = startWeeks + (Number(item.duration) || 1);
+
+            const compWrapper = document.getElementById('item-edit-competences-wrapper');
+            if (isProject) {
+                compWrapper.dataset.plannerId = item.id;
+                compWrapper.innerHTML = renderPlannerProjectCompetences(item);
+                compWrapper.style.display = '';
+            } else {
+                compWrapper.innerHTML = '';
+                compWrapper.style.display = 'none';
+            }
+
+            const linksWrapper = document.getElementById('item-edit-links-wrapper');
+            if (isLesson) {
+                linksWrapper.dataset.plannerId = item.id;
+                linksWrapper.innerHTML = renderPlannerItemLinks(item);
+                linksWrapper.style.display = '';
+            } else {
+                linksWrapper.innerHTML = '';
+                linksWrapper.style.display = 'none';
+            }
+        });
+    } catch (error) {
+        console.error('Error opening item edit modal:', error);
+        window.showApiToast('Error loading item data', 'danger');
+    }
 }
 
 async function editModule(moduleId) {
@@ -3826,70 +4293,20 @@ async function editModule(moduleId) {
                 return;
             }
 
-            // Populate form with module data
-            document.getElementById('module-name').value = module.name;
-            document.getElementById('module-duration').value = module.duration;
-            document.getElementById('moduleModalTitle').textContent = 'Edit Module';
-
-            // Clear containers
-            document.getElementById('courses-container').innerHTML = '';
-            document.getElementById('projects-container').innerHTML = '';
-
-            // Populate courses
-            if (module.courses && module.courses.length > 0) {
-                module.courses.forEach(course => {
-                    const isObj = course && typeof course === 'object';
-                    const courseName = isObj ? (course.name || '') : String(course);
-                    const courseUrl = isObj ? (course.url || '') : '';
-                    const courseDur = isObj ? (Number(course.duration) || 1) : 1;
-                    const courseOff = isObj ? (Number(course.startOffset) || 0) : 0;
-                    addCoursField(courseName, courseUrl, courseDur, courseOff);
-                });
-            }
-
-            // Populate projects
-            if (module.projects && module.projects.length > 0) {
-                module.projects.forEach(project => {
-                    const isObj = project && typeof project === 'object';
-                    const projectName = isObj ? (project.name || '') : String(project);
-                    const projectUrl = isObj ? (project.url || '') : '';
-                    const projectDur = isObj ? (Number(project.duration) || 1) : 1;
-                    const projectOff = isObj ? (Number(project.startOffset) || 0) : 0;
-                    const projectCompIds = isObj ? (project.competenceIds || []) : [];
-                    addProjectField(projectName, projectUrl, projectDur, projectOff, projectCompIds);
-                });
-            }
-
-            // Cargar topics existentes en el estado en memoria y renderizar el editor
-            currentEditingTopics = Array.isArray(module.topics)
-                ? module.topics.map(t => ({
-                    id:       t.id       || generateTopicId(),
-                    name:     t.name     || '',
-                    lessons:  Array.isArray(t.lessons)  ? t.lessons  : [],
-                    projects: Array.isArray(t.projects) ? t.projects : [],
-                  }))
-                : [];
-            // Poblar los proyectos del modulo para los selectores de checkboxes en temas
-            currentEditingModuleProjects = Array.isArray(module.projects)
-                ? module.projects.map((p, i) => {
-                    const isObj = p && typeof p === 'object';
-                    return {
-                        id:   isObj ? (p.id   || String(i)) : String(i),
-                        name: isObj ? (p.name || 'Proyecto ' + (i + 1)) : String(p),
-                    };
-                  })
-                : [];
-            renderTopicsEditor();
-
-            // Inicializar el planificador (TASK-RM-05c)
-            // Si el modulo ya tiene plannerItems los usa; si no, genera la lista desde legacy
-            currentPlannerItems = Array.isArray(module.plannerItems) && module.plannerItems.length > 0
-                ? module.plannerItems.map(item => ({ ...item, id: item.id || generatePlannerId() }))
-                : buildInitialPlannerFromLegacy(module);
-            renderPlannerEditor();
-
+            // Fase 7: el modal de módulo solo edita nombre/duración — cursos,
+            // proyectos y lecciones se editan desde sus propios modales enfocados
+            // (TASK-31/32), así que aquí ya no hay nada más que poblar.
             currentEditingModuleId = moduleId;
+
+            // shadcn Dialog (Radix): abrir primero, poblar cuando el contenido monte
+            // (Radix desmonta #module-name mientras el modal está cerrado — ver
+            // _whenMounted más arriba en este archivo).
             window._openShadcnModal?.("moduleModal");
+            _whenMounted('module-name', () => {
+                document.getElementById('module-name').value = module.name;
+                document.getElementById('module-duration').value = module.duration;
+                document.getElementById('moduleModalTitle').textContent = 'Edit Module';
+            });
         }
     } catch (error) {
         console.error('Error editing module:', error);
@@ -4946,6 +5363,11 @@ function displayCalendar(calendarId) {
 
 let currentEditingModuleId = null;
 
+// Fase 7 (TASK-31/32): tarea de DHTMLX Gantt (curso/proyecto/lección) que se
+// está editando en itemEditModal — guarda moduleIndex/plannerItemId/legacyIndex
+// para poder localizar y persistir el item correcto al guardar.
+let currentEditingItemTask = null;
+
 // Estado en memoria para los temas del modulo que se esta editando.
 // No se persiste hasta que el usuario pulsa "Guardar Modulo".
 let currentEditingTopics = [];
@@ -5655,10 +6077,41 @@ function updatePlannerLink(itemId, linkId, field, value) {
 }
 
 /**
+ * Semana de inicio absoluta (calculada) del módulo que se está editando en el
+ * modal del planificador — Fase 5. Se usa como base para mostrar/inicializar
+ * semanas de items que aún no tienen `absoluteStartOffset` propio, de forma
+ * coherente con la posición actual del módulo en el Gantt.
+ * @returns {number}
+ */
+function _currentEditingModuleStartWeeks() {
+    const promotion = window.currentPromotion;
+    if (!promotion || !Array.isArray(promotion.modules) || !currentEditingModuleId) return 0;
+    const moduleIndex = promotion.modules.findIndex(m => m.id === currentEditingModuleId);
+    if (moduleIndex === -1) return 0;
+    return getModuleStartWeeks(promotion.modules, moduleIndex);
+}
+
+/**
+ * Semana de inicio absoluta a mostrar/editar para un item del planificador —
+ * Fase 5. Si el item ya tiene `absoluteStartOffset` explícito, se usa tal
+ * cual (independiente del módulo). Si no, se deriva de la semana actual del
+ * módulo + el `startOffset` legacy (mismo criterio que `getItemStartWeeks`
+ * en gantt-adapter.js), solo para mostrar un valor inicial coherente.
+ * @param {object} item
+ * @returns {number}
+ */
+function _itemDisplayStartWeeks(item) {
+    if (typeof item.absoluteStartOffset === 'number' && !Number.isNaN(item.absoluteStartOffset)) {
+        return item.absoluteStartOffset;
+    }
+    return _currentEditingModuleStartWeeks() + (Number(item.startOffset) || 0);
+}
+
+/**
  * Renderiza los campos especificos segun el tipo del item.
  * — curso / proyecto: nombre, URL (hipervínculo si rellena), semana inicio/final
  * — proyecto: ademas selector de competencias
- * — leccion: titulo, radio Teorica/Workshop, panel de links
+ * — leccion: titulo, radio Teorica/Workshop, semana inicio/final, panel de links
  * @param {object} item - Item del planificador
  * @param {number} index - Indice en currentPlannerItems
  * @returns {string} HTML de los campos
@@ -5667,6 +6120,8 @@ function renderPlannerItemFields(item, index) {
     if (item.type === 'leccion') {
         const isTeorica  = item.lessonType !== 'workshop';
         const isWorkshop = item.lessonType === 'workshop';
+        const semanaInicioLeccion = _itemDisplayStartWeeks(item) + 1;
+        const semanaFinalLeccion  = _itemDisplayStartWeeks(item) + Number(item.duration || 1);
         return `
             <input type="text"
                 class="form-control form-control-sm planner-field-title"
@@ -5691,12 +6146,28 @@ function renderPlannerItemFields(item, index) {
                     <i class="bi bi-tools me-1"></i>Workshop
                 </label>
             </div>
+            <div class="d-flex align-items-center gap-1">
+                <label class="form-label form-label-sm mb-0 text-nowrap">Sem. inicio</label>
+                <input type="number"
+                    class="form-control form-control-sm planner-field-start"
+                    value="${semanaInicioLeccion}" min="1" style="width:70px;"
+                    oninput="updatePlannerItemWeeks('${item.id}', this.value, null)"
+                    onblur="updatePlannerItemWeeks('${item.id}', this.value, null)" />
+            </div>
+            <div class="d-flex align-items-center gap-1">
+                <label class="form-label form-label-sm mb-0 text-nowrap">Sem. final</label>
+                <input type="number"
+                    class="form-control form-control-sm planner-field-end"
+                    value="${semanaFinalLeccion}" min="1" style="width:70px;"
+                    oninput="updatePlannerItemWeeks('${item.id}', null, this.value)"
+                    onblur="updatePlannerItemWeeks('${item.id}', null, this.value)" />
+            </div>
             ${renderPlannerItemLinks(item)}`;
     }
 
     // curso y proyecto
-    const semanaInicio = Number(item.startOffset || 0) + 1;
-    const semanaFinal  = Number(item.startOffset || 0) + Number(item.duration || 1);
+    const semanaInicio = _itemDisplayStartWeeks(item) + 1;
+    const semanaFinal  = _itemDisplayStartWeeks(item) + Number(item.duration || 1);
 
     // URL: si está rellena se muestra como hipervínculo + botón editar; si está vacía se muestra input
     const urlSection = item.url
@@ -6071,11 +6542,16 @@ function _insertEvalFeedbackImage(btn) {
  * @param {'curso'|'proyecto'|'leccion'} type
  */
 function addPlannerItem(type) {
-    const base = { id: generatePlannerId(), type };
+    // Fase 5: un item nuevo arranca en la semana actual del módulo (no en la
+    // semana 0 fija del roadmap), para que aparezca en una posición sensata
+    // en el Gantt hasta que el docente la ajuste explícitamente.
+    const initialAbsoluteStartOffset = _currentEditingModuleStartWeeks();
+    const base = { id: generatePlannerId(), type, absoluteStartOffset: initialAbsoluteStartOffset };
     if (type === 'leccion') {
         base.title      = '';
         base.lessonType = 'teorica';
         base.links      = [];
+        base.duration   = 1;
     } else {
         base.name          = '';
         base.url           = '';
@@ -6116,8 +6592,9 @@ function updatePlannerItem(id, field, value) {
 }
 
 /**
- * Actualiza startOffset y duration a partir de semana inicio y semana final.
- * Uno de los dos parametros puede ser null (usa el valor actual del DOM para ese campo).
+ * Actualiza absoluteStartOffset y duration a partir de semana inicio y semana
+ * final (Fase 5: semana ABSOLUTA del roadmap, no relativa al módulo). Uno de
+ * los dos parametros puede ser null (usa el valor actual del DOM para ese campo).
  * @param {string} id
  * @param {string|null} startWeekRaw  - valor del input de semana inicio (o null)
  * @param {string|null} endWeekRaw    - valor del input de semana final (o null)
@@ -6133,8 +6610,8 @@ function updatePlannerItemWeeks(id, startWeekRaw, endWeekRaw) {
     const startWeek = parseInt(startWeekRaw !== null ? startWeekRaw : (startInput ? startInput.value : 1)) || 1;
     const endWeek   = parseInt(endWeekRaw   !== null ? endWeekRaw   : (endInput   ? endInput.value   : 1)) || 1;
 
-    item.startOffset = Math.max(0, startWeek - 1);
-    item.duration    = Math.max(1, endWeek - startWeek + 1);
+    item.absoluteStartOffset = Math.max(0, startWeek - 1);
+    item.duration            = Math.max(1, endWeek - startWeek + 1);
 }
 
 /**
@@ -6386,23 +6863,14 @@ function setupForms() {
         const name = document.getElementById('module-name').value;
         const duration = parseInt(document.getElementById('module-duration').value);
 
-        // TASK-RM-06b: courses y projects se reconstruyen desde el planificador
-        // (los contenedores DOM legacy estan ocultos y ya no se usan para entrada de datos)
-        // Primero sincronizamos el estado en memoria con el DOM del planificador
-        _syncPlannerFromDom();
-
-        const courses  = currentPlannerItems
-            .filter(i => i.type === 'curso' && i.name)
-            .map(i => ({ name: i.name, url: i.url || '', duration: Number(i.duration) || 1, startOffset: Number(i.startOffset) || 0 }));
-
-        const projects = currentPlannerItems
-            .filter(i => i.type === 'proyecto' && i.name)
-            .map(i => ({ name: i.name, url: i.url || '', duration: Number(i.duration) || 1, startOffset: Number(i.startOffset) || 0, competenceIds: i.competenceIds || [] }));
-
         const token = localStorage.getItem('token');
 
         try {
-            // Check if we're editing an existing module
+            // Fase 7 (dhtmlx-gantt-roadmap): el modal de módulo solo edita
+            // nombre/duración — el planificador combinado desapareció (cursos/
+            // proyectos/lecciones se crean y editan desde sus propios modales
+            // enfocados, TASK-31/32/33). courses/projects/plannerItems/topics
+            // NUNCA se tocan aquí — deben sobrevivir intactos al editar un módulo.
             if (currentEditingModuleId) {
                 // Update existing module
                 const promotionResponse = await fetch(`${API_URL}/api/promotions/${promotionId}`, {
@@ -6422,39 +6890,11 @@ function setupForms() {
                     return;
                 }
 
-                // Leer nombres finales de los inputs antes de construir el payload
-                // (el usuario puede haber escrito sin disparar onblur)
-                document.querySelectorAll('#topics-container .topic-name-input').forEach((input, i) => {
-                    if (currentEditingTopics[i]) currentEditingTopics[i].name = input.value.trim();
-                });
-                // Sincronizar titulos de lecciones que puedan estar en el DOM
-                currentEditingTopics.forEach((topic, ti) => {
-                    if (!topic._expanded) return;
-                    document.querySelectorAll(`[data-topic-index="${ti}"] .lesson-title-input`).forEach((input, li) => {
-                        if (topic.lessons?.[li]) topic.lessons[li].title = input.value;
-                    });
-                });
-                // Preparar topics sin los campos de UI (_expanded)
-                // que no pertenecen al schema del backend
-                const topicsPayload = currentEditingTopics
-                    .filter(t => t.name)
-                    .map(({ _expanded, ...t }) => ({
-                        ...t,
-                        lessons:  (t.lessons  || []).filter(l => l.title),
-                        projects: (t.projects || []),   // ya son string[] de IDs de module.projects
-                    }));
-
-                // La sincronizacion del planificador ya fue hecha por _syncPlannerFromDom() arriba
-
-                // Update the module while preserving its ID and creation date
+                // Solo nombre/duración — el resto del módulo se conserva tal cual.
                 promotion.modules[moduleIndex] = {
                     ...promotion.modules[moduleIndex],
                     name,
                     duration,
-                    courses,
-                    projects,
-                    topics: topicsPayload,
-                    plannerItems: currentPlannerItems,
                 };
 
                 const updateResponse = await fetch(`${API_URL}/api/promotions/${promotionId}`, {
@@ -6470,8 +6910,6 @@ function setupForms() {
                     window._closeShadcnModal?.("moduleModal");
                     document.getElementById('module-form').reset();
                     currentEditingModuleId = null;
-                    currentEditingTopics = [];
-                    currentPlannerItems = [];
                     loadModules();
                     loadPromotion();
                     window.showApiToast('Module updated successfully', 'success');
@@ -6480,21 +6918,21 @@ function setupForms() {
                     window.showApiToast(`Error: ${error.error || 'Failed to update module'}`, 'danger');
                 }
             } else {
-                // Create new module
+                // Create new module — sin cursos/proyectos/lecciones iniciales;
+                // se añaden después haciendo clic en el Gantt (TASK-33).
                 const response = await fetch(`${API_URL}/api/promotions/${promotionId}/modules`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${token}`
                     },
-                    body: JSON.stringify({ name, duration, courses, projects, plannerItems: currentPlannerItems })
+                    body: JSON.stringify({ name, duration })
                 });
 
                 if (response.ok) {
                     window._closeShadcnModal?.("moduleModal");
                     document.getElementById('module-form').reset();
                     currentEditingModuleId = null;
-                    currentEditingTopics = [];
                     loadModules();
                     loadPromotion();
                     window.showApiToast('Module created successfully', 'success');
@@ -6506,6 +6944,253 @@ function setupForms() {
         } catch (error) {
             console.error('Error saving module:', error);
             window.showApiToast('Error saving module', 'danger');
+        }
+    });
+
+    // Item form (curso/proyecto/lección) — Fase 7 (TASK-31/32). shadcn Dialog:
+    // delegacion en document, igual que module-form.
+    document.addEventListener('submit', async (e) => {
+        if (e.target.id !== 'item-edit-form') return;
+        e.preventDefault();
+
+        const task = currentEditingItemTask;
+        if (!task) return;
+
+        const isLesson = task.itemType === 'leccion';
+        const startWeek = parseInt(document.getElementById('item-edit-start').value) || 1;
+        const endWeek = parseInt(document.getElementById('item-edit-end').value) || startWeek;
+        const absoluteStartOffset = Math.max(0, startWeek - 1);
+        const duration = Math.max(1, endWeek - startWeek + 1);
+
+        const token = localStorage.getItem('token');
+        try {
+            const response = await fetch(`${API_URL}/api/promotions/${promotionId}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (!response.ok) {
+                window.showApiToast('Error loading promotion', 'danger');
+                return;
+            }
+
+            const promotion = await response.json();
+            const module = promotion.modules[task.moduleIndex];
+            if (!module) {
+                window.showApiToast('Module not found', 'warning');
+                return;
+            }
+
+            if (isLesson) {
+                const plannerItem = Array.isArray(module.plannerItems) ? module.plannerItems.find(i => i.id === task.plannerItemId) : null;
+                if (!plannerItem) {
+                    window.showApiToast('Item not found', 'warning');
+                    return;
+                }
+                const lessonType = document.querySelector('input[name="item-edit-lessontype"]:checked')?.value || 'teorica';
+                plannerItem.title = document.getElementById('item-edit-title').value.trim();
+                plannerItem.lessonType = lessonType;
+                plannerItem.duration = duration;
+                plannerItem.absoluteStartOffset = absoluteStartOffset;
+                // Los enlaces se editan en vivo sobre currentPlannerItems[0] via
+                // addPlannerLink/deletePlannerLink/updatePlannerLink (reutilizados).
+                plannerItem.links = (currentPlannerItems[0] && currentPlannerItems[0].links) || [];
+            } else {
+                const name = document.getElementById('item-edit-name').value.trim();
+                const url = document.getElementById('item-edit-url').value.trim();
+                // Las competencias del item en edicion se guardan en currentPlannerItems[0]
+                // por savePlannerCompetencePicker() al pulsar "Aplicar" en el picker.
+                const competenceIds = (currentPlannerItems[0] && currentPlannerItems[0].competenceIds) || [];
+
+                if (Array.isArray(module.plannerItems) && module.plannerItems.length > 0 && task.plannerItemId) {
+                    const plannerItem = module.plannerItems.find(i => i.id === task.plannerItemId);
+                    if (!plannerItem) {
+                        window.showApiToast('Item not found', 'warning');
+                        return;
+                    }
+                    plannerItem.name = name;
+                    plannerItem.url = url;
+                    plannerItem.duration = duration;
+                    plannerItem.absoluteStartOffset = absoluteStartOffset;
+                    if (task.itemType === 'project') plannerItem.competenceIds = competenceIds;
+
+                    // Resincroniza los arrays legacy derivados (mismo criterio que
+                    // applyGanttTaskChange en gantt-adapter.js).
+                    module.courses = module.plannerItems
+                        .filter(i => i.type === 'curso')
+                        .map(i => ({ name: i.name, url: i.url || '', duration: Number(i.duration) || 1, startOffset: Number(i.startOffset) || 0, absoluteStartOffset: (typeof i.absoluteStartOffset === 'number' ? i.absoluteStartOffset : null) }));
+                    module.projects = module.plannerItems
+                        .filter(i => i.type === 'proyecto')
+                        .map(i => ({ name: i.name, url: i.url || '', duration: Number(i.duration) || 1, startOffset: Number(i.startOffset) || 0, absoluteStartOffset: (typeof i.absoluteStartOffset === 'number' ? i.absoluteStartOffset : null), competenceIds: i.competenceIds || [] }));
+                } else {
+                    const list = task.itemType === 'course' ? module.courses : module.projects;
+                    if (!Array.isArray(list) || task.legacyIndex === undefined || !list[task.legacyIndex]) {
+                        window.showApiToast('Item not found', 'warning');
+                        return;
+                    }
+                    list[task.legacyIndex] = {
+                        name, url, duration, absoluteStartOffset,
+                        ...(task.itemType === 'project' ? { competenceIds } : {}),
+                    };
+                }
+            }
+
+            const updateResponse = await fetch(`${API_URL}/api/promotions/${promotionId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(promotion)
+            });
+
+            if (updateResponse.ok) {
+                window._closeShadcnModal?.('itemEditModal');
+                document.getElementById('item-edit-form').reset();
+                currentEditingItemTask = null;
+                currentPlannerItems = [];
+                loadModules();
+                window.showApiToast('Elemento actualizado correctamente', 'success');
+            } else {
+                const error = await updateResponse.json();
+                window.showApiToast(`Error: ${error.error || 'No se pudo guardar el elemento'}`, 'danger');
+            }
+        } catch (error) {
+            console.error('Error saving item:', error);
+            window.showApiToast('Error al guardar el elemento', 'danger');
+        }
+    });
+
+    // Create item form (módulo/curso/proyecto/lección/tiempo flexible) —
+    // Fase 7 (TASK-33). shadcn Dialog: delegacion en document.
+    document.addEventListener('submit', async (e) => {
+        if (e.target.id !== 'create-item-form') return;
+        e.preventDefault();
+
+        const type = document.getElementById('create-item-type').value;
+        const duration = Math.max(1, parseInt(document.getElementById('create-item-duration').value) || 1);
+        const token = localStorage.getItem('token');
+
+        try {
+            if (type === 'flexible') {
+                const name = document.getElementById('create-item-name').value.trim();
+                await createFlexibleBlockAt(currentCreateItemClickDate, { name, duration });
+                window._closeShadcnModal?.('createItemModal');
+                document.getElementById('create-item-form').reset();
+                return;
+            }
+
+            if (type === 'modulo') {
+                const name = document.getElementById('create-item-name').value.trim();
+                if (!name) { window.showApiToast('El nombre es obligatorio', 'warning'); return; }
+
+                const postResponse = await fetch(`${API_URL}/api/promotions/${promotionId}/modules`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify({ name, duration })
+                });
+                if (!postResponse.ok) {
+                    window.showApiToast('Error al crear el módulo', 'danger');
+                    return;
+                }
+                const newModule = await postResponse.json();
+
+                // Posicionar el módulo nuevo en la semana donde se hizo clic.
+                const promoResponse = await fetch(`${API_URL}/api/promotions/${promotionId}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                const promotion = await promoResponse.json();
+                const idx = promotion.modules.findIndex(m => m.id === newModule.id);
+                if (idx !== -1) {
+                    promotion.modules[idx].startOffset = currentCreateItemWeekOffset;
+                    await fetch(`${API_URL}/api/promotions/${promotionId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                        body: JSON.stringify(promotion)
+                    });
+                }
+
+                window._closeShadcnModal?.('createItemModal');
+                document.getElementById('create-item-form').reset();
+                loadModules();
+                loadPromotion();
+                window.showApiToast('Módulo creado', 'success');
+                return;
+            }
+
+            // curso / proyecto / leccion — requieren un módulo destino.
+            const moduleId = document.getElementById('create-item-module').value;
+            if (!moduleId) {
+                window.showApiToast('Selecciona un módulo (crea uno primero si no hay ninguno)', 'warning');
+                return;
+            }
+
+            const response = await fetch(`${API_URL}/api/promotions/${promotionId}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (!response.ok) {
+                window.showApiToast('Error loading promotion', 'danger');
+                return;
+            }
+            const promotion = await response.json();
+            const module = promotion.modules.find(m => m.id === moduleId);
+            if (!module) {
+                window.showApiToast('Module not found', 'warning');
+                return;
+            }
+
+            // Si el módulo aún no tiene planificador, se siembra desde los
+            // arrays legacy (mismo criterio que usa el modal al abrir).
+            if (!Array.isArray(module.plannerItems) || module.plannerItems.length === 0) {
+                module.plannerItems = buildInitialPlannerFromLegacy(module);
+            }
+
+            const newItem = {
+                id: generatePlannerId(),
+                type,
+                duration,
+                absoluteStartOffset: currentCreateItemWeekOffset,
+            };
+            if (type === 'leccion') {
+                const title = document.getElementById('create-item-title').value.trim();
+                if (!title) { window.showApiToast('El título es obligatorio', 'warning'); return; }
+                newItem.title = title;
+                newItem.lessonType = document.querySelector('input[name="create-item-lessontype"]:checked')?.value || 'teorica';
+                newItem.links = [];
+            } else {
+                const name = document.getElementById('create-item-name').value.trim();
+                if (!name) { window.showApiToast('El nombre es obligatorio', 'warning'); return; }
+                newItem.name = name;
+                newItem.url = document.getElementById('create-item-url').value.trim();
+                if (type === 'proyecto') newItem.competenceIds = [];
+            }
+            module.plannerItems.push(newItem);
+
+            // Resincroniza los arrays legacy derivados (mismo criterio que el
+            // resto de flujos del planificador).
+            module.courses = module.plannerItems
+                .filter(i => i.type === 'curso')
+                .map(i => ({ name: i.name, url: i.url || '', duration: Number(i.duration) || 1, startOffset: Number(i.startOffset) || 0, absoluteStartOffset: (typeof i.absoluteStartOffset === 'number' ? i.absoluteStartOffset : null) }));
+            module.projects = module.plannerItems
+                .filter(i => i.type === 'proyecto')
+                .map(i => ({ name: i.name, url: i.url || '', duration: Number(i.duration) || 1, startOffset: Number(i.startOffset) || 0, absoluteStartOffset: (typeof i.absoluteStartOffset === 'number' ? i.absoluteStartOffset : null), competenceIds: i.competenceIds || [] }));
+
+            const updateResponse = await fetch(`${API_URL}/api/promotions/${promotionId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                body: JSON.stringify(promotion)
+            });
+
+            if (updateResponse.ok) {
+                window._closeShadcnModal?.('createItemModal');
+                document.getElementById('create-item-form').reset();
+                loadModules();
+                window.showApiToast('Elemento creado correctamente', 'success');
+            } else {
+                const error = await updateResponse.json();
+                window.showApiToast(`Error: ${error.error || 'No se pudo crear el elemento'}`, 'danger');
+            }
+        } catch (error) {
+            console.error('Error creating item:', error);
+            window.showApiToast('Error al crear el elemento', 'danger');
         }
     });
 
@@ -7168,19 +7853,14 @@ function updateLinkName() {
 // primero y diferimos cualquier toque al DOM interno con setTimeout(0) para
 // que React commitee el render antes (spec 0013-d v2).
 function openModuleModal() {
+    // Fase 7: crea un módulo solo con nombre/duración — cursos, proyectos y
+    // lecciones se añaden después haciendo clic en el Gantt (TASK-33).
     currentEditingModuleId = null;
-    currentEditingTopics = [];
-    currentEditingModuleProjects = [];
-    currentPlannerItems = [];
     window._openShadcnModal?.("moduleModal");
     setTimeout(() => {
         document.getElementById('module-form')?.reset();
         const title = document.getElementById('moduleModalTitle');
         if (title) title.textContent = 'Add Module';
-        const cc = document.getElementById('courses-container'); if (cc) cc.innerHTML = '';
-        const pc = document.getElementById('projects-container'); if (pc) pc.innerHTML = '';
-        renderTopicsEditor();
-        renderPlannerEditor();
     }, 0);
 }
 

@@ -3734,7 +3734,12 @@ function setGanttZoomLevel(level) {
  * También registra doble-click (abrir edición) y clic derecho (eliminar).
  */
 function bindGanttEditingEvents() {
-    gantt.attachEvent('onBeforeTaskDrag', function () {
+    gantt.attachEvent('onBeforeTaskDrag', function (id) {
+        const task = gantt.getTask(id);
+        // El grupo "Lecciones" es un contenedor puramente visual (Fase 5): su
+        // rango se deriva de sus lecciones hijas, no se arrastra/redimensiona
+        // como unidad.
+        if (task.itemType === 'leccion-group') return false;
         return true;
     });
 
@@ -6175,10 +6180,41 @@ function updatePlannerLink(itemId, linkId, field, value) {
 }
 
 /**
+ * Semana de inicio absoluta (calculada) del módulo que se está editando en el
+ * modal del planificador — Fase 5. Se usa como base para mostrar/inicializar
+ * semanas de items que aún no tienen `absoluteStartOffset` propio, de forma
+ * coherente con la posición actual del módulo en el Gantt.
+ * @returns {number}
+ */
+function _currentEditingModuleStartWeeks() {
+    const promotion = window.currentPromotion;
+    if (!promotion || !Array.isArray(promotion.modules) || !currentEditingModuleId) return 0;
+    const moduleIndex = promotion.modules.findIndex(m => m.id === currentEditingModuleId);
+    if (moduleIndex === -1) return 0;
+    return getModuleStartWeeks(promotion.modules, moduleIndex);
+}
+
+/**
+ * Semana de inicio absoluta a mostrar/editar para un item del planificador —
+ * Fase 5. Si el item ya tiene `absoluteStartOffset` explícito, se usa tal
+ * cual (independiente del módulo). Si no, se deriva de la semana actual del
+ * módulo + el `startOffset` legacy (mismo criterio que `getItemStartWeeks`
+ * en gantt-adapter.js), solo para mostrar un valor inicial coherente.
+ * @param {object} item
+ * @returns {number}
+ */
+function _itemDisplayStartWeeks(item) {
+    if (typeof item.absoluteStartOffset === 'number' && !Number.isNaN(item.absoluteStartOffset)) {
+        return item.absoluteStartOffset;
+    }
+    return _currentEditingModuleStartWeeks() + (Number(item.startOffset) || 0);
+}
+
+/**
  * Renderiza los campos especificos segun el tipo del item.
  * — curso / proyecto: nombre, URL (hipervínculo si rellena), semana inicio/final
  * — proyecto: ademas selector de competencias
- * — leccion: titulo, radio Teorica/Workshop, panel de links
+ * — leccion: titulo, radio Teorica/Workshop, semana inicio/final, panel de links
  * @param {object} item - Item del planificador
  * @param {number} index - Indice en currentPlannerItems
  * @returns {string} HTML de los campos
@@ -6187,6 +6223,8 @@ function renderPlannerItemFields(item, index) {
     if (item.type === 'leccion') {
         const isTeorica  = item.lessonType !== 'workshop';
         const isWorkshop = item.lessonType === 'workshop';
+        const semanaInicioLeccion = _itemDisplayStartWeeks(item) + 1;
+        const semanaFinalLeccion  = _itemDisplayStartWeeks(item) + Number(item.duration || 1);
         return `
             <input type="text"
                 class="form-control form-control-sm planner-field-title"
@@ -6211,12 +6249,28 @@ function renderPlannerItemFields(item, index) {
                     <i class="bi bi-tools me-1"></i>Workshop
                 </label>
             </div>
+            <div class="d-flex align-items-center gap-1">
+                <label class="form-label form-label-sm mb-0 text-nowrap">Sem. inicio</label>
+                <input type="number"
+                    class="form-control form-control-sm planner-field-start"
+                    value="${semanaInicioLeccion}" min="1" style="width:70px;"
+                    oninput="updatePlannerItemWeeks('${item.id}', this.value, null)"
+                    onblur="updatePlannerItemWeeks('${item.id}', this.value, null)" />
+            </div>
+            <div class="d-flex align-items-center gap-1">
+                <label class="form-label form-label-sm mb-0 text-nowrap">Sem. final</label>
+                <input type="number"
+                    class="form-control form-control-sm planner-field-end"
+                    value="${semanaFinalLeccion}" min="1" style="width:70px;"
+                    oninput="updatePlannerItemWeeks('${item.id}', null, this.value)"
+                    onblur="updatePlannerItemWeeks('${item.id}', null, this.value)" />
+            </div>
             ${renderPlannerItemLinks(item)}`;
     }
 
     // curso y proyecto
-    const semanaInicio = Number(item.startOffset || 0) + 1;
-    const semanaFinal  = Number(item.startOffset || 0) + Number(item.duration || 1);
+    const semanaInicio = _itemDisplayStartWeeks(item) + 1;
+    const semanaFinal  = _itemDisplayStartWeeks(item) + Number(item.duration || 1);
 
     // URL: si está rellena se muestra como hipervínculo + botón editar; si está vacía se muestra input
     const urlSection = item.url
@@ -6624,11 +6678,16 @@ function _insertEvalFeedbackImage(btn) {
  * @param {'curso'|'proyecto'|'leccion'} type
  */
 function addPlannerItem(type) {
-    const base = { id: generatePlannerId(), type };
+    // Fase 5: un item nuevo arranca en la semana actual del módulo (no en la
+    // semana 0 fija del roadmap), para que aparezca en una posición sensata
+    // en el Gantt hasta que el docente la ajuste explícitamente.
+    const initialAbsoluteStartOffset = _currentEditingModuleStartWeeks();
+    const base = { id: generatePlannerId(), type, absoluteStartOffset: initialAbsoluteStartOffset };
     if (type === 'leccion') {
         base.title      = '';
         base.lessonType = 'teorica';
         base.links      = [];
+        base.duration   = 1;
     } else {
         base.name          = '';
         base.url           = '';
@@ -6669,8 +6728,9 @@ function updatePlannerItem(id, field, value) {
 }
 
 /**
- * Actualiza startOffset y duration a partir de semana inicio y semana final.
- * Uno de los dos parametros puede ser null (usa el valor actual del DOM para ese campo).
+ * Actualiza absoluteStartOffset y duration a partir de semana inicio y semana
+ * final (Fase 5: semana ABSOLUTA del roadmap, no relativa al módulo). Uno de
+ * los dos parametros puede ser null (usa el valor actual del DOM para ese campo).
  * @param {string} id
  * @param {string|null} startWeekRaw  - valor del input de semana inicio (o null)
  * @param {string|null} endWeekRaw    - valor del input de semana final (o null)
@@ -6686,8 +6746,8 @@ function updatePlannerItemWeeks(id, startWeekRaw, endWeekRaw) {
     const startWeek = parseInt(startWeekRaw !== null ? startWeekRaw : (startInput ? startInput.value : 1)) || 1;
     const endWeek   = parseInt(endWeekRaw   !== null ? endWeekRaw   : (endInput   ? endInput.value   : 1)) || 1;
 
-    item.startOffset = Math.max(0, startWeek - 1);
-    item.duration    = Math.max(1, endWeek - startWeek + 1);
+    item.absoluteStartOffset = Math.max(0, startWeek - 1);
+    item.duration            = Math.max(1, endWeek - startWeek + 1);
 }
 
 /**

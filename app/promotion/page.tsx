@@ -267,6 +267,7 @@ export default function PromotionPage() {
     // ── Inject CSS files not in globals.css ──────────────────────────────
     if (!cssInjected) {
       injectCss('https://fonts.googleapis.com/css2?family=Pacifico');
+      injectCss('https://cdn.dhtmlx.com/gantt/edge/dhtmlxgantt.css');
       cssInjected = true;
     }
 
@@ -307,6 +308,9 @@ export default function PromotionPage() {
         await loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
         await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
         await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js');
+        // Gantt del docente (Fases 1-6, spec dhtmlx-gantt-roadmap): DHTMLX Gantt GPL,
+        // cargado antes de gantt-adapter.js/promotion-detail.js que lo consumen.
+        await loadScript('https://cdn.dhtmlx.com/gantt/edge/dhtmlxgantt.js');
         // App scripts
         await loadScript('/js/config.js');
         await loadScript('/js/shared.js');
@@ -316,6 +320,9 @@ export default function PromotionPage() {
         initReports();
         // syllabus-pdf.js migrado a módulo TS (spec 0014 Fase C): expone window.SyllabusPDF.
         initSyllabusPdf();
+        // gantt-adapter.js (Fases 1-6): función pura de transformación que
+        // promotion-detail.js consume para pintar el Gantt DHTMLX del roadmap.
+        await loadScript('/js/gantt-adapter.js');
         await loadScript('/js/promotion-detail.js');
       } catch (e) {
         console.error('Script load error:', e);
@@ -807,66 +814,25 @@ export default function PromotionPage() {
           MODALES ESTRUCTURA (spec 0013-c)
           ────────────────────────────────────────────────────────────────── */}
 
-      {/* ── moduleModal ── */}
+      {/* ── moduleModal ── Fase 7 (dhtmlx-gantt-roadmap): solo nombre/duración.
+          Cursos/proyectos/lecciones se crean y editan desde sus propios modales
+          enfocados (itemEditModal/createItemModal), no aquí. */}
       <Dialog
         open={isModalOpen('moduleModal')}
         onOpenChange={(o) => setModalOpen('moduleModal', o)}
       >
-        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle id="moduleModalTitle">Agregar Módulo</DialogTitle>
           </DialogHeader>
           <form id="module-form" className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div className="space-y-2">
-                <Label htmlFor="module-name">Nombre del Módulo</Label>
-                <Input id="module-name" required />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="module-duration">Duración (semanas)</Label>
-                <Input id="module-duration" type="number" min={1} required />
-              </div>
-            </div>
-
-            {/* LEGACY hidden — kept for backward compat (TASK-RM-06b) */}
-            <div id="courses-container" style={{ display: 'none' }}></div>
-            <div id="projects-container" style={{ display: 'none' }}></div>
-
-            {/* Planificador de Módulo */}
             <div className="space-y-2">
-              <div className="flex justify-between items-center flex-wrap gap-2">
-                <h6 className="m-0 font-semibold">Planificador de Módulo</h6>
-                <div className="flex gap-2 flex-wrap">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => (window as unknown as { addPlannerItem?: (t: string) => void }).addPlannerItem?.('curso')}
-                  >
-                    Añadir Curso
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => (window as unknown as { addPlannerItem?: (t: string) => void }).addPlannerItem?.('proyecto')}
-                  >
-                    Añadir Proyecto
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    onClick={() => (window as unknown as { addPlannerItem?: (t: string) => void }).addPlannerItem?.('leccion')}
-                  >
-                    Añadir Lección
-                  </Button>
-                </div>
-              </div>
-              <div id="planner-container" className="border rounded p-3 bg-gray-50">
-                <p className="text-text-muted text-sm m-0">No hay elementos todavía. Añade un curso, proyecto o lección.</p>
-              </div>
-              <p className="text-xs text-text-muted">Arrastra los elementos para reordenarlos. Los cambios se guardan al pulsar &quot;Guardar Módulo&quot;.</p>
+              <Label htmlFor="module-name">Nombre del Módulo</Label>
+              <Input id="module-name" required />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="module-duration">Duración (semanas)</Label>
+              <Input id="module-duration" type="number" min={1} required />
             </div>
 
             <DialogFooter className="pt-2">
@@ -875,6 +841,143 @@ export default function PromotionPage() {
               </DialogClose>
               <Button type="submit" className="bg-crok hover:bg-crok-hover text-crok-on">
                 Guardar Módulo
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── itemEditModal ── Fase 7 (TASK-31/32): modal enfocado para editar un
+          curso/proyecto/lección existente (doble-click en su barra del Gantt).
+          El contenido condicional (URL+competencias para curso/proyecto, tipo+
+          enlaces para lección) lo puebla public/js/promotion-detail.js según
+          el tipo — por eso casi todo aquí son contenedores vacíos con id. */}
+      <Dialog
+        open={isModalOpen('itemEditModal')}
+        onOpenChange={(o) => setModalOpen('itemEditModal', o)}
+      >
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle id="itemEditModalTitle">Editar elemento</DialogTitle>
+          </DialogHeader>
+          <form id="item-edit-form" className="space-y-4">
+            <div className="space-y-2" id="item-edit-name-wrapper">
+              <Label htmlFor="item-edit-name">Nombre</Label>
+              <Input id="item-edit-name" />
+            </div>
+            <div className="space-y-2" id="item-edit-title-wrapper" style={{ display: 'none' }}>
+              <Label htmlFor="item-edit-title">Título de la lección</Label>
+              <Input id="item-edit-title" />
+            </div>
+            <div className="space-y-2" id="item-edit-lessontype-wrapper" style={{ display: 'none' }}>
+              <Label>Tipo</Label>
+              <div className="flex gap-3">
+                <label className="flex items-center gap-1 text-sm">
+                  <input type="radio" name="item-edit-lessontype" value="teorica" defaultChecked /> Teórica
+                </label>
+                <label className="flex items-center gap-1 text-sm">
+                  <input type="radio" name="item-edit-lessontype" value="workshop" /> Workshop
+                </label>
+              </div>
+            </div>
+            <div className="space-y-2" id="item-edit-url-wrapper">
+              <Label htmlFor="item-edit-url">URL</Label>
+              <Input id="item-edit-url" type="url" placeholder="https://... (opcional)" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="item-edit-start">Semana inicio</Label>
+                <Input id="item-edit-start" type="number" min={1} required />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="item-edit-end">Semana final</Label>
+                <Input id="item-edit-end" type="number" min={1} required />
+              </div>
+            </div>
+            <div id="item-edit-competences-wrapper" style={{ display: 'none' }}></div>
+            <div id="item-edit-links-wrapper" style={{ display: 'none' }}></div>
+
+            <DialogFooter className="pt-2">
+              <DialogClose asChild>
+                <Button type="button" variant="outline">Cancelar</Button>
+              </DialogClose>
+              <Button type="submit" className="bg-crok hover:bg-crok-hover text-crok-on">
+                Guardar
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* ── createItemModal ── Fase 7 (TASK-33): selector de tipo al hacer clic
+          en un hueco vacío del Gantt (módulo/curso/proyecto/lección/tiempo
+          flexible). El contenido condicional lo puebla promotion-detail.js
+          según el tipo elegido. */}
+      <Dialog
+        open={isModalOpen('createItemModal')}
+        onOpenChange={(o) => setModalOpen('createItemModal', o)}
+      >
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Crear elemento</DialogTitle>
+          </DialogHeader>
+          <form id="create-item-form" className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="create-item-type">Tipo</Label>
+              <select
+                id="create-item-type"
+                className="flex h-9 w-full rounded-md border border-input bg-transparent px-2 text-sm"
+                defaultValue="modulo"
+              >
+                <option value="modulo">Módulo</option>
+                <option value="curso">Curso</option>
+                <option value="proyecto">Proyecto</option>
+                <option value="leccion">Lección</option>
+                <option value="flexible">Tiempo flexible</option>
+              </select>
+            </div>
+            <p id="create-item-week-info" className="text-xs text-text-muted m-0"></p>
+            <div className="space-y-2" id="create-item-module-wrapper">
+              <Label htmlFor="create-item-module">Módulo</Label>
+              <select
+                id="create-item-module"
+                className="flex h-9 w-full rounded-md border border-input bg-transparent px-2 text-sm"
+              />
+            </div>
+            <div className="space-y-2" id="create-item-name-wrapper">
+              <Label htmlFor="create-item-name">Nombre</Label>
+              <Input id="create-item-name" />
+            </div>
+            <div className="space-y-2" id="create-item-title-wrapper" style={{ display: 'none' }}>
+              <Label htmlFor="create-item-title">Título de la lección</Label>
+              <Input id="create-item-title" />
+            </div>
+            <div className="space-y-2" id="create-item-lessontype-wrapper" style={{ display: 'none' }}>
+              <Label>Tipo</Label>
+              <div className="flex gap-3">
+                <label className="flex items-center gap-1 text-sm">
+                  <input type="radio" name="create-item-lessontype" value="teorica" defaultChecked /> Teórica
+                </label>
+                <label className="flex items-center gap-1 text-sm">
+                  <input type="radio" name="create-item-lessontype" value="workshop" /> Workshop
+                </label>
+              </div>
+            </div>
+            <div className="space-y-2" id="create-item-url-wrapper" style={{ display: 'none' }}>
+              <Label htmlFor="create-item-url">URL</Label>
+              <Input id="create-item-url" type="url" placeholder="https://... (opcional)" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="create-item-duration">Duración (semanas)</Label>
+              <Input id="create-item-duration" type="number" min={1} defaultValue={1} required />
+            </div>
+
+            <DialogFooter className="pt-2">
+              <DialogClose asChild>
+                <Button type="button" variant="outline">Cancelar</Button>
+              </DialogClose>
+              <Button type="submit" className="bg-crok hover:bg-crok-hover text-crok-on">
+                Crear
               </Button>
             </DialogFooter>
           </form>
