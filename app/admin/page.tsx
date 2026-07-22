@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
+import { withBasePath } from '../_lib/basePath';
 import {
   CircleUser,
   LogOut,
@@ -468,7 +469,7 @@ export default function AdminPage() {
 
           <a href="/dashboard" className="flex items-center gap-3 no-underline">
             <Image
-              src="/img/logo-factoria-b.svg"
+              src={withBasePath('/img/logo-factoria-b.svg')}
               alt="Factoría F5"
               width={120}
               height={44}

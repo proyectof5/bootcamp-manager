@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
+import { withBasePath } from '../_lib/basePath';
 import {
   CircleUser,
   User,
@@ -351,7 +352,7 @@ export default function DashboardPage() {
       >
         <a href="#" className="flex items-center gap-3 no-underline">
           <Image
-            src="/img/logo-factoria-b.svg"
+            src={withBasePath('/img/logo-factoria-b.svg')}
             alt="Factoría F5"
             width={120}
             height={44}
@@ -407,7 +408,7 @@ export default function DashboardPage() {
           <div className="flex items-end gap-3">
             <h1 className="text-3xl font-bold m-0 text-white drop-shadow">Mis Promociones</h1>
             <Image
-              src="/img/logo-factoria-b.svg"
+              src={withBasePath('/img/logo-factoria-b.svg')}
               alt="Factoría F5"
               width={50}
               height={50}

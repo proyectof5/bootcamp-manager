@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback, memo } from 'react';
+import { withBasePath } from '../_lib/basePath';
 import { NotesPanelHost } from './_components/NotesPanel';
 import { SidebarDesktopToggle } from './_components/SidebarDesktopToggle';
 import { ProgramCompetencesHost } from './_components/ProgramCompetences';
@@ -312,8 +313,8 @@ export default function PromotionPage() {
         // cargado antes de gantt-adapter.js/promotion-detail.js que lo consumen.
         await loadScript('https://cdn.dhtmlx.com/gantt/edge/dhtmlxgantt.js');
         // App scripts
-        await loadScript('/js/config.js');
-        await loadScript('/js/shared.js');
+        await loadScript(withBasePath('/js/config.js'));
+        await loadScript(withBasePath('/js/shared.js'));
         // reports.js migrado a módulo TS (spec 0014 Fase C): se ejecuta aquí en la
         // misma posición de la secuencia (tras shared.js, antes de promotion-detail.js
         // que consume window.Reports). Reemplaza loadScript('/js/reports.js').
@@ -322,8 +323,8 @@ export default function PromotionPage() {
         initSyllabusPdf();
         // gantt-adapter.js (Fases 1-6): función pura de transformación que
         // promotion-detail.js consume para pintar el Gantt DHTMLX del roadmap.
-        await loadScript('/js/gantt-adapter.js');
-        await loadScript('/js/promotion-detail.js');
+        await loadScript(withBasePath('/js/gantt-adapter.js'));
+        await loadScript(withBasePath('/js/promotion-detail.js'));
       } catch (e) {
         console.error('Script load error:', e);
       }
@@ -467,7 +468,7 @@ export default function PromotionPage() {
             </div>
             <div className="sidebar-logo-container">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/img/logo-factoria-b.svg" alt="FactoriaF5" className="sidebar-f5-logo" />
+              <img src={withBasePath('/img/logo-factoria-b.svg')} alt="FactoriaF5" className="sidebar-f5-logo" />
             </div>
           </div>
         </div>

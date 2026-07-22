@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { Eye, EyeOff, KeyRound, Send } from 'lucide-react';
+import { withBasePath } from '../_lib/basePath';
 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -210,7 +211,7 @@ export default function LoginPage() {
         <div className="bg-crok text-white text-center p-5">
           <div className="flex items-center justify-center gap-3">
             <Image
-              src="/img/logo-factoria-b.svg"
+              src={withBasePath('/img/logo-factoria-b.svg')}
               alt="Factoría F5"
               width={120}
               height={56}
