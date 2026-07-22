@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { withBasePath } from '../_lib/basePath';
 import {
   BarChart3,
   Calendar,
@@ -370,7 +371,7 @@ export default function PublicPromotionPage() {
             {/* ── Banner ── */}
             <div className="pp-banner mb-4">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/img/f5_banner_roadmpa_manager.PNG" alt="Banner formación" className="pp-banner-img"
+              <img src={withBasePath('/img/f5_banner_roadmpa_manager.PNG')} alt="Banner formación" className="pp-banner-img"
                 onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
               <div className="pp-banner-body flex justify-between items-center">
                 <div>
@@ -379,7 +380,7 @@ export default function PublicPromotionPage() {
                 </div>
                 <a href="https://factoriaf5.org/" target="_blank" rel="noreferrer" className="ml-3 shrink-0">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src="/img/logo-factoria-b.svg" alt="Logotipo FactoriaF5" style={{ maxHeight: 48, filter: 'brightness(0) invert(1)', opacity: 0.85 }} />
+                  <img src={withBasePath('/img/logo-factoria-b.svg')} alt="Logotipo FactoriaF5" style={{ maxHeight: 48, filter: 'brightness(0) invert(1)', opacity: 0.85 }} />
                 </a>
               </div>
             </div>

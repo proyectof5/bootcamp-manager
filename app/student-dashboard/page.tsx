@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, type ComponentType } from 'react';
+import { withBasePath } from '../_lib/basePath';
 import {
   LogOut,
   Calendar,
@@ -164,7 +165,7 @@ export default function StudentDashboardPage() {
             <figure className="text-center p-3 mt-auto mb-0">
               <a href="https://factoriaf5.org/" target="_blank" rel="noreferrer">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src="/img/logo-factoria-b.svg" alt="Logotipo FactoriaF5" className="max-w-[100px] mx-auto" />
+                <img src={withBasePath('/img/logo-factoria-b.svg')} alt="Logotipo FactoriaF5" className="max-w-[100px] mx-auto" />
               </a>
             </figure>
           </div>
@@ -189,7 +190,7 @@ export default function StudentDashboardPage() {
                 <div className="text-center">
                   <p className="text-lg text-left p-3 m-0">{promotion?.description || ''}</p>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src="/img/info.png" alt="Infografía IA" className="max-h-[400px] object-contain mx-auto" style={{ padding: '0 50px' }} />
+                  <img src={withBasePath('/img/info.png')} alt="Infografía IA" className="max-h-[400px] object-contain mx-auto" style={{ padding: '0 50px' }} />
                 </div>
               </section>
 

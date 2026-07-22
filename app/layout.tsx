@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import './globals.css';
+import { withBasePath } from './_lib/basePath';
 
 export const metadata: Metadata = {
   title: 'Bootcamp Manager',
@@ -44,7 +45,7 @@ export default function RootLayout({
         <link
           rel="icon"
           type="image/png"
-          href="/img/favicon_bootcamp_manager.png"
+          href={withBasePath('/img/favicon_bootcamp_manager.png')}
         />
       </head>
       <body>{children}</body>
