@@ -14649,22 +14649,44 @@ async function saveIndividualStudentEval() {
 
         await _persistEvaluations();
 
-        // Sync to student ficha — use allStudents so withdrawn students are included
+        // Sync to student ficha — use allStudents so withdrawn students are included.
+        // IMPORTANTE: se limita el sync al target recién guardado (canonicalStudentId), no a
+        // TODOS los evaluados en el proyecto — `saved.evaluations`/`saved.groups` completos
+        // podían traer decenas de entradas, y _sync...ToStudentTracking hace un fetch+PUT
+        // secuencial por cada una. Guardar UN estudiante disparaba 2×N peticiones (N = ya
+        // evaluados en el proyecto), por lo que cada guardado sucesivo se volvía más lento.
+        // Al acotar el objeto que se les pasa a solo la entrada de este target, cada guardado
+        // vuelve a costar un único fetch+PUT sin importar cuántos estudiantes ya se evaluaron.
         const { allStudents } = window._evalState;
         if (saved.type === 'grupal') {
-            await _syncGrupalEvaluationsToStudentTracking(saved, mod, proj, allStudents);
+            const scopedSaved = {
+                ...saved,
+                groups: (saved.groups || []).filter(g => g.groupName === canonicalStudentId),
+                evaluations: (saved.evaluations || []).filter(e => e.targetId === canonicalStudentId),
+            };
+            await _syncGrupalEvaluationsToStudentTracking(scopedSaved, mod, proj, allStudents);
         } else {
-            await _syncEvaluationsToStudentTracking(saved, mod, proj, allStudents);
+            const scopedSaved = {
+                ...saved,
+                evaluations: (saved.evaluations || []).filter(e => e.targetId === canonicalStudentId),
+            };
+            await _syncEvaluationsToStudentTracking(scopedSaved, mod, proj, allStudents);
         }
 
         showToast('Evaluación guardada correctamente', 'success');
 
         if (inSplitView) {
-            // Stay in split view: refresh the target list and reload the right panel
+            // Stay in split view: refresh the target list (barato, solo re-lee saved.evaluations,
+            // no hace red) para que el badge "Evaluado" quede correcto para CUALQUIER estudiante.
             _renderEvalTargetsList(saved, window._evalState.students);
-            // Re-open same target so the header shows "Evaluado".
-            // Use canonicalStudentId so the left list entry (keyed by canonical name) gets selected.
-            selectEvalTarget(canonicalStudentId);
+            // Solo reabrir el target recién guardado si el usuario SIGUE viéndolo — este guardado
+            // es lento (ver arriba) y si mientras tanto seleccionó otro estudiante y ya está
+            // escribiendo su feedback, selectEvalTarget() lo interrumpiría y se lo borraría
+            // (pisa #eval-right-header/#eval-right-body con innerHTML del estudiante guardado).
+            const activeNow = splitView.dataset.targetStudentId;
+            if (String(activeNow) === String(canonicalStudentId) || String(activeNow) === String(studentId)) {
+                selectEvalTarget(canonicalStudentId);
+            }
             // Reset button
             if (saveBtn) { saveBtn.disabled = false; saveBtn.innerHTML = originalBtnHtml; }
         } else {
