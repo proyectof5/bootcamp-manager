@@ -1,2 +1,17 @@
 node_modules/
 .env
+
+# Next.js — generados, NUNCA commitear (rompen pulls con conflictos masivos)
+.next/
+out/
+next-env.d.ts
+.env*.local
+
+# TypeScript — artefacto incremental de tsc --noEmit
+tsconfig.tsbuildinfo
+
+# Playwright e2e — reportes y artefactos (los binarios van a caché global, no al repo)
+/test-results/
+/playwright-report/
+/blob-report/
+/playwright/.cache/

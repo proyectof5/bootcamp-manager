@@ -80,7 +80,6 @@ body {
 }
 
 .card {
-    min-height: 100%;
     /* Better than fixed height */
     border-radius: 10px;
     border: none;
@@ -172,6 +171,14 @@ body {
 
 #gantt-table td.block.proyecto {
     background-color: var(--complementario-1-light);
+}
+
+#gantt-table td.block.flexible {
+    background-color: var(--purple-f5);
+}
+
+#gantt-table td.flexible {
+    background-color: var(--purple-f5);
 }
 
 #gantt-table td.empty {
