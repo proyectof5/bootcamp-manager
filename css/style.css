@@ -80,7 +80,6 @@ body {
 }
 
 .card {
-    min-height: 100%;
     /* Better than fixed height */
     border-radius: 10px;
     border: none;

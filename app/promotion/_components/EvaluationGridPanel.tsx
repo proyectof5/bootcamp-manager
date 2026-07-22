@@ -63,7 +63,51 @@ export function EvaluationGridPanelHost() {
   return createPortal(<EvaluationGridPanel />, host);
 }
 
+const EVAL_TOPBAR_COLLAPSED_KEY = 'evalTopbarCollapsedState';
+const EVAL_SIDEBAR_COLLAPSED_KEY = 'evalSidebarCollapsedState';
+
 function EvaluationGridPanel() {
+  // Toggle abrir/cerrar de .eval-view-topbar (Volver/título/Guardar/Preview/Enviar): al entrar al
+  // evaluador de un proyecto la cabecera de "Área de administración" ya se oculta sola (CSS
+  // #teacher-area-tab:has(#eval-project-view:not(.hidden)) en promotion-detail.css); este toggle
+  // deja además ocultar/mostrar esta barra a voluntad para ganar aún más espacio vertical. Estado
+  // persistido en localStorage, igual que el resto de toggles de la vista.
+  const [topbarCollapsed, setTopbarCollapsed] = useState(false);
+
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(EVAL_TOPBAR_COLLAPSED_KEY) || 'null');
+      if (saved?.collapsed) setTopbarCollapsed(true);
+    } catch { /* noop */ }
+  }, []);
+
+  const toggleEvalTopbar = () => {
+    setTopbarCollapsed((prev) => {
+      const next = !prev;
+      localStorage.setItem(EVAL_TOPBAR_COLLAPSED_KEY, JSON.stringify({ collapsed: next }));
+      return next;
+    });
+  };
+
+  // Toggle abrir/cerrar de .eval-targets-sidebar (lista de estudiantes/grupos): independiente
+  // del toggle de la topbar, mismo patrón de persistencia en localStorage.
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+
+  useEffect(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem(EVAL_SIDEBAR_COLLAPSED_KEY) || 'null');
+      if (saved?.collapsed) setSidebarCollapsed(true);
+    } catch { /* noop */ }
+  }, []);
+
+  const toggleEvalSidebar = () => {
+    setSidebarCollapsed((prev) => {
+      const next = !prev;
+      localStorage.setItem(EVAL_SIDEBAR_COLLAPSED_KEY, JSON.stringify({ collapsed: next }));
+      return next;
+    });
+  };
+
   useEffect(() => {
     let tries = 0;
     const iv = setInterval(() => {
@@ -112,47 +156,77 @@ function EvaluationGridPanel() {
 
       {/* ── Split-view de evaluación individual (sidebar + panel derecho) ──── */}
       <div id="eval-project-view" className="hidden">
-        <div className="eval-view-topbar d-flex align-items-center gap-3 py-3 mb-0">
-          <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => w().closeEvaluationView?.()}>
-            <i className="bi bi-arrow-left me-1" />Volver
-          </button>
-          <div className="flex-grow-1 min-w-0">
-            <h5 className="mb-0 fw-bold text-truncate" id="eval-view-title">Evaluación</h5>
-            <p className="mb-0 text-muted small" id="eval-view-subtitle" />
+        <div className={`eval-view-topbar d-flex align-items-center gap-3 mb-0 ${topbarCollapsed ? 'py-1' : 'py-3'}`}>
+          {/* Contenido de la barra: se oculta con .d-none (no se desmonta) para que el legacy
+              (openEvaluationView/selectEvalTarget) pueda seguir poblando #eval-view-title/
+              #eval-view-subtitle por id aunque esté colapsada. */}
+          {/* .d-flex y .d-none son ambas !important con la misma especificidad en
+              bootstrap-compat.css, y .d-flex está declarada después → gana siempre que
+              ambas convivan en el mismo elemento. Por eso se aplica una sola clase u otra,
+              nunca las dos a la vez. */}
+          <div className={topbarCollapsed ? 'd-none' : 'd-flex align-items-center gap-3 flex-grow-1 min-w-0'}>
+            <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => w().closeEvaluationView?.()}>
+              <i className="bi bi-arrow-left me-1" />Volver
+            </button>
+            <div className="flex-grow-1 min-w-0">
+              <h5 className="mb-0 fw-bold text-truncate" id="eval-view-title">Evaluación</h5>
+              <p className="mb-0 text-muted small" id="eval-view-subtitle" />
+            </div>
+            <button type="button" className="btn btn-sm btn-primary" onClick={() => w().saveIndividualStudentEval?.()}>
+              <i className="bi bi-save me-1" />Guardar
+            </button>
+            <button
+              type="button"
+              className="btn btn-sm btn-outline-secondary"
+              id="preview-eval-splitview-btn"
+              onClick={() => w().previewStudentEvalReport?.(document.getElementById('eval-project-view')?.dataset.targetStudentId)}
+              title="Ver preview del informe de evaluación PDF"
+            >
+              <i className="bi bi-eye me-1" />Preview informe
+            </button>
+            <button
+              type="button"
+              className="btn btn-sm btn-outline-success"
+              id="send-eval-splitview-btn"
+              onClick={() => w().sendEvaluationByEmail?.()}
+              title="Guardar y enviar informe PDF al correo del estudiante"
+            >
+              <i className="bi bi-envelope-arrow-up me-1" />Enviar evaluación
+            </button>
+            <button
+              type="button"
+              className="btn btn-sm btn-outline-primary"
+              id="send-eval-all-splitview-btn"
+              onClick={() => w().sendEvaluationToAllInProject?.()}
+              title="Guardar y enviar la evaluación individual a todos los estudiantes evaluados en este proyecto"
+            >
+              <i className="bi bi-send me-1" />Enviar a todos
+            </button>
           </div>
-          <button type="button" className="btn btn-sm btn-primary" onClick={() => w().saveIndividualStudentEval?.()}>
-            <i className="bi bi-save me-1" />Guardar
+          <button
+            type="button"
+            className="btn btn-sm btn-outline-secondary flex-shrink-0 ms-auto"
+            id="eval-sidebar-toggle"
+            onClick={toggleEvalSidebar}
+            title={sidebarCollapsed ? 'Mostrar lista' : 'Ocultar lista'}
+          >
+            <i className={sidebarCollapsed ? 'bi bi-chevron-right' : 'bi bi-chevron-left'} />
           </button>
           <button
             type="button"
-            className="btn btn-sm btn-outline-secondary"
-            id="preview-eval-splitview-btn"
-            onClick={() => w().previewStudentEvalReport?.(document.getElementById('eval-project-view')?.dataset.targetStudentId)}
-            title="Ver preview del informe de evaluación PDF"
+            className="btn btn-sm btn-outline-secondary flex-shrink-0"
+            id="eval-topbar-toggle"
+            onClick={toggleEvalTopbar}
+            title={topbarCollapsed ? 'Mostrar barra' : 'Ocultar barra'}
           >
-            <i className="bi bi-eye me-1" />Preview informe
-          </button>
-          <button
-            type="button"
-            className="btn btn-sm btn-outline-success"
-            id="send-eval-splitview-btn"
-            onClick={() => w().sendEvaluationByEmail?.()}
-            title="Guardar y enviar informe PDF al correo del estudiante"
-          >
-            <i className="bi bi-envelope-arrow-up me-1" />Enviar evaluación
-          </button>
-          <button
-            type="button"
-            className="btn btn-sm btn-outline-primary"
-            id="send-eval-all-splitview-btn"
-            onClick={() => w().sendEvaluationToAllInProject?.()}
-            title="Guardar y enviar la evaluación individual a todos los estudiantes evaluados en este proyecto"
-          >
-            <i className="bi bi-send me-1" />Enviar a todos
+            <i className={topbarCollapsed ? 'bi bi-chevron-down' : 'bi bi-chevron-up'} />
           </button>
         </div>
         <div className="eval-split-layout">
-          <aside className="eval-targets-sidebar">
+          {/* .eval-targets-sidebar no tiene !important en su display:flex, así que combinarla
+              con .d-none (!important) la oculta sin conflicto — a diferencia del caso
+              .d-flex/.d-none de arriba, aquí solo un lado es !important. */}
+          <aside className={sidebarCollapsed ? 'eval-targets-sidebar d-none' : 'eval-targets-sidebar'}>
             <ul className="eval-targets-list list-unstyled mb-0" id="eval-targets-list" />
           </aside>
           {/* Los editores .eval-feedback-rte (contenteditable) los inyecta el legacy en #eval-right-body

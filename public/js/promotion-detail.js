@@ -3539,6 +3539,45 @@ function initGanttInstance() {
     if (canEdit) {
         bindGanttEditingEvents();
     }
+
+    // Línea vertical marcando la semana actual ("Hoy") en el roadmap.
+    // Nota: el build "edge" de DHTMLX Gantt no incluye la extensión Markers
+    // (gantt.addMarker no está implementada aquí, aunque el CSS del tema sí
+    // trae sus clases .gantt_marker*) — se dibuja a mano con gantt.posFromDate()
+    // y se redibuja en cada onGanttRender (zoom, recarga de datos, resize),
+    // porque el área de tareas se reconstruye en cada render y perdería el
+    // marcador si no se reinserta.
+    gantt.attachEvent('onGanttRender', _renderTodayMarker);
+    _renderTodayMarker();
+}
+
+/**
+ * Dibuja (o redibuja) la línea vertical de "Hoy" sobre la línea de tiempo del
+ * Gantt. Implementación manual porque el build "edge" de DHTMLX no trae la
+ * extensión Markers — ver comentario en initGanttInstance().
+ */
+function _renderTodayMarker() {
+    const existing = document.getElementById('gantt-today-marker');
+    if (existing) existing.remove();
+
+    if (typeof gantt === 'undefined' || typeof gantt.posFromDate !== 'function') return;
+    // gantt.$task_data es el elemento .gantt_data_area (position:relative) que
+    // ya usa DHTMLX como ancla de posicionamiento para las barras de tarea
+    // (.gantt_task_line, position:absolute) — mismo sistema de coordenadas
+    // que devuelve gantt.posFromDate().
+    const dataArea = gantt.$task_data || (gantt.$container && gantt.$container.querySelector('.gantt_data_area'));
+    if (!dataArea) return;
+
+    const today = new Date();
+    const x = gantt.posFromDate(today);
+    if (typeof x !== 'number' || isNaN(x)) return;
+
+    const marker = document.createElement('div');
+    marker.id = 'gantt-today-marker';
+    marker.className = 'gantt-today-marker';
+    marker.style.left = `${x}px`;
+    marker.title = 'Hoy: ' + today.toLocaleDateString('es-ES');
+    dataArea.appendChild(marker);
 }
 
 /**
@@ -12965,6 +13004,7 @@ function _renderEvalTargetsList(saved, students) {
     const targets = isGrupal
         ? (saved.groups || []).map(g => ({ id: g.groupName, label: g.groupName, sub: `${(g.studentIds || []).length} miembros`, isGroup: true, isWithdrawn: false }))
         : students.map(s => ({ id: String(s.id || s._id), label: `${s.name || ''} ${s.lastname || ''}`.trim(), sub: s.email || '', isGroup: false, isWithdrawn: !!s.isWithdrawn }));
+    targets.sort((a, b) => a.label.localeCompare(b.label, 'es', { sensitivity: 'base' }));
 
     if (labelEl) labelEl.textContent = isGrupal ? 'Grupos' : 'Estudiantes';
     if (countEl) countEl.textContent = targets.length;
@@ -13091,31 +13131,23 @@ function selectEvalTarget(targetId) {
         const submissionStatus = savedEval
             ? (savedEval.submissionStatus || (hasLink ? 'Entregado' : 'Pendiente'))
             : 'Pendiente';
-        const statusBadge = `<span class="badge ${submissionStatus === 'Entregado' ? 'bg-success' : 'bg-light text-muted border'} mt-1">
+        const statusBadge = `<span class="badge ${submissionStatus === 'Entregado' ? 'bg-success' : 'bg-light text-muted border'}" style="font-size:.68rem;">
                 <i class="bi bi-cloud-arrow-up${submissionStatus === 'Entregado' ? '-fill' : ''} me-1"></i>${submissionStatus}
             </span>`;
+        // El link del repo se esconde detrás de un icono (antes era un <div class="alert">
+        // grande con la URL completa siempre visible) — se abre en pestaña nueva al clicar.
         const linkHtml = hasLink ? `
-            <div class="alert alert-info py-2 px-3 mt-2 mb-0 d-flex align-items-center border-info" style="font-size: 0.85rem;">
-                <i class="bi bi-git me-2 fs-5"></i>
-                <div class="flex-grow-1">
-                    <div class="fw-bold">Proyecto entregado</div>
-                    <a href="${escapeHtml(savedEval.submissionLink)}" target="_blank" class="text-decoration-none">
-                        ${escapeHtml(savedEval.submissionLink)} <i class="bi bi-box-arrow-up-right small ms-1"></i>
-                    </a>
-                </div>
-            </div>` : '';
+            <a href="${escapeHtml(savedEval.submissionLink)}" target="_blank" class="btn btn-sm btn-outline-secondary py-0 px-1"
+                title="Ver repositorio entregado: ${escapeHtml(savedEval.submissionLink)}">
+                <i class="bi bi-git"></i>
+            </a>` : '';
 
         headerEl.innerHTML = `
-        <div class="d-flex align-items-center gap-3 flex-wrap">
-            <div class="eval-target-avatar" style="width:42px;height:42px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;flex-shrink:0;background:${isDone ? 'linear-gradient(135deg,#198754,#20c997)' : 'linear-gradient(135deg,#E85D26,#f97316)'};">
-                ${isGrupal ? `<i class="bi bi-people-fill" style="font-size:1rem;"></i>` : escapeHtml(displayName.split(' ').map(w => w[0] || '').slice(0, 2).join('').toUpperCase() || '?')}
-            </div>
-            <div class="flex-grow-1 min-w-0">
-                <div class="fw-bold fs-6 text-truncate">${escapeHtml(displayName)}</div>
-                ${isDone ? `<span class="badge bg-success mt-1"><i class="bi bi-check-circle me-1"></i>Evaluado el ${new Date(savedEval.evaluatedAt).toLocaleDateString('es-ES')}</span>` : `<span class="badge bg-light text-muted border mt-1">Sin evaluar</span>`}
-                ${statusBadge}
-                ${linkHtml}
-            </div>
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <div class="fw-semibold small text-truncate flex-grow-1 min-w-0">${escapeHtml(displayName)}</div>
+            ${isDone ? `<span class="badge bg-success" style="font-size:.68rem;"><i class="bi bi-check-circle me-1"></i>Evaluado el ${new Date(savedEval.evaluatedAt).toLocaleDateString('es-ES')}</span>` : `<span class="badge bg-light text-muted border" style="font-size:.68rem;">Sin evaluar</span>`}
+            ${statusBadge}
+            ${linkHtml}
         </div>`;
     }
 
@@ -14314,7 +14346,7 @@ function _openStudentEvalSubModalFor(studentId) {
             <label class="form-label small fw-semibold"><i class="bi bi-award me-1"></i>Competencias</label>
             ${buildSubModalCompetencesHtml(studentId, savedEval)}
         </div>
-        <div class="mt-3">
+        <div class="mt-3" style="margin-bottom: 200px;">
             <label class="form-label small fw-semibold"><i class="bi bi-chat-text me-1"></i>Feedback</label>
             <div class="border rounded" style="overflow:hidden;">
                 <div class="eval-feedback-toolbar d-flex flex-wrap gap-1 p-1 bg-light border-bottom">

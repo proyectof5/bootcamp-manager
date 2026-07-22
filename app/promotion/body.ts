@@ -14,14 +14,20 @@ const promotionDetailBody = `
 
                 <!-- Área del Docente Tab -->
                 <div id="teacher-area-tab" class="section-content hidden">
-                    <div class="my-4">
-                        <h1 id="teacher-area-title">Área de Administración</h1>
-                        <p id="teacher-area-desc" class="text-muted">Gestión integral del grupo y herramientas de
-                            seguimiento</p>
-                    </div>
+                    <!-- Cabecera de "Área de administración" (título + pestañas). Se oculta
+                         automáticamente al entrar al evaluador de un proyecto concreto (regla CSS
+                         #teacher-area-tab:has(#eval-project-view:not(.hidden)) en
+                         css/promotion-detail.css) — no requiere botón manual: el toggle abrir/cerrar
+                         vive en la propia barra del evaluador (.eval-view-topbar, ver
+                         EvaluationGridPanel.tsx). -->
+                    <div id="teacher-area-header">
+                        <div class="my-4">
+                            <h1 id="teacher-area-title">Área de Administración</h1>
+                            <p id="teacher-area-desc" class="text-muted">Gestión integral del grupo y herramientas de
+                                seguimiento</p>
+                        </div>
 
-                    <!-- Teacher Area Sub-sections Navigation -->
-                    <div class="mt-4">
+                        <!-- Teacher Area Sub-sections Navigation -->
                         <nav class="nav nav-tabs mb-4" id="teacher-area-subtabs" role="tablist">
                             <button class="nav-link active" id="teacher-area-overview-tab" type="button" role="tab"
                                 aria-selected="true" onclick="switchTeacherAreaSubTab('overview')">
@@ -44,7 +50,9 @@ const promotionDetailBody = `
                                 <i class="bi bi-lock me-2"></i>Accesos
                             </button>
                         </nav>
+                    </div>
 
+                    <div class="mt-4">
                         <!-- Sub-sections Content -->
                         <div class="tab-content" id="teacher-area-subtabs-content">
                             <!-- Overview Tab -->
