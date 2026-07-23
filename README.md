@@ -1,4 +1,4 @@
-# Roadmap Manager — Frontend !
+# Roadmap Manager — Frontend
 
 Frontend Next.js 15 (App Router, `output: 'export'`) para Bootcamp Manager. Se despliega como sitio estático en GitHub Pages.
 
