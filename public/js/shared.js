@@ -3,6 +3,17 @@
  */
 
 /**
+ * Prefija una ruta absoluta con el basePath del despliegue (GitHub Pages sirve el sitio
+ * bajo /bootcamp-manager/, no en la raíz). window.APP_CONFIG.BASE_PATH lo fija page.tsx
+ * antes de cargar este script. Sin esto, window.location.href = '/login' (etc.) aterriza
+ * en la raíz del dominio en vez de bajo el subpath — 404.
+ */
+function withBasePath(path) {
+    return (window.APP_CONFIG?.BASE_PATH || '') + path;
+}
+window.withBasePath = withBasePath;
+
+/**
  * Decode a JWT payload without verifying the signature.
  * Returns null if the token is malformed.
  */
@@ -46,7 +57,7 @@ window.clearSession = clearSession;
  */
 function logout() {
     clearSession();
-    window.location.href = '/login';
+    window.location.href = withBasePath('/login');
 }
 window.logout = logout;
 

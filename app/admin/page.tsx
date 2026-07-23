@@ -136,7 +136,7 @@ function AdminSidebarContent({
     <div className="flex flex-col h-full">
       <nav className="flex flex-col gap-1">
         <a
-          href="/dashboard"
+          href={withBasePath('/dashboard')}
           className="flex items-center gap-2 px-3 py-2 rounded-md text-white bg-crok hover:bg-crok-hover transition-colors no-underline shadow-sm"
         >
           <ArrowLeft className="h-4 w-4" /> Dashboard
@@ -467,7 +467,7 @@ export default function AdminPage() {
             </SheetContent>
           </Sheet>
 
-          <a href="/dashboard" className="flex items-center gap-3 no-underline">
+          <a href={withBasePath('/dashboard')} className="flex items-center gap-3 no-underline">
             <Image
               src={withBasePath('/img/logo-factoria-b.svg')}
               alt="Factoría F5"
