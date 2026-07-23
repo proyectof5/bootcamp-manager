@@ -14773,11 +14773,11 @@ async function sendEvaluationByEmail() {
     const legacyPanel = document.getElementById('student-eval-panel');
     const inSplitView = splitView && !splitView.classList.contains('hidden');
 
-    const studentId = inSplitView
+    const targetId = inSplitView
         ? (splitView.dataset.targetStudentId || null)
         : (legacyPanel ? legacyPanel.dataset.targetStudentId : null);
 
-    if (!studentId) { showToast('Selecciona un estudiante primero', 'danger'); return; }
+    if (!targetId) { showToast('Selecciona un estudiante primero', 'danger'); return; }
 
     // Set spinner on send button
     const sendBtn = document.getElementById(inSplitView ? 'send-eval-splitview-btn' : 'send-eval-panel-btn');
@@ -14791,57 +14791,81 @@ async function sendEvaluationByEmail() {
         // 1. Save evaluation first
         await saveIndividualStudentEval();
 
-        // 2. Find student email
-        const students = window._evalState?.allStudents || window._evalState?.students || [];
-        const student = students.find(s => String(s.id || s._id) === String(studentId));
-        const studentEmail = student?.email || '';
+        // 2. Resolve recipients: for proyectos grupales, targetId es el groupName (no un
+        // studentId), así que hay que expandirlo a los studentIds reales de cada integrante.
+        const saved = window._evalCurrentSaved;
+        const isGrupal = saved?.type === 'grupal';
+        const memberIds = isGrupal
+            ? ((saved.groups || []).find(g => g.groupName === targetId)?.studentIds || []).map(String)
+            : [String(targetId)];
 
-        if (!studentEmail) {
-            showToast('El estudiante no tiene email registrado', 'danger');
+        if (memberIds.length === 0) {
+            showToast('Este equipo no tiene integrantes asignados', 'danger');
             if (sendBtn) { sendBtn.disabled = false; sendBtn.innerHTML = originalHtml; }
             return;
         }
 
-        // 3. Find the team index in the student's technicalTracking.teams matching current project
-        const saved = window._evalCurrentSaved;
-        const mIdx = window._evalState?.currentModuleIdx;
-        const pIdx = window._evalState?.currentProjectIdx;
-        const modules = window._evalState?.modules || [];
-        const mod = modules[mIdx];
-        const proj = mod?.projects[pIdx];
-
-        // Resolve student tracking data to get team index
-        const token = localStorage.getItem('token');
-        const stuRes = await fetch(`${API_URL}/api/promotions/${promotionId}/students/${studentId}`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (!stuRes.ok) throw new Error('No se pudo cargar el estudiante');
-        const stuData = await stuRes.json();
-        const teams = stuData.technicalTracking?.teams || [];
-
-        // Find team index matching current project name
-        let teamIndex = teams.findIndex(t => t.teamName === (proj?.name || saved?.projectName));
-        if (teamIndex < 0) teamIndex = 0; // fallback
-
-        // 4. Send report by email
         if (!window.Reports?.sendProjectReportByEmail) {
             showToast('La librería de informes no está disponible', 'danger');
             if (sendBtn) { sendBtn.disabled = false; sendBtn.innerHTML = originalHtml; }
             return;
         }
 
-        await window.Reports.sendProjectReportByEmail(teamIndex, studentId, promotionId, studentEmail, { silent: true });
+        const students = window._evalState?.allStudents || window._evalState?.students || [];
+        const mIdx = window._evalState?.currentModuleIdx;
+        const pIdx = window._evalState?.currentProjectIdx;
+        const modules = window._evalState?.modules || [];
+        const mod = modules[mIdx];
+        const proj = mod?.projects[pIdx];
+        const token = localStorage.getItem('token');
 
-        // Mark the evaluation entry as sent and persist
+        // 3. Send report by email to each real recipient (each member's own tracking data
+        // determines their team index, since the same project can sit at a different index
+        // in different students' technicalTracking.teams).
+        let sentCount = 0, failedCount = 0;
+        for (const memberId of memberIds) {
+            const student = students.find(s => String(s.id || s._id) === memberId);
+            const studentEmail = student?.email || '';
+            if (!studentEmail) { failedCount++; continue; }
+            try {
+                const stuRes = await fetch(`${API_URL}/api/promotions/${promotionId}/students/${memberId}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                if (!stuRes.ok) throw new Error('No se pudo cargar el estudiante');
+                const stuData = await stuRes.json();
+                const teams = stuData.technicalTracking?.teams || [];
+                let teamIndex = teams.findIndex(t => t.teamName === (proj?.name || saved?.projectName));
+                if (teamIndex < 0) teamIndex = 0;
+
+                await window.Reports.sendProjectReportByEmail(teamIndex, memberId, promotionId, studentEmail, { silent: true });
+                sentCount++;
+            } catch (err) {
+                console.error('[sendEvaluationByEmail] member error:', memberId, err);
+                failedCount++;
+            }
+        }
+
+        if (sentCount === 0) {
+            showToast(isGrupal ? 'Ningún integrante del equipo tiene email registrado' : 'El estudiante no tiene email registrado', 'danger');
+            if (sendBtn) { sendBtn.disabled = false; sendBtn.innerHTML = originalHtml; }
+            return;
+        }
+
+        // Mark the evaluation entry as sent (solo si todos los integrantes recibieron el email) and persist
         const savedForMark = window._evalCurrentSaved;
         if (savedForMark) {
-            const entryToMark = (savedForMark.evaluations || []).find(e => String(e.targetId) === String(studentId));
-            if (entryToMark) entryToMark.reportSentAt = new Date().toISOString();
+            const entryToMark = (savedForMark.evaluations || []).find(e => String(e.targetId) === String(targetId));
+            if (entryToMark && failedCount === 0) entryToMark.reportSentAt = new Date().toISOString();
             await _persistEvaluations();
             _renderEvalTargetsList(savedForMark, window._evalState.allStudents || window._evalState.students);
         }
 
-        showToast('Informe de evaluación enviado correctamente', 'success');
+        showToast(
+            isGrupal
+                ? `Informe enviado a ${sentCount} integrante${sentCount !== 1 ? 's' : ''} del equipo${failedCount > 0 ? ` · ${failedCount} fallido${failedCount !== 1 ? 's' : ''}` : ''}`
+                : 'Informe de evaluación enviado correctamente',
+            failedCount > 0 ? 'warning' : 'success'
+        );
     } catch (err) {
         console.error('[sendEvaluationByEmail]', err);
         showToast('Error al enviar el informe: ' + err.message, 'danger');
@@ -14910,6 +14934,7 @@ async function sendEvaluationToAllInProject() {
     const modules = window._evalState?.modules || [];
     const mod = modules[mIdx];
     const proj = mod?.projects[pIdx];
+    const isGrupal = saved.type === 'grupal';
 
     // Solo enviar a estudiantes realmente evaluados (tienen evaluatedAt) y cuyo informe no se haya enviado aún
     const allEvaluatedEntries = (saved.evaluations || []).filter(e => e.evaluatedAt && !e.isGroup);
@@ -14924,17 +14949,23 @@ async function sendEvaluationToAllInProject() {
         return;
     }
 
-    const nEval = evaluatedEntries.length;
+    // En proyectos grupales, entry.targetId es el nombre del grupo, no un studentId:
+    // se expande a los studentIds reales de cada integrante para enviarles el correo a todos.
+    const resolveMemberIds = (entry) => isGrupal
+        ? ((saved.groups || []).find(g => g.groupName === entry.targetId)?.studentIds || []).map(String)
+        : [String(entry.targetId)];
+
+    const totalRecipients = evaluatedEntries.reduce((acc, e) => acc + resolveMemberIds(e).length, 0);
     const projName = proj?.name || saved.projectName;
     _showConfirmModal(
-        `¿Enviar el informe de evaluación a <strong>${nEval}</strong> estudiante${nEval !== 1 ? 's' : ''} evaluados en <em>"${escapeHtml(projName)}"</em>?<br><small class="text-muted">Se enviará un correo individual a cada uno.</small>`,
+        `¿Enviar el informe de evaluación a <strong>${totalRecipients}</strong> estudiante${totalRecipients !== 1 ? 's' : ''} evaluados en <em>"${escapeHtml(projName)}"</em>?<br><small class="text-muted">Se enviará un correo individual a cada uno.</small>`,
         async () => {
     // Capturamos los datos necesarios ANTES de ceder el hilo,
     // ya que el estado global puede cambiar si el usuario navega.
     const token = localStorage.getItem('token');
     const students = window._evalState?.allStudents || window._evalState?.students || [];
     const projectName = projName;
-    const total = nEval;
+    const total = totalRecipients;
 
     // Iniciar badge de progreso — no bloqueamos la UI
     const taskId = _bgTaskManager.start(`Enviando informes 0/${total}...`);
@@ -14944,30 +14975,36 @@ async function sendEvaluationToAllInProject() {
         let sent = 0, failed = 0;
 
         for (const entry of evaluatedEntries) {
-            try {
-                const studentId = String(entry.targetId);
-                const student = students.find(s => String(s.id || s._id) === studentId);
-                const studentEmail = student?.email || '';
-                if (!studentEmail) { failed++; _bgTaskManager.update(taskId, `Enviando informes ${sent + failed}/${total}...`); continue; }
+            const memberIds = resolveMemberIds(entry);
+            let entryFailed = memberIds.length === 0;
 
-                // Cargar tracking del estudiante para resolver el teamIndex
-                const stuRes = await fetch(`${API_URL}/api/promotions/${promotionId}/students/${studentId}`, {
-                    headers: { 'Authorization': `Bearer ${token}` }
-                });
-                if (!stuRes.ok) { failed++; _bgTaskManager.update(taskId, `Enviando informes ${sent + failed}/${total}...`); continue; }
-                const stuData = await stuRes.json();
-                const teams = stuData.technicalTracking?.teams || [];
-                let teamIndex = teams.findIndex(t => t.teamName === projectName);
-                if (teamIndex < 0) teamIndex = 0;
+            for (const studentId of memberIds) {
+                try {
+                    const student = students.find(s => String(s.id || s._id) === studentId);
+                    const studentEmail = student?.email || '';
+                    if (!studentEmail) { entryFailed = true; failed++; _bgTaskManager.update(taskId, `Enviando informes ${sent + failed}/${total}...`); continue; }
 
-                await window.Reports.sendProjectReportByEmail(teamIndex, studentId, promotionId, studentEmail, { silent: true });
-                entry.reportSentAt = new Date().toISOString();
-                sent++;
-            } catch (err) {
-                console.error('[sendEvaluationToAllInProject] student error:', entry.targetId, err);
-                failed++;
+                    // Cargar tracking del estudiante para resolver el teamIndex
+                    const stuRes = await fetch(`${API_URL}/api/promotions/${promotionId}/students/${studentId}`, {
+                        headers: { 'Authorization': `Bearer ${token}` }
+                    });
+                    if (!stuRes.ok) { entryFailed = true; failed++; _bgTaskManager.update(taskId, `Enviando informes ${sent + failed}/${total}...`); continue; }
+                    const stuData = await stuRes.json();
+                    const teams = stuData.technicalTracking?.teams || [];
+                    let teamIndex = teams.findIndex(t => t.teamName === projectName);
+                    if (teamIndex < 0) teamIndex = 0;
+
+                    await window.Reports.sendProjectReportByEmail(teamIndex, studentId, promotionId, studentEmail, { silent: true });
+                    sent++;
+                } catch (err) {
+                    console.error('[sendEvaluationToAllInProject] student error:', studentId, err);
+                    entryFailed = true;
+                    failed++;
+                }
+                _bgTaskManager.update(taskId, `Enviando informes ${sent + failed}/${total}...`);
             }
-            _bgTaskManager.update(taskId, `Enviando informes ${sent + failed}/${total}...`);
+
+            if (!entryFailed) entry.reportSentAt = new Date().toISOString();
         }
 
         // Finalizar: eliminar badge y mostrar toast de resumen
