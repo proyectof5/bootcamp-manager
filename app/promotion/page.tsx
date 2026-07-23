@@ -279,6 +279,11 @@ export default function PromotionPage() {
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (window as any).APP_CONFIG = {
       API_URL: process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3000',
+      // Expuesto para que shared.js/promotion-detail.js (scripts planos, no pueden hacer
+      // import de app/_lib/basePath.ts) prefijen sus propios window.location.href = '/...'
+      // con el mismo basePath — si no, en un despliegue en subpath (GitHub Pages) esas
+      // redirecciones aterrizan en la raíz del dominio en vez de bajo /bootcamp-manager.
+      BASE_PATH: process.env.NEXT_PUBLIC_BASE_PATH || '',
     };
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     (window as any).API_URL = (window as any).APP_CONFIG.API_URL;
@@ -392,7 +397,7 @@ export default function PromotionPage() {
               {isSuperAdmin && (
                 <>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => { window.location.href = '/admin'; }}>
+                  <DropdownMenuItem onClick={() => { window.location.href = withBasePath('/admin'); }}>
                     <ShieldCheck className="mr-2 h-4 w-4" /> Panel de Admin
                   </DropdownMenuItem>
                 </>
@@ -420,7 +425,7 @@ export default function PromotionPage() {
         <div className="sidebar-sticky">
           <ul className="nav flex-column sidebar-nav">
             <li className="nav-item">
-              <a className="nav-link nav-link-promotions mt-4" href="/dashboard">
+              <a className="nav-link nav-link-promotions mt-4" href={withBasePath('/dashboard')}>
                 <ArrowLeft className="inline-block mr-2 h-4 w-4" />Promociones
               </a>
             </li>

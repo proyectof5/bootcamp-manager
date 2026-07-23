@@ -16,8 +16,13 @@ body {
 /* Al entrar al evaluador de un proyecto concreto (#eval-project-view visible, split-view
    con "Volver"/título/Guardar/etc.), la cabecera de "Área de administración" (título +
    pestañas) se oculta automáticamente para liberar espacio — no requiere botón manual.
-   El toggle abrir/cerrar vive en la propia .eval-view-topbar (ver EvaluationGridPanel.tsx). */
-#teacher-area-tab:has(#eval-project-view:not(.hidden)) #teacher-area-header {
+   El toggle abrir/cerrar vive en la propia .eval-view-topbar (ver EvaluationGridPanel.tsx).
+   IMPORTANTE: se exige además que #teacher-area-evaluation tenga .active — switchTeacherAreaSubTab()
+   (promotion-detail.js) solo le quita .active/.show y pone display:none al PANE al cambiar de
+   sub-pestaña (Estudiantes/Asistencia/...), pero nunca le añade .hidden a #eval-project-view en
+   sí. Sin este segundo requisito, el selector seguía "viendo" el split-view como visible tras
+   salir de Evaluación, dejando la cabecera escondida hasta recargar la página. */
+#teacher-area-tab:has(#teacher-area-evaluation.active #eval-project-view:not(.hidden)) #teacher-area-header {
     display: none;
 }
 

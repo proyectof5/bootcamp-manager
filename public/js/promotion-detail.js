@@ -194,7 +194,7 @@ window.logout = function () {
         localStorage.removeItem('user');
         localStorage.removeItem('role');
     }
-    window.location.href = '/login';
+    window.location.href = withBasePath('/login');
 };
 
 // (initProfileModal is called inside the main DOMContentLoaded block)
@@ -383,7 +383,7 @@ __onDomReady( () => {
     window.exportStudentsExcel = exportAllStudentsExcel;
 
     if (!promotionId) {
-        window.location.href = '/dashboard';
+        window.location.href = withBasePath('/dashboard');
         return;
     }
 
@@ -2608,7 +2608,7 @@ function checkAuth() {
     const token = localStorage.getItem('token');
     if (!token || (typeof isTokenExpired === 'function' && isTokenExpired(token))) {
         if (typeof clearSession === 'function') clearSession();
-        window.location.href = '/login';
+        window.location.href = withBasePath('/login');
     }
 }
 
@@ -8085,7 +8085,7 @@ async function confirmDeletePromotion() {
 
         if (response.ok) {
             window._closeShadcnModal?.('deletePromotionModal');
-            window.location.href = '/dashboard';
+            window.location.href = withBasePath('/dashboard');
         } else {
             showToast('Error al eliminar la promoción', 'danger');
         }
@@ -13309,16 +13309,26 @@ function _buildEvalCompetencesHtmlForTarget(targetId, savedEval, projCompetences
                     const activeLevels = [1, 2, 3].filter(l => byLevel[l].length > 0);
                     const levelCols = activeLevels.map(lvl => {
                         const inds = byLevel[lvl];
+                        const levelGroupId = `${prefix}-lvlgrp-${tool.id}-${lvl}`;
                         return `<div class="col">
-                        <div class="small fw-semibold mb-1" style="color:${LEVEL_BORDER[lvl]}; font-size:.7rem;">
-                            <i class="bi bi-${lvl === 1 ? 'circle' : lvl === 2 ? 'circle-half' : 'circle-fill'} me-1"></i>Nv.${lvl} ${LEVEL_TEXT[lvl]}
+                        <div class="d-flex align-items-center justify-content-between mb-1">
+                            <div class="small fw-semibold" style="color:${LEVEL_BORDER[lvl]}; font-size:.7rem;">
+                                <i class="bi bi-${lvl === 1 ? 'circle' : lvl === 2 ? 'circle-half' : 'circle-fill'} me-1"></i>Nv.${lvl} ${LEVEL_TEXT[lvl]}
+                            </div>
+                            <button type="button" class="btn btn-link btn-sm p-0" style="font-size:.65rem;"
+                                title="Marcar/desmarcar todos los indicadores de este nivel"
+                                onclick="checkAllIndicatorsForLevel('${levelGroupId}','${safeTargetId}','${rawCompId}','${escapeHtml(comp.name)}')">
+                                <i class="bi bi-check2-all me-1"></i>Marcar todo
+                            </button>
                         </div>
+                        <div id="${levelGroupId}">
                         ${inds.map(ind => {
                             const indKey = `tool-${tool.id}-${ind.id}`;
                             const isChecked = !!(checkedDataForComp[indKey]);
                             return `<div class="form-check form-check-sm mb-0">
                                 <input class="form-check-input" type="checkbox" ${isChecked ? 'checked' : ''}
                                     id="${prefix}-${escapeHtml(indKey)}"
+                                    data-ind-key="${escapeHtml(indKey)}" data-level="${lvl}"
                                     onchange="updateEvalIndicator('${safeTargetId}','${rawCompId}','${escapeHtml(indKey)}',${lvl},this.checked,'${escapeHtml(comp.name)}')">
                                 <label class="form-check-label small" for="${prefix}-${escapeHtml(indKey)}" title="${escapeHtml(ind.description || '')}">
                                     ${escapeHtml(ind.name)}
@@ -13326,6 +13336,7 @@ function _buildEvalCompetencesHtmlForTarget(targetId, savedEval, projCompetences
                                 </label>
                             </div>`;
                         }).join('')}
+                        </div>
                     </div>`;
                     }).join('');
                     return `<div class="accordion-item border-0 border-bottom">
@@ -13348,17 +13359,28 @@ function _buildEvalCompetencesHtmlForTarget(targetId, savedEval, projCompetences
                 { lvl: 1, inds: compInds.initial },
                 { lvl: 2, inds: compInds.medio },
                 { lvl: 3, inds: compInds.advance }
-            ].filter(g => g.inds.length).map(({ lvl, inds }) => `
+            ].filter(g => g.inds.length).map(({ lvl, inds }) => {
+                const levelGroupId = `${prefix}-clvlgrp-${lvl}`;
+                return `
                 <div class="border rounded p-2 mb-2" style="background:${LEVEL_BG[lvl]}; border-color:${LEVEL_BORDER[lvl]} !important;">
-                    <div class="small fw-semibold mb-1" style="color:${LEVEL_BORDER[lvl]};">
-                        <i class="bi bi-${lvl === 1 ? 'circle' : lvl === 2 ? 'circle-half' : 'circle-fill'} me-1"></i>Nivel ${lvl} — ${LEVEL_TEXT[lvl]}
+                    <div class="d-flex align-items-center justify-content-between mb-1">
+                        <div class="small fw-semibold" style="color:${LEVEL_BORDER[lvl]};">
+                            <i class="bi bi-${lvl === 1 ? 'circle' : lvl === 2 ? 'circle-half' : 'circle-fill'} me-1"></i>Nivel ${lvl} — ${LEVEL_TEXT[lvl]}
+                        </div>
+                        <button type="button" class="btn btn-link btn-sm p-0" style="font-size:.7rem;"
+                            title="Marcar/desmarcar todos los indicadores de este nivel"
+                            onclick="checkAllIndicatorsForLevel('${levelGroupId}','${safeTargetId}','${rawCompId}','${escapeHtml(comp.name)}')">
+                            <i class="bi bi-check2-all me-1"></i>Marcar todo
+                        </button>
                     </div>
+                    <div id="${levelGroupId}">
                     ${inds.map(ind => {
                 const indKey = `comp-${ind.id}`;
                 const isChecked = !!(checkedDataForComp[indKey]);
                 return `<div class="form-check form-check-sm mb-0">
                             <input class="form-check-input" type="checkbox" ${isChecked ? 'checked' : ''}
                                 id="${prefix}-${escapeHtml(indKey)}"
+                                data-ind-key="${escapeHtml(indKey)}" data-level="${lvl}"
                                 onchange="updateEvalIndicator('${safeTargetId}','${rawCompId}','${escapeHtml(indKey)}',${lvl},this.checked,'${escapeHtml(comp.name)}')">
                             <label class="form-check-label small" for="${prefix}-${escapeHtml(indKey)}" title="${escapeHtml(ind.description || '')}">
                                 ${escapeHtml(ind.name)}
@@ -13366,7 +13388,9 @@ function _buildEvalCompetencesHtmlForTarget(targetId, savedEval, projCompetences
                             </label>
                         </div>`;
             }).join('')}
-                </div>`
+                    </div>
+                </div>`;
+            }
             ).join('');
         }
 
@@ -14584,6 +14608,32 @@ function updateEvalIndicator(targetId, compId, indKey, level, checked, compName)
             autoLevelBadge.innerHTML = `<i class="bi bi-award me-1"></i>Nivel calculado: <strong>${autoLevel}</strong> — ${LEVEL_LABELS_IND[autoLevel]}`;
         }
     }
+}
+
+/**
+ * Marca (o desmarca) de un click todos los checkboxes de indicadores de un nivel completo —
+ * tanto de herramienta como de competencia, ambos usan el mismo markup con [data-ind-key]/
+ * [data-level] dentro de un contenedor con id groupId (ver _buildEvalCompetencesHtmlForTarget).
+ * Si ya están todos marcados, el click los desmarca todos (toggle); si no, los marca todos.
+ * Reutiliza updateEvalIndicator() por cada uno para que el estado guardado y los badges de
+ * progreso queden exactamente igual que si se hubieran marcado uno a uno a mano.
+ */
+function checkAllIndicatorsForLevel(groupId, targetId, compId, compName) {
+    const container = document.getElementById(groupId);
+    if (!container) return;
+    const checkboxes = Array.from(container.querySelectorAll('input[type="checkbox"][data-ind-key]'));
+    if (!checkboxes.length) return;
+
+    const allChecked = checkboxes.every(cb => cb.checked);
+    const newChecked = !allChecked;
+
+    checkboxes.forEach(cb => {
+        if (cb.checked === newChecked) return;
+        cb.checked = newChecked;
+        const indKey = cb.dataset.indKey;
+        const lvl = Number(cb.dataset.level);
+        updateEvalIndicator(targetId, compId, indKey, lvl, newChecked, compName);
+    });
 }
 
 async function saveIndividualStudentEval() {

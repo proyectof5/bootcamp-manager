@@ -383,7 +383,7 @@ export default function DashboardPage() {
               <>
                 <DropdownMenuSeparator />
                 <DropdownMenuItem asChild>
-                  <a href="/admin">
+                  <a href={withBasePath('/admin')}>
                     <ShieldCheck className="mr-2 h-4 w-4" /> Panel de Admin
                   </a>
                 </DropdownMenuItem>
