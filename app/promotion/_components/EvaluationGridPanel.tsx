@@ -64,7 +64,6 @@ export function EvaluationGridPanelHost() {
 }
 
 const EVAL_TOPBAR_COLLAPSED_KEY = 'evalTopbarCollapsedState';
-const EVAL_SIDEBAR_COLLAPSED_KEY = 'evalSidebarCollapsedState';
 
 function EvaluationGridPanel() {
   // Toggle abrir/cerrar de .eval-view-topbar (Volver/título/Guardar/Preview/Enviar): al entrar al
@@ -89,24 +88,14 @@ function EvaluationGridPanel() {
     });
   };
 
-  // Toggle abrir/cerrar de .eval-targets-sidebar (lista de estudiantes/grupos): independiente
-  // del toggle de la topbar, mismo patrón de persistencia en localStorage.
+  // Toggle de .eval-targets-sidebar (lista de grupos/estudiantes). A DIFERENCIA de la topbar, NO se
+  // persiste ni se lee de localStorage: la lista es ESENCIAL para evaluar, así que el evaluador
+  // SIEMPRE abre con ella visible; el toggle solo la oculta dentro de la sesión actual (para ganar
+  // espacio). FIX (bugfix/eval-sidebar-oculta): antes persistía en localStorage de forma global →
+  // una vez colapsada, dejaba la lista oculta (display:none vía .d-none) en TODAS las evaluaciones,
+  // haciendo imposible ver/seleccionar grupos o estudiantes. Parecía "roto".
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-
-  useEffect(() => {
-    try {
-      const saved = JSON.parse(localStorage.getItem(EVAL_SIDEBAR_COLLAPSED_KEY) || 'null');
-      if (saved?.collapsed) setSidebarCollapsed(true);
-    } catch { /* noop */ }
-  }, []);
-
-  const toggleEvalSidebar = () => {
-    setSidebarCollapsed((prev) => {
-      const next = !prev;
-      localStorage.setItem(EVAL_SIDEBAR_COLLAPSED_KEY, JSON.stringify({ collapsed: next }));
-      return next;
-    });
-  };
+  const toggleEvalSidebar = () => setSidebarCollapsed((prev) => !prev);
 
   useEffect(() => {
     let tries = 0;
@@ -227,6 +216,13 @@ function EvaluationGridPanel() {
               con .d-none (!important) la oculta sin conflicto — a diferencia del caso
               .d-flex/.d-none de arriba, aquí solo un lado es !important. */}
           <aside className={sidebarCollapsed ? 'eval-targets-sidebar d-none' : 'eval-targets-sidebar'}>
+            {/* Cabecera de la lista: el legacy (_renderEvalTargetsList) puebla por id
+                #eval-targets-label ('Grupos'/'Estudiantes') y #eval-targets-count (nº). Se
+                renderizan vacíos para que el legacy los rellene sin pelear con el re-render. */}
+            <div className="eval-targets-header d-flex align-items-center justify-content-between">
+              <span id="eval-targets-label" className="fw-bold small text-uppercase text-muted" />
+              <span className="badge bg-secondary" id="eval-targets-count" />
+            </div>
             <ul className="eval-targets-list list-unstyled mb-0" id="eval-targets-list" />
           </aside>
           {/* Los editores .eval-feedback-rte (contenteditable) los inyecta el legacy en #eval-right-body
