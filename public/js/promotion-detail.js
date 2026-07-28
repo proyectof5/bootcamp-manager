@@ -13137,9 +13137,9 @@ function selectEvalTarget(targetId) {
         // El link del repo se esconde detrás de un icono (antes era un <div class="alert">
         // grande con la URL completa siempre visible) — se abre en pestaña nueva al clicar.
         const linkHtml = hasLink ? `
-            <a href="${escapeHtml(savedEval.submissionLink)}" target="_blank" class="btn btn-sm btn-outline-secondary py-0 px-1"
+            <a href="${escapeHtml(savedEval.submissionLink)}" target="_blank" class="btn btn-sm btn-outline-secondary py-0 px-2"
                 title="Ver repositorio entregado: ${escapeHtml(savedEval.submissionLink)}">
-                <i class="bi bi-git"></i>
+                <i class="bi bi-git me-1"></i>Repo
             </a>` : '';
 
         headerEl.innerHTML = `
