@@ -1698,9 +1698,21 @@ th, td {
 }
 
 #eval-right-body {
-    overflow: scroll;
-    height: 100vh;
-    margin-bottom: 6rem;
+    /* FIX scroll evaluador: el body debe LLENAR el espacio restante de la columna flex
+       (#eval-right-content) y scrollear internamente. Antes tenía height:100vh, que lo
+       hacía más alto que su contenedor y empujaba/cortaba la cabecera (#eval-right-header)
+       fuera de vista, con el scroll al límite y sin poder subir a verla. */
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    padding-bottom: 6rem;
+}
+
+/* La cabecera del panel (nombre del grupo/alumno + badges Entregado/Repo) NO debe
+   comprimirse ni scrollear: fija arriba y siempre visible; el body de abajo es el que
+   scrollea. */
+#eval-right-header {
+    flex-shrink: 0;
 }
 
 .eval-comp-card:hover {
@@ -1865,6 +1877,12 @@ th, td {
     flex-direction: column;
     background: #fff;
     margin-left: 0;
+    /* FIX scroll: altura DEFINIDA (= alto de .eval-split-layout) para que #eval-right-content y
+       #eval-right-body tengan un contenedor acotado y el body scrollee internamente, en vez de
+       crecer con todo su contenido (competencias) y empujar la cabecera fuera de vista. min-height:0
+       anula un min-height heredado que lo inflaba por encima del split-layout. */
+    height: 100%;
+    min-height: 0;
 }
 
 .eval-right-empty {
