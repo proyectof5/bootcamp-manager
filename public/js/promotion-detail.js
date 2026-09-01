@@ -7959,29 +7959,35 @@ function openEditPromotionModal() {
         return;
     }
 
-    // Pre-fill fields
-    const nameEl   = document.getElementById('edit-promotion-name');
-    const descEl   = document.getElementById('edit-promotion-desc');
-    const weeksEl  = document.getElementById('edit-promotion-weeks');
-    const hoursEl  = document.getElementById('edit-promotion-hours');
-    const startEl  = document.getElementById('edit-promotion-start');
-    const endEl    = document.getElementById('edit-promotion-end');
-    const alertEl  = document.getElementById('edit-promotion-alert');
-
-    if (nameEl)  nameEl.value  = promotion.name        || '';
-    if (descEl)  descEl.value  = promotion.description || '';
-    if (weeksEl) weeksEl.value = promotion.weeks       || '';
-    // Pre-fill totalHours from extendedInfoData if available
-    if (hoursEl) hoursEl.value = extendedInfoData?.totalHours || '';
-
-    // Dates arrive as ISO strings — convert to YYYY-MM-DD for <input type="date">
-    if (startEl) startEl.value = promotion.startDate ? promotion.startDate.slice(0, 10) : '';
-    if (endEl)   endEl.value   = promotion.endDate   ? promotion.endDate.slice(0, 10)   : '';
-
-    if (alertEl) alertEl.classList.add('d-none');
-
-    // editPromotionModal: ahora es shadcn Dialog (spec 0013-b).
+    // shadcn Dialog (spec 0013-e): abrir primero, poblar cuando Radix monte.
+    // Antes se leía document.getElementById(...) en el mismo tick que
+    // _openShadcnModal, pero Radix aún no había montado el contenido del
+    // Dialog (_openShadcnModal solo dispara un setState) — los getElementById
+    // devolvían null, el pre-fill se saltaba en silencio (guardas `if (el)`)
+    // y el modal se abría con los campos vacíos aunque currentPromotion sí
+    // tuviera los datos.
     window._openShadcnModal?.('editPromotionModal');
+    _whenMounted('edit-promotion-name', () => {
+        const nameEl   = document.getElementById('edit-promotion-name');
+        const descEl   = document.getElementById('edit-promotion-desc');
+        const weeksEl  = document.getElementById('edit-promotion-weeks');
+        const hoursEl  = document.getElementById('edit-promotion-hours');
+        const startEl  = document.getElementById('edit-promotion-start');
+        const endEl    = document.getElementById('edit-promotion-end');
+        const alertEl  = document.getElementById('edit-promotion-alert');
+
+        if (nameEl)  nameEl.value  = promotion.name        || '';
+        if (descEl)  descEl.value  = promotion.description || '';
+        if (weeksEl) weeksEl.value = promotion.weeks       || '';
+        // Pre-fill totalHours from extendedInfoData if available
+        if (hoursEl) hoursEl.value = extendedInfoData?.totalHours || '';
+
+        // Dates arrive as ISO strings — convert to YYYY-MM-DD for <input type="date">
+        if (startEl) startEl.value = promotion.startDate ? promotion.startDate.slice(0, 10) : '';
+        if (endEl)   endEl.value   = promotion.endDate   ? promotion.endDate.slice(0, 10)   : '';
+
+        if (alertEl) alertEl.classList.add('d-none');
+    });
 }
 
 async function saveEditPromotion(event) {
