@@ -3596,6 +3596,151 @@ function setGanttZoomLevel(level) {
 }
 
 /**
+ * Descarga el roadmap actual en el formato pedido — 'png'/'pdf' (captura visual
+ * del diagrama Gantt completo) o 'xlsx' (tabla módulo/elemento/fechas). Las
+ * librerías (html2canvas, jsPDF, SheetJS) ya se cargan globalmente desde
+ * app/promotion/page.tsx.
+ * @param {'png'|'pdf'|'xlsx'} format
+ */
+async function exportRoadmap(format) {
+    if (typeof gantt === 'undefined' || !_ganttInitialized) {
+        showToast('El Gantt no está listo todavía.', 'warning');
+        return;
+    }
+
+    const token = localStorage.getItem('token');
+    let promotion;
+    try {
+        const res = await fetch(`${API_URL}/api/promotions/${promotionId}`, { headers: { 'Authorization': `Bearer ${token}` } });
+        if (!res.ok) throw new Error('No se pudo cargar la promoción');
+        promotion = await res.json();
+    } catch (err) {
+        console.error('[exportRoadmap]', err);
+        showToast('Error al cargar los datos del roadmap', 'danger');
+        return;
+    }
+
+    if (format === 'xlsx') {
+        _exportRoadmapXlsx(promotion);
+    } else if (format === 'png' || format === 'pdf') {
+        await _exportRoadmapImage(promotion, format);
+    }
+}
+window.exportRoadmap = exportRoadmap;
+
+function _exportRoadmapXlsx(promotion) {
+    if (typeof XLSX === 'undefined' || typeof window.buildRoadmapExportRows !== 'function') {
+        showToast('No se pudo cargar la librería de exportación (Excel).', 'danger');
+        return;
+    }
+    const rows = window.buildRoadmapExportRows(promotion);
+    if (!rows.length) {
+        showToast('El roadmap no tiene módulos que exportar todavía.', 'warning');
+        return;
+    }
+    const ws = XLSX.utils.json_to_sheet(rows);
+    ws['!cols'] = [{ wch: 28 }, { wch: 36 }, { wch: 14 }, { wch: 12 }, { wch: 12 }, { wch: 16 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Roadmap');
+    XLSX.writeFile(wb, `roadmap-${_exportSafeFileName(promotion.name)}.xlsx`);
+    showToast('Roadmap exportado a Excel ✓', 'success');
+}
+
+/**
+ * Exporta el Gantt como imagen (PNG) o incrustada en un PDF (una página,
+ * apaisada si el diagrama es más ancho que alto). Fuerza temporalmente el
+ * contenedor a su tamaño de contenido completo (sin scroll ni virtualización)
+ * para que la captura incluya TODAS las filas/columnas, no solo lo visible en
+ * pantalla — y restaura el tamaño/estado original al terminar, incluso si algo falla.
+ * @param {Object} promotion
+ * @param {'png'|'pdf'} format
+ */
+async function _exportRoadmapImage(promotion, format) {
+    if (typeof html2canvas === 'undefined') {
+        showToast('No se pudo cargar la librería de exportación (imagen).', 'danger');
+        return;
+    }
+    const container = document.getElementById('gantt-container');
+    if (!container) return;
+
+    showToast(`Generando ${format === 'pdf' ? 'PDF' : 'imagen'} del roadmap…`, 'info');
+
+    const prevSmartRendering = gantt.config.smart_rendering;
+    const prevWidth = container.style.width;
+    const prevHeight = container.style.height;
+    const prevOverflow = container.style.overflow;
+
+    try {
+        gantt.config.smart_rendering = false;
+        gantt.scrollTo(0, 0);
+        gantt.render();
+        await new Promise(r => setTimeout(r, 30));
+
+        const dataArea = gantt.$task_data || container.querySelector('.gantt_data_area');
+        const gridArea = container.querySelector('.gantt_grid');
+        const fullWidth = Math.max(
+            container.scrollWidth,
+            (gridArea ? gridArea.offsetWidth : 0) + (dataArea ? dataArea.scrollWidth : 0)
+        );
+        const fullHeight = Math.max(container.scrollHeight, dataArea ? dataArea.scrollHeight : 0, 200);
+
+        container.style.width = `${fullWidth}px`;
+        container.style.height = `${fullHeight}px`;
+        container.style.overflow = 'visible';
+        gantt.setSizes();
+        await new Promise(r => setTimeout(r, 30));
+
+        const canvas = await html2canvas(container, {
+            width: fullWidth,
+            height: fullHeight,
+            windowWidth: fullWidth,
+            windowHeight: fullHeight,
+            scale: 2,
+            backgroundColor: '#ffffff',
+            useCORS: true,
+        });
+
+        const safeName = _exportSafeFileName(promotion.name);
+
+        if (format === 'png') {
+            const link = document.createElement('a');
+            link.download = `roadmap-${safeName}.png`;
+            link.href = canvas.toDataURL('image/png');
+            link.click();
+        } else {
+            const { jsPDF } = window.jspdf;
+            const imgData = canvas.toDataURL('image/png');
+            const pxToMm = 25.4 / 96; // 96dpi; canvas viene a scale:2, se compensa /2 abajo
+            const pdfWidth = (canvas.width / 2) * pxToMm;
+            const pdfHeight = (canvas.height / 2) * pxToMm;
+            const pdf = new jsPDF({
+                orientation: pdfWidth > pdfHeight ? 'landscape' : 'portrait',
+                unit: 'mm',
+                format: [pdfWidth, pdfHeight]
+            });
+            pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
+            pdf.save(`roadmap-${safeName}.pdf`);
+        }
+
+        showToast('Roadmap exportado ✓', 'success');
+    } catch (err) {
+        console.error('[exportRoadmap]', err);
+        showToast('Error al exportar el roadmap', 'danger');
+    } finally {
+        gantt.config.smart_rendering = prevSmartRendering;
+        container.style.width = prevWidth;
+        container.style.height = prevHeight;
+        container.style.overflow = prevOverflow;
+        gantt.setSizes();
+        gantt.render();
+    }
+}
+
+function _exportSafeFileName(name) {
+    return (name || 'roadmap').trim().replace(/[^\w-]+/g, '_').replace(/^_+|_+$/g, '') || 'roadmap';
+}
+
+/**
  * Registra los listeners que permiten editar el Gantt arrastrando/redimensionando
  * tareas y persisten el cambio contra la API. Módulos, cursos, proyectos y
  * lecciones se pueden mover y redimensionar libremente.

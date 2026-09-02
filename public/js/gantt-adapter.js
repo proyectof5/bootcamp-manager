@@ -317,9 +317,69 @@ window.buildGanttDataset = buildGanttDataset;
 window.formatGanttDate = formatGanttDate;
 window.GANTT_DATE_FORMAT = GANTT_DATE_FORMAT;
 
+const GANTT_ITEM_TYPE_LABELS = {
+    module: 'Módulo',
+    course: 'Curso',
+    project: 'Proyecto',
+    leccion: 'Lección',
+    flexible: 'Tiempo flexible',
+};
+
+/**
+ * Construye filas planas (una por módulo/curso/proyecto/lección/bloque de
+ * tiempo flexible) listas para exportar a Excel — reutiliza el mismo dataset
+ * que alimenta el Gantt (`buildGanttDataset`), así que las fechas exportadas
+ * son exactamente las que se ven dibujadas.
+ * @param {Object} promotion
+ * @returns {Array<{Módulo: string, Elemento: string, Tipo: string, Inicio: string, Fin: string, 'Duración (días)': number}>}
+ */
+function buildRoadmapExportRows(promotion) {
+    const { data } = buildGanttDataset(promotion);
+    const moduleNameByIndex = {};
+    data.forEach(row => {
+        if (row.itemType === 'module') moduleNameByIndex[row.itemIndex] = row.text;
+    });
+
+    return data
+        .filter(row => row.itemType !== 'leccion-group')
+        .map(row => {
+            // start_date viene en formato "%d-%m-%Y" (GANTT_DATE_FORMAT) — se
+            // parsea a mano para no depender de que dhtmlxgantt esté cargado.
+            const [dd, mm, yyyy] = row.start_date.split('-').map(Number);
+            const startDate = new Date(yyyy, mm - 1, dd);
+            const durationDays = Math.max(1, Math.round(row.duration));
+            const endDate = addDays(startDate, durationDays - 1); // último día activo (inclusive)
+
+            const fmt = (d) => d.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
+            return {
+                'Módulo': row.itemType === 'module' ? row.text : (moduleNameByIndex[row.moduleIndex] || ''),
+                'Elemento': row.itemType === 'module' ? '' : row.text,
+                'Tipo': GANTT_ITEM_TYPE_LABELS[row.itemType] || row.itemType,
+                'Inicio': fmt(startDate),
+                'Fin': fmt(endDate),
+                'Duración (días)': durationDays,
+            };
+        });
+}
+
+window.buildRoadmapExportRows = buildRoadmapExportRows;
+
 /**
  * Traduce el cambio hecho por el docente (drag/resize) sobre una tarea del
  * Gantt de vuelta al modelo de dominio de la promoción (in-place).
+ *
+ * Precisión por día: `startOffset`/`duration` siguen expresándose en la misma
+ * unidad de siempre ("semanas absolutas desde `promotion.startDate`"), pero
+ * ya NO se redondean a la semana completa más cercana — se redondea al DÍA
+ * más cercano y se expresa como fracción de semana (p.ej. 15 días = 15/7
+ * semanas). Como `buildGanttDataset()`/`getModuleStartWeeks()`/
+ * `getItemStartWeeks()` ya multiplican esta misma cifra por 7 para obtener
+ * días, esto basta para que el Gantt (en cualquier zoom, incluido "Día")
+ * refleje y persista posiciones/duraciones con precisión de un día, sin tocar
+ * el resto del pipeline de lectura/render ni los datos de promociones
+ * existentes (un valor entero de semanas sigue significando exactamente lo
+ * mismo que antes — es un caso particular de esta misma fracción).
  *
  * Reglas de negocio (siguen la misma convención que el Gantt original):
  * - Módulos: se puede cambiar tanto su posición (`startOffset`, semanas
@@ -347,16 +407,18 @@ function applyGanttTaskChange(promotion, task) {
     if (!promotion || !task) return false;
 
     const baseDate = promotion.startDate ? new Date(promotion.startDate) : new Date();
-    const startDays = Math.round((task.start_date - baseDate) / 86400000);
-    const durationDays = Number(task.duration) || 1;
-    const durationWeeks = Math.max(1, Math.round(durationDays / 7));
+    // Redondeo al día (no a la semana): así el Gantt es editable día a día en
+    // cualquier zoom, no solo en semana completa.
+    const startDaysRounded = Math.round((task.start_date - baseDate) / 86400000);
+    const durationDaysRounded = Math.max(1, Math.round(Number(task.duration) || 1));
+    const startWeeksPrecise = Math.max(0, startDaysRounded) / 7;
+    const durationWeeksPrecise = durationDaysRounded / 7;
 
     if (task.itemType === 'module') {
         const module = (promotion.modules || [])[task.itemIndex];
         if (!module) return false;
-        const startWeeks = Math.max(0, Math.round(startDays / 7));
-        module.startOffset = startWeeks;
-        module.duration = durationWeeks;
+        module.startOffset = startWeeksPrecise;
+        module.duration = durationWeeksPrecise;
         return true;
     }
 
@@ -364,9 +426,8 @@ function applyGanttTaskChange(promotion, task) {
         const block = (promotion.flexibleBlocks || []).find(b => b.id === task.flexibleBlockId);
         if (!block) return false;
 
-        const startWeeks = Math.max(0, Math.round(startDays / 7));
-        block.startOffset = startWeeks;
-        block.duration = durationWeeks;
+        block.startOffset = startWeeksPrecise;
+        block.duration = durationWeeksPrecise;
         return true;
     }
 
@@ -382,13 +443,13 @@ function applyGanttTaskChange(promotion, task) {
         // Fase 5: la posición se guarda como semana ABSOLUTA (independiente del
         // módulo), no relativa. `startOffset` legacy ya no se escribe en este
         // flujo — se conserva tal cual para lectura de compatibilidad (TASK-19).
-        const absoluteStartOffset = Math.max(0, Math.round(startDays / 7));
+        const absoluteStartOffset = startWeeksPrecise;
 
         if (Array.isArray(module.plannerItems) && module.plannerItems.length > 0 && task.plannerItemId) {
             const plannerItem = module.plannerItems.find(i => i.id === task.plannerItemId);
             if (!plannerItem) return false;
 
-            plannerItem.duration = durationWeeks;
+            plannerItem.duration = durationWeeksPrecise;
             plannerItem.absoluteStartOffset = absoluteStartOffset;
 
             // Resincroniza los arrays legacy derivados (mismo criterio que
@@ -409,9 +470,9 @@ function applyGanttTaskChange(promotion, task) {
 
         const current = list[task.legacyIndex];
         if (typeof current === 'string') {
-            list[task.legacyIndex] = { name: current, duration: durationWeeks, absoluteStartOffset };
+            list[task.legacyIndex] = { name: current, duration: durationWeeksPrecise, absoluteStartOffset };
         } else {
-            current.duration = durationWeeks;
+            current.duration = durationWeeksPrecise;
             current.absoluteStartOffset = absoluteStartOffset;
         }
         return true;
