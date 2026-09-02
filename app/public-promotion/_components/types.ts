@@ -162,15 +162,20 @@ export interface PPVCGroup {
   groupName: string;
   studentIds?: string[];
 }
-export interface PPVirtualClassroom {
-  active: boolean;
+// Un proyecto activo del Aula Virtual (puede haber varios a la vez — uno por especialización).
+export interface PPVCProject {
   projectType?: string;
-  project?: { projectName?: string };
+  project?: { moduleId?: string; moduleName?: string; projectName?: string };
   briefingUrl?: string;
   dueDate?: string;
   competences?: PPVCCompetence[];
   repoBaseUrl?: string;
   groups?: PPVCGroup[];
+}
+// Respuesta de GET /virtual-classroom: 0, 1 o varios proyectos activos simultáneamente.
+export interface PPVirtualClassroomResponse {
+  active: boolean;
+  projects: PPVCProject[];
 }
 export interface PPSubmission {
   targetId: string;

@@ -9,7 +9,7 @@ import {
   AccordionContent,
 } from '@/components/ui/accordion';
 import { getApiUrl } from '@/lib/api';
-import type { PPVirtualClassroom, PPVCCompetence, PPStudent, PPSubmission, PPLevel } from './types';
+import type { PPVCProject, PPVCCompetence, PPStudent, PPSubmission, PPLevel } from './types';
 import { indName } from './types';
 
 const API_URL = getApiUrl();
@@ -86,18 +86,79 @@ function CompetenceCard({ comp }: { comp: PPVCCompetence }) {
   );
 }
 
+// Punto de entrada público: recibe TODOS los proyectos activos (puede haber varios a la vez, uno
+// por especialización/briefing). Si hay más de uno, primero pide elegir a cuál se va a entregar —
+// esta página no tiene login, así que no hay forma de adivinarlo automáticamente.
 export function AulaVirtual({
-  vc,
+  projects,
   students,
   promotionId,
   onClose,
 }: {
-  vc: PPVirtualClassroom;
+  projects: PPVCProject[];
   students: PPStudent[];
   promotionId: string;
   onClose: () => void;
 }) {
+  const [selectedIdx, setSelectedIdx] = useState<number | null>(projects.length === 1 ? 0 : null);
+
+  if (selectedIdx === null) {
+    return (
+      <div className="bg-white rounded-lg shadow border border-border">
+        <div className="p-4">
+          <div className="flex justify-between items-center flex-wrap gap-2 mb-3">
+            <h5 className="m-0 flex items-center gap-2 text-lg font-semibold"><Laptop className="h-5 w-5" />Aula Virtual</h5>
+            <button className="btn btn-sm btn-outline-secondary inline-flex items-center gap-1" onClick={onClose}>
+              <ArrowLeft className="h-3 w-3" />Volver al inicio
+            </button>
+          </div>
+          <p className="text-sm text-muted-foreground mb-3">Hay varios proyectos activos. Elige a cuál vas a entregar:</p>
+          <div className="flex flex-col gap-2">
+            {projects.map((p, i) => (
+              <button
+                key={i}
+                type="button"
+                className="border border-border rounded px-3 py-3 text-left hover:bg-gray-50 flex justify-between items-center gap-2"
+                onClick={() => setSelectedIdx(i)}
+              >
+                <span className="font-semibold">{p.project?.projectName || `Proyecto ${i + 1}`}</span>
+                {p.project?.moduleName && <span className="text-xs text-muted-foreground">{p.project.moduleName}</span>}
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <AulaVirtualProject
+      vc={projects[selectedIdx]}
+      students={students}
+      promotionId={promotionId}
+      onClose={onClose}
+      onChangeProject={projects.length > 1 ? () => setSelectedIdx(null) : undefined}
+    />
+  );
+}
+
+// Vista de un único proyecto ya elegido: briefing, competencias, entregas y el formulario de envío.
+function AulaVirtualProject({
+  vc,
+  students,
+  promotionId,
+  onClose,
+  onChangeProject,
+}: {
+  vc: PPVCProject;
+  students: PPStudent[];
+  promotionId: string;
+  onClose: () => void;
+  onChangeProject?: () => void;
+}) {
   const type = vc.projectType === 'grupal' ? 'grupal' : 'individual';
+  const moduleId = vc.project?.moduleId || '';
+  const projectName = vc.project?.projectName || '';
   const repoPrefix = vc.repoBaseUrl && vc.repoBaseUrl.trim()
     ? vc.repoBaseUrl.trim().replace(/\/+$/, '') + '/'
     : 'https://github.com/';
@@ -110,14 +171,15 @@ export function AulaVirtual({
 
   const refreshSubmissions = useCallback(async () => {
     try {
-      const res = await fetch(`${API_URL}/api/promotions/${promotionId}/virtual-classroom/submissions?type=${type}`);
+      const qs = new URLSearchParams({ type, moduleId, projectName });
+      const res = await fetch(`${API_URL}/api/promotions/${promotionId}/virtual-classroom/submissions?${qs}`);
       if (!res.ok) return;
       const data = await res.json();
       setSubmissions(data.submissions || []);
     } catch {
       /* noop */
     }
-  }, [promotionId, type]);
+  }, [promotionId, type, moduleId, projectName]);
 
   useEffect(() => { refreshSubmissions(); }, [refreshSubmissions]);
 
@@ -137,7 +199,7 @@ export function AulaVirtual({
     if (!target) { setFeedback({ text: 'Selecciona tu nombre o equipo antes de enviar.', ok: false }); return; }
     if (!repoSuffix.trim()) { setFeedback({ text: 'Escribe el nombre de tu repositorio.', ok: false }); return; }
     const [, id] = target.split(':');
-    const body: Record<string, string> = { type, repoName: repoSuffix.trim() };
+    const body: Record<string, string> = { type, repoName: repoSuffix.trim(), moduleId, projectName };
     if (type === 'grupal') body.groupName = id; else body.studentId = id;
     setSubmitting(true);
     setFeedback(null);
@@ -167,9 +229,14 @@ export function AulaVirtual({
       <div className="p-4">
         <div className="flex justify-between items-center flex-wrap gap-2 mb-3">
           <h5 className="m-0 flex items-center gap-2 text-lg font-semibold"><Laptop className="h-5 w-5" />Aula Virtual</h5>
-          <button className="btn btn-sm btn-outline-secondary inline-flex items-center gap-1" onClick={onClose}>
-            <ArrowLeft className="h-3 w-3" />Volver al inicio
-          </button>
+          <div className="flex items-center gap-2">
+            {onChangeProject && (
+              <button className="btn btn-sm btn-outline-secondary" onClick={onChangeProject}>Cambiar de proyecto</button>
+            )}
+            <button className="btn btn-sm btn-outline-secondary inline-flex items-center gap-1" onClick={onClose}>
+              <ArrowLeft className="h-3 w-3" />Volver al inicio
+            </button>
+          </div>
         </div>
 
         {vc.project?.projectName && <p className="mb-3 font-semibold text-lg text-center">{vc.project.projectName}</p>}
