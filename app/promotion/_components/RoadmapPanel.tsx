@@ -28,7 +28,7 @@
  * está disponible (poll corto) para garantizar el render tras el montaje.
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -55,6 +55,46 @@ export function RoadmapPanelHost() {
   const host = usePortalNode('program-details-roadmap');
   if (!host) return null;
   return createPortal(<RoadmapPanel />, host);
+}
+
+// Dropdown "Descargar" con estado propio (useState + click-fuera para cerrar) en vez de
+// data-bs-toggle="dropdown": esta página no carga el JS de Bootstrap (solo su CSS), así que
+// data-bs-toggle no hace nada por sí solo — se comprobó en vivo (window.bootstrap === undefined).
+function ExportDropdown() {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDocClick = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    const onEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+    document.addEventListener('mousedown', onDocClick);
+    document.addEventListener('keydown', onEsc);
+    return () => {
+      document.removeEventListener('mousedown', onDocClick);
+      document.removeEventListener('keydown', onEsc);
+    };
+  }, [open]);
+
+  const pick = (format: 'png' | 'pdf' | 'xlsx') => {
+    setOpen(false);
+    w().exportRoadmap?.(format);
+  };
+
+  return (
+    <div className="dropdown" ref={ref} style={{ position: 'relative' }}>
+      <button type="button" className="btn btn-outline-primary btn-sm dropdown-toggle" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+        <i className="bi bi-download me-1" />Descargar
+      </button>
+      <ul className={`dropdown-menu dropdown-menu-end${open ? ' show' : ''}`} style={{ position: 'absolute', right: 0 }}>
+        <li><button type="button" className="dropdown-item" onClick={() => pick('png')}><i className="bi bi-file-earmark-image me-2" />Imagen (PNG)</button></li>
+        <li><button type="button" className="dropdown-item" onClick={() => pick('pdf')}><i className="bi bi-file-earmark-pdf me-2" />PDF</button></li>
+        <li><button type="button" className="dropdown-item" onClick={() => pick('xlsx')}><i className="bi bi-file-earmark-excel me-2" />Excel (XLSX)</button></li>
+      </ul>
+    </div>
+  );
 }
 
 function RoadmapPanel() {
@@ -87,12 +127,15 @@ function RoadmapPanel() {
         {/* Lo puebla el legacy (displayModules) por innerHTML. */}
       </div>
       <div className="mt-4">
-        <div className="d-flex justify-content-between align-items-center mb-3">
+        <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
           <h6 className="mb-0">Diagrama Gantt</h6>
-          <div className="btn-group btn-group-sm" role="group" aria-label="Zoom del Gantt">
-            <button type="button" className="btn btn-outline-secondary gantt-zoom-btn" data-zoom-level="day" onClick={() => w().setGanttZoomLevel?.('day')}>Día</button>
-            <button type="button" className="btn btn-outline-secondary gantt-zoom-btn active" data-zoom-level="week" onClick={() => w().setGanttZoomLevel?.('week')}>Semana</button>
-            <button type="button" className="btn btn-outline-secondary gantt-zoom-btn" data-zoom-level="month" onClick={() => w().setGanttZoomLevel?.('month')}>Mes</button>
+          <div className="d-flex gap-2">
+            <div className="btn-group btn-group-sm" role="group" aria-label="Zoom del Gantt">
+              <button type="button" className="btn btn-outline-secondary gantt-zoom-btn" data-zoom-level="day" onClick={() => w().setGanttZoomLevel?.('day')}>Día</button>
+              <button type="button" className="btn btn-outline-secondary gantt-zoom-btn active" data-zoom-level="week" onClick={() => w().setGanttZoomLevel?.('week')}>Semana</button>
+              <button type="button" className="btn btn-outline-secondary gantt-zoom-btn" data-zoom-level="month" onClick={() => w().setGanttZoomLevel?.('month')}>Mes</button>
+            </div>
+            <ExportDropdown />
           </div>
         </div>
         {/* Lo puebla el legacy (generateGanttChart → DHTMLX Gantt, Fase 6). */}
