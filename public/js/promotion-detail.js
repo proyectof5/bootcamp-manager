@@ -2098,33 +2098,11 @@ async function saveExtendedInfo() {
     extendedInfoData.pildoras = allPildoras;
     
     // ── Sync Virtual Classroom state ──────────────────────────────────────────
-    // Ensure we don't overwrite the virtualClassroom with stale data if it was updated in its own tab
-    const vcSelectEl = document.getElementById('vc-project-select');
-    const vcStatusBadge = document.getElementById('vc-status-badge');
-    if (vcSelectEl && vcStatusBadge) {
-        const val = vcSelectEl.value;
-        const [vMid, vPname] = val ? val.split('__') : ['', ''];
-        const vRepo = document.getElementById('vc-repo-base')?.value || '';
-        const vBrief = document.getElementById('vc-briefing-url')?.value || '';
-        const vActive = vcStatusBadge.classList.contains('bg-success');
-        
-        // Find project type for the selected project
-        const savedEvaluations = window._evalState?.savedEvaluations || [];
-        // FIXED: Search by projectName ONLY to match backend storage of Aula Virtual submissions
-        const existingEval = savedEvaluations.find(e => e.projectName === vPname);
-        const vType = existingEval ? (existingEval.type || 'individual') : 'individual';
-
-        extendedInfoData.virtualClassroom = {
-            isActive: vActive,
-            moduleId: vMid,
-            projectName: vPname,
-            projectType: vType,
-            repoBaseUrl: vRepo,
-            briefingUrl: vBrief
-        };
-    } else if (window._evalState && window._evalState.virtualClassroom) {
-        // Fallback to memory state if DOM is not present 
-        extendedInfoData.virtualClassroom = window._evalState.virtualClassroom;
+    // Cada proyecto del Aula Virtual ya se guarda al vuelo al activar/desactivar/actualizar
+    // (_persistVirtualClassrooms), así que aquí solo evitamos que este guardado masivo mande una
+    // versión desactualizada si window._evalState.virtualClassrooms es la más fresca.
+    if (window._evalState && Array.isArray(window._evalState.virtualClassrooms)) {
+        extendedInfoData.virtualClassrooms = window._evalState.virtualClassrooms;
     }
 
     //console.log('Saving extended info for promotion:', promotionId);
@@ -11037,6 +11015,7 @@ window._evalState = {
     savedEvaluations: [],
     projectCompetences: [],
     virtualClassroom: null,
+    virtualClassrooms: [],
     currentModuleIdx: null,
     currentProjectIdx: null
 };
@@ -11200,23 +11179,16 @@ function _initEvalFeedbackRteKeyHandler() {
 
 // ==================== AULA VIRTUAL – PANEL PROFESOR ====================
 
+// ==================== AULA VIRTUAL — varios proyectos activos a la vez ====================
+// Cada proyecto definido en Evaluación (projectCompetences) tiene su propia fila con su propio
+// estado activo/inactivo, repoBaseUrl/briefingUrl/dueDate — ya no hay un único "proyecto vinculado"
+// global. window._evalState.virtualClassrooms es el array persistido (uno por moduleId+projectName).
+
 function initVirtualClassroomPanel(ext, promo) {
     const panel = document.getElementById('virtual-classroom-panel');
     if (!panel) return;
 
-    const selectEl = document.getElementById('vc-project-select');
-    const repoBaseEl = document.getElementById('vc-repo-base');
-    const briefingEl = document.getElementById('vc-briefing-url');
-    const statusBadge = document.getElementById('vc-status-badge');
-    const deactivateBtn = document.getElementById('vc-deactivate-btn');
-    const activateBtn = document.getElementById('vc-activate-btn');
-    const competencesList = document.getElementById('vc-competences-list');
-    const competencesCount = document.getElementById('vc-competences-count');
-
-    if (!selectEl || !repoBaseEl || !briefingEl || !statusBadge || !deactivateBtn || !activateBtn) return;
-
     const modules = promo.modules || [];
-    const projectCompetences = window._evalState.projectCompetences || [];
 
     // Build a quick lookup: "moduleId__projectName" → url (from roadmap)
     window._projectUrlMap = {};
@@ -11229,118 +11201,126 @@ function initVirtualClassroomPanel(ext, promo) {
         });
     });
 
-    // Map rápido de módulo por id para obtener el nombre de módulo
-    const moduleById = {};
-    modules.forEach((m, idx) => {
-        const id = m.id || String(idx);
-        moduleById[id] = m;
-    });
-
-    // Populate project selector SOLO con los proyectos definidos en Evaluación (projectCompetences)
-    const prevValue = selectEl.value;
-    let optionsHtml = '<option value="">Selecciona módulo y proyecto…</option>';
-
-    projectCompetences.forEach(pc => {
-        const modId = pc.moduleId;
-        const mod = moduleById[modId];
-        const labelModule = mod ? (mod.name || '') : `Módulo ${modId}`;
-        const value = `${modId}__${pc.projectName}`;
-        const label = `${labelModule} — ${pc.projectName}`;
-        optionsHtml += `<option value="${value}">${escapeHtml(label)}</option>`;
-    });
-
-    selectEl.innerHTML = optionsHtml;
-
-    // Pre-select active project if any
-    const vc = ext.virtualClassroom || {};
-    let activeValue = '';
-    if (vc && vc.moduleId && vc.projectName) {
-        activeValue = `${vc.moduleId}__${vc.projectName}`;
-    }
-    // Solo mantener el valor si existe en el selector actual
-    const candidate = activeValue || prevValue || '';
-    if (candidate && Array.from(selectEl.options).some(o => o.value === candidate)) {
-        selectEl.value = candidate;
+    // Migración: si aún no hay virtualClassrooms (array nuevo) pero sí un virtualClassroom
+    // (objeto único, legacy) activo, lo usamos como fila inicial. No se vuelve a escribir en el
+    // campo singular a partir de aquí — la próxima vez que se guarde, ya se persiste en el array.
+    if (Array.isArray(ext.virtualClassrooms) && ext.virtualClassrooms.length) {
+        window._evalState.virtualClassrooms = JSON.parse(JSON.stringify(ext.virtualClassrooms));
+    } else if (ext.virtualClassroom && ext.virtualClassroom.isActive && ext.virtualClassroom.moduleId) {
+        window._evalState.virtualClassrooms = [JSON.parse(JSON.stringify(ext.virtualClassroom))];
     } else {
-        selectEl.value = '';
+        window._evalState.virtualClassrooms = window._evalState.virtualClassrooms || [];
     }
 
-    // Fill inputs from active config
-    // Repo base: prefer saved value, fall back to GitHub quick link
-    const _githubUrl = window._githubQuickLinkUrl || '';
-    if (vc.repoBaseUrl) {
-        repoBaseEl.value = vc.repoBaseUrl;
-        _setRepoBaseBadge(false);
-    } else if (_githubUrl) {
-        repoBaseEl.value = _githubUrl;
-        _setRepoBaseBadge(true);
-    } else {
-        repoBaseEl.value = '';
-        _setRepoBaseBadge(false);
-    }
-    // Fill briefing URL — prefer roadmap URL for the selected project (auto-fill)
-    const _activeKey = selectEl.value;
-    const _roadmapUrl = _activeKey && window._projectUrlMap ? window._projectUrlMap[_activeKey] : '';
-    if (_roadmapUrl) {
-        briefingEl.value = _roadmapUrl;
-        _setBriefingSourceBadge(true);
-    } else {
-        briefingEl.value = vc.briefingUrl || '';
-        _setBriefingSourceBadge(false);
-    }
-
-    // Fill due date
-    const dueDateEl = document.getElementById('vc-due-date');
-    if (dueDateEl) dueDateEl.value = vc.dueDate || '';
-
-    // Update status UI
-    if (vc.isActive && activeValue) {
-        statusBadge.textContent = `Proyecto activo: ${vc.projectName}`;
-        statusBadge.className = 'badge bg-success';
-        deactivateBtn.disabled = false;
-        activateBtn.textContent = 'Actualizar Aula Virtual';
-        activateBtn.innerHTML = '<i class="bi bi-arrow-repeat me-1"></i>Actualizar Aula Virtual';
-    } else {
-        statusBadge.textContent = 'Sin proyecto activo';
-        statusBadge.className = 'badge bg-secondary';
-        deactivateBtn.disabled = true;
-        activateBtn.innerHTML = '<i class="bi bi-play-circle me-1"></i>Activar Aula Virtual';
-    }
-
-    // Render competences preview for selected/active project
-    updateVirtualClassroomCompetencesPreview();
+    _renderVirtualClassroomList();
 }
 
-function updateVirtualClassroomCompetencesPreview() {
-    const selectEl = document.getElementById('vc-project-select');
-    const competencesList = document.getElementById('vc-competences-list');
-    const competencesCount = document.getElementById('vc-competences-count');
-    if (!selectEl || !competencesList || !competencesCount) return;
+function _moduleNameById(modId) {
+    const modules = window._evalState.modules || [];
+    const mod = modules.find((m, idx) => (m.id || String(idx)) === modId);
+    return mod ? (mod.name || '') : `Módulo ${modId}`;
+}
 
-    const value = selectEl.value;
-    if (!value) {
-        competencesList.innerHTML = '<span class="fst-italic">Selecciona un proyecto para ver sus competencias.</span>';
-        competencesCount.textContent = '0 competencias';
+function _renderVirtualClassroomList() {
+    const listEl = document.getElementById('vc-projects-list');
+    const statusBadge = document.getElementById('vc-status-badge');
+    if (!listEl) return;
+
+    const projectCompetences = window._evalState.projectCompetences || [];
+    const vcList = window._evalState.virtualClassrooms || [];
+    const activeCount = vcList.filter(vc => vc && vc.isActive).length;
+
+    if (statusBadge) {
+        if (activeCount > 0) {
+            statusBadge.textContent = `${activeCount} proyecto${activeCount !== 1 ? 's' : ''} activo${activeCount !== 1 ? 's' : ''}`;
+            statusBadge.className = 'badge bg-success';
+        } else {
+            statusBadge.textContent = 'Sin proyectos activos';
+            statusBadge.className = 'badge bg-secondary';
+        }
+    }
+
+    if (!projectCompetences.length) {
+        listEl.innerHTML = `<div class="alert alert-info small mb-0">
+            <i class="bi bi-info-circle me-2"></i>
+            Todavía no hay proyectos con competencias definidas. Ve a la pestaña <strong>Evaluación</strong>
+            y usa <strong>Definir competencias</strong> en cada proyecto que quieras poder activar aquí.
+        </div>`;
         return;
     }
 
-    const [moduleId, projectName] = value.split('__');
-    const pcEntry = (window._evalState.projectCompetences || []).find(
-        pc => pc.moduleId === moduleId && pc.projectName === projectName
-    );
+    const _githubUrl = window._githubQuickLinkUrl || '';
 
-    const compIds = pcEntry ? (pcEntry.competenceIds || []) : [];
+    listEl.innerHTML = projectCompetences.map((pc, i) => {
+        const modId = pc.moduleId;
+        const projectName = pc.projectName;
+        const key = `${modId}__${projectName}`;
+        const vc = vcList.find(v => v && String(v.moduleId) === String(modId) && v.projectName === projectName) || {};
+        const isActive = !!vc.isActive;
+
+        const roadmapUrl = window._projectUrlMap[key] || '';
+        const briefingUrl = vc.briefingUrl || roadmapUrl || '';
+        const briefingFromRoadmap = !vc.briefingUrl && !!roadmapUrl;
+        const repoBaseUrl = vc.repoBaseUrl || _githubUrl || '';
+        const repoFromGithub = !vc.repoBaseUrl && !!_githubUrl;
+
+        const compIds = pc.competenceIds || [];
+        const compAccordionId = `vc-comp-${i}`;
+
+        return `
+        <div class="border rounded p-3 mb-3 vc-project-card" data-mod-id="${escapeHtml(String(modId))}" data-project-name="${escapeHtml(projectName)}">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+                <div>
+                    <span class="fw-semibold">${escapeHtml(_moduleNameById(modId))} — ${escapeHtml(projectName)}</span>
+                    <span class="badge ${isActive ? 'bg-success' : 'bg-secondary'} ms-2">${isActive ? 'Activo' : 'Inactivo'}</span>
+                </div>
+            </div>
+            <div class="row g-3 align-items-end">
+                <div class="col-md-4">
+                    <label class="form-label small fw-semibold text-muted">
+                        URL base del repositorio
+                        ${repoFromGithub ? '<span class="badge bg-success text-white ms-1 small"><i class="bi bi-github me-1"></i>desde GitHub</span>' : ''}
+                    </label>
+                    <input type="text" class="form-control form-control-sm vc-repo-base-input" value="${escapeHtml(repoBaseUrl)}" placeholder="https://github.com/proyectof5/">
+                </div>
+                <div class="col-md-4">
+                    <label class="form-label small fw-semibold text-muted">
+                        Link al briefing
+                        ${briefingFromRoadmap ? '<span class="badge bg-info text-dark ms-1 small"><i class="bi bi-link-45deg me-1"></i>desde roadmap</span>' : ''}
+                    </label>
+                    <input type="text" class="form-control form-control-sm vc-briefing-input" value="${escapeHtml(briefingUrl)}" placeholder="https://...">
+                </div>
+                <div class="col-md-2">
+                    <label class="form-label small fw-semibold text-muted"><i class="bi bi-calendar-event me-1"></i>Fecha de entrega</label>
+                    <input type="date" class="form-control form-control-sm vc-due-date-input" value="${vc.dueDate || ''}">
+                </div>
+                <div class="col-md-2 d-flex gap-2 justify-content-end">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" ${!isActive ? 'disabled' : ''} onclick="window._vcToggleProject(this, false)" title="Desactivar">
+                        <i class="bi bi-x-circle"></i>
+                    </button>
+                    <button type="button" class="btn btn-sm btn-primary" onclick="window._vcToggleProject(this, true)">
+                        <i class="bi bi-${isActive ? 'arrow-repeat' : 'play-circle'} me-1"></i>${isActive ? 'Actualizar' : 'Activar'}
+                    </button>
+                </div>
+            </div>
+            <div class="mt-2">
+                <button class="btn btn-link btn-sm p-0" type="button" data-bs-toggle="collapse" data-bs-target="#${compAccordionId}">
+                    <i class="bi bi-award me-1"></i>${compIds.length} competencia${compIds.length !== 1 ? 's' : ''} — ver detalle
+                </button>
+                <div class="collapse" id="${compAccordionId}">
+                    <div class="mt-2">${compIds.length ? _buildVcCompetencesAccordionHtml(pc, i) : '<span class="fst-italic small text-muted">Este proyecto no tiene competencias definidas todavía en Evaluación.</span>'}</div>
+                </div>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+function _buildVcCompetencesAccordionHtml(pcEntry, rowIdx) {
+    const compIds = pcEntry.competenceIds || [];
     const catalog = window._evalState.catalog || window._evalState.competences || [];
+    const pcTools = pcEntry.competenceTools || {};
 
-    if (!compIds.length) {
-        competencesList.innerHTML = '<span class="fst-italic">Este proyecto no tiene competencias definidas todavía en Evaluación.</span>';
-        competencesCount.textContent = '0 competencias';
-        return;
-    }
-
-    const pcTools = (pcEntry && pcEntry.competenceTools) ? pcEntry.competenceTools : {};
-    
-    const mainAccordionId = `vc-preview-acc`;
+    const mainAccordionId = `vc-preview-acc-${rowIdx}`;
     const items = compIds.map((cid, idx) => {
         const cidStr = String(cid);
         const c = catalog.find(ec => String(ec.id) === cidStr);
@@ -11351,7 +11331,7 @@ function updateVirtualClassroomCompetencesPreview() {
         const selectedToolNames = pcTools[cidStr] || [];
         const allToolObjs = c.toolsWithIndicators || [];
         const tools = allToolObjs.filter(t => selectedToolNames.includes(t.name));
-        
+
         const LEVEL_COLORS = { 1: '#ffc107', 2: '#0d6efd', 3: '#198754' };
         const LEVEL_BG = { 1: '#fff3cd', 2: '#cfe2ff', 3: '#d1e7dd' };
         const LEVEL_NAMES = { 1: 'Básico', 2: 'Medio', 3: 'Avanzado' };
@@ -11360,8 +11340,8 @@ function updateVirtualClassroomCompetencesPreview() {
         const compLevelCols = [1, 2, 3].map(lvl => {
             const catInds = lvl === 1 ? compInds.initial : (lvl === 2 ? compInds.medio : compInds.advance);
             const levelObj = (c.levels || []).find(l => l.level === lvl);
-            const finalIndNames = (catInds && catInds.length > 0) 
-                ? catInds.map(i => i.name || i) 
+            const finalIndNames = (catInds && catInds.length > 0)
+                ? catInds.map(i => i.name || i)
                 : (levelObj && levelObj.indicators ? levelObj.indicators : []);
 
             const desc = levelDescs[lvl] || LEVEL_NAMES[lvl];
@@ -11382,7 +11362,7 @@ function updateVirtualClassroomCompetencesPreview() {
         }).join('');
 
         // Tool accordion
-        const toolAccordionId = `vc-tool-acc-${idx}`;
+        const toolAccordionId = `vc-tool-acc-${rowIdx}-${idx}`;
         const toolAccordionHtml = tools.length > 0 ? `
             <div class="accordion accordion-flush mt-3 border rounded shadow-sm" id="${toolAccordionId}">
                 <div class="bg-light px-3 py-2 border-bottom extra-small fw-bold text-uppercase text-muted" style="font-size: 0.6rem; letter-spacing: 0.05em;">
@@ -11391,7 +11371,7 @@ function updateVirtualClassroomCompetencesPreview() {
                 ${tools.map((tool, tIdx) => {
                     const toolByLevel = { 1: [], 2: [], 3: [] };
                     (tool.indicators || []).forEach(ind => { if (toolByLevel[ind.levelId]) toolByLevel[ind.levelId].push(ind); });
-                    
+
                     const toolLevelCols = [1, 2, 3].filter(l => toolByLevel[l].length > 0).map(lvl => `
                         <div class="col-md-4">
                             <div class="extra-small fw-bold mb-1 text-uppercase" style="color:${LEVEL_COLORS[lvl]}; font-size: 0.55rem;">
@@ -11406,7 +11386,7 @@ function updateVirtualClassroomCompetencesPreview() {
                     return `
                         <div class="accordion-item">
                             <h2 class="accordion-header">
-                                <button class="accordion-button collapsed py-2 px-3 small fw-bold" type="button" 
+                                <button class="accordion-button collapsed py-2 px-3 small fw-bold" type="button"
                                     data-bs-toggle="collapse" data-bs-target="#${toolAccordionId}-${tIdx}">
                                     ${escapeHtml(tool.name)}
                                 </button>
@@ -11423,11 +11403,11 @@ function updateVirtualClassroomCompetencesPreview() {
             </div>
         ` : '';
 
-        const collapseId = `vc-prev-collapse-${idx}`;
+        const collapseId = `vc-prev-collapse-${rowIdx}-${idx}`;
         return `
             <div class="accordion-item shadow-sm mb-2 border rounded overflow-hidden">
                 <h2 class="accordion-header">
-                    <button class="accordion-button ${idx === 0 ? '' : 'collapsed'} py-2 px-3" type="button" 
+                    <button class="accordion-button ${idx === 0 ? '' : 'collapsed'} py-2 px-3" type="button"
                         data-bs-toggle="collapse" data-bs-target="#${collapseId}">
                         <div class="d-flex align-items-center gap-2">
                             <span class="badge bg-primary px-2" style="font-size: 0.65rem;">${escapeHtml(c.area || 'General')}</span>
@@ -11448,66 +11428,19 @@ function updateVirtualClassroomCompetencesPreview() {
         `;
     }).join('');
 
-    competencesList.innerHTML = `<div class="accordion accordion-flush" id="${mainAccordionId}">${items}</div>`;
-    competencesCount.textContent = `${compIds.length} competencia${compIds.length !== 1 ? 's' : ''}`;
+    return `<div class="accordion accordion-flush" id="${mainAccordionId}">${items}</div>`;
 }
 
-// Called by select change in the panel
-window.onVirtualClassroomProjectChange = function () {
-    updateVirtualClassroomCompetencesPreview();
-    const selectEl = document.getElementById('vc-project-select');
-    if (selectEl) _applyBriefingUrlFromRoadmap(selectEl.value);
-};
+// Activa/actualiza o desactiva UN proyecto concreto (no afecta a los demás activos).
+window._vcToggleProject = async function (btnEl, isActive) {
+    const card = btnEl.closest('.vc-project-card');
+    if (!card) return;
+    const modId = card.dataset.modId;
+    const projectName = card.dataset.projectName;
 
-function _setBriefingSourceBadge(fromRoadmap) {
-    const badge = document.getElementById('vc-briefing-source');
-    const hint = document.getElementById('vc-briefing-hint');
-    if (badge) badge.classList.toggle('d-none', !fromRoadmap);
-    if (hint) hint.classList.toggle('d-none', !fromRoadmap);
-}
-
-function _setRepoBaseBadge(fromGithub) {
-    const badge = document.getElementById('vc-repo-base-source');
-    const hint = document.getElementById('vc-repo-base-hint');
-    if (badge) badge.classList.toggle('d-none', !fromGithub);
-    if (hint) hint.classList.toggle('d-none', !fromGithub);
-}
-
-function _applyBriefingUrlFromRoadmap(selectValue) {
-    const briefingEl = document.getElementById('vc-briefing-url');
-    if (!briefingEl) return;
-    const roadmapUrl = selectValue && window._projectUrlMap ? window._projectUrlMap[selectValue] : '';
-    if (roadmapUrl) {
-        briefingEl.value = roadmapUrl;
-        _setBriefingSourceBadge(true);
-    } else {
-        // Only clear if currently showing a roadmap URL (don't wipe manually entered values)
-        const badge = document.getElementById('vc-briefing-source');
-        if (badge && !badge.classList.contains('d-none')) {
-            briefingEl.value = '';
-        }
-        _setBriefingSourceBadge(false);
-    }
-}
-
-async function saveVirtualClassroom(isActive) {
-    const selectEl = document.getElementById('vc-project-select');
-    const repoBaseEl = document.getElementById('vc-repo-base');
-    const briefingEl = document.getElementById('vc-briefing-url');
-    const dueDateEl = document.getElementById('vc-due-date');
-    const statusBadge = document.getElementById('vc-status-badge');
-    const deactivateBtn = document.getElementById('vc-deactivate-btn');
-    const activateBtn = document.getElementById('vc-activate-btn');
-
-    if (!selectEl || !repoBaseEl || !briefingEl || !statusBadge || !deactivateBtn || !activateBtn) return;
-
-    const value = selectEl.value;
-    if (!value && isActive) {
-        showToast('Selecciona un proyecto antes de activar el Aula Virtual', 'danger');
-        return;
-    }
-
-    const [moduleId, projectName] = value ? value.split('__') : ['', ''];
+    const repoBaseUrl = card.querySelector('.vc-repo-base-input')?.value || '';
+    const briefingUrl = card.querySelector('.vc-briefing-input')?.value || '';
+    const dueDate = card.querySelector('.vc-due-date-input')?.value || null;
 
     // Derive project type from saved evaluations if exists (fallback: individual)
     const savedEvaluations = window._evalState.savedEvaluations || [];
@@ -11515,8 +11448,31 @@ async function saveVirtualClassroom(isActive) {
     const existingEval = savedEvaluations.find(e => e.projectName === projectName);
     const projectType = existingEval ? (existingEval.type || 'individual') : 'individual';
 
-    // Prepare current enriched competences from _evalState to sync with DB
-    // IMPORTANT: Only sync the actual program competences (preventing the full catalog save)
+    const entry = { isActive: !!isActive, moduleId: modId, projectName, projectType, repoBaseUrl, briefingUrl, dueDate };
+
+    if (!window._evalState.virtualClassrooms) window._evalState.virtualClassrooms = [];
+    const idx = window._evalState.virtualClassrooms.findIndex(
+        v => v && String(v.moduleId) === String(modId) && v.projectName === projectName
+    );
+    if (idx >= 0) window._evalState.virtualClassrooms[idx] = entry;
+    else window._evalState.virtualClassrooms.push(entry);
+
+    card.querySelectorAll('button').forEach(b => { b.disabled = true; });
+
+    const ok = await _persistVirtualClassrooms();
+
+    if (ok) {
+        showToast(isActive ? 'Aula Virtual activada/actualizada correctamente' : 'Aula Virtual desactivada para este proyecto', 'success');
+    } else {
+        showToast('Error al guardar la configuración del Aula Virtual', 'danger');
+    }
+    _renderVirtualClassroomList();
+};
+
+async function _persistVirtualClassrooms() {
+    // Prepare current enriched competences from _evalState to sync with DB alongside the change —
+    // el endpoint público de Aula Virtual resuelve competencias/herramientas contra ext.competences,
+    // así que se mantiene fresco en cada guardado (igual que hacía el flujo anterior de un solo proyecto).
     const syncComps = (window._evalState.programCompetences || []).map(c => ({
         id: c.id, name: c.name, area: c.area, description: c.description || '',
         levels: c.levels || [], allTools: c.allTools || [],
@@ -11525,78 +11481,30 @@ async function saveVirtualClassroom(isActive) {
         competenceIndicators: c.competenceIndicators || { initial: [], medio: [], advance: [] }
     }));
 
-    const body = {
-        competences: syncComps,
-        virtualClassroom: {
-            isActive: !!isActive,
-            moduleId,
-            projectName,
-            projectType,
-            repoBaseUrl: repoBaseEl.value || '',
-            briefingUrl: briefingEl.value || '',
-            dueDate: (dueDateEl && dueDateEl.value) ? dueDateEl.value : null
-        }
-    };
-
     const token = localStorage.getItem('token');
-    activateBtn.disabled = true;
-    deactivateBtn.disabled = true;
-
     try {
         const res = await fetch(`${API_URL}/api/promotions/${promotionId}/extended-info`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify(body)
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ competences: syncComps, virtualClassrooms: window._evalState.virtualClassrooms })
         });
-
         if (!res.ok) {
             const err = await res.json().catch(() => ({}));
-            console.error('Error saving virtual classroom:', err);
-            showToast('Error al guardar la configuración del Aula Virtual', 'danger');
-            return;
+            console.error('[_persistVirtualClassrooms] Error:', err);
+            return false;
         }
-
         const updated = await res.json();
-        window._evalState.virtualClassroom = updated.virtualClassroom || body.virtualClassroom;
-        
-        // Sync with global extendedInfoData to prevent stale overwrites on next "Guardar Todos los Cambios"
+        window._evalState.virtualClassrooms = updated.virtualClassrooms || window._evalState.virtualClassrooms;
         if (typeof extendedInfoData !== 'undefined') {
-            extendedInfoData.virtualClassroom = window._evalState.virtualClassroom;
-            if (updated.competences) {
-                extendedInfoData.competences = updated.competences;
-            }
+            extendedInfoData.virtualClassrooms = window._evalState.virtualClassrooms;
+            if (updated.competences) extendedInfoData.competences = updated.competences;
         }
-
-        if (body.virtualClassroom.isActive && moduleId && projectName) {
-            statusBadge.textContent = `Proyecto activo: ${projectName}`;
-            statusBadge.className = 'badge bg-success';
-            deactivateBtn.disabled = false;
-            activateBtn.innerHTML = '<i class="bi bi-arrow-repeat me-1"></i>Actualizar Aula Virtual';
-            showToast('Aula Virtual activada/actualizada correctamente', 'success');
-        } else {
-            statusBadge.textContent = 'Sin proyecto activo';
-            statusBadge.className = 'badge bg-secondary';
-            deactivateBtn.disabled = true;
-            activateBtn.innerHTML = '<i class="bi bi-play-circle me-1"></i>Activar Aula Virtual';
-            showToast('Aula Virtual desactivada', 'success');
-        }
+        return true;
     } catch (err) {
-        console.error('Error saving virtual classroom:', err);
-        showToast('Error de conexión al guardar Aula Virtual', 'danger');
-    } finally {
-        activateBtn.disabled = false;
-        if (window._evalState.virtualClassroom && window._evalState.virtualClassroom.isActive) {
-            deactivateBtn.disabled = false;
-        }
+        console.error('[_persistVirtualClassrooms] Exception:', err);
+        return false;
     }
 }
-
-window.deactivateVirtualClassroom = function () {
-    saveVirtualClassroom(false);
-};
 
 function renderEvaluationTab() {
     const container = document.getElementById('evaluation-content');

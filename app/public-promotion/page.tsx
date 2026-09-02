@@ -46,7 +46,8 @@ import type {
   PPSection,
   PPPromoResource,
   PPExtendedInfo,
-  PPVirtualClassroom,
+  PPVCProject,
+  PPVirtualClassroomResponse,
 } from './_components/types';
 
 import './public-promotion.css';
@@ -87,7 +88,7 @@ export default function PublicPromotionPage() {
   const [sections, setSections] = useState<PPSection[]>([]);
   const [promoResources, setPromoResources] = useState<PPPromoResource[]>([]);
   const [extended, setExtended] = useState<PPExtendedInfo | null>(null);
-  const [vc, setVc] = useState<PPVirtualClassroom | null>(null);
+  const [vcProjects, setVcProjects] = useState<PPVCProject[]>([]);
   const [aulaOpen, setAulaOpen] = useState(false);
 
   const [activeTab, setActiveTab] = useState<'progreso' | 'info'>('progreso');
@@ -114,8 +115,8 @@ export default function PublicPromotionPage() {
       get<PPPromoResource[]>('/promotion-resources', []),
       get<PPExtendedInfo | null>(`/extended-info?t=${Date.now()}`, null),
     ]);
-    const vcData = await get<PPVirtualClassroom | null>('/virtual-classroom', null);
-    setVc(vcData && vcData.active ? vcData : null);
+    const vcData = await get<PPVirtualClassroomResponse>('/virtual-classroom', { active: false, projects: [] });
+    setVcProjects(vcData && vcData.active ? (vcData.projects || []) : []);
     if (promo) {
       setPromotion(promo);
       document.title = `${promo.name} - Bootcamp`;
@@ -294,14 +295,16 @@ export default function PublicPromotionPage() {
     return <div className="alert alert-danger m-5">Promotion not found</div>;
   }
 
-  // Aula Virtual ocupa toda la vista (como "página") cuando se abre
-  if (aulaOpen && vc && promotionId) {
+  // Aula Virtual ocupa toda la vista (como "página") cuando se abre. AulaVirtual recibe TODOS los
+  // proyectos activos (puede haber varios — uno por especialización) y muestra un selector si hay
+  // más de uno antes de dejar entregar.
+  if (aulaOpen && vcProjects.length > 0 && promotionId) {
     return (
       <div style={{ flex: '1 1 100%', width: '100%', minHeight: '100vh' }}>
         <div className="container">
           <div className="row">
             <main className="col-12 py-4">
-              <AulaVirtual vc={vc} students={students} promotionId={promotionId} onClose={() => setAulaOpen(false)} />
+              <AulaVirtual projects={vcProjects} students={students} promotionId={promotionId} onClose={() => setAulaOpen(false)} />
             </main>
           </div>
         </div>
@@ -429,10 +432,11 @@ export default function PublicPromotionPage() {
             )}
 
             {/* ── CTA Aula Virtual ── */}
-            {vc && (
+            {vcProjects.length > 0 && (
               <div className="mb-4">
                 <button type="button" className="pp-cta-btn inline-flex items-center gap-2" onClick={() => setAulaOpen(true)}>
                   <Laptop className="h-4 w-4" />Ir al Aula Virtual
+                  {vcProjects.length > 1 && <span className="badge bg-light text-dark border ms-1">{vcProjects.length} proyectos</span>}
                 </button>
               </div>
             )}
