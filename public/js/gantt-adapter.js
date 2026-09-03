@@ -176,14 +176,28 @@ function buildGanttDataset(promotion) {
     // docente). Su gestión (modal "Sesiones Empleabilidad") sigue intacta,
     // solo se dejó de alimentar el dataset de DHTMLX Gantt con sus tareas.
 
+    // Filas de nivel superior (módulos y bloques de "Tiempo flexible"), cada una
+    // con las filas que arrastra consigo (un módulo trae sus cursos/proyectos/
+    // lecciones). Se acumulan aquí en vez de en `data` directamente porque el
+    // ORDEN VISUAL final no es el de inserción, sino por fecha de inicio — ver
+    // el sort más abajo (antes los bloques de tiempo flexible se pegaban
+    // siempre al final de `data`, después de TODOS los módulos, sin importar
+    // su fecha; visualmente caían siempre en la última fila del Gantt y no
+    // había forma de "moverlos" entre módulos con drag de fila — reportado
+    // como bug: 'si arrastro el bloque hacia arriba, al recargar vuelve a
+    // dejarlo abajo del todo', porque nunca se leía/escribía ningún orden: la
+    // posición en pantalla se recalculaba siempre igual, al final).
+    const topLevelGroups = [];
+
     // ── Módulos y sus cursos/proyectos/lecciones ────────────────────────────────
     modules.forEach((module, moduleIndex) => {
         const moduleId = `module-${moduleIndex}`;
         const moduleStartWeeks = getModuleStartWeeks(modules, moduleIndex);
         const moduleStartDate = addDays(baseDate, moduleStartWeeks * 7);
         const moduleDurationWeeks = Number(module.duration) || 1;
+        const moduleRows = [];
 
-        data.push({
+        moduleRows.push({
             id: moduleId,
             text: `M${moduleIndex + 1}: ${module.name || 'Sin nombre'}`,
             type: 'project',
@@ -222,7 +236,7 @@ function buildGanttDataset(promotion) {
 
             const idSuffix = item.plannerItemId || `legacy-${itemType}-${legacyIndex}`;
 
-            data.push({
+            moduleRows.push({
                 id: `item-${moduleIndex}-${idSuffix}`,
                 text: item.name,
                 parent: moduleId,
@@ -254,7 +268,7 @@ function buildGanttDataset(promotion) {
             const groupDurationWeeks = Math.max(1, groupEndWeeks - groupStartWeeks);
             const groupStartDate = addDays(baseDate, groupStartWeeks * 7);
 
-            data.push({
+            moduleRows.push({
                 id: lessonsGroupId,
                 text: 'Lecciones',
                 parent: moduleId,
@@ -272,7 +286,7 @@ function buildGanttDataset(promotion) {
                 const startDate = addDays(baseDate, getItemStartWeeks(item, moduleStartWeeks) * 7);
                 const firstLink = Array.isArray(item.links) && item.links.length > 0 ? item.links[0] : null;
 
-                data.push({
+                moduleRows.push({
                     id: `item-${moduleIndex}-${item.plannerItemId}`,
                     text: item.name,
                     parent: lessonsGroupId,
@@ -288,27 +302,41 @@ function buildGanttDataset(promotion) {
                 });
             });
         }
+
+        topLevelGroups.push({ startWeeks: moduleStartWeeks, order: topLevelGroups.length, rows: moduleRows });
     });
 
     // ── Bloques de "Tiempo flexible" (vacaciones/festivos) ──────────────────────
     // Nivel superior, sin `parent` (mismo nivel que un módulo). Posición y
     // duración son siempre absolutas (`startOffset`/`duration` en semanas desde
-    // `promotion.startDate`) y no dependen de módulos vecinos.
+    // `promotion.startDate`) y no dependen de módulos vecinos. Su FILA se
+    // intercala entre las de los módulos según esa misma fecha (ver sort más
+    // abajo) — no se guarda un "orden" aparte: la posición temporal ES el orden.
     (promotion.flexibleBlocks || []).forEach((block) => {
         const blockStartOffset = Number(block.startOffset) || 0;
         const blockDurationWeeks = Number(block.duration) || 1;
         const blockStartDate = addDays(baseDate, blockStartOffset * 7);
 
-        data.push({
-            id: `flexible-${block.id}`,
-            text: block.name || 'Tiempo flexible',
-            start_date: formatGanttDate(blockStartDate),
-            duration: blockDurationWeeks * 7,
-            progress: 0,
-            itemType: 'flexible',
-            flexibleBlockId: block.id,
+        topLevelGroups.push({
+            startWeeks: blockStartOffset,
+            order: topLevelGroups.length,
+            rows: [{
+                id: `flexible-${block.id}`,
+                text: block.name || 'Tiempo flexible',
+                start_date: formatGanttDate(blockStartDate),
+                duration: blockDurationWeeks * 7,
+                progress: 0,
+                itemType: 'flexible',
+                flexibleBlockId: block.id,
+            }],
         });
     });
+
+    // Orden visual: por fecha de inicio ascendente. `order` (posición original,
+    // módulos antes que flexibles) desempata cuando dos filas empiezan la misma
+    // semana, para que el resultado sea determinista.
+    topLevelGroups.sort((a, b) => (a.startWeeks - b.startWeeks) || (a.order - b.order));
+    topLevelGroups.forEach((group) => { group.rows.forEach((row) => data.push(row)); });
 
     return { data, links };
 }
