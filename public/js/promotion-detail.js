@@ -3866,13 +3866,15 @@ function bindGanttEditingEvents() {
     // Doble click: abre un modal enfocado según el tipo de tarea (Fase 7).
     // Módulo → nombre/duración (editModule, ya simplificado en TASK-30).
     // Curso/Proyecto/Lección → itemEditModal (TASK-31/32). Tiempo flexible →
-    // prompt de renombrado (sin cambios, Fase 4). El grupo "Lecciones" (nodo
-    // puramente visual, Fase 5) cae a editModule igual que un módulo — no
-    // representa un item real.
+    // flexibleBlockEditModal (nombre/duración + botón "Eliminar" — antes un
+    // window.prompt() de solo renombrado, sin forma de eliminar salvo acertar
+    // el clic derecho justo sobre la barra; reportado como problema de UX).
+    // El grupo "Lecciones" (nodo puramente visual, Fase 5) cae a editModule
+    // igual que un módulo — no representa un item real.
     gantt.attachEvent('onTaskDblClick', function (id) {
         const task = gantt.getTask(id);
         if (task.itemType === 'flexible') {
-            renameFlexibleBlock(task);
+            openFlexibleBlockEditModal(task);
         } else if (task.itemType === 'course' || task.itemType === 'project' || task.itemType === 'leccion') {
             openItemEditModal(task);
         } else if (task.moduleId) {
@@ -4243,56 +4245,33 @@ async function createFlexibleBlockAt(clickDate, overrides = {}) {
     }
 }
 
+// Tarea de Gantt (itemType 'flexible') que está editando flexibleBlockEditModal
+// — igual que currentEditingItemTask para itemEditModal, más abajo.
+let currentEditingFlexibleTask = null;
+
 /**
- * Pide un nuevo nombre para un bloque de "Tiempo flexible" (prompt simple,
- * sin modal nuevo — decisión pragmática para no sobre-construir un
- * componente para un caso de uso secundario) y lo persiste.
+ * Abre flexibleBlockEditModal (nombre + duración + botón Eliminar) para un
+ * bloque de "Tiempo flexible" existente (doble-click en su barra del Gantt).
+ * Sustituye al antiguo window.prompt() de solo-renombrado: no ofrecía forma
+ * de eliminar el bloque salvo acertar el clic derecho justo sobre su barra
+ * (a menudo muy estrecha) — reportado como problema de UX.
  * @param {Object} task - Tarea de DHTMLX Gantt (itemType: 'flexible')
  */
-async function renameFlexibleBlock(task) {
-    const newName = window.prompt('Nuevo nombre del bloque:', task.text);
-    if (newName === null) return; // cancelado
-    const trimmedName = newName.trim();
-    if (!trimmedName || trimmedName === task.text) return;
+function openFlexibleBlockEditModal(task) {
+    currentEditingFlexibleTask = task;
+    window._openShadcnModal?.('flexibleBlockEditModal');
+    _whenMounted('flexible-edit-name', () => {
+        document.getElementById('flexible-edit-name').value = task.text || '';
+        document.getElementById('flexible-edit-duration').value = Math.max(1, Math.round((Number(task.duration) || 7) / 7));
 
-    const token = localStorage.getItem('token');
-    try {
-        const response = await fetch(`${API_URL}/api/promotions/${promotionId}`, {
-            headers: { 'Authorization': `Bearer ${token}` }
-        });
-
-        if (!response.ok) {
-            window.showApiToast('Error loading promotion', 'danger');
-            return;
+        const deleteBtn = document.getElementById('flexible-edit-delete-btn');
+        if (deleteBtn) {
+            deleteBtn.onclick = () => {
+                window._closeShadcnModal?.('flexibleBlockEditModal');
+                confirmDeleteGanttTask(task);
+            };
         }
-
-        const promotion = await response.json();
-        const block = (promotion.flexibleBlocks || []).find(b => b.id === task.flexibleBlockId);
-        if (!block) {
-            window.showApiToast('Bloque de tiempo flexible no encontrado', 'warning');
-            return;
-        }
-        block.name = trimmedName;
-
-        const updateResponse = await fetch(`${API_URL}/api/promotions/${promotionId}`, {
-            method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify(promotion)
-        });
-
-        if (updateResponse.ok) {
-            window.showApiToast('Bloque renombrado', 'success');
-            loadModules();
-        } else {
-            window.showApiToast('Error al renombrar el bloque', 'danger');
-        }
-    } catch (error) {
-        console.error('Error renaming flexible block:', error);
-        window.showApiToast('Error al renombrar el bloque', 'danger');
-    }
+    });
 }
 
 /**
@@ -7313,6 +7292,63 @@ function setupForms() {
         } catch (error) {
             console.error('Error saving item:', error);
             window.showApiToast('Error al guardar el elemento', 'danger');
+        }
+    });
+
+    // flexibleBlockEditModal: guarda nombre/duración de un bloque de "Tiempo
+    // flexible" existente. El botón "Eliminar" del propio modal (wireado en
+    // openFlexibleBlockEditModal) no pasa por aquí — cierra el modal y reusa
+    // confirmDeleteGanttTask/deleteFlexibleBlock directamente.
+    document.addEventListener('submit', async (e) => {
+        if (e.target.id !== 'flexible-edit-form') return;
+        e.preventDefault();
+
+        const task = currentEditingFlexibleTask;
+        if (!task) return;
+
+        const name = document.getElementById('flexible-edit-name').value.trim();
+        const duration = Math.max(1, parseInt(document.getElementById('flexible-edit-duration').value) || 1);
+
+        const token = localStorage.getItem('token');
+        try {
+            const response = await fetch(`${API_URL}/api/promotions/${promotionId}`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (!response.ok) {
+                window.showApiToast('Error loading promotion', 'danger');
+                return;
+            }
+
+            const promotion = await response.json();
+            const block = (promotion.flexibleBlocks || []).find(b => b.id === task.flexibleBlockId);
+            if (!block) {
+                window.showApiToast('Bloque de tiempo flexible no encontrado', 'warning');
+                return;
+            }
+            block.name = name || 'Tiempo flexible';
+            block.duration = duration;
+
+            const updateResponse = await fetch(`${API_URL}/api/promotions/${promotionId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify(promotion)
+            });
+
+            if (updateResponse.ok) {
+                window._closeShadcnModal?.('flexibleBlockEditModal');
+                document.getElementById('flexible-edit-form').reset();
+                currentEditingFlexibleTask = null;
+                loadModules();
+                window.showApiToast('Bloque actualizado', 'success');
+            } else {
+                window.showApiToast('Error al guardar el bloque', 'danger');
+            }
+        } catch (error) {
+            console.error('Error saving flexible block:', error);
+            window.showApiToast('Error al guardar el bloque', 'danger');
         }
     });
 
