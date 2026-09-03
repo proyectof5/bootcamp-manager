@@ -61,11 +61,21 @@ export function RoadmapPanelHost() {
 // data-bs-toggle="dropdown": esta página no carga el JS de Bootstrap (solo su CSS), así que
 // data-bs-toggle no hace nada por sí solo — se comprobó en vivo (window.bootstrap === undefined).
 //
-// Evita deliberadamente la palabra "Descargar"/"Download" y el icono de flecha-hacia-abajo: los
-// bloqueadores de anuncios (Brave Shields, uBlock, AdBlock...) traen filtros cosméticos genéricos
-// que ocultan botones así por parecerse al patrón de "botón de descarga falso" tan común en
-// publicidad maliciosa — un usuario reportó que en Brave el menú ni siquiera se abría, y la lógica
-// de exportación en sí ya estaba verificada como correcta (sin errores llamándola directamente).
+// Causa raíz real de "el menú no se abre" (reproducida en dev Y en el export estático de
+// producción, en cualquier navegador — no es cosa de bloqueadores de anuncios): shared.js trae un
+// shim de Bootstrap (_bootstrapJsShim) que, en CADA clic de la página, cierra todo
+// `.dropdown-menu.show` cuyo disparador no tenga `data-bs-toggle="dropdown"` — mi botón React no
+// lo tiene, así que el propio clic que abre el menú (vía setOpen(true) más arriba en la cadena)
+// burbujea hasta `document` y el shim le quita `show` a la clase en el mismo evento, dejando
+// aria-expanded="true" (lo último que tocó React) pero la clase sin "show" (lo último que tocó el
+// shim). e.stopPropagation() en el botón evita que ESE clic llegue al listener del shim; los clics
+// fuera del menú (que sí deben cerrarlo) no lo llevan y siguen funcionando via el propio listener
+// de abajo (mousedown) y, redundantemente, via el shim.
+//
+// Se evita además la palabra "Descargar"/"Download" y el icono de flecha-hacia-abajo por si acaso:
+// los bloqueadores de anuncios (Brave Shields, uBlock...) traen filtros cosméticos genéricos que
+// ocultan botones así por parecerse al patrón de "botón de descarga falso" tan común en publicidad
+// maliciosa — no era la causa real de este bug, pero es una defensa razonable de todos modos.
 function ExportDropdown() {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -84,20 +94,26 @@ function ExportDropdown() {
     };
   }, [open]);
 
-  const pick = (format: 'png' | 'pdf' | 'xlsx') => {
+  const pick = (e: React.MouseEvent, format: 'png' | 'pdf' | 'xlsx') => {
+    e.stopPropagation(); // ver comentario arriba: evita que shared.js cierre/reabra por su cuenta
     setOpen(false);
     w().exportRoadmap?.(format);
   };
 
   return (
     <div className="roadmap-export-menu" ref={ref} style={{ position: 'relative' }}>
-      <button type="button" className="btn btn-outline-primary btn-sm" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+      <button
+        type="button"
+        className="btn btn-outline-primary btn-sm"
+        aria-expanded={open}
+        onClick={(e) => { e.stopPropagation(); setOpen((o) => !o); }}
+      >
         <i className="bi bi-box-arrow-up-right me-1" />Exportar roadmap
       </button>
       <ul className={`dropdown-menu dropdown-menu-end${open ? ' show' : ''}`} style={{ position: 'absolute', right: 0 }}>
-        <li><button type="button" className="dropdown-item" onClick={() => pick('png')}><i className="bi bi-file-earmark-image me-2" />Imagen (PNG)</button></li>
-        <li><button type="button" className="dropdown-item" onClick={() => pick('pdf')}><i className="bi bi-file-earmark-pdf me-2" />PDF</button></li>
-        <li><button type="button" className="dropdown-item" onClick={() => pick('xlsx')}><i className="bi bi-file-earmark-excel me-2" />Excel (XLSX)</button></li>
+        <li><button type="button" className="dropdown-item" onClick={(e) => pick(e, 'png')}><i className="bi bi-file-earmark-image me-2" />Imagen (PNG)</button></li>
+        <li><button type="button" className="dropdown-item" onClick={(e) => pick(e, 'pdf')}><i className="bi bi-file-earmark-pdf me-2" />PDF</button></li>
+        <li><button type="button" className="dropdown-item" onClick={(e) => pick(e, 'xlsx')}><i className="bi bi-file-earmark-excel me-2" />Excel (XLSX)</button></li>
       </ul>
     </div>
   );
