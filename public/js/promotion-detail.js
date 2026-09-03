@@ -3708,18 +3708,7 @@ async function _exportRoadmapImage(promotion, format) {
             link.href = canvas.toDataURL('image/png');
             link.click();
         } else {
-            const { jsPDF } = window.jspdf;
-            const imgData = canvas.toDataURL('image/png');
-            const pxToMm = 25.4 / 96; // 96dpi; canvas viene a scale:2, se compensa /2 abajo
-            const pdfWidth = (canvas.width / 2) * pxToMm;
-            const pdfHeight = (canvas.height / 2) * pxToMm;
-            const pdf = new jsPDF({
-                orientation: pdfWidth > pdfHeight ? 'landscape' : 'portrait',
-                unit: 'mm',
-                format: [pdfWidth, pdfHeight]
-            });
-            pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
-            pdf.save(`roadmap-${safeName}.pdf`);
+            _pdfFromCanvas(canvas, safeName);
         }
 
         showToast('Roadmap exportado ✓', 'success');
@@ -3738,6 +3727,84 @@ async function _exportRoadmapImage(promotion, format) {
 
 function _exportSafeFileName(name) {
     return (name || 'roadmap').trim().replace(/[^\w-]+/g, '_').replace(/^_+|_+$/g, '') || 'roadmap';
+}
+
+/**
+ * Convierte el canvas capturado del Gantt en un PDF. Si cabe entero en una página A4
+ * apaisada, se genera una sola página ajustada al contenido (como antes) — el caso
+ * normal en zoom Semana/Mes. Si no cabe (típicamente zoom Día en promociones largas:
+ * cientos de columnas de un día), se reparte en tantas páginas A4 como hagan falta,
+ * en una rejilla fila×columna — como un plano grande impreso en varias hojas — para
+ * que cada página quede legible en vez de un único PDF de metros de ancho ilegible al
+ * verlo o imprimirlo (el bug original: un roadmap de zoom Día generaba una página de
+ * ~2 metros de ancho, con las ~230 columnas de día comprimidas hasta ser ilegibles).
+ * @param {HTMLCanvasElement} canvas - captura completa del Gantt (a scale:2)
+ * @param {string} safeName - nombre de archivo ya saneado (sin extensión)
+ */
+function _pdfFromCanvas(canvas, safeName) {
+    const { jsPDF } = window.jspdf;
+    const CSS_SCALE = 2; // el canvas se capturó con html2canvas({scale: 2})
+    const pxToMm = 25.4 / 96; // 96dpi de referencia, compensando el scale:2 de arriba
+    const totalWmm = (canvas.width / CSS_SCALE) * pxToMm;
+    const totalHmm = (canvas.height / CSS_SCALE) * pxToMm;
+
+    const PAGE_W = 297, PAGE_H = 210, MARGIN = 8; // A4 apaisado, en mm
+    const CONTENT_W = PAGE_W - MARGIN * 2;
+    const CONTENT_H = PAGE_H - MARGIN * 2;
+
+    // Cabe en una sola página: página a medida (sin desperdiciar papel), igual que antes.
+    if (totalWmm <= CONTENT_W && totalHmm <= CONTENT_H) {
+        const pdf = new jsPDF({
+            orientation: totalWmm > totalHmm ? 'landscape' : 'portrait',
+            unit: 'mm',
+            format: [totalWmm + MARGIN * 2, totalHmm + MARGIN * 2]
+        });
+        pdf.addImage(canvas.toDataURL('image/png'), 'PNG', MARGIN, MARGIN, totalWmm, totalHmm);
+        pdf.save(`roadmap-${safeName}.pdf`);
+        return;
+    }
+
+    // No cabe: se reparte en una rejilla de páginas A4. Cada "rebanada" del canvas
+    // original se recorta a un canvas aparte (drawImage con recorte de origen) y se
+    // añade como su propia página — jsPDF no soporta recortar directamente desde una
+    // dataURL, así que el recorte se hace a mano con canvas 2D.
+    const pxPerMmX = canvas.width / totalWmm;
+    const pxPerMmY = canvas.height / totalHmm;
+    const sliceWpx = Math.floor(CONTENT_W * pxPerMmX);
+    const sliceHpx = Math.floor(CONTENT_H * pxPerMmY);
+    const numCols = Math.ceil(canvas.width / sliceWpx);
+    const numRows = Math.ceil(canvas.height / sliceHpx);
+    const totalPages = numCols * numRows;
+
+    const pdf = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+    const pageCanvas = document.createElement('canvas');
+    const pageCtx = pageCanvas.getContext('2d');
+    let pageNum = 0;
+
+    for (let row = 0; row < numRows; row++) {
+        for (let col = 0; col < numCols; col++) {
+            const sx = col * sliceWpx;
+            const sy = row * sliceHpx;
+            const sw = Math.min(sliceWpx, canvas.width - sx);
+            const sh = Math.min(sliceHpx, canvas.height - sy);
+
+            pageCanvas.width = sw;
+            pageCanvas.height = sh;
+            pageCtx.fillStyle = '#ffffff';
+            pageCtx.fillRect(0, 0, sw, sh);
+            pageCtx.drawImage(canvas, sx, sy, sw, sh, 0, 0, sw, sh);
+
+            if (pageNum > 0) pdf.addPage('a4', 'landscape');
+            pdf.addImage(pageCanvas.toDataURL('image/png'), 'PNG', MARGIN, MARGIN, sw / pxPerMmX, sh / pxPerMmY);
+
+            pageNum++;
+            pdf.setFontSize(7);
+            pdf.setTextColor(150);
+            pdf.text(`Fila ${row + 1}/${numRows} · Columna ${col + 1}/${numCols} · Página ${pageNum}/${totalPages}`, MARGIN, PAGE_H - 3);
+        }
+    }
+
+    pdf.save(`roadmap-${safeName}.pdf`);
 }
 
 /**
