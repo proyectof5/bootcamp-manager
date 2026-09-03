@@ -3678,17 +3678,45 @@ async function _exportRoadmapImage(promotion, format) {
 
         const dataArea = gantt.$task_data || container.querySelector('.gantt_data_area');
         const gridArea = container.querySelector('.gantt_grid');
-        const fullWidth = Math.max(
+        let fullWidth = Math.max(
             container.scrollWidth,
             (gridArea ? gridArea.offsetWidth : 0) + (dataArea ? dataArea.scrollWidth : 0)
         );
-        const fullHeight = Math.max(container.scrollHeight, dataArea ? dataArea.scrollHeight : 0, 200);
+        let fullHeight = Math.max(container.scrollHeight, dataArea ? dataArea.scrollHeight : 0, 200);
 
         container.style.width = `${fullWidth}px`;
         container.style.height = `${fullHeight}px`;
         container.style.overflow = 'visible';
         gantt.setSizes();
         await new Promise(r => setTimeout(r, 30));
+
+        // scrollWidth/scrollHeight (arriba) quedan desactualizados justo tras el resize —
+        // se midió en vivo que la última fila puede acabar renderizada varias decenas de
+        // píxeles por debajo de lo que dataArea.scrollHeight reportaba en ese momento
+        // (recorte real de la última fila/módulo en la imagen exportada, no solo un
+        // problema de legibilidad). Se corrige remidiendo la posición REAL del borde
+        // inferior de la última fila y de la celda de cabecera más a la derecha, y si
+        // hace falta más espacio del que ya se reservó, se vuelve a redimensionar antes
+        // de capturar.
+        const containerRect = container.getBoundingClientRect();
+        let maxBottom = 0, maxRight = 0;
+        container.querySelectorAll('.gantt_row, .gantt_task_row').forEach((el) => {
+            maxBottom = Math.max(maxBottom, el.getBoundingClientRect().bottom - containerRect.top);
+        });
+        container.querySelectorAll('.gantt_scale_cell, .gantt_grid_head_cell').forEach((el) => {
+            maxRight = Math.max(maxRight, el.getBoundingClientRect().right - containerRect.left);
+        });
+        const correctedWidth = Math.ceil(Math.max(fullWidth, maxRight)) + 4;
+        const correctedHeight = Math.ceil(Math.max(fullHeight, maxBottom)) + 8;
+
+        if (correctedWidth > fullWidth || correctedHeight > fullHeight) {
+            fullWidth = correctedWidth;
+            fullHeight = correctedHeight;
+            container.style.width = `${fullWidth}px`;
+            container.style.height = `${fullHeight}px`;
+            gantt.setSizes();
+            await new Promise(r => setTimeout(r, 30));
+        }
 
         const canvas = await html2canvas(container, {
             width: fullWidth,
