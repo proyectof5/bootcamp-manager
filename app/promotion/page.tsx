@@ -915,6 +915,47 @@ export default function PromotionPage() {
         </DialogContent>
       </Dialog>
 
+      {/* ── flexibleBlockEditModal ── doble-click en un bloque de "Tiempo flexible"
+          del Gantt (antes solo un window.prompt() de renombrado sin forma de
+          eliminar el bloque salvo acertar el clic derecho justo sobre la barra —
+          reportado como problema de UX). Nombre + duración editables, y un botón
+          "Eliminar" explícito que reutiliza el mismo flujo de confirmación que el
+          menú contextual (confirmDeleteGanttTask). */}
+      <Dialog
+        open={isModalOpen('flexibleBlockEditModal')}
+        onOpenChange={(o) => setModalOpen('flexibleBlockEditModal', o)}
+      >
+        <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Editar tiempo flexible</DialogTitle>
+          </DialogHeader>
+          <form id="flexible-edit-form" className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="flexible-edit-name">Nombre</Label>
+              <Input id="flexible-edit-name" />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="flexible-edit-duration">Duración (semanas)</Label>
+              <Input id="flexible-edit-duration" type="number" min={1} required />
+            </div>
+
+            <DialogFooter className="pt-2 sm:justify-between">
+              <Button type="button" variant="destructive" id="flexible-edit-delete-btn">
+                <Trash2 className="inline-block mr-2 h-4 w-4" />Eliminar
+              </Button>
+              <div className="flex gap-2">
+                <DialogClose asChild>
+                  <Button type="button" variant="outline">Cancelar</Button>
+                </DialogClose>
+                <Button type="submit" className="bg-crok hover:bg-crok-hover text-crok-on">
+                  Guardar
+                </Button>
+              </div>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
       {/* ── createItemModal ── Fase 7 (TASK-33): selector de tipo al hacer clic
           en un hueco vacío del Gantt (módulo/curso/proyecto/lección/tiempo
           flexible). El contenido condicional lo puebla promotion-detail.js
