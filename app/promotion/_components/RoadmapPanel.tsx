@@ -57,9 +57,15 @@ export function RoadmapPanelHost() {
   return createPortal(<RoadmapPanel />, host);
 }
 
-// Dropdown "Descargar" con estado propio (useState + click-fuera para cerrar) en vez de
+// Dropdown de exportación con estado propio (useState + click-fuera para cerrar) en vez de
 // data-bs-toggle="dropdown": esta página no carga el JS de Bootstrap (solo su CSS), así que
 // data-bs-toggle no hace nada por sí solo — se comprobó en vivo (window.bootstrap === undefined).
+//
+// Evita deliberadamente la palabra "Descargar"/"Download" y el icono de flecha-hacia-abajo: los
+// bloqueadores de anuncios (Brave Shields, uBlock, AdBlock...) traen filtros cosméticos genéricos
+// que ocultan botones así por parecerse al patrón de "botón de descarga falso" tan común en
+// publicidad maliciosa — un usuario reportó que en Brave el menú ni siquiera se abría, y la lógica
+// de exportación en sí ya estaba verificada como correcta (sin errores llamándola directamente).
 function ExportDropdown() {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
@@ -84,9 +90,9 @@ function ExportDropdown() {
   };
 
   return (
-    <div className="dropdown" ref={ref} style={{ position: 'relative' }}>
-      <button type="button" className="btn btn-outline-primary btn-sm dropdown-toggle" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
-        <i className="bi bi-download me-1" />Descargar
+    <div className="roadmap-export-menu" ref={ref} style={{ position: 'relative' }}>
+      <button type="button" className="btn btn-outline-primary btn-sm" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+        <i className="bi bi-box-arrow-up-right me-1" />Exportar roadmap
       </button>
       <ul className={`dropdown-menu dropdown-menu-end${open ? ' show' : ''}`} style={{ position: 'absolute', right: 0 }}>
         <li><button type="button" className="dropdown-item" onClick={() => pick('png')}><i className="bi bi-file-earmark-image me-2" />Imagen (PNG)</button></li>
