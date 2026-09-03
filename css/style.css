@@ -227,7 +227,15 @@ body {
     background-color: var(--complementario-2);
 }
 
-.hidden {
+/* Renombrado de .hidden → .legacy-hidden (spec: colisión con Tailwind): Tailwind también genera
+   una utilidad .hidden (sin !important) para patrones responsive como "hidden md:block". Como
+   este .hidden legacy lleva !important, siempre ganaba pase lo que pase — cualquier elemento React
+   con "hidden md:block" (sidebar del panel de admin, etc.) se quedaba oculto para siempre, incluso
+   por encima del breakpoint md. El legacy solo necesita ocultar sus propios elementos (siempre
+   quiere display:none cuando se aplica), así que se renombra para dejar de invadir el namespace
+   de utilidades de Tailwind. Ver también css/promotion-detail.css y public/js/promotion-detail.js
+   (todas las llamadas classList.add/remove/contains('hidden') se actualizaron a 'legacy-hidden'). */
+.legacy-hidden {
     display: none !important;
 }
 
