@@ -142,8 +142,18 @@ export default function DashboardPage() {
   const loadTemplates = useCallback(async () => {
     try {
       const res = await apiFetch('/api/bootcamp-templates');
-      if (res.ok) setTemplates(await res.json());
-    } catch { /* non-critical */ }
+      if (res.ok) {
+        setTemplates(await res.json());
+      } else {
+        // Antes fallaba en silencio (el selector de plantillas quedaba vacío sin
+        // ninguna pista de por qué) — un usuario reportó justo este síntoma sin
+        // poder reproducirlo con una cuenta que sí funcionaba, así que ahora se
+        // avisa explícitamente para poder diagnosticar la próxima vez.
+        showToast(`No se pudieron cargar las plantillas de bootcamp (${res.status})`, 'danger');
+      }
+    } catch {
+      showToast('Error de conexión al cargar las plantillas de bootcamp', 'danger');
+    }
   }, []);
 
   useEffect(() => {

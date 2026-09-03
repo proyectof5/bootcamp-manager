@@ -249,8 +249,16 @@ export default function AdminPage() {
     setLoadingTemplates(true);
     try {
       const res = await apiFetch('/api/bootcamp-templates');
-      if (res.ok) setTemplates(await res.json());
-    } catch { /* non-critical */ }
+      if (res.ok) {
+        setTemplates(await res.json());
+      } else {
+        // Antes fallaba en silencio — un usuario reportó no ver las plantillas
+        // sin ningún error visible que permitiera diagnosticarlo.
+        showToast(`No se pudieron cargar las plantillas de bootcamp (${res.status})`, 'danger');
+      }
+    } catch {
+      showToast('Error de conexión al cargar las plantillas de bootcamp', 'danger');
+    }
     finally { setLoadingTemplates(false); }
   }, []);
 
