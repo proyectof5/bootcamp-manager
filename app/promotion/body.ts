@@ -9,14 +9,14 @@ const promotionDetailBody = `
                 <!-- spec 0014 Fase C: el contenido del Overview (título + Acciones Rápidas + Progreso +
                      Agenda + Avisos + bloc de notas) se migró a React: _components/OverviewPanel.tsx
                      monta por portal dentro de este #overview-tab conservando los ids legacy. El div
-                     queda con class="section-content" porque switchTab() le togglea .hidden. -->
+                     queda con class="section-content" porque switchTab() le togglea .legacy-hidden. -->
                 <div id="overview-tab" class="section-content"></div>
 
                 <!-- Área del Docente Tab -->
-                <div id="teacher-area-tab" class="section-content hidden">
+                <div id="teacher-area-tab" class="section-content legacy-hidden">
                     <!-- Cabecera de "Área de administración" (título + pestañas). Se oculta
                          automáticamente al entrar al evaluador de un proyecto concreto (regla CSS
-                         #teacher-area-tab:has(#eval-project-view:not(.hidden)) en
+                         #teacher-area-tab:has(#eval-project-view:not(.legacy-hidden)) en
                          css/promotion-detail.css) — no requiere botón manual: el toggle abrir/cerrar
                          vive en la propia barra del evaluador (.eval-view-topbar, ver
                          EvaluationGridPanel.tsx). -->
@@ -129,7 +129,7 @@ const promotionDetailBody = `
 
 
                 <!-- Access Settings Tab -->
-                <div id="access-settings-tab" class="section-content hidden">
+                <div id="access-settings-tab" class="section-content legacy-hidden">
                     <div class="d-flex justify-content-between align-items-center my-4">
                         <h2 class="subtitle-page">Configuración de los Accesos</h2>
                     </div>
@@ -161,7 +161,7 @@ const promotionDetailBody = `
                                         <i class="bi bi-save me-1"></i>Actualizar
                                     </button>
 
-                                    <div id="password-alert" class="alert alert-sm mt-2 mb-0 hidden p-2" role="alert"
+                                    <div id="password-alert" class="alert alert-sm mt-2 mb-0 legacy-hidden p-2" role="alert"
                                         style="font-size: 0.85rem;">
                                     </div>
                                 </div>
@@ -200,7 +200,7 @@ const promotionDetailBody = `
                                         <i class="bi bi-save me-1"></i>Guardar
                                     </button>
 
-                                    <div id="teaching-content-alert" class="alert alert-sm mt-2 mb-0 hidden p-2"
+                                    <div id="teaching-content-alert" class="alert alert-sm mt-2 mb-0 legacy-hidden p-2"
                                         role="alert" style="font-size: 0.85rem;">
                                     </div>
                                 </div>
@@ -208,7 +208,7 @@ const promotionDetailBody = `
                                     <small class="text-muted d-block mb-2">Preview:</small>
                                     <div class="d-flex gap-1">
                                         <a id="teaching-content-preview-btn" href="#"
-                                            class="btn btn-sm btn-outline-primary hidden" target="_blank">
+                                            class="btn btn-sm btn-outline-primary legacy-hidden" target="_blank">
                                             <i class="bi bi-book me-1"></i>Vista
                                         </a>
                                         <button class="btn btn-sm btn-outline-danger" onclick="removeTeachingContent()"
@@ -242,7 +242,7 @@ const promotionDetailBody = `
                                         <i class="bi bi-save me-1"></i>Guardar
                                     </button>
 
-                                    <div id="asana-workspace-alert" class="alert alert-sm mt-2 mb-0 hidden p-2"
+                                    <div id="asana-workspace-alert" class="alert alert-sm mt-2 mb-0 legacy-hidden p-2"
                                         role="alert" style="font-size: 0.85rem;">
                                     </div>
                                 </div>
@@ -250,7 +250,7 @@ const promotionDetailBody = `
                                     <small class="text-muted d-block mb-2">Estado:</small>
                                     <div class="d-flex gap-1">
                                         <a id="asana-workspace-preview-btn" href="#"
-                                            class="btn btn-sm btn-outline-danger hidden" target="_blank">
+                                            class="btn btn-sm btn-outline-danger legacy-hidden" target="_blank">
                                             <i class="bi bi-kanban me-1"></i>Abrir
                                         </a>
                                         <button class="btn btn-sm btn-outline-danger" onclick="removeAsanaWorkspace()"
@@ -267,7 +267,7 @@ const promotionDetailBody = `
                 </div>
 
                 <!-- Collaborators Tab -->
-                <div id="collaborators-tab" class="section-content hidden">
+                <div id="collaborators-tab" class="section-content legacy-hidden">
                     <!-- spec 0014 Fase C: contenido portado a React. El componente
                          CollaboratorsPanelHost (_components/CollaboratorsPanel.tsx) monta aquí por portal
                          la cabecera + #collaborators-list (list-group). La lógica sigue en el orquestador:
@@ -278,7 +278,7 @@ const promotionDetailBody = `
                 </div>
 
                 <!-- Program Info Tab (New) -->
-                <div id="info-tab" class="section-content hidden">
+                <div id="info-tab" class="section-content legacy-hidden">
                     <div class="d-flex justify-content-between align-items-center my-4 pb-3 border-bottom">
                         <h2 class="mb-0">Detalles del Programa</h2>
                         <div class="d-flex gap-2 justify-content-end">

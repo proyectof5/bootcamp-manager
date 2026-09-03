@@ -54,7 +54,7 @@ main {
 
 }
 
-.section-content.hidden {
+.section-content.legacy-hidden {
     display: none;
 }
 .container-promotions {

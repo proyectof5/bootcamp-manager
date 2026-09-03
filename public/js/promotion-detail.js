@@ -119,23 +119,23 @@ window.saveProfileInfo = async function () {
 
             alertEl.className = 'alert alert-success';
             alertEl.textContent = 'Profile updated successfully!';
-            alertEl.classList.remove('hidden');
+            alertEl.classList.remove('legacy-hidden');
 
             setTimeout(() => {
-                alertEl.classList.add('hidden');
+                alertEl.classList.add('legacy-hidden');
             }, 3000);
         } else {
             const data = await response.json();
             alertEl.className = 'alert alert-danger';
             alertEl.textContent = data.error || 'Error updating profile';
-            alertEl.classList.remove('hidden');
+            alertEl.classList.remove('legacy-hidden');
         }
     } catch (error) {
         console.error('Error updating profile:', error);
         const alertEl = document.getElementById('profile-alert');
         alertEl.className = 'alert alert-danger';
         alertEl.textContent = 'Error updating profile';
-        alertEl.classList.remove('hidden');
+        alertEl.classList.remove('legacy-hidden');
     }
 };
 
@@ -148,7 +148,7 @@ window.changePassword = async function () {
     if (!email) {
         alertEl.className = 'alert alert-warning';
         alertEl.textContent = 'Por favor, introduce tu correo electrónico.';
-        alertEl.classList.remove('hidden');
+        alertEl.classList.remove('legacy-hidden');
         return;
     }
 
@@ -172,18 +172,18 @@ window.changePassword = async function () {
         if (response.ok) {
             alertEl.className = 'alert alert-success';
             alertEl.textContent = data.message || 'En breves recibirás un correo con el enlace para cambiar tu contraseña.';
-            alertEl.classList.remove('hidden');
+            alertEl.classList.remove('legacy-hidden');
             // Do NOT close the modal — let the user read the confirmation
         } else {
             alertEl.className = 'alert alert-danger';
             alertEl.textContent = data.message || data.error || 'Error al enviar el correo. Inténtalo de nuevo.';
-            alertEl.classList.remove('hidden');
+            alertEl.classList.remove('legacy-hidden');
         }
     } catch (error) {
         console.error('Error sending reset password email:', error);
         alertEl.className = 'alert alert-danger';
         alertEl.textContent = 'Error de conexión. Inténtalo de nuevo.';
-        alertEl.classList.remove('hidden');
+        alertEl.classList.remove('legacy-hidden');
     }
 };
 
@@ -2606,7 +2606,7 @@ function switchTab(tabId) {
     sessionStorage.setItem(`activeTab_${promotionId}`, tabId);
 
     document.querySelectorAll('.section-content').forEach(section => {
-        section.classList.add('hidden');
+        section.classList.add('legacy-hidden');
     });
 
     // Redirect these legacy tabs to the unified Teacher Area
@@ -2623,7 +2623,7 @@ function switchTab(tabId) {
 
     const activeTab = document.getElementById(`${tabId}-tab`);
     if (activeTab) {
-        activeTab.classList.remove('hidden');
+        activeTab.classList.remove('legacy-hidden');
     }
 
     // Refresh data if needed
@@ -2806,7 +2806,7 @@ async function _loadTeachingContentInTeacherArea() {
                 }
                 if (previewBtn) {
                     previewBtn.href = data.teachingContentUrl;
-                    previewBtn.classList.remove('hidden');
+                    previewBtn.classList.remove('legacy-hidden');
                 }
                 if (noContentMsg) {
                     noContentMsg.style.display = 'none';
@@ -2816,7 +2816,7 @@ async function _loadTeachingContentInTeacherArea() {
                 }
             } else {
                 if (previewBtn) {
-                    previewBtn.classList.add('hidden');
+                    previewBtn.classList.add('legacy-hidden');
                 }
                 if (noContentMsg) {
                     noContentMsg.style.display = 'inline';
@@ -2861,7 +2861,7 @@ async function _loadAsanaWorkspaceInTeacherArea() {    const token = localStorag
                 }
                 if (previewBtn) {
                     previewBtn.href = data.asanaWorkspaceUrl;
-                    previewBtn.classList.remove('hidden');
+                    previewBtn.classList.remove('legacy-hidden');
                 }
                 if (noAsanaMsg) {
                     noAsanaMsg.style.display = 'none';
@@ -2871,7 +2871,7 @@ async function _loadAsanaWorkspaceInTeacherArea() {    const token = localStorag
                 }
             } else {
                 if (previewBtn) {
-                    previewBtn.classList.add('hidden');
+                    previewBtn.classList.add('legacy-hidden');
                 }
                 if (noAsanaMsg) {
                     noAsanaMsg.style.display = 'inline';
@@ -2918,7 +2918,7 @@ async function _loadZoomCredentialsInTeacherArea() {
             if (hostKeyInput) hostKeyInput.value = data.hostKey || '';
             if (emailInput) emailInput.value = data.accountEmail || '';
             if (passwordInput) passwordInput.value = data.accountPassword || '';
-            if (previewBtn) { previewBtn.href = data.meetingUrl; previewBtn.classList.remove('hidden'); }
+            if (previewBtn) { previewBtn.href = data.meetingUrl; previewBtn.classList.remove('legacy-hidden'); }
             if (noZoomMsg) noZoomMsg.style.display = 'none';
             if (removeBtn) removeBtn.style.display = 'inline-block';
         } else {
@@ -2928,7 +2928,7 @@ async function _loadZoomCredentialsInTeacherArea() {
             if (hostKeyInput) hostKeyInput.value = '';
             if (emailInput) emailInput.value = '';
             if (passwordInput) passwordInput.value = '';
-            if (previewBtn) previewBtn.classList.add('hidden');
+            if (previewBtn) previewBtn.classList.add('legacy-hidden');
             if (noZoomMsg) noZoomMsg.style.display = 'inline';
             if (removeBtn) removeBtn.style.display = 'none';
         }
@@ -3198,7 +3198,7 @@ async function loadPromotion() {
                 const teachingContentBtn = document.getElementById('teaching-content-btn');
                 if (teachingContentBtn) {
                     teachingContentBtn.href = promotion.teachingContentUrl;
-                    teachingContentBtn.classList.remove('hidden');
+                    teachingContentBtn.classList.remove('legacy-hidden');
                 }
             }
 
@@ -5519,7 +5519,7 @@ function displayCalendar(calendarId) {
     // seteando currentCalendarId para el preview del overview, que NO se toca).
     if (calendarId && iframe && preview) {
         iframe.src = `https://calendar.google.com/calendar/embed?src=${encodeURIComponent(calendarId)}&ctz=Europe/Madrid`;
-        preview.classList.remove('hidden');
+        preview.classList.remove('legacy-hidden');
     }
 }
 
@@ -8722,10 +8722,10 @@ async function updateAccessPassword(source = 'default') {
                 alertEl.textContent = password
                     ? 'Access password updated successfully! Students can now use the link below to access this promotion.'
                     : 'Password protection removed successfully!';
-                alertEl.classList.remove('hidden');
+                alertEl.classList.remove('legacy-hidden');
 
                 setTimeout(() => {
-                    alertEl.classList.add('hidden');
+                    alertEl.classList.add('legacy-hidden');
                 }, 5000);
             }
 
@@ -8739,7 +8739,7 @@ async function updateAccessPassword(source = 'default') {
             if (alertEl) {
                 alertEl.className = 'alert alert-danger';
                 alertEl.textContent = data.error || 'Error updating password';
-                alertEl.classList.remove('hidden');
+                alertEl.classList.remove('legacy-hidden');
             }
         }
     } catch (error) {
@@ -8747,7 +8747,7 @@ async function updateAccessPassword(source = 'default') {
         if (alertEl) {
             alertEl.className = 'alert alert-danger';
             alertEl.textContent = 'Connection error. Please try again.';
-            alertEl.classList.remove('hidden');
+            alertEl.classList.remove('legacy-hidden');
         }
     }
 }
@@ -8815,11 +8815,11 @@ async function loadTeachingContent() {
                 }
                 if (previewBtn) {
                     previewBtn.href = data.teachingContentUrl;
-                    previewBtn.classList.remove('hidden');
+                    previewBtn.classList.remove('legacy-hidden');
                 }
                 if (overviewBtn) {
                     overviewBtn.href = data.teachingContentUrl;
-                    overviewBtn.classList.remove('hidden');
+                    overviewBtn.classList.remove('legacy-hidden');
                 }
                 if (noContentMsg) {
                     noContentMsg.style.display = 'none';
@@ -8829,10 +8829,10 @@ async function loadTeachingContent() {
                 }
             } else {
                 if (previewBtn) {
-                    previewBtn.classList.add('hidden');
+                    previewBtn.classList.add('legacy-hidden');
                 }
                 if (overviewBtn) {
-                    overviewBtn.classList.add('hidden');
+                    overviewBtn.classList.add('legacy-hidden');
                 }
                 if (noContentMsg) {
                     noContentMsg.style.display = 'block';
@@ -8865,7 +8865,7 @@ async function updateTeachingContent(source = 'default') {
         if (alertEl) {
             alertEl.className = 'alert alert-warning';
             alertEl.textContent = 'Please enter a URL for the teaching content';
-            alertEl.classList.remove('hidden');
+            alertEl.classList.remove('legacy-hidden');
         }
         return;
     }
@@ -8884,10 +8884,10 @@ async function updateTeachingContent(source = 'default') {
             if (alertEl) {
                 alertEl.className = 'alert alert-success';
                 alertEl.textContent = 'Teaching content link saved successfully! The button will now appear in the Overview section.';
-                alertEl.classList.remove('hidden');
+                alertEl.classList.remove('legacy-hidden');
 
                 setTimeout(() => {
-                    alertEl.classList.add('hidden');
+                    alertEl.classList.add('legacy-hidden');
                 }, 5000);
             }
 
@@ -8902,7 +8902,7 @@ async function updateTeachingContent(source = 'default') {
             if (alertEl) {
                 alertEl.className = 'alert alert-danger';
                 alertEl.textContent = data.error || 'Error saving teaching content';
-                alertEl.classList.remove('hidden');
+                alertEl.classList.remove('legacy-hidden');
             }
         }
     } catch (error) {
@@ -8910,7 +8910,7 @@ async function updateTeachingContent(source = 'default') {
         if (alertEl) {
             alertEl.className = 'alert alert-danger';
             alertEl.textContent = 'Connection error. Please try again.';
-            alertEl.classList.remove('hidden');
+            alertEl.classList.remove('legacy-hidden');
         }
     }
 }
@@ -8932,8 +8932,8 @@ async function removeTeachingContent(source = 'default') {
             if (alertEl) {
                 alertEl.className = 'alert alert-success';
                 alertEl.textContent = 'Teaching content link removed successfully!';
-                alertEl.classList.remove('hidden');
-                setTimeout(() => { alertEl.classList.add('hidden'); }, 5000);
+                alertEl.classList.remove('legacy-hidden');
+                setTimeout(() => { alertEl.classList.add('legacy-hidden'); }, 5000);
             }
             if (source === 'teacher-area') {
                 await _loadTeachingContentInTeacherArea();
@@ -8982,7 +8982,7 @@ async function loadAsanaWorkspace() {
                 }
                 if (previewBtn) {
                     previewBtn.href = data.asanaWorkspaceUrl;
-                    previewBtn.classList.remove('hidden');
+                    previewBtn.classList.remove('legacy-hidden');
                 }
                 if (noAsanaMsg) {
                     noAsanaMsg.style.display = 'none';
@@ -8992,7 +8992,7 @@ async function loadAsanaWorkspace() {
                 }
             } else {
                 if (previewBtn) {
-                    previewBtn.classList.add('hidden');
+                    previewBtn.classList.add('legacy-hidden');
                 }
                 if (noAsanaMsg) {
                     noAsanaMsg.style.display = 'block';
@@ -9026,7 +9026,7 @@ async function updateAsanaWorkspace(source = 'default') {
         if (alertEl) {
             alertEl.className = 'alert alert-warning';
             alertEl.textContent = 'Por favor, ingresa una URL para el espacio de trabajo de Asana';
-            alertEl.classList.remove('hidden');
+            alertEl.classList.remove('legacy-hidden');
         }
         return;
     }
@@ -9036,7 +9036,7 @@ async function updateAsanaWorkspace(source = 'default') {
         if (alertEl) {
             alertEl.className = 'alert alert-warning';
             alertEl.textContent = 'La URL debe ser un enlace válido de Asana (asana.com)';
-            alertEl.classList.remove('hidden');
+            alertEl.classList.remove('legacy-hidden');
         }
         return;
     }
@@ -9055,10 +9055,10 @@ async function updateAsanaWorkspace(source = 'default') {
             if (alertEl) {
                 alertEl.className = 'alert alert-success';
                 alertEl.textContent = '¡Enlace de Asana guardado exitosamente! Los estudiantes podrán acceder al espacio de trabajo.';
-                alertEl.classList.remove('hidden');
+                alertEl.classList.remove('legacy-hidden');
 
                 setTimeout(() => {
-                    alertEl.classList.add('hidden');
+                    alertEl.classList.add('legacy-hidden');
                 }, 5000);
             }
 
@@ -9073,7 +9073,7 @@ async function updateAsanaWorkspace(source = 'default') {
             if (alertEl) {
                 alertEl.className = 'alert alert-danger';
                 alertEl.textContent = data.error || 'Error al guardar el enlace de Asana';
-                alertEl.classList.remove('hidden');
+                alertEl.classList.remove('legacy-hidden');
             }
         }
     } catch (error) {
@@ -9081,7 +9081,7 @@ async function updateAsanaWorkspace(source = 'default') {
         if (alertEl) {
             alertEl.className = 'alert alert-danger';
             alertEl.textContent = 'Error de conexión. Por favor, intenta de nuevo.';
-            alertEl.classList.remove('hidden');
+            alertEl.classList.remove('legacy-hidden');
         }
     }
 }
@@ -9104,8 +9104,8 @@ async function removeAsanaWorkspace(source = 'default') {
             if (alertEl) {
                 alertEl.className = 'alert alert-success';
                 alertEl.textContent = '¡Enlace de Asana eliminado exitosamente!';
-                alertEl.classList.remove('hidden');
-                setTimeout(() => { alertEl.classList.add('hidden'); }, 5000);
+                alertEl.classList.remove('legacy-hidden');
+                setTimeout(() => { alertEl.classList.add('legacy-hidden'); }, 5000);
             }
             if (source === 'teacher-area') {
                 await _loadAsanaWorkspaceInTeacherArea();
@@ -12187,9 +12187,9 @@ function openTeamHistoryView() {
     if (!historyPanel || !historyBody) return;
 
     // Hide other sub-views
-    if (evalTabView) evalTabView.classList.add('hidden');
-    if (studentEvalPanel) studentEvalPanel.classList.add('hidden');
-    historyPanel.classList.remove('hidden');
+    if (evalTabView) evalTabView.classList.add('legacy-hidden');
+    if (studentEvalPanel) studentEvalPanel.classList.add('legacy-hidden');
+    historyPanel.classList.remove('legacy-hidden');
 
     // Build content
     const { modules, savedEvaluations, allStudents } = window._evalState;
@@ -12275,8 +12275,8 @@ function openTeamHistoryView() {
 function closeTeamHistoryView() {
     const evalTabView = document.getElementById('evaluation-tab-view');
     const historyPanel = document.getElementById('team-history-panel');
-    if (historyPanel) historyPanel.classList.add('hidden');
-    if (evalTabView) evalTabView.classList.remove('hidden');
+    if (historyPanel) historyPanel.classList.add('legacy-hidden');
+    if (evalTabView) evalTabView.classList.remove('legacy-hidden');
 }
 
 /**
@@ -12890,7 +12890,7 @@ async function saveGroups() {
 
     // If the split view is open, refresh it; otherwise refresh the card grid
     const splitView = document.getElementById('eval-project-view');
-    if (splitView && !splitView.classList.contains('hidden')) {
+    if (splitView && !splitView.classList.contains('legacy-hidden')) {
         _renderEvalTargetsList(saved, window._evalState.students);
         _showEvalRightEmpty();
     } else {
@@ -13019,10 +13019,10 @@ function openEvaluationView(mIdx, pIdx) {
     const splitView = document.getElementById('eval-project-view');
     const histPanel = document.getElementById('team-history-panel');
     const legacyPanel = document.getElementById('student-eval-panel');
-    if (tabView) tabView.classList.add('hidden');
-    if (histPanel) histPanel.classList.add('hidden');
-    if (legacyPanel) legacyPanel.classList.add('hidden');
-    if (splitView) splitView.classList.remove('hidden');
+    if (tabView) tabView.classList.add('legacy-hidden');
+    if (histPanel) histPanel.classList.add('legacy-hidden');
+    if (legacyPanel) legacyPanel.classList.add('legacy-hidden');
+    if (splitView) splitView.classList.remove('legacy-hidden');
 
     // Populate top bar
     const titleEl = document.getElementById('eval-view-title');
@@ -13633,8 +13633,8 @@ function removeEvalCompetenceFromView(targetId, compId) {
 function closeEvaluationView() {
     const splitView = document.getElementById('eval-project-view');
     const tabView = document.getElementById('evaluation-tab-view');
-    if (splitView) splitView.classList.add('hidden');
-    if (tabView) tabView.classList.remove('hidden');
+    if (splitView) splitView.classList.add('legacy-hidden');
+    if (tabView) tabView.classList.remove('legacy-hidden');
     renderEvaluationTab();
 }
 
@@ -14475,8 +14475,8 @@ function _openStudentEvalSubModalFor(studentId) {
     if (panel) panel.dataset.targetStudentId = studentId;
 
     // Swap views: hide the tab overview, show the panel
-    if (tabView) tabView.classList.add('hidden');
-    if (panel) panel.classList.remove('hidden');
+    if (tabView) tabView.classList.add('legacy-hidden');
+    if (panel) panel.classList.remove('legacy-hidden');
 
     // Scroll to top of panel smoothly
     panel?.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -14699,7 +14699,7 @@ async function saveIndividualStudentEval() {
     // Detect which panel is active: split view or legacy panel
     const splitView = document.getElementById('eval-project-view');
     const legacyPanel = document.getElementById('student-eval-panel');
-    const inSplitView = splitView && !splitView.classList.contains('hidden');
+    const inSplitView = splitView && !splitView.classList.contains('legacy-hidden');
 
     const studentId = inSplitView
         ? (splitView.dataset.targetStudentId || null)
@@ -14814,8 +14814,8 @@ async function saveIndividualStudentEval() {
 function _closeStudentEvalPanel() {
     const panel = document.getElementById('student-eval-panel');
     const tabView = document.getElementById('evaluation-tab-view');
-    if (panel) panel.classList.add('hidden');
-    if (tabView) tabView.classList.remove('hidden');
+    if (panel) panel.classList.add('legacy-hidden');
+    if (tabView) tabView.classList.remove('legacy-hidden');
     // Reset save button just in case
     const saveBtn = document.getElementById('save-eval-panel-btn');
     if (saveBtn) {
@@ -14830,7 +14830,7 @@ function _closeStudentEvalPanel() {
 async function sendEvaluationByEmail() {
     const splitView = document.getElementById('eval-project-view');
     const legacyPanel = document.getElementById('student-eval-panel');
-    const inSplitView = splitView && !splitView.classList.contains('hidden');
+    const inSplitView = splitView && !splitView.classList.contains('legacy-hidden');
 
     const targetId = inSplitView
         ? (splitView.dataset.targetStudentId || null)
@@ -15083,7 +15083,7 @@ async function sendEvaluationToAllInProject() {
 /** Called by the "Cancelar" / "Volver" buttons in the inline eval panel or split view. */
 window.cancelStudentEvalPanel = function () {
     const splitView = document.getElementById('eval-project-view');
-    const inSplitView = splitView && !splitView.classList.contains('hidden');
+    const inSplitView = splitView && !splitView.classList.contains('legacy-hidden');
     if (inSplitView) {
         // In split view: just clear the right panel selection (go back to empty state)
         _showEvalRightEmpty();

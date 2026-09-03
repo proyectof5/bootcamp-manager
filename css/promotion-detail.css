@@ -22,7 +22,7 @@ body {
    sub-pestaña (Estudiantes/Asistencia/...), pero nunca le añade .hidden a #eval-project-view en
    sí. Sin este segundo requisito, el selector seguía "viendo" el split-view como visible tras
    salir de Evaluación, dejando la cabecera escondida hasta recargar la página. */
-#teacher-area-tab:has(#teacher-area-evaluation.active #eval-project-view:not(.hidden)) #teacher-area-header {
+#teacher-area-tab:has(#teacher-area-evaluation.active #eval-project-view:not(.legacy-hidden)) #teacher-area-header {
     display: none;
 }
 
@@ -300,11 +300,15 @@ body {
     display: block;
 }
 
-.section-content.hidden {
+.section-content.legacy-hidden {
     display: none;
 }
 
-.hidden {
+/* Renombrado de .hidden → .legacy-hidden — ver el comentario en css/style.css:
+   colisionaba con la utilidad .hidden de Tailwind (usada en React para patrones
+   responsive como "hidden md:block"), y al llevar !important siempre ganaba,
+   dejando esos elementos ocultos para siempre sin importar el breakpoint. */
+.legacy-hidden {
     display: none !important;
 }
 
