@@ -313,6 +313,9 @@ export default function PromotionPage() {
         await loadScript('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js');
         await loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
         await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+        // Tablas paginadas en PDF (rúbrica de proyecto: competencias/indicadores/
+        // niveles/herramientas) — plugin de jsPDF, debe cargarse después de jsPDF.
+        await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js');
         await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js');
         // Gantt del docente (Fases 1-6, spec dhtmlx-gantt-roadmap): DHTMLX Gantt GPL,
         // cargado antes de gantt-adapter.js/promotion-detail.js que lo consumen.
