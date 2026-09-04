@@ -11921,6 +11921,15 @@ function renderEvaluationTab() {
                             <button class="btn btn-sm btn-outline-info" onclick="openGroupsModal(${mIdx}, ${pIdx})" title="Definir grupos">
                                 <i class="bi bi-diagram-3 me-1"></i>Grupos
                             </button>` : ''}
+                            ${projCompCount > 0 ? `
+                            <div class="btn-group btn-group-sm" role="group" title="Descargar rúbrica (competencias, indicadores, niveles y herramientas)">
+                                <button type="button" class="btn btn-outline-secondary" onclick="downloadProjectRubric(${mIdx}, ${pIdx}, 'pdf')" title="Descargar rúbrica en PDF">
+                                    <i class="bi bi-file-earmark-pdf"></i>
+                                </button>
+                                <button type="button" class="btn btn-outline-secondary" onclick="downloadProjectRubric(${mIdx}, ${pIdx}, 'xlsx')" title="Descargar rúbrica en Excel">
+                                    <i class="bi bi-file-earmark-excel"></i>
+                                </button>
+                            </div>` : ''}
                             <button class="btn btn-sm btn-primary ms-auto" onclick="openEvaluationView(${mIdx}, ${pIdx})"
                                 style="background:#E85D26;border-color:#E85D26;">
                                 <i class="bi bi-clipboard-check me-1"></i>Evaluar
@@ -11944,6 +11953,302 @@ function renderEvaluationTab() {
 
 function _evalProjectKey(moduleId, projectName) {
     return `${moduleId}__${projectName}`;
+}
+
+// ==================== RÚBRICA DE PROYECTO (descarga PDF/Excel) ====================
+// Documento con las competencias asignadas a un proyecto (definidas en el picker de
+// arriba, projectCompetences) y, para cada una: sus indicadores de competencia
+// agrupados por nivel (1 Básico / 2 Medio / 3 Avanzado) y las herramientas
+// seleccionadas con los indicadores propios de cada herramienta, también por nivel.
+// Es la rúbrica EN BLANCO — el criterio de evaluación tal cual está definido en el
+// catálogo, sin resultados de ningún estudiante (eso ya se ve/edita en "Evaluar").
+
+const RUBRIC_LEVEL_TEXT = { 1: 'Básico', 2: 'Medio', 3: 'Avanzado' };
+
+/**
+ * Reúne los datos de la rúbrica de un proyecto a partir de projectCompetences
+ * (picker de competencias) y el catálogo completo (con indicadores de
+ * competencia y de herramienta).
+ * @returns {Object|null} null si el proyecto no tiene competencias definidas
+ */
+function buildProjectRubricData(mIdx, pIdx) {
+    const { modules, catalog } = window._evalState;
+    const mod = modules[mIdx];
+    const proj = mod && mod.projects[pIdx];
+    if (!mod || !proj) return null;
+    const modId = mod.id || String(mIdx);
+
+    const pcEntry = (window._evalState.projectCompetences || []).find(
+        pc => pc.moduleId === modId && pc.projectName === proj.name
+    );
+    if (!pcEntry || !(pcEntry.competenceIds || []).length) return null;
+
+    const competences = pcEntry.competenceIds.map(cid => {
+        const comp = (catalog || []).find(c => String(c.id) === String(cid));
+        if (!comp) return null;
+
+        const compInds = comp.competenceIndicators || { initial: [], medio: [], advance: [] };
+        const indicatorsByLevel = [1, 2, 3].map(lvl => ({
+            level: lvl,
+            label: RUBRIC_LEVEL_TEXT[lvl],
+            indicators: (lvl === 1 ? compInds.initial : lvl === 2 ? compInds.medio : compInds.advance) || []
+        }));
+
+        const selectedToolNames = (pcEntry.competenceTools && pcEntry.competenceTools[String(cid)]) || [];
+        const tools = (comp.toolsWithIndicators || [])
+            .filter(t => selectedToolNames.includes(t.name))
+            .map(t => {
+                const byLevel = { 1: [], 2: [], 3: [] };
+                (t.indicators || []).forEach(ind => { if (byLevel[ind.levelId]) byLevel[ind.levelId].push(ind); });
+                return {
+                    name: t.name,
+                    description: t.description || '',
+                    indicatorsByLevel: [1, 2, 3].map(lvl => ({ level: lvl, label: RUBRIC_LEVEL_TEXT[lvl], indicators: byLevel[lvl] }))
+                };
+            });
+        // Herramientas seleccionadas pero sin indicadores en el catálogo — se listan
+        // igualmente, para que la rúbrica no las omita en silencio.
+        const toolNamesWithIndicators = new Set(tools.map(t => t.name));
+        const toolsWithoutIndicators = selectedToolNames.filter(n => !toolNamesWithIndicators.has(n));
+
+        return {
+            name: comp.name || `Competencia ${cid}`,
+            area: comp.area || '',
+            description: comp.description || '',
+            indicatorsByLevel,
+            tools,
+            toolsWithoutIndicators
+        };
+    }).filter(Boolean);
+
+    if (!competences.length) return null;
+
+    return {
+        promotionName: (window.currentPromotion && window.currentPromotion.name) || '',
+        moduleName: mod.name || `Módulo ${mIdx + 1}`,
+        projectName: proj.name || 'Proyecto',
+        competences
+    };
+}
+
+/**
+ * Descarga la rúbrica (en blanco, sin resultados de ningún estudiante) de un
+ * proyecto: sus competencias, con los indicadores de cada una agrupados por
+ * nivel, y las herramientas seleccionadas con sus propios indicadores por nivel.
+ * @param {number} mIdx - índice del módulo en window._evalState.modules
+ * @param {number} pIdx - índice del proyecto dentro de mod.projects
+ * @param {'pdf'|'xlsx'} format
+ */
+function downloadProjectRubric(mIdx, pIdx, format) {
+    const data = buildProjectRubricData(mIdx, pIdx);
+    if (!data) {
+        showToast('Este proyecto no tiene competencias definidas todavía. Defínelas primero desde el botón de competencias.', 'warning');
+        return;
+    }
+    if (format === 'xlsx') _downloadProjectRubricXlsx(data);
+    else _downloadProjectRubricPdf(data);
+}
+window.downloadProjectRubric = downloadProjectRubric;
+
+function _downloadProjectRubricXlsx(data) {
+    if (typeof XLSX === 'undefined') {
+        showToast('No se pudo cargar la librería de exportación (Excel).', 'danger');
+        return;
+    }
+    const rows = [];
+    data.competences.forEach(comp => {
+        comp.indicatorsByLevel.forEach(({ level, label, indicators }) => {
+            indicators.forEach(ind => {
+                rows.push({
+                    'Competencia': comp.name,
+                    'Área': comp.area,
+                    'Tipo': 'Indicador de competencia',
+                    'Herramienta': '',
+                    'Nivel': `${level} — ${label}`,
+                    'Indicador': ind.name,
+                    'Descripción': ind.description || ''
+                });
+            });
+        });
+        comp.tools.forEach(tool => {
+            tool.indicatorsByLevel.forEach(({ level, label, indicators }) => {
+                indicators.forEach(ind => {
+                    rows.push({
+                        'Competencia': comp.name,
+                        'Área': comp.area,
+                        'Tipo': 'Indicador de herramienta',
+                        'Herramienta': tool.name,
+                        'Nivel': `${level} — ${label}`,
+                        'Indicador': ind.name,
+                        'Descripción': ind.description || ''
+                    });
+                });
+            });
+        });
+        comp.toolsWithoutIndicators.forEach(toolName => {
+            rows.push({
+                'Competencia': comp.name,
+                'Área': comp.area,
+                'Tipo': 'Herramienta (sin indicadores en el catálogo)',
+                'Herramienta': toolName,
+                'Nivel': '',
+                'Indicador': '',
+                'Descripción': ''
+            });
+        });
+        if (!comp.indicatorsByLevel.some(l => l.indicators.length) && !comp.tools.length && !comp.toolsWithoutIndicators.length) {
+            rows.push({
+                'Competencia': comp.name, 'Área': comp.area,
+                'Tipo': 'Sin indicadores definidos en el catálogo', 'Herramienta': '', 'Nivel': '', 'Indicador': '', 'Descripción': ''
+            });
+        }
+    });
+
+    const ws = XLSX.utils.json_to_sheet(rows);
+    ws['!cols'] = [{ wch: 28 }, { wch: 16 }, { wch: 26 }, { wch: 18 }, { wch: 14 }, { wch: 32 }, { wch: 48 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Rúbrica');
+    XLSX.writeFile(wb, `rubrica-${_exportSafeFileName(data.projectName)}.xlsx`);
+    showToast('Rúbrica exportada a Excel ✓', 'success');
+}
+
+function _downloadProjectRubricPdf(data) {
+    if (typeof window.jspdf === 'undefined' || typeof window.jspdf.jsPDF === 'undefined') {
+        showToast('No se pudo cargar la librería de exportación (PDF).', 'danger');
+        return;
+    }
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const MARGIN = 14;
+    let y = MARGIN;
+
+    const ensureSpace = (needed) => {
+        if (y + needed > pageHeight - MARGIN) { doc.addPage(); y = MARGIN; }
+    };
+
+    doc.setFontSize(16);
+    doc.setFont(undefined, 'bold');
+    doc.text(`Rúbrica: ${data.projectName}`, MARGIN, y);
+    y += 7;
+    doc.setFontSize(10);
+    doc.setFont(undefined, 'normal');
+    doc.setTextColor(110);
+    const subtitleParts = [data.moduleName, data.promotionName].filter(Boolean);
+    if (subtitleParts.length) { doc.text(subtitleParts.join(' · '), MARGIN, y); y += 6; }
+    doc.setTextColor(0);
+    y += 2;
+
+    data.competences.forEach((comp, i) => {
+        ensureSpace(20);
+        if (i > 0) y += 4;
+        doc.setFontSize(12.5);
+        doc.setFont(undefined, 'bold');
+        doc.setTextColor(232, 93, 38); // #E85D26 — color de marca ya usado en el resto de la vista
+        doc.text(comp.area ? `${comp.name} (${comp.area})` : comp.name, MARGIN, y);
+        doc.setTextColor(0);
+        y += 5.5;
+
+        if (comp.description) {
+            doc.setFontSize(9);
+            doc.setFont(undefined, 'italic');
+            doc.setTextColor(90);
+            const descLines = doc.splitTextToSize(comp.description, pageWidth - MARGIN * 2);
+            ensureSpace(descLines.length * 4 + 2);
+            doc.text(descLines, MARGIN, y);
+            y += descLines.length * 4 + 2;
+            doc.setTextColor(0);
+            doc.setFont(undefined, 'normal');
+        }
+
+        // Indicadores de competencia — tabla de 3 columnas (Básico/Medio/Avanzado).
+        const hasCompInds = comp.indicatorsByLevel.some(l => l.indicators.length);
+        if (hasCompInds) {
+            const maxRows = Math.max(...comp.indicatorsByLevel.map(l => l.indicators.length));
+            const body = [];
+            for (let r = 0; r < maxRows; r++) {
+                body.push(comp.indicatorsByLevel.map(l => {
+                    const ind = l.indicators[r];
+                    if (!ind) return '';
+                    return ind.description ? `${ind.name}\n${ind.description}` : ind.name;
+                }));
+            }
+            doc.autoTable({
+                startY: y,
+                margin: { left: MARGIN, right: MARGIN },
+                head: [comp.indicatorsByLevel.map(l => `Nivel ${l.level} — ${l.label}`)],
+                body,
+                theme: 'grid',
+                styles: { fontSize: 8, cellPadding: 2, valign: 'top' },
+                headStyles: { fillColor: [232, 93, 38], textColor: 255, fontStyle: 'bold' },
+            });
+            y = doc.lastAutoTable.finalY + 4;
+        } else {
+            doc.setFontSize(8.5);
+            doc.setTextColor(150);
+            doc.setFont(undefined, 'italic');
+            doc.text('Sin indicadores de competencia definidos en el catálogo.', MARGIN, y);
+            doc.setTextColor(0);
+            doc.setFont(undefined, 'normal');
+            y += 6;
+        }
+
+        // Herramientas seleccionadas, cada una con sus propios indicadores por nivel.
+        comp.tools.forEach(tool => {
+            ensureSpace(14);
+            doc.setFontSize(9.5);
+            doc.setFont(undefined, 'bold');
+            doc.text(`Herramienta: ${tool.name}`, MARGIN, y);
+            doc.setFont(undefined, 'normal');
+            y += 4.5;
+
+            const activeLevels = tool.indicatorsByLevel.filter(l => l.indicators.length);
+            if (activeLevels.length) {
+                const maxRows = Math.max(...activeLevels.map(l => l.indicators.length));
+                const body = [];
+                for (let r = 0; r < maxRows; r++) {
+                    body.push(activeLevels.map(l => {
+                        const ind = l.indicators[r];
+                        if (!ind) return '';
+                        return ind.description ? `${ind.name}\n${ind.description}` : ind.name;
+                    }));
+                }
+                doc.autoTable({
+                    startY: y,
+                    margin: { left: MARGIN, right: MARGIN },
+                    head: [activeLevels.map(l => `Nivel ${l.level} — ${l.label}`)],
+                    body,
+                    theme: 'grid',
+                    styles: { fontSize: 7.5, cellPadding: 1.8, valign: 'top' },
+                    headStyles: { fillColor: [13, 110, 253], textColor: 255, fontStyle: 'bold' },
+                });
+                y = doc.lastAutoTable.finalY + 4;
+            } else {
+                doc.setFontSize(8.5);
+                doc.setTextColor(150);
+                doc.setFont(undefined, 'italic');
+                doc.text('Sin indicadores definidos en el catálogo para esta herramienta.', MARGIN, y);
+                doc.setTextColor(0);
+                doc.setFont(undefined, 'normal');
+                y += 6;
+            }
+        });
+
+        if (comp.toolsWithoutIndicators.length) {
+            ensureSpace(6);
+            doc.setFontSize(8.5);
+            doc.setTextColor(150);
+            doc.setFont(undefined, 'italic');
+            doc.text(`Herramientas seleccionadas sin indicadores en el catálogo: ${comp.toolsWithoutIndicators.join(', ')}`, MARGIN, y);
+            doc.setTextColor(0);
+            doc.setFont(undefined, 'normal');
+            y += 6;
+        }
+    });
+
+    doc.save(`rubrica-${_exportSafeFileName(data.projectName)}.pdf`);
+    showToast('Rúbrica exportada a PDF ✓', 'success');
 }
 
 // ==================== COMPETENCE PICKER (per-project, from Evaluation tab) ====================
