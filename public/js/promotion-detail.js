@@ -3440,6 +3440,39 @@ function displayModules(modules) {
 let _ganttInitialized = false;
 
 /**
+ * Etiqueta "Sem. N" de una columna del Gantt en zoom Semana, contando desde
+ * la fecha de inicio REAL de la promoción (semana 1 = los 7 días desde
+ * promotion.startDate) en vez del número de semana ISO del año (%W de
+ * DHTMLX) que usaba antes — ese contaba semanas de calendario (lunes a
+ * domingo), así que si la promoción empezaba a mitad de semana (p.ej. un
+ * martes) la numeración no coincidía con "semana 1/2/3..." tal como se usa
+ * en el resto de la app (duración de módulos, "Sem. inicio/final" de
+ * cursos/proyectos, etc. — todas cuentan semanas completas desde
+ * startDate, sin alinear a lunes).
+ *
+ * Complementa a `{ unit: 'day', step: 7 }` (ver setGanttZoomLevel): al no
+ * usar `unit: 'week'`, DHTMLX tampoco alinea las propias columnas a
+ * lunes/domingo — arrancan justo en la fecha de inicio del Gantt (que
+ * coincide con promotion.startDate salvo que exista una tarea/bloque
+ * flexible con fecha aún anterior) y avanzan de 7 en 7 días exactos desde
+ * ahí, en vez de saltar a la siguiente frontera de semana de calendario.
+ * @param {Date} date - fecha de inicio de la columna (la pone DHTMLX)
+ * @returns {string}
+ */
+function _ganttWeekLabel(date) {
+    const promo = window.currentPromotion;
+    const baseDateRaw = (promo && promo.startDate) ? new Date(promo.startDate) : date;
+    // Normaliza ambas fechas a medianoche local antes de restar — si se
+    // restan con hora incluida, un cambio de horario de verano de por medio
+    // puede desplazar el resultado en un día.
+    const base = new Date(baseDateRaw.getFullYear(), baseDateRaw.getMonth(), baseDateRaw.getDate());
+    const cell = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    const days = Math.round((cell - base) / 86400000);
+    const weekNum = Math.floor(days / 7) + 1;
+    return `Sem. ${weekNum}`;
+}
+
+/**
  * Inicializa la instancia de DHTMLX Gantt sobre #gantt-container.
  * Docentes/admins obtienen edición interactiva (drag/resize) con
  * persistencia automática vía PUT /api/promotions/:id; el resto de
@@ -3454,7 +3487,7 @@ function initGanttInstance() {
     gantt.config.date_format = window.GANTT_DATE_FORMAT;
     gantt.config.scales = [
         { unit: 'month', step: 1, format: '%F %Y' },
-        { unit: 'week', step: 1, format: 'Sem. %W' }
+        { unit: 'day', step: 7, format: _ganttWeekLabel }
     ];
     gantt.config.columns = [
         {
@@ -3573,7 +3606,7 @@ function setGanttZoomLevel(level) {
         week: {
             scales: [
                 { unit: 'month', step: 1, format: '%F %Y' },
-                { unit: 'week', step: 1, format: 'Sem. %W' }
+                { unit: 'day', step: 7, format: _ganttWeekLabel }
             ],
             min_column_width: 60
         },
@@ -4402,6 +4435,30 @@ function generateGanttChart(promotion) {
     initGanttInstance();
 
     const dataset = buildGanttDataset(promotion);
+
+    // Ancla el rango renderizado exactamente a la fecha de inicio de la promoción
+    // (medianoche local) en vez de dejar que DHTMLX calcule el mínimo a partir de
+    // los datos: por defecto añade un margen de varios días ANTES de la primera
+    // tarea (para que no quede pegada al borde), lo que desplazaba dónde caen las
+    // columnas de `{ unit: 'day', step: 7 }` del zoom Semana — el primer borde de
+    // columna dejaba de coincidir con startDate y "Sem. 1" (_ganttWeekLabel) no
+    // arrancaba donde debía. Fijar start_date/end_date explícitos hace que el
+    // primer borde de columna sea siempre exactamente startDate.
+    const startDateRaw = promotion.startDate ? new Date(promotion.startDate) : new Date();
+    const rangeStart = new Date(startDateRaw.getFullYear(), startDateRaw.getMonth(), startDateRaw.getDate());
+    let rangeEnd = rangeStart;
+    (dataset.data || []).forEach((row) => {
+        const [dd, mm, yyyy] = String(row.start_date).split('-').map(Number);
+        if (!dd || !mm || !yyyy) return;
+        const rowStart = new Date(yyyy, mm - 1, dd);
+        const rowEnd = new Date(rowStart.getTime() + Math.max(1, Math.round(Number(row.duration) || 1)) * 86400000);
+        if (rowEnd > rangeEnd) rangeEnd = rowEnd;
+    });
+    // Una semana extra de margen al final para que la última tarea no quede
+    // pegada al borde derecho (mismo margen que DHTMLX ya daba por defecto).
+    gantt.config.start_date = rangeStart;
+    gantt.config.end_date = new Date(rangeEnd.getTime() + 7 * 86400000);
+
     gantt.clearAll();
     gantt.parse(dataset);
 }
