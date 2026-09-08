@@ -394,14 +394,53 @@ function buildRoadmapExportRows(promotion) {
 window.buildRoadmapExportRows = buildRoadmapExportRows;
 
 /**
- * Construye el contenido de un archivo .ics (iCalendar) con un evento de día
- * completo por cada elemento del roadmap (módulos, cursos, proyectos,
- * lecciones y bloques de tiempo flexible) — pensado para importarse en Google
- * Calendar (Ajustes > Importar y exportar > Importar) u otro calendario
- * compatible con iCalendar. Mismo criterio de filtrado que
+ * Construye la lista de eventos de día completo del roadmap (módulos,
+ * cursos, proyectos, lecciones y bloques de tiempo flexible) como objetos
+ * planos con fechas ya como Date — base común para el export .ics
+ * (buildRoadmapIcsContent) y la sincronización directa con Google Calendar
+ * (ver window.syncRoadmapGoogleCalendar en promotion-detail.js), para no
+ * duplicar en dos sitios el cálculo de fechas/filtrado. Mismo criterio que
  * buildRoadmapExportRows: se omite el grupo "Lecciones" (leccion-group), un
  * nodo puramente visual sin fecha propia real (se deriva del min/max de sus
  * lecciones hijas, que sí se exportan cada una por separado).
+ * @param {Object} promotion
+ * @returns {Array<{ id: string, summary: string, description: string, startDate: Date, endDateExclusive: Date }>}
+ *   endDateExclusive: un día DESPUÉS del último día activo (así lo exigen
+ *   tanto RFC 5545 §3.6.1 como la propia API de Google Calendar para el
+ *   campo `end.date` de un evento de día completo).
+ */
+function buildRoadmapCalendarEvents(promotion) {
+    const { data } = buildGanttDataset(promotion);
+    const moduleNameByIndex = {};
+    data.forEach(row => {
+        if (row.itemType === 'module') moduleNameByIndex[row.itemIndex] = row.text;
+    });
+
+    return data
+        .filter(row => row.itemType !== 'leccion-group')
+        .map(row => {
+            // start_date viene en formato "%d-%m-%Y" (GANTT_DATE_FORMAT) — se
+            // parsea a mano para no depender de que dhtmlxgantt esté cargado.
+            const [dd, mm, yyyy] = row.start_date.split('-').map(Number);
+            const startDate = new Date(yyyy, mm - 1, dd);
+            const durationDays = Math.max(1, Math.round(row.duration));
+            const endDateExclusive = addDays(startDate, durationDays);
+
+            const moduleName = row.itemType === 'module' ? '' : (moduleNameByIndex[row.moduleIndex] || '');
+            const summary = moduleName ? `${row.text} (${moduleName})` : row.text;
+            const description = [GANTT_ITEM_TYPE_LABELS[row.itemType] || row.itemType, row.url]
+                .filter(Boolean).join(' — ');
+
+            return { id: row.id, summary, description, startDate, endDateExclusive };
+        });
+}
+
+window.buildRoadmapCalendarEvents = buildRoadmapCalendarEvents;
+
+/**
+ * Construye el contenido de un archivo .ics (iCalendar) — pensado para
+ * importarse en Google Calendar (Ajustes > Importar y exportar > Importar) u
+ * otro calendario compatible con iCalendar.
  *
  * Folding de líneas largas (RFC 5545 §3.1) NO implementado a propósito — es
  * poco frecuente que SUMMARY/DESCRIPTION superen los 75 octetos aquí, y
@@ -411,12 +450,6 @@ window.buildRoadmapExportRows = buildRoadmapExportRows;
  * @returns {string} contenido completo del .ics (líneas separadas por CRLF)
  */
 function buildRoadmapIcsContent(promotion) {
-    const { data } = buildGanttDataset(promotion);
-    const moduleNameByIndex = {};
-    data.forEach(row => {
-        if (row.itemType === 'module') moduleNameByIndex[row.itemIndex] = row.text;
-    });
-
     const pad2 = (n) => String(n).padStart(2, '0');
     const icsDate = (d) => `${d.getFullYear()}${pad2(d.getMonth() + 1)}${pad2(d.getDate())}`;
     const dtstampNow = () => {
@@ -431,34 +464,16 @@ function buildRoadmapIcsContent(promotion) {
         .replace(/;/g, '\\;')
         .replace(/\r?\n/g, '\\n');
 
-    const events = data
-        .filter(row => row.itemType !== 'leccion-group')
-        .map(row => {
-            // start_date viene en formato "%d-%m-%Y" (GANTT_DATE_FORMAT) — se
-            // parsea a mano para no depender de que dhtmlxgantt esté cargado.
-            const [dd, mm, yyyy] = row.start_date.split('-').map(Number);
-            const startDate = new Date(yyyy, mm - 1, dd);
-            const durationDays = Math.max(1, Math.round(row.duration));
-            // DTEND de un evento de día completo es EXCLUSIVO (RFC 5545 §3.6.1):
-            // un día DESPUÉS del último día activo, no el último día en sí.
-            const endDateExclusive = addDays(startDate, durationDays);
-
-            const moduleName = row.itemType === 'module' ? '' : (moduleNameByIndex[row.moduleIndex] || '');
-            const summary = moduleName ? `${row.text} (${moduleName})` : row.text;
-            const description = [GANTT_ITEM_TYPE_LABELS[row.itemType] || row.itemType, row.url]
-                .filter(Boolean).join(' — ');
-
-            return [
-                'BEGIN:VEVENT',
-                `UID:${row.id}@bootcamp-manager`,
-                `DTSTAMP:${dtstampNow()}`,
-                `DTSTART;VALUE=DATE:${icsDate(startDate)}`,
-                `DTEND;VALUE=DATE:${icsDate(endDateExclusive)}`,
-                `SUMMARY:${escapeIcs(summary)}`,
-                description ? `DESCRIPTION:${escapeIcs(description)}` : null,
-                'END:VEVENT',
-            ].filter(Boolean).join('\r\n');
-        });
+    const events = buildRoadmapCalendarEvents(promotion).map(ev => [
+        'BEGIN:VEVENT',
+        `UID:${ev.id}@bootcamp-manager`,
+        `DTSTAMP:${dtstampNow()}`,
+        `DTSTART;VALUE=DATE:${icsDate(ev.startDate)}`,
+        `DTEND;VALUE=DATE:${icsDate(ev.endDateExclusive)}`,
+        `SUMMARY:${escapeIcs(ev.summary)}`,
+        ev.description ? `DESCRIPTION:${escapeIcs(ev.description)}` : null,
+        'END:VEVENT',
+    ].filter(Boolean).join('\r\n'));
 
     return [
         'BEGIN:VCALENDAR',

@@ -3674,6 +3674,77 @@ function _exportRoadmapIcs(promotion) {
 }
 
 /**
+ * Sincroniza el roadmap directamente contra un calendario real de Google
+ * (sin pasar por descargar/importar un .ics a mano). El backend crea el
+ * calendario la primera vez (y lo comparte automáticamente con el profesor
+ * que sincroniza) usando una cuenta de servicio — ver
+ * backend/services/googleCalendar.service.js en roadmap-manager-service;
+ * aquí solo se calcula la lista de eventos (mismos datos que el export .ics,
+ * buildRoadmapCalendarEvents) y se manda al backend, que es quien de verdad
+ * habla con la API de Google. Usa `promotionId` del ámbito del módulo (igual
+ * que exportRoadmap), no lo recibe por parámetro.
+ */
+async function syncRoadmapGoogleCalendar() {
+    if (typeof gantt === 'undefined' || !_ganttInitialized) {
+        showToast('El Gantt no está listo todavía.', 'warning');
+        return;
+    }
+    if (typeof window.buildRoadmapCalendarEvents !== 'function') {
+        showToast('No se pudo calcular la lista de eventos.', 'danger');
+        return;
+    }
+
+    const token = localStorage.getItem('token');
+    let promotion;
+    try {
+        const res = await fetch(`${API_URL}/api/promotions/${promotionId}`, { headers: { 'Authorization': `Bearer ${token}` } });
+        if (!res.ok) throw new Error('No se pudo cargar la promoción');
+        promotion = await res.json();
+    } catch (err) {
+        console.error('[syncRoadmapGoogleCalendar]', err);
+        showToast('Error al cargar los datos del roadmap', 'danger');
+        return;
+    }
+
+    const fmtDate = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const events = window.buildRoadmapCalendarEvents(promotion).map(ev => ({
+        id: ev.id,
+        summary: ev.summary,
+        description: ev.description,
+        startDate: fmtDate(ev.startDate),
+        endDate: fmtDate(ev.endDateExclusive),
+    }));
+    if (!events.length) {
+        showToast('El roadmap no tiene módulos que sincronizar todavía.', 'warning');
+        return;
+    }
+
+    showToast('Sincronizando con Google Calendar…', 'info');
+    try {
+        const res = await fetch(`${API_URL}/api/promotions/${promotionId}/calendar/sync`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ events }),
+        });
+        const result = await res.json();
+        if (!res.ok) throw new Error(result.error || 'Error al sincronizar');
+
+        const parts = [];
+        if (result.created) parts.push(`${result.created} creado${result.created !== 1 ? 's' : ''}`);
+        if (result.updated) parts.push(`${result.updated} actualizado${result.updated !== 1 ? 's' : ''}`);
+        showToast(`Google Calendar sincronizado ✓ (${parts.join(', ') || 'sin cambios'})`, 'success');
+        if (result.failed) {
+            console.error('[syncRoadmapGoogleCalendar] eventos fallidos:', result.errors);
+            showToast(`${result.failed} evento${result.failed !== 1 ? 's' : ''} no se pudo${result.failed !== 1 ? 'ieron' : ''} sincronizar — revisa la consola.`, 'warning');
+        }
+    } catch (err) {
+        console.error('[syncRoadmapGoogleCalendar]', err);
+        showToast(`Error al sincronizar con Google Calendar: ${err.message}`, 'danger');
+    }
+}
+window.syncRoadmapGoogleCalendar = syncRoadmapGoogleCalendar;
+
+/**
  * Exporta el Gantt como imagen (PNG) o incrustada en un PDF (una página,
  * apaisada si el diagrama es más ancho que alto). Fuerza temporalmente el
  * contenedor a su tamaño de contenido completo (sin scroll ni virtualización)
