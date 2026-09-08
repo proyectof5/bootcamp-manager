@@ -94,7 +94,7 @@ function ExportDropdown() {
     };
   }, [open]);
 
-  const pick = (e: React.MouseEvent, format: 'png' | 'pdf' | 'xlsx') => {
+  const pick = (e: React.MouseEvent, format: 'png' | 'pdf' | 'xlsx' | 'ics') => {
     e.stopPropagation(); // ver comentario arriba: evita que shared.js cierre/reabra por su cuenta
     setOpen(false);
     w().exportRoadmap?.(format);
@@ -114,8 +114,37 @@ function ExportDropdown() {
         <li><button type="button" className="dropdown-item" onClick={(e) => pick(e, 'png')}><i className="bi bi-file-earmark-image me-2" />Imagen (PNG)</button></li>
         <li><button type="button" className="dropdown-item" onClick={(e) => pick(e, 'pdf')}><i className="bi bi-file-earmark-pdf me-2" />PDF</button></li>
         <li><button type="button" className="dropdown-item" onClick={(e) => pick(e, 'xlsx')}><i className="bi bi-file-earmark-excel me-2" />Excel (XLSX)</button></li>
+        <li><button type="button" className="dropdown-item" onClick={(e) => pick(e, 'ics')}><i className="bi bi-calendar-event me-2" />Calendario (.ics, para Google Calendar)</button></li>
       </ul>
     </div>
+  );
+}
+
+// Botón de sincronización directa con Google Calendar (opción "A2": la app
+// crea y comparte el calendario vía cuenta de servicio en el backend — ver
+// backend/services/googleCalendar.service.js en roadmap-manager-service).
+// Estado propio de "sincronizando" para desactivar el botón y mostrar
+// feedback inmediato mientras dura la llamada (puede tardar unos segundos:
+// hace un insert/update por evento contra la API de Google, uno a uno).
+function GoogleCalendarSyncButton() {
+  const [syncing, setSyncing] = useState(false);
+
+  const onClick = async () => {
+    if (syncing) return;
+    setSyncing(true);
+    try {
+      await w().syncRoadmapGoogleCalendar?.();
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  return (
+    <button type="button" className="btn btn-outline-primary btn-sm" onClick={onClick} disabled={syncing}>
+      {syncing
+        ? <><span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true" />Sincronizando…</>
+        : <><i className="bi bi-google me-1" />Sincronizar con Google Calendar</>}
+    </button>
   );
 }
 
@@ -157,6 +186,7 @@ function RoadmapPanel() {
               <button type="button" className="btn btn-outline-secondary gantt-zoom-btn active" data-zoom-level="week" onClick={() => w().setGanttZoomLevel?.('week')}>Semana</button>
               <button type="button" className="btn btn-outline-secondary gantt-zoom-btn" data-zoom-level="month" onClick={() => w().setGanttZoomLevel?.('month')}>Mes</button>
             </div>
+            <GoogleCalendarSyncButton />
             <ExportDropdown />
           </div>
         </div>

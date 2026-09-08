@@ -3655,6 +3655,8 @@ async function exportRoadmap(format) {
 
     if (format === 'xlsx') {
         _exportRoadmapXlsx(promotion);
+    } else if (format === 'ics') {
+        _exportRoadmapIcs(promotion);
     } else if (format === 'png' || format === 'pdf') {
         await _exportRoadmapImage(promotion, format);
     }
@@ -3678,6 +3680,123 @@ function _exportRoadmapXlsx(promotion) {
     XLSX.writeFile(wb, `roadmap-${_exportSafeFileName(promotion.name)}.xlsx`);
     showToast('Roadmap exportado a Excel ✓', 'success');
 }
+
+/**
+ * Descarga un archivo .ics (iCalendar) con un evento de día completo por cada
+ * elemento del roadmap — pensado para "Ajustes > Importar y exportar >
+ * Importar" en Google Calendar. No usa ninguna librería (formato de texto
+ * simple), a diferencia de PNG/PDF/XLSX.
+ * @param {Object} promotion
+ */
+function _exportRoadmapIcs(promotion) {
+    if (typeof window.buildRoadmapIcsContent !== 'function') {
+        showToast('No se pudo generar el archivo de calendario.', 'danger');
+        return;
+    }
+    const content = window.buildRoadmapIcsContent(promotion);
+    const blob = new Blob([content], { type: 'text/calendar;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `roadmap-${_exportSafeFileName(promotion.name)}.ics`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    showToast('Roadmap exportado a calendario (.ics) ✓', 'success');
+}
+
+/**
+ * Sincroniza el roadmap directamente contra un calendario real de Google
+ * (sin pasar por descargar/importar un .ics a mano). El backend crea el
+ * calendario la primera vez (y lo comparte automáticamente con el profesor
+ * que sincroniza) usando una cuenta de servicio — ver
+ * backend/services/googleCalendar.service.js en roadmap-manager-service;
+ * aquí solo se calcula la lista de eventos (mismos datos que el export .ics,
+ * buildRoadmapCalendarEvents) y se manda al backend, que es quien de verdad
+ * habla con la API de Google. Usa `promotionId` del ámbito del módulo (igual
+ * que exportRoadmap), no lo recibe por parámetro.
+ */
+async function syncRoadmapGoogleCalendar() {
+    if (typeof gantt === 'undefined' || !_ganttInitialized) {
+        showToast('El Gantt no está listo todavía.', 'warning');
+        return;
+    }
+    if (typeof window.buildRoadmapCalendarEvents !== 'function') {
+        showToast('No se pudo calcular la lista de eventos.', 'danger');
+        return;
+    }
+
+    const token = localStorage.getItem('token');
+    let promotion;
+    try {
+        const res = await fetch(`${API_URL}/api/promotions/${promotionId}`, { headers: { 'Authorization': `Bearer ${token}` } });
+        if (!res.ok) throw new Error('No se pudo cargar la promoción');
+        promotion = await res.json();
+    } catch (err) {
+        console.error('[syncRoadmapGoogleCalendar]', err);
+        showToast('Error al cargar los datos del roadmap', 'danger');
+        return;
+    }
+
+    const fmtDate = (d) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const events = window.buildRoadmapCalendarEvents(promotion).map(ev => ({
+        id: ev.id,
+        summary: ev.summary,
+        description: ev.description,
+        startDate: fmtDate(ev.startDate),
+        endDate: fmtDate(ev.endDateExclusive),
+        // Un color por tipo de elemento (módulo/curso/proyecto/lección/tiempo
+        // flexible) — mismo criterio visual que ya usa el propio Gantt, ver
+        // GANTT_ITEM_TYPE_COLOR_ID en gantt-adapter.js.
+        colorId: GANTT_ITEM_TYPE_COLOR_ID[ev.itemType],
+    }));
+    if (!events.length) {
+        showToast('El roadmap no tiene módulos que sincronizar todavía.', 'warning');
+        return;
+    }
+
+    showToast('Sincronizando con Google Calendar…', 'info');
+    try {
+        const res = await fetch(`${API_URL}/api/promotions/${promotionId}/calendar/sync`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ events }),
+        });
+        const result = await res.json();
+        if (!res.ok) throw new Error(result.error || 'Error al sincronizar');
+
+        const parts = [];
+        if (result.created) parts.push(`${result.created} creado${result.created !== 1 ? 's' : ''}`);
+        if (result.updated) parts.push(`${result.updated} actualizado${result.updated !== 1 ? 's' : ''}`);
+        if (result.deleted) parts.push(`${result.deleted} eliminado${result.deleted !== 1 ? 's' : ''} del calendario`);
+
+        // Compartir por ACL da acceso, pero Google NO añade el calendario solo
+        // a la lista "Mis calendarios" del profesor — hay que aceptarlo una vez.
+        // Este enlace abre esa pantalla de "¿Añadir este calendario?" (funciona
+        // con cualquier calendario al que el usuario logueado tenga acceso, no
+        // solo los recién creados). En la primera sincronización (isNewCalendar)
+        // lo abrimos solos en una pestaña nueva para que no haga falta ni un
+        // clic más; en resincronizaciones posteriores solo lo dejamos en el
+        // toast, por si el profesor todavía no lo había aceptado.
+        const addCalendarUrl = `https://calendar.google.com/calendar/render?cid=${encodeURIComponent(result.googleCalendarId)}`;
+        const linkHtml = `<br><a href="${addCalendarUrl}" target="_blank" rel="noopener" class="text-white text-decoration-underline">Abrir en Google Calendar (para añadirlo a tu lista)</a>`;
+        window.showApiToast?.(`Google Calendar sincronizado ✓ (${parts.join(', ') || 'sin cambios'})${linkHtml}`, 'success', 15000);
+
+        if (result.isNewCalendar) {
+            window.open(addCalendarUrl, '_blank', 'noopener');
+        }
+
+        if (result.failed) {
+            console.error('[syncRoadmapGoogleCalendar] eventos fallidos:', result.errors);
+            showToast(`${result.failed} evento${result.failed !== 1 ? 's' : ''} no se pudo${result.failed !== 1 ? 'ieron' : ''} sincronizar — revisa la consola.`, 'warning');
+        }
+    } catch (err) {
+        console.error('[syncRoadmapGoogleCalendar]', err);
+        showToast(`Error al sincronizar con Google Calendar: ${err.message}`, 'danger');
+    }
+}
+window.syncRoadmapGoogleCalendar = syncRoadmapGoogleCalendar;
 
 /**
  * Exporta el Gantt como imagen (PNG) o incrustada en un PDF (una página,
