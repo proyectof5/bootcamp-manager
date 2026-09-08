@@ -394,6 +394,86 @@ function buildRoadmapExportRows(promotion) {
 window.buildRoadmapExportRows = buildRoadmapExportRows;
 
 /**
+ * Construye el contenido de un archivo .ics (iCalendar) con un evento de día
+ * completo por cada elemento del roadmap (módulos, cursos, proyectos,
+ * lecciones y bloques de tiempo flexible) — pensado para importarse en Google
+ * Calendar (Ajustes > Importar y exportar > Importar) u otro calendario
+ * compatible con iCalendar. Mismo criterio de filtrado que
+ * buildRoadmapExportRows: se omite el grupo "Lecciones" (leccion-group), un
+ * nodo puramente visual sin fecha propia real (se deriva del min/max de sus
+ * lecciones hijas, que sí se exportan cada una por separado).
+ *
+ * Folding de líneas largas (RFC 5545 §3.1) NO implementado a propósito — es
+ * poco frecuente que SUMMARY/DESCRIPTION superen los 75 octetos aquí, y
+ * Google Calendar importa líneas largas sin problema en la práctica; si algún
+ * día hace falta soporte estricto para otros clientes, añadir folding aquí.
+ * @param {Object} promotion
+ * @returns {string} contenido completo del .ics (líneas separadas por CRLF)
+ */
+function buildRoadmapIcsContent(promotion) {
+    const { data } = buildGanttDataset(promotion);
+    const moduleNameByIndex = {};
+    data.forEach(row => {
+        if (row.itemType === 'module') moduleNameByIndex[row.itemIndex] = row.text;
+    });
+
+    const pad2 = (n) => String(n).padStart(2, '0');
+    const icsDate = (d) => `${d.getFullYear()}${pad2(d.getMonth() + 1)}${pad2(d.getDate())}`;
+    const dtstampNow = () => {
+        const n = new Date();
+        return `${n.getUTCFullYear()}${pad2(n.getUTCMonth() + 1)}${pad2(n.getUTCDate())}T${pad2(n.getUTCHours())}${pad2(n.getUTCMinutes())}${pad2(n.getUTCSeconds())}Z`;
+    };
+    // Escapa coma/punto y coma/barra invertida/salto de línea — caracteres con
+    // significado especial en valores de texto de iCalendar (RFC 5545 §3.3.11).
+    const escapeIcs = (s) => String(s || '')
+        .replace(/\\/g, '\\\\')
+        .replace(/,/g, '\\,')
+        .replace(/;/g, '\\;')
+        .replace(/\r?\n/g, '\\n');
+
+    const events = data
+        .filter(row => row.itemType !== 'leccion-group')
+        .map(row => {
+            // start_date viene en formato "%d-%m-%Y" (GANTT_DATE_FORMAT) — se
+            // parsea a mano para no depender de que dhtmlxgantt esté cargado.
+            const [dd, mm, yyyy] = row.start_date.split('-').map(Number);
+            const startDate = new Date(yyyy, mm - 1, dd);
+            const durationDays = Math.max(1, Math.round(row.duration));
+            // DTEND de un evento de día completo es EXCLUSIVO (RFC 5545 §3.6.1):
+            // un día DESPUÉS del último día activo, no el último día en sí.
+            const endDateExclusive = addDays(startDate, durationDays);
+
+            const moduleName = row.itemType === 'module' ? '' : (moduleNameByIndex[row.moduleIndex] || '');
+            const summary = moduleName ? `${row.text} (${moduleName})` : row.text;
+            const description = [GANTT_ITEM_TYPE_LABELS[row.itemType] || row.itemType, row.url]
+                .filter(Boolean).join(' — ');
+
+            return [
+                'BEGIN:VEVENT',
+                `UID:${row.id}@bootcamp-manager`,
+                `DTSTAMP:${dtstampNow()}`,
+                `DTSTART;VALUE=DATE:${icsDate(startDate)}`,
+                `DTEND;VALUE=DATE:${icsDate(endDateExclusive)}`,
+                `SUMMARY:${escapeIcs(summary)}`,
+                description ? `DESCRIPTION:${escapeIcs(description)}` : null,
+                'END:VEVENT',
+            ].filter(Boolean).join('\r\n');
+        });
+
+    return [
+        'BEGIN:VCALENDAR',
+        'VERSION:2.0',
+        'PRODID:-//Bootcamp Manager//Roadmap Export//ES',
+        'CALSCALE:GREGORIAN',
+        `X-WR-CALNAME:${escapeIcs(promotion.name || 'Roadmap')}`,
+        ...events,
+        'END:VCALENDAR',
+    ].join('\r\n');
+}
+
+window.buildRoadmapIcsContent = buildRoadmapIcsContent;
+
+/**
  * Traduce el cambio hecho por el docente (drag/resize) sobre una tarea del
  * Gantt de vuelta al modelo de dominio de la promoción (in-place).
  *

@@ -94,7 +94,7 @@ function ExportDropdown() {
     };
   }, [open]);
 
-  const pick = (e: React.MouseEvent, format: 'png' | 'pdf' | 'xlsx') => {
+  const pick = (e: React.MouseEvent, format: 'png' | 'pdf' | 'xlsx' | 'ics') => {
     e.stopPropagation(); // ver comentario arriba: evita que shared.js cierre/reabra por su cuenta
     setOpen(false);
     w().exportRoadmap?.(format);
@@ -114,6 +114,7 @@ function ExportDropdown() {
         <li><button type="button" className="dropdown-item" onClick={(e) => pick(e, 'png')}><i className="bi bi-file-earmark-image me-2" />Imagen (PNG)</button></li>
         <li><button type="button" className="dropdown-item" onClick={(e) => pick(e, 'pdf')}><i className="bi bi-file-earmark-pdf me-2" />PDF</button></li>
         <li><button type="button" className="dropdown-item" onClick={(e) => pick(e, 'xlsx')}><i className="bi bi-file-earmark-excel me-2" />Excel (XLSX)</button></li>
+        <li><button type="button" className="dropdown-item" onClick={(e) => pick(e, 'ics')}><i className="bi bi-calendar-event me-2" />Calendario (.ics, para Google Calendar)</button></li>
       </ul>
     </div>
   );

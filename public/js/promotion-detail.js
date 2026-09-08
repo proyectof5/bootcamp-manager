@@ -3622,6 +3622,8 @@ async function exportRoadmap(format) {
 
     if (format === 'xlsx') {
         _exportRoadmapXlsx(promotion);
+    } else if (format === 'ics') {
+        _exportRoadmapIcs(promotion);
     } else if (format === 'png' || format === 'pdf') {
         await _exportRoadmapImage(promotion, format);
     }
@@ -3644,6 +3646,31 @@ function _exportRoadmapXlsx(promotion) {
     XLSX.utils.book_append_sheet(wb, ws, 'Roadmap');
     XLSX.writeFile(wb, `roadmap-${_exportSafeFileName(promotion.name)}.xlsx`);
     showToast('Roadmap exportado a Excel ✓', 'success');
+}
+
+/**
+ * Descarga un archivo .ics (iCalendar) con un evento de día completo por cada
+ * elemento del roadmap — pensado para "Ajustes > Importar y exportar >
+ * Importar" en Google Calendar. No usa ninguna librería (formato de texto
+ * simple), a diferencia de PNG/PDF/XLSX.
+ * @param {Object} promotion
+ */
+function _exportRoadmapIcs(promotion) {
+    if (typeof window.buildRoadmapIcsContent !== 'function') {
+        showToast('No se pudo generar el archivo de calendario.', 'danger');
+        return;
+    }
+    const content = window.buildRoadmapIcsContent(promotion);
+    const blob = new Blob([content], { type: 'text/calendar;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `roadmap-${_exportSafeFileName(promotion.name)}.ics`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    showToast('Roadmap exportado a calendario (.ics) ✓', 'success');
 }
 
 /**
