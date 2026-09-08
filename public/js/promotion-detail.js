@@ -3713,6 +3713,10 @@ async function syncRoadmapGoogleCalendar() {
         description: ev.description,
         startDate: fmtDate(ev.startDate),
         endDate: fmtDate(ev.endDateExclusive),
+        // Un color por tipo de elemento (módulo/curso/proyecto/lección/tiempo
+        // flexible) — mismo criterio visual que ya usa el propio Gantt, ver
+        // GANTT_ITEM_TYPE_COLOR_ID en gantt-adapter.js.
+        colorId: GANTT_ITEM_TYPE_COLOR_ID[ev.itemType],
     }));
     if (!events.length) {
         showToast('El roadmap no tiene módulos que sincronizar todavía.', 'warning');
@@ -3732,6 +3736,7 @@ async function syncRoadmapGoogleCalendar() {
         const parts = [];
         if (result.created) parts.push(`${result.created} creado${result.created !== 1 ? 's' : ''}`);
         if (result.updated) parts.push(`${result.updated} actualizado${result.updated !== 1 ? 's' : ''}`);
+        if (result.deleted) parts.push(`${result.deleted} eliminado${result.deleted !== 1 ? 's' : ''} del calendario`);
 
         // Compartir por ACL da acceso, pero Google NO añade el calendario solo
         // a la lista "Mis calendarios" del profesor — hay que aceptarlo una vez.

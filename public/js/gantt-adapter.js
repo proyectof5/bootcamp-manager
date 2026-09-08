@@ -353,6 +353,21 @@ const GANTT_ITEM_TYPE_LABELS = {
     flexible: 'Tiempo flexible',
 };
 
+// Un colorId por tipo de elemento para los eventos que se sincronizan a
+// Google Calendar (ver buildRoadmapCalendarEvents / syncRoadmapGoogleCalendar
+// en promotion-detail.js) — Calendar solo acepta uno de los 11 colores fijos
+// de su paleta (id "1".."11", no un hex arbitrario), así que se eligió el más
+// parecido a cada color que ya usa el propio Gantt en CSS
+// (.gantt-task-module/course/project/leccion/flexible en promotion-detail.css)
+// para que un elemento se reconozca visualmente igual en ambos sitios.
+const GANTT_ITEM_TYPE_COLOR_ID = {
+    module: '9',    // Blueberry #3f51b5 ≈ #667eea del Gantt
+    course: '2',    // Sage      #33b679 ≈ #6bbf9c del Gantt
+    project: '6',   // Tangerine #f4511e ≈ #f59e0b del Gantt
+    leccion: '1',   // Lavender  #7986cb ≈ #8e7cc3 del Gantt
+    flexible: '3',  // Grape     #8e24aa ≈ #6f42c1 del Gantt
+};
+
 /**
  * Construye filas planas (una por módulo/curso/proyecto/lección/bloque de
  * tiempo flexible) listas para exportar a Excel — reutiliza el mismo dataset
@@ -431,7 +446,7 @@ function buildRoadmapCalendarEvents(promotion) {
             const description = [GANTT_ITEM_TYPE_LABELS[row.itemType] || row.itemType, row.url]
                 .filter(Boolean).join(' — ');
 
-            return { id: row.id, summary, description, startDate, endDateExclusive };
+            return { id: row.id, summary, description, startDate, endDateExclusive, itemType: row.itemType };
         });
 }
 
