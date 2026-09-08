@@ -3732,7 +3732,23 @@ async function syncRoadmapGoogleCalendar() {
         const parts = [];
         if (result.created) parts.push(`${result.created} creado${result.created !== 1 ? 's' : ''}`);
         if (result.updated) parts.push(`${result.updated} actualizado${result.updated !== 1 ? 's' : ''}`);
-        showToast(`Google Calendar sincronizado ✓ (${parts.join(', ') || 'sin cambios'})`, 'success');
+
+        // Compartir por ACL da acceso, pero Google NO añade el calendario solo
+        // a la lista "Mis calendarios" del profesor — hay que aceptarlo una vez.
+        // Este enlace abre esa pantalla de "¿Añadir este calendario?" (funciona
+        // con cualquier calendario al que el usuario logueado tenga acceso, no
+        // solo los recién creados). En la primera sincronización (isNewCalendar)
+        // lo abrimos solos en una pestaña nueva para que no haga falta ni un
+        // clic más; en resincronizaciones posteriores solo lo dejamos en el
+        // toast, por si el profesor todavía no lo había aceptado.
+        const addCalendarUrl = `https://calendar.google.com/calendar/render?cid=${encodeURIComponent(result.googleCalendarId)}`;
+        const linkHtml = `<br><a href="${addCalendarUrl}" target="_blank" rel="noopener" class="text-white text-decoration-underline">Abrir en Google Calendar (para añadirlo a tu lista)</a>`;
+        window.showApiToast?.(`Google Calendar sincronizado ✓ (${parts.join(', ') || 'sin cambios'})${linkHtml}`, 'success', 15000);
+
+        if (result.isNewCalendar) {
+            window.open(addCalendarUrl, '_blank', 'noopener');
+        }
+
         if (result.failed) {
             console.error('[syncRoadmapGoogleCalendar] eventos fallidos:', result.errors);
             showToast(`${result.failed} evento${result.failed !== 1 ? 's' : ''} no se pudo${result.failed !== 1 ? 'ieron' : ''} sincronizar — revisa la consola.`, 'warning');
