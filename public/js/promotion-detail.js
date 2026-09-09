@@ -4359,12 +4359,7 @@ async function deleteGanttPlannerItem(task) {
 
         if (Array.isArray(module.plannerItems) && module.plannerItems.length > 0 && task.plannerItemId) {
             module.plannerItems = module.plannerItems.filter(i => i.id !== task.plannerItemId);
-            module.courses = module.plannerItems
-                .filter(i => i.type === 'curso')
-                .map(i => ({ name: i.name, url: i.url || '', duration: Number(i.duration) || 1, startOffset: Number(i.startOffset) || 0 }));
-            module.projects = module.plannerItems
-                .filter(i => i.type === 'proyecto')
-                .map(i => ({ name: i.name, url: i.url || '', duration: Number(i.duration) || 1, startOffset: Number(i.startOffset) || 0, competenceIds: i.competenceIds || [] }));
+            syncLegacyCoursesProjects(module);
         } else if (task.itemType === 'course' && Array.isArray(module.courses) && task.legacyIndex !== undefined) {
             module.courses.splice(task.legacyIndex, 1);
         } else if (task.itemType === 'project' && Array.isArray(module.projects) && task.legacyIndex !== undefined) {
@@ -4496,12 +4491,7 @@ async function persistGanttRowOrder(task) {
 
         // Resincroniza los arrays legacy derivados (mismo criterio que usa el
         // modal de módulo al guardar el planificador).
-        module.courses = module.plannerItems
-            .filter(i => i.type === 'curso')
-            .map(i => ({ name: i.name, url: i.url || '', duration: Number(i.duration) || 1, startOffset: Number(i.startOffset) || 0 }));
-        module.projects = module.plannerItems
-            .filter(i => i.type === 'proyecto')
-            .map(i => ({ name: i.name, url: i.url || '', duration: Number(i.duration) || 1, startOffset: Number(i.startOffset) || 0, competenceIds: i.competenceIds || [] }));
+        syncLegacyCoursesProjects(module);
 
         const updateResponse = await fetch(`${API_URL}/api/promotions/${promotionId}`, {
             method: 'PUT',
@@ -7607,12 +7597,7 @@ function setupForms() {
 
                     // Resincroniza los arrays legacy derivados (mismo criterio que
                     // applyGanttTaskChange en gantt-adapter.js).
-                    module.courses = module.plannerItems
-                        .filter(i => i.type === 'curso')
-                        .map(i => ({ name: i.name, url: i.url || '', duration: Number(i.duration) || 1, startOffset: Number(i.startOffset) || 0, absoluteStartOffset: (typeof i.absoluteStartOffset === 'number' ? i.absoluteStartOffset : null) }));
-                    module.projects = module.plannerItems
-                        .filter(i => i.type === 'proyecto')
-                        .map(i => ({ name: i.name, url: i.url || '', duration: Number(i.duration) || 1, startOffset: Number(i.startOffset) || 0, absoluteStartOffset: (typeof i.absoluteStartOffset === 'number' ? i.absoluteStartOffset : null), competenceIds: i.competenceIds || [] }));
+                    syncLegacyCoursesProjects(module);
                 } else {
                     const list = task.itemType === 'course' ? module.courses : module.projects;
                     if (!Array.isArray(list) || task.legacyIndex === undefined || !list[task.legacyIndex]) {
@@ -7816,12 +7801,7 @@ function setupForms() {
 
             // Resincroniza los arrays legacy derivados (mismo criterio que el
             // resto de flujos del planificador).
-            module.courses = module.plannerItems
-                .filter(i => i.type === 'curso')
-                .map(i => ({ name: i.name, url: i.url || '', duration: Number(i.duration) || 1, startOffset: Number(i.startOffset) || 0, absoluteStartOffset: (typeof i.absoluteStartOffset === 'number' ? i.absoluteStartOffset : null) }));
-            module.projects = module.plannerItems
-                .filter(i => i.type === 'proyecto')
-                .map(i => ({ name: i.name, url: i.url || '', duration: Number(i.duration) || 1, startOffset: Number(i.startOffset) || 0, absoluteStartOffset: (typeof i.absoluteStartOffset === 'number' ? i.absoluteStartOffset : null), competenceIds: i.competenceIds || [] }));
+            syncLegacyCoursesProjects(module);
 
             const updateResponse = await fetch(`${API_URL}/api/promotions/${promotionId}`, {
                 method: 'PUT',
