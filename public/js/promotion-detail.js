@@ -14110,6 +14110,41 @@ function selectEvalTarget(targetId) {
     if (splitView) splitView.dataset.targetStudentId = String(targetId);
 }
 
+// Umbral para dar por alcanzado un nivel (1/2/3) de una competencia: % de SUS
+// PROPIOS indicadores marcados como hechos.
+const EVAL_LEVEL_THRESHOLD = 0.7;
+
+/**
+ * Nivel alcanzado de una competencia a partir de sus indicadores marcados.
+ * Cada nivel se evalúa de forma INDEPENDIENTE: se alcanza en cuanto se ha
+ * marcado al menos EVAL_LEVEL_THRESHOLD (70%) de sus propios indicadores —
+ * SIN exigir que el nivel anterior esté completo (antes de este cambio hacía
+ * falta el 100% de un nivel para "desbloquear" el siguiente, de forma
+ * secuencial: para marcar Avanzado había que tener Básico y Medio al 100%).
+ *
+ * Se llama siempre con checkedByLevel/totalByLevel recalculados en el
+ * momento desde el checkedIndicators guardado — nunca con un valor
+ * cacheado — así que el cambio de regla se aplica también a evaluaciones YA
+ * HECHAS en cuanto se abren o se vuelve a tocar un indicador, sin necesidad
+ * de migrar ningún dato guardado.
+ *
+ * Usado en _buildEvalCompetencesHtmlForTarget, openEvaluationModal,
+ * _openStudentEvalSubModalFor y updateEvalIndicator (los 4 sitios que antes
+ * duplicaban este mismo cálculo).
+ * @param {{1:number,2:number,3:number}} checkedByLevel
+ * @param {{1:number,2:number,3:number}} totalByLevel
+ * @returns {0|1|2|3}
+ */
+function _computeEvalAutoLevel(checkedByLevel, totalByLevel) {
+    let autoLevel = 0;
+    [1, 2, 3].forEach((lvl) => {
+        if (totalByLevel[lvl] > 0 && (checkedByLevel[lvl] / totalByLevel[lvl]) >= EVAL_LEVEL_THRESHOLD) {
+            autoLevel = Math.max(autoLevel, lvl);
+        }
+    });
+    return autoLevel;
+}
+
 /**
  * Builds competence cards HTML for the given targetId — shared by the split view and legacy modal.
  * This is extracted from the inline function inside _openStudentEvalSubModalFor so it can be called
@@ -14182,20 +14217,7 @@ function _buildEvalCompetencesHtmlForTarget(targetId, savedEval, projCompetences
             });
         }
 
-        let autoLevel = 0;
-        if (hasCompIndicators) {
-            if (totalByLevel[1] > 0 && checkedByLevel[1] >= totalByLevel[1]) {
-                autoLevel = 1;
-                if (totalByLevel[2] > 0 && checkedByLevel[2] >= totalByLevel[2]) {
-                    autoLevel = 2;
-                    if (totalByLevel[3] > 0 && checkedByLevel[3] >= totalByLevel[3]) autoLevel = 3;
-                }
-            }
-            if (totalByLevel[1] === 0 && totalByLevel[2] > 0 && checkedByLevel[2] >= totalByLevel[2]) {
-                autoLevel = Math.max(autoLevel, 2);
-                if (totalByLevel[3] > 0 && checkedByLevel[3] >= totalByLevel[3]) autoLevel = 3;
-            }
-        }
+        const autoLevel = hasCompIndicators ? _computeEvalAutoLevel(checkedByLevel, totalByLevel) : 0;
         const displayLevel = hasCompIndicators ? autoLevel : currentLevel;
         const lvlBadgeColor = LEVEL_COLORS_IND[displayLevel] || 'secondary';
         const lvlBadgeLabel = LEVEL_LABELS_IND[displayLevel] || 'Sin nivel';
@@ -14613,20 +14635,7 @@ function openEvaluationModal(mIdx, pIdx) {
                 });
             }
 
-            let autoLevel = 0;
-            if (hasCompIndicators) {
-                if (totalByLevel[1] > 0 && checkedByLevel[1] >= totalByLevel[1]) {
-                    autoLevel = 1;
-                    if (totalByLevel[2] > 0 && checkedByLevel[2] >= totalByLevel[2]) {
-                        autoLevel = 2;
-                        if (totalByLevel[3] > 0 && checkedByLevel[3] >= totalByLevel[3]) autoLevel = 3;
-                    }
-                }
-                if (totalByLevel[1] === 0 && totalByLevel[2] > 0 && checkedByLevel[2] >= totalByLevel[2]) {
-                    autoLevel = Math.max(autoLevel, 2);
-                    if (totalByLevel[3] > 0 && checkedByLevel[3] >= totalByLevel[3]) autoLevel = 3;
-                }
-            }
+            const autoLevel = hasCompIndicators ? _computeEvalAutoLevel(checkedByLevel, totalByLevel) : 0;
 
             const displayLevel = hasCompIndicators ? autoLevel : currentLevel;
             const lvlBadgeColor = LEVEL_COLORS_IND[displayLevel] || 'secondary';
@@ -15175,25 +15184,9 @@ function _openStudentEvalSubModalFor(studentId) {
                 });
             }
 
-            // Auto-computed level: highest level where ALL indicators of that level are checked
-            // (and all lower levels are also fully checked)
-            let autoLevel = 0;
-            if (hasCompIndicators) {
-                if (totalByLevel[1] > 0 && checkedByLevel[1] >= totalByLevel[1]) {
-                    autoLevel = 1;
-                    if (totalByLevel[2] > 0 && checkedByLevel[2] >= totalByLevel[2]) {
-                        autoLevel = 2;
-                        if (totalByLevel[3] > 0 && checkedByLevel[3] >= totalByLevel[3]) {
-                            autoLevel = 3;
-                        }
-                    }
-                }
-                // If no level-1 indicators defined but level-2+ checked
-                if (totalByLevel[1] === 0 && totalByLevel[2] > 0 && checkedByLevel[2] >= totalByLevel[2]) {
-                    autoLevel = Math.max(autoLevel, 2);
-                    if (totalByLevel[3] > 0 && checkedByLevel[3] >= totalByLevel[3]) autoLevel = 3;
-                }
-            }
+            // Auto-computed level: el más alto cuyos PROPIOS indicadores lleguen al
+            // umbral EVAL_LEVEL_THRESHOLD — ver _computeEvalAutoLevel.
+            const autoLevel = hasCompIndicators ? _computeEvalAutoLevel(checkedByLevel, totalByLevel) : 0;
 
             const displayLevel = hasCompIndicators ? autoLevel : currentLevel;
 
@@ -15467,20 +15460,7 @@ function updateEvalIndicator(targetId, compId, indKey, level, checked, compName)
         });
     }
 
-    let autoLevel = 0;
-    if (hasCompIndicators) {
-        if (totalByLevel[1] > 0 && checkedByLevel[1] >= totalByLevel[1]) {
-            autoLevel = 1;
-            if (totalByLevel[2] > 0 && checkedByLevel[2] >= totalByLevel[2]) {
-                autoLevel = 2;
-                if (totalByLevel[3] > 0 && checkedByLevel[3] >= totalByLevel[3]) autoLevel = 3;
-            }
-        }
-        if (totalByLevel[1] === 0 && totalByLevel[2] > 0 && checkedByLevel[2] >= totalByLevel[2]) {
-            autoLevel = Math.max(autoLevel, 2);
-            if (totalByLevel[3] > 0 && checkedByLevel[3] >= totalByLevel[3]) autoLevel = 3;
-        }
-    }
+    const autoLevel = hasCompIndicators ? _computeEvalAutoLevel(checkedByLevel, totalByLevel) : 0;
 
     // Update the competence entry level
     let compEntry = evalEntry.competences.find(c => String(c.competenceId) === String(compId));
