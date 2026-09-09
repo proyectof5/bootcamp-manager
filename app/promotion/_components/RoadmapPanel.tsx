@@ -163,10 +163,10 @@ function RoadmapPanel() {
 
   return (
     <>
-      <div className="justify-content-between align-items-center mb-4 detail-card">
+      <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2 detail-card">
         <h5 className="mb-0">Roadmap &amp; Módulos</h5>
         <div className="d-flex flex-wrap gap-2 align-items-center">
-          <button type="button" className="btn btn-outline-warning btn-sm" onClick={() => w().openEmployabilityModal?.()}>
+          <button type="button" className="btn btn-brand-soft btn-sm" onClick={() => w().openEmployabilityModal?.()}>
             <i className="bi bi-briefcase me-2" />Sesiones Empleabilidad
           </button>
           <button type="button" className="btn btn-primary btn-sm" onClick={() => w().openModuleModal?.()}>
@@ -181,7 +181,7 @@ function RoadmapPanel() {
         <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
           <h6 className="mb-0">Diagrama Gantt</h6>
           <div className="d-flex gap-2">
-            <div className="btn-group btn-group-sm" role="group" aria-label="Zoom del Gantt">
+            <div className="btn-group btn-group-sm gantt-zoom-group" role="group" aria-label="Zoom del Gantt">
               <button type="button" className="btn btn-outline-secondary gantt-zoom-btn" data-zoom-level="day" onClick={() => w().setGanttZoomLevel?.('day')}>Día</button>
               <button type="button" className="btn btn-outline-secondary gantt-zoom-btn active" data-zoom-level="week" onClick={() => w().setGanttZoomLevel?.('week')}>Semana</button>
               <button type="button" className="btn btn-outline-secondary gantt-zoom-btn" data-zoom-level="month" onClick={() => w().setGanttZoomLevel?.('month')}>Mes</button>
@@ -189,6 +189,16 @@ function RoadmapPanel() {
             <GoogleCalendarSyncButton />
             <ExportDropdown />
           </div>
+        </div>
+        {/* Leyenda de colores por tipo de elemento (spec design-cleanup, nuevo) —
+            mismos tokens --app-color-gantt-* que .gantt_task_line.gantt-task-*
+            en css/promotion-detail.css. Puramente informativa/decorativa. */}
+        <div className="gantt-legend" aria-hidden="true">
+          <span className="gantt-legend-item"><span className="gantt-legend-dot" style={{ background: 'var(--app-color-gantt-module)' }} />Módulo</span>
+          <span className="gantt-legend-item"><span className="gantt-legend-dot" style={{ background: 'var(--app-color-gantt-course)' }} />Curso</span>
+          <span className="gantt-legend-item"><span className="gantt-legend-dot" style={{ background: 'var(--app-color-gantt-project)' }} />Proyecto</span>
+          <span className="gantt-legend-item"><span className="gantt-legend-dot" style={{ background: 'var(--app-color-gantt-leccion)' }} />Lección</span>
+          <span className="gantt-legend-item"><span className="gantt-legend-dot" style={{ background: 'var(--app-color-gantt-flexible)' }} />Tiempo flexible</span>
         </div>
         {/* Lo puebla el legacy (generateGanttChart → DHTMLX Gantt, Fase 6). */}
         <div id="gantt-container" style={{ width: '100%', height: 500, overflow: 'auto' }} />

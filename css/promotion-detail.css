@@ -1179,41 +1179,109 @@ th, td {
     background-color: var(--app-color-primary-soft);
 }
 
-/* Colores por tipo de elemento (mismos usados en la vista anterior) */
+/* Colores por tipo de elemento — tokens en css/design-system.css
+   (--app-color-gantt-*), reutilizados también por la leyenda del Gantt
+   en RoadmapPanel.tsx. Ver docs/design-system.md. */
 .gantt_task_line.gantt-task-module {
-    background-color: #667eea;
+    background-color: var(--app-color-gantt-module);
     border-color: #5a67d8;
 }
 
 .gantt_task_line.gantt-task-course {
-    background-color: #6bbf9c;
+    background-color: var(--app-color-gantt-course);
     border-color: #4ea380;
 }
 
 .gantt_task_line.gantt-task-project {
-    background-color: var(--app-color-brand-300, #f59e0b);
+    background-color: var(--app-color-gantt-project);
     border-color: var(--app-color-primary);
 }
 
 .gantt_task_line.gantt-task-leccion {
-    background-color: #8e7cc3;
+    background-color: var(--app-color-gantt-leccion);
     border-color: #6f5aa8;
 }
 
 .gantt_task_line.gantt-task-flexible {
-    background-color: var(--purple-f5, #6f42c1);
+    background-color: var(--app-color-gantt-flexible);
     border-color: var(--purple-light-f5, #d1c4e9);
+}
+
+/* Zebra striping suave (spec design-cleanup) — fila con :not(.gantt_selected)
+   para no pisar el resaltado de selección (misma especificidad, este
+   selector es más específico así que ganaría si no excluyéramos selected). */
+.gantt_row:nth-child(even):not(.gantt_selected) {
+    background-color: var(--app-color-neutral-50);
 }
 
 .gantt_task_progress {
     background-color: rgba(0, 0, 0, 0.15);
 }
 
-/* ─── Botones de zoom (día/semana/mes) ─── */
+/* ─── Botones de zoom (día/semana/mes) — pill segmentada (spec design-cleanup) ─── */
+.gantt-zoom-group {
+    background-color: var(--app-color-neutral-100);
+    border-radius: var(--app-radius-md);
+    padding: 3px;
+    gap: 2px;
+}
+
+.gantt-zoom-group .gantt-zoom-btn {
+    border-color: transparent;
+    background-color: transparent;
+    color: var(--app-color-text-muted);
+    font-weight: 600;
+    border-radius: var(--app-radius-sm) !important;
+}
+
+.gantt-zoom-group .gantt-zoom-btn:hover {
+    background-color: rgba(255, 255, 255, .7);
+    color: var(--app-color-text);
+}
+
 .gantt-zoom-btn.active {
     background-color: var(--app-color-primary);
     border-color: var(--app-color-primary);
     color: #fff;
+    box-shadow: var(--app-shadow-sm);
+}
+
+/* ─── Botón "Sesiones Empleabilidad" — pill tonal de marca, no warning ─── */
+.btn-brand-soft {
+    background-color: var(--app-color-brand-50);
+    color: var(--app-color-brand-700);
+    border: 1px solid var(--app-color-brand-100);
+}
+
+.btn-brand-soft:hover {
+    background-color: var(--app-color-brand-100);
+    color: var(--app-color-brand-700);
+}
+
+/* ─── Leyenda de colores del Gantt (spec design-cleanup, nuevo) ─── */
+.gantt-legend {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 18px;
+    margin: 0 0 10px;
+}
+
+.gantt-legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--app-color-text-muted);
+}
+
+.gantt-legend-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 2px;
+    flex-shrink: 0;
+    display: inline-block;
 }
 
 /* ─── Icono de "arrastra para reordenar" en cursos/proyectos/lecciones ─── */
@@ -1986,7 +2054,7 @@ th, td {
 }
 
 .progress-bar {
-    background: var(--principal-1);
+    background: linear-gradient(90deg, var(--app-color-brand-300), var(--app-color-primary));
     transition: width 0.3s ease;
 }
 
@@ -2030,17 +2098,18 @@ progress-bar progress-bar-striped {
 
 .quick-action-card {
     position: relative;
-    transition: all 0.3s ease;
-    border-radius: 8px;
-    background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
-    border: 1px solid #e9ecef;
+    transition: all 0.2s ease;
+    border-radius: var(--app-radius-lg);
+    background: var(--app-color-bg-surface);
+    border: 1px solid var(--app-color-border);
+    box-shadow: var(--app-shadow-sm);
     overflow: hidden;
 }
 
 .quick-action-card:hover:not(.disabled) {
-    box-shadow: 0 4px 16px rgba(255, 71, 0, 0.15);
-    transform: translateY(-3px);
-    border-color: var(--app-color-primary);
+    box-shadow: var(--app-shadow-md);
+    transform: translateY(-2px);
+    border-color: var(--app-color-brand-100);
 }
 
 .quick-action-card.disabled {
@@ -2066,11 +2135,25 @@ progress-bar progress-bar-striped {
 }
 
 .quick-action-icon {
-    font-size: 28px;
+    width: 48px;
+    height: 48px;
+    margin: 0 auto;
+    border-radius: var(--app-radius-pill);
+    font-size: 20px;
     display: flex;
     align-items: center;
     justify-content: center;
+    background-color: var(--app-color-neutral-50);
     transition: transform 0.2s ease;
+}
+
+/* Chip circular con fondo pastel derivado del color del icono (mismo tono
+   que ya se le pasa por inline style="color: ...") — con fallback sólido
+   arriba para navegadores sin color-mix(). */
+@supports (background-color: color-mix(in srgb, red 10%, white)) {
+    .quick-action-icon {
+        background-color: color-mix(in srgb, currentColor 14%, white);
+    }
 }
 
 .quick-action-card:hover:not(.disabled) .quick-action-icon {
@@ -2082,7 +2165,7 @@ progress-bar progress-bar-striped {
     font-weight: 500;
     text-align: center;
     line-height: 1.2;
-    color: #333;
+    color: var(--app-color-neutral-700);
 }
 
 .quick-action-card:hover:not(.disabled) .quick-action-label {
@@ -2177,9 +2260,26 @@ progress-bar progress-bar-striped {
     align-items: center;
     justify-content: center;
     background: rgba(255, 107, 53, 0.1);
-    border-radius: 6px;
+    border-radius: var(--app-radius-md);
     color: var(--principal-1);
     font-size: 1.1rem;
+}
+
+/* Variantes de color por tipo de aviso (spec design-cleanup) — mismo patrón
+   de chip que quick-action-icon, coloreado según el h6 que acompaña. */
+.aviso-icon-warning {
+    background: #fff8e6;
+    color: var(--app-color-warning-500);
+}
+
+.aviso-icon-info {
+    background: #e6f9fd;
+    color: var(--app-color-info-500);
+}
+
+.aviso-icon-neutral {
+    background: var(--app-color-neutral-50);
+    color: var(--app-color-neutral-700);
 }
 
 .aviso-content {
@@ -2208,6 +2308,27 @@ progress-bar progress-bar-striped {
     display: flex;
     align-items: center;
     gap: 4px;
+}
+
+/* Cards de Overview (Agenda del Día / Avisos) — borde hairline n-100 en vez
+   de .border-0 + cabecera n-50 con separador, en línea con el resto de
+   cards del design system (spec design-cleanup). */
+#overview-tab .card {
+    border: 1px solid var(--app-color-border);
+    border-radius: var(--app-radius-lg);
+}
+
+#overview-tab .card-header {
+    background-color: var(--app-color-neutral-50);
+    border-bottom: 1px solid var(--app-color-border);
+}
+
+/* Badges "N estudiantes" / "N bajas" junto al progreso — pill, no rectángulo */
+.stat-pill {
+    border-radius: var(--app-radius-pill) !important;
+    padding: 5px 12px !important;
+    font-size: 12.5px;
+    border: 1px solid var(--app-color-border);
 }
 
 /* Agenda Section */
@@ -2400,7 +2521,7 @@ progress-bar progress-bar-striped {
 /* Withdrawn students container background */
 .bg-withdrawn {
     background-color: #FFD9B3 !important;
-    border-radius: 6px !important;
+    border-radius: var(--app-radius-pill) !important;
 }
 
 /* Withdrawn students text color - naranja oscuro suave */

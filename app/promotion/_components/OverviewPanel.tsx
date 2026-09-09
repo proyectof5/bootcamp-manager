@@ -102,18 +102,18 @@ function OverviewPanel() {
             <h6 className="mb-0 text-dark">
               <i className="bi bi-graph-up me-2 text-warning" />Progreso del Curso
             </h6>
-            <div className="d-flex align-items-center gap-2 px-3 py-1 bg-light rounded">
+            <div className="d-flex align-items-center gap-2 px-3 py-1 bg-light stat-pill">
               <i className="bi bi-people-fill text-warning" />
               <small className="fw-bold text-dark" id="active-students-count">-</small>
             </div>
             {/* Withdrawn Students Block */}
-            <div id="withdrawn-students-container" className="d-flex align-items-center gap-2 px-3 py-1 bg-withdrawn rounded">
+            <div id="withdrawn-students-container" className="d-flex align-items-center gap-2 px-3 py-1 bg-withdrawn stat-pill">
               <i className="bi bi-person-x text-withdrawn" />
               <small className="fw-bold text-withdrawn" id="withdrawn-students-count">-</small>
             </div>
           </div>
         </div>
-        <div className="progress" style={{ height: 28, borderRadius: 8, backgroundColor: '#f0f0f0', position: 'relative' }}>
+        <div className="progress" style={{ height: 26, borderRadius: 9999, backgroundColor: 'var(--app-color-neutral-100)', position: 'relative' }}>
           <div
             id="progress-bar"
             className="progress-bar progress-bar-striped"
@@ -139,8 +139,8 @@ function OverviewPanel() {
       <div className="row g-3">
         {/* Left Column: Agenda */}
         <div className="col-lg-7">
-          <div className="card border-0 shadow-sm h-100">
-            <div className="card-header border-0 bg-light d-flex align-items-center gap-2">
+          <div className="card shadow-sm h-100">
+            <div className="card-header d-flex align-items-center gap-2">
               <i className="bi bi-calendar3 text-primary" />
               <h6 className="mb-0">Agenda del Día</h6>
             </div>
@@ -157,8 +157,8 @@ function OverviewPanel() {
 
         {/* Right Column: Alerts */}
         <div className="col-lg-5">
-          <div className="card border-0 shadow-sm h-100">
-            <div className="card-header border-0 bg-light d-flex align-items-center gap-2">
+          <div className="card shadow-sm h-100">
+            <div className="card-header d-flex align-items-center gap-2">
               <i className="bi bi-lightning text-warning" />
               <h6 className="mb-0">Avisos</h6>
             </div>
@@ -166,7 +166,7 @@ function OverviewPanel() {
               {/* Próxima Píldora */}
               <div className="aviso-item border-bottom">
                 <div className="d-flex align-items-center gap-2">
-                  <div className="aviso-icon">
+                  <div className="aviso-icon aviso-icon-warning">
                     <i className="bi bi-lightbulb" />
                   </div>
                   <div className="aviso-content">
@@ -183,7 +183,7 @@ function OverviewPanel() {
               {/* Recuento de Asistencias */}
               <div className="aviso-item">
                 <div className="d-flex align-items-center gap-2">
-                  <div className="aviso-icon">
+                  <div className="aviso-icon aviso-icon-info">
                     <i className="bi bi-check-circle" />
                   </div>
                   <div className="aviso-content">
@@ -200,7 +200,7 @@ function OverviewPanel() {
               {/* Bloc de Notas Docente — #notes-container es el target del portal de NotesPanel */}
               <div className="aviso-item border-top pt-3 mt-3">
                 <div className="d-flex align-items-center gap-2 mb-3">
-                  <div className="aviso-icon">
+                  <div className="aviso-icon aviso-icon-neutral">
                     <i className="bi bi-sticky" />
                   </div>
                   <div className="aviso-content">
