@@ -311,6 +311,11 @@ export default function PromotionPage() {
         // External libs
         await loadScript('https://cdn.jsdelivr.net/npm/sortablejs@1/Sortable.min.js');
         await loadScript('https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js');
+        // Export del roadmap a Excel "pintado" como el Gantt (spec design-cleanup,
+        // ver _exportRoadmapXlsx en promotion-detail.js) — la edición community de
+        // XLSX/SheetJS de arriba no soporta ESCRIBIR estilos de celda (relleno de
+        // color), solo leerlos, así que hace falta una librería aparte para eso.
+        await loadScript('https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js');
         await loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
         await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
         // Tablas paginadas en PDF (rúbrica de proyecto: competencias/indicadores/
