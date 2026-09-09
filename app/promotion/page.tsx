@@ -639,6 +639,34 @@ export default function PromotionPage() {
                 <Input id="edit-promotion-end" type="date" />
               </div>
             </div>
+            {/* Días lectivos (promotion.workingDays) — solo se usa hoy para la
+                conversión inversa fecha→semanas al crear una plantilla desde
+                esta promoción (roadmap por fechas, Fase 1/2). No bloqueante:
+                si no se toca, se mantiene el default Lun-Vie. */}
+            <div className="space-y-2">
+              <Label className="font-semibold">Días lectivos</Label>
+              <div className="flex flex-wrap gap-3" id="edit-promotion-working-days">
+                {[
+                  { value: 1, label: 'Lun' },
+                  { value: 2, label: 'Mar' },
+                  { value: 3, label: 'Mié' },
+                  { value: 4, label: 'Jue' },
+                  { value: 5, label: 'Vie' },
+                  { value: 6, label: 'Sáb' },
+                  { value: 0, label: 'Dom' },
+                ].map((d) => (
+                  <label key={d.value} className="flex items-center gap-1 text-sm">
+                    <input
+                      type="checkbox"
+                      className="edit-promotion-working-day"
+                      value={d.value}
+                      defaultChecked={d.value >= 1 && d.value <= 5}
+                    />
+                    {d.label}
+                  </label>
+                ))}
+              </div>
+            </div>
             {/* Alert manipulado por JS legacy: añade/quita 'd-none' y setea textContent */}
             <div id="edit-promotion-alert" className="d-none mt-2" role="alert">
               <Alert variant="destructive">
@@ -828,9 +856,15 @@ export default function PromotionPage() {
           MODALES ESTRUCTURA (spec 0013-c)
           ────────────────────────────────────────────────────────────────── */}
 
-      {/* ── moduleModal ── Fase 7 (dhtmlx-gantt-roadmap): solo nombre/duración.
-          Cursos/proyectos/lecciones se crean y editan desde sus propios modales
-          enfocados (itemEditModal/createItemModal), no aquí. */}
+      {/* ── moduleModal ── Fase 7 (dhtmlx-gantt-roadmap) + Fase 2 (roadmap por
+          fechas): al CREAR sigue pidiendo solo nombre/duración (el inicio se
+          calcula solo, ver openModuleModal en promotion-detail.js); al EDITAR
+          un módulo ya existente pide fecha de inicio/fin reales en vez de
+          duración — module-duration-wrapper y module-edit-dates-wrapper se
+          alternan según el modo (editModule/openModuleModal en
+          promotion-detail.js). Cursos/proyectos/lecciones se crean y editan
+          desde sus propios modales enfocados (itemEditModal/createItemModal),
+          no aquí. */}
       <Dialog
         open={isModalOpen('moduleModal')}
         onOpenChange={(o) => setModalOpen('moduleModal', o)}
@@ -844,9 +878,19 @@ export default function PromotionPage() {
               <Label htmlFor="module-name">Nombre del Módulo</Label>
               <Input id="module-name" required />
             </div>
-            <div className="space-y-2">
+            <div className="space-y-2" id="module-duration-wrapper">
               <Label htmlFor="module-duration">Duración (semanas)</Label>
               <Input id="module-duration" type="number" min={1} required />
+            </div>
+            <div className="grid grid-cols-2 gap-3" id="module-edit-dates-wrapper" style={{ display: 'none' }}>
+              <div className="space-y-2">
+                <Label htmlFor="module-edit-start">Fecha inicio</Label>
+                <Input id="module-edit-start" type="date" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="module-edit-end">Fecha fin</Label>
+                <Input id="module-edit-end" type="date" />
+              </div>
             </div>
 
             <DialogFooter className="pt-2">
@@ -900,12 +944,12 @@ export default function PromotionPage() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-2">
-                <Label htmlFor="item-edit-start">Semana inicio</Label>
-                <Input id="item-edit-start" type="number" min={1} required />
+                <Label htmlFor="item-edit-start">Fecha inicio</Label>
+                <Input id="item-edit-start" type="date" required />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="item-edit-end">Semana final</Label>
-                <Input id="item-edit-end" type="number" min={1} required />
+                <Label htmlFor="item-edit-end">Fecha fin</Label>
+                <Input id="item-edit-end" type="date" required />
               </div>
             </div>
             <div id="item-edit-competences-wrapper" style={{ display: 'none' }}></div>
@@ -942,9 +986,15 @@ export default function PromotionPage() {
               <Label htmlFor="flexible-edit-name">Nombre</Label>
               <Input id="flexible-edit-name" />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="flexible-edit-duration">Duración (semanas)</Label>
-              <Input id="flexible-edit-duration" type="number" min={1} required />
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="flexible-edit-start">Fecha inicio</Label>
+                <Input id="flexible-edit-start" type="date" required />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="flexible-edit-end">Fecha fin</Label>
+                <Input id="flexible-edit-end" type="date" required />
+              </div>
             </div>
 
             <DialogFooter className="pt-2 sm:justify-between">
