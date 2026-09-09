@@ -4741,6 +4741,24 @@ function generateGanttChart(promotion) {
 
     initGanttInstance();
 
+    // Antes de reconstruir el dataset: capturar el scroll actual y qué grupos
+    // (el nodo "Lecciones" de cada módulo, sobre todo) estaban abiertos, para
+    // restaurarlo después de gantt.parse() más abajo. Sin esto, CUALQUIER
+    // actualización — arrastrar una barra, guardar un modal, borrar un
+    // elemento — hacía gantt.clearAll()+parse() sin más: la vista volvía
+    // siempre a la esquina superior izquierda y "Lecciones" se recolapsaba
+    // (nace cerrado, ver `open: false` en buildGanttDataset), dando la falsa
+    // impresión de que el elemento recién movido/editado "saltaba" a otro
+    // sitio — reportado como bug ("quiero que se actualice pero no que
+    // recargue de esa manera").
+    const _ganttWasInitialized = _ganttInitialized;
+    let _ganttSavedScroll = null;
+    let _ganttOpenTaskIds = [];
+    if (_ganttWasInitialized) {
+        try { _ganttSavedScroll = gantt.getScrollState(); } catch (e) { _ganttSavedScroll = null; }
+        try { gantt.eachTask((task) => { if (task.$open) _ganttOpenTaskIds.push(task.id); }); } catch (e) { _ganttOpenTaskIds = []; }
+    }
+
     const dataset = buildGanttDataset(promotion);
 
     // Ancla el rango renderizado exactamente a la fecha de inicio de la promoción
@@ -4768,6 +4786,16 @@ function generateGanttChart(promotion) {
 
     gantt.clearAll();
     gantt.parse(dataset);
+
+    // Restaura el estado visual capturado arriba — grupos abiertos primero
+    // (afecta al layout/alturas de fila), scroll después (para que las
+    // coordenadas de scroll se calculen ya con las filas correctas visibles).
+    if (_ganttWasInitialized) {
+        _ganttOpenTaskIds.forEach((id) => { if (gantt.isTaskExists(id)) gantt.open(id); });
+        if (_ganttSavedScroll) {
+            try { gantt.scrollTo(_ganttSavedScroll.x, _ganttSavedScroll.y); } catch (e) { /* rango de fechas pudo cambiar — no bloquea el render */ }
+        }
+    }
 }
 
 /**
