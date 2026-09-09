@@ -1418,9 +1418,51 @@ th, td {
     min-width: fit-content;
 }
 
-#program-details-tabs {
+/* ── Nivel 1: grupos de "Contenido del Programa" (spec design-cleanup) ──────
+   Ver docs/design-system.md § Navegación de Contenido del Programa. Pegado
+   justo encima de #program-details-tabs (nivel 2, las sub-tabs de siempre) —
+   ambos quedan sticky apilados al hacer scroll. */
+#program-details-group-nav {
     position: sticky;
     top: 16px;
+    z-index: 51;
+    display: flex;
+    gap: 8px;
+    padding-bottom: 10px;
+}
+
+.group-nav-link {
+    display: inline-flex;
+    align-items: center;
+    border: none;
+    border-radius: var(--app-radius-pill, 9999px);
+    padding: 8px 18px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: var(--app-color-text-muted, #6b7280);
+    background-color: #ffffff;
+    box-shadow: var(--app-shadow-sm, 0 1px 2px rgba(17, 24, 39, .06));
+    transition: all var(--app-transition-fast, 150ms ease);
+    cursor: pointer;
+}
+
+.group-nav-link:hover {
+    color: var(--app-color-primary);
+    box-shadow: var(--app-shadow-md, 0 4px 12px rgba(17, 24, 39, .08));
+}
+
+.group-nav-link.active {
+    color: #ffffff;
+    background-color: var(--app-color-primary);
+    box-shadow: var(--app-shadow-brand, 0 4px 12px rgba(255, 71, 0, .25));
+}
+
+/* ── Nivel 2: sub-tabs dentro del grupo activo (mismos ids/onclick de
+   siempre — ver switchProgramDetailsTab en promotion-detail.js). Se pega
+   justo debajo del nivel de grupo (16px de top + ~52px de alto del grupo). */
+#program-details-tabs {
+    position: sticky;
+    top: 68px;
     background-color: #ffffff;
     z-index: 50;
     border-bottom: 2px solid #f0f0f0;
