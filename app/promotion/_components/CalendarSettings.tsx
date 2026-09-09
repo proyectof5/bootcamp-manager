@@ -133,6 +133,15 @@ function CalendarSettings({ promotionId }: { promotionId: string }) {
       {showPreview && embedSrc && (
         <div className="mt-4">
           <h5>Previsualización del calendario</h5>
+          {/* Si este calendario se creó desde "Sincronizar con Google Calendar" (Roadmap),
+              es privado: compartido por permisos con el profesor y los colaboradores, no
+              público. El embed de abajo solo muestra eventos a quien esté viendo esta página
+              logueado en el navegador con una cuenta de Google que tenga acceso — para
+              cualquier otra persona (o sin sesión de Google iniciada) aparecerá vacío con un
+              aviso de "no tienes permiso", aunque el calendario en sí esté bien. */}
+          <p className="text-muted small mb-2">
+            Si este calendario es privado (compartido por permisos, no público), la vista de abajo solo mostrará eventos si estás viendo esta página con sesión de Google iniciada en una cuenta que tenga acceso — para cualquier otra persona aparecerá vacía, aunque el calendario esté bien.
+          </p>
           <div className="ratio ratio-16x9">
             {/* eslint-disable-next-line jsx-a11y/iframe-has-title */}
             <iframe src={embedSrc} title="Previsualización del calendario" />
