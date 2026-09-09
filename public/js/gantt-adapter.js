@@ -33,6 +33,49 @@ function addDays(baseDate, days) {
 }
 
 /**
+ * Parsea un string ISO "YYYY-MM-DD" (lo que se guarda ahora en
+ * startDate/endDate de módulos/items/bloques — spec "roadmap por fechas") a
+ * un Date en medianoche LOCAL — nunca `new Date(str)` a secas, que lo
+ * interpretaría como UTC y podría desplazar el día según el huso horario del
+ * navegador.
+ * @param {*} s
+ * @returns {Date|null} null si `s` no es un string con esa forma
+ */
+function parseISODate(s) {
+    if (typeof s !== 'string') return null;
+    const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(s);
+    if (!m) return null;
+    const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+    return Number.isNaN(d.getTime()) ? null : d;
+}
+
+/**
+ * Formatea un Date a string ISO "YYYY-MM-DD" (fecha local, sin hora) — el
+ * formato que se guarda en startDate/endDate.
+ * @param {Date} d
+ * @returns {string}
+ */
+function formatISODate(d) {
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+}
+
+/**
+ * Nº de días que cubre un rango [startDate, endDate] con AMBOS extremos
+ * inclusive (mismo criterio que el resto del código: `endDate` es el último
+ * día activo, no el día siguiente) — es el valor que espera `duration` de
+ * DHTMLX Gantt.
+ * @param {Date} startDate
+ * @param {Date} endDate
+ * @returns {number}
+ */
+function daysSpanInclusive(startDate, endDate) {
+    return Math.max(1, Math.round((endDate - startDate) / 86400000) + 1);
+}
+
+/**
  * Traduce el `type` de un plannerItem ('curso'/'proyecto'/'leccion') al
  * `itemType` que usa el Gantt ('course'/'project'/'leccion').
  */
@@ -49,6 +92,12 @@ function plannerTypeToItemType(type) {
  * encadenando secuencialmente desde el fin del módulo anterior — mismo
  * comportamiento que antes de soportar `startOffset` (compatibilidad con
  * promociones ya creadas que nunca movieron un módulo).
+ *
+ * NOTA (spec "roadmap por fechas", Fase 1): esta función es ahora solo el
+ * CAMINO DE RESPALDO de `getModuleDateRange()` — se usa exclusivamente
+ * cuando el módulo todavía no tiene `startDate`/`endDate` literales. No se
+ * ha tocado ni un bit de su lógica para que una promoción sin migrar se siga
+ * viendo exactamente igual que antes de este cambio.
  * @param {Array<Object>} modules
  * @param {number} moduleIndex
  * @returns {number}
@@ -74,6 +123,9 @@ function getModuleStartWeeks(modules, moduleIndex) {
  * usa ese valor tal cual, **independiente de dónde esté su módulo**. Si no,
  * cae al cálculo legacy relativo al módulo (`moduleStartWeeks + item.startOffset`)
  * — compatibilidad con items que nunca se movieron.
+ *
+ * NOTA (spec "roadmap por fechas", Fase 1): igual que `getModuleStartWeeks`,
+ * ahora es solo el camino de respaldo de `getItemDateRange()`.
  * @param {{ startOffset: number, absoluteStartOffset?: number|null }} item
  * @param {number} moduleStartWeeks - inicio absoluto (semanas) del módulo padre
  * @returns {number}
@@ -87,6 +139,78 @@ function getItemStartWeeks(item, moduleStartWeeks) {
 }
 
 /**
+ * Rango de fechas [startDate, endDate] (ambas inclusive) de un módulo.
+ * Prefiere `module.startDate`/`module.endDate` literales si el módulo ya fue
+ * migrado (creado/editado tras la spec "roadmap por fechas") o arrastrado en
+ * el Gantt; si no, cae al cálculo legacy en semanas — sin cambiar nada de esa
+ * rama, así que una promoción sin ningún módulo migrado se ve exactamente
+ * igual que antes.
+ * @param {Array<Object>} modules
+ * @param {number} moduleIndex
+ * @param {Date} baseDate - `promotion.startDate` (o "hoy" si no está definida)
+ * @returns {{ startDate: Date, endDate: Date }}
+ */
+function getModuleDateRange(modules, moduleIndex, baseDate) {
+    const m = modules[moduleIndex] || {};
+    const literalStart = parseISODate(m.startDate);
+    const literalEnd = parseISODate(m.endDate);
+    if (literalStart && literalEnd) {
+        return { startDate: literalStart, endDate: literalEnd };
+    }
+
+    const startWeeks = getModuleStartWeeks(modules, moduleIndex);
+    const durationWeeks = Number(m.duration) || 1;
+    const startDate = addDays(baseDate, startWeeks * 7);
+    return { startDate, endDate: addDays(startDate, durationWeeks * 7 - 1) };
+}
+
+/**
+ * Rango de fechas [startDate, endDate] (ambas inclusive) de un curso/
+ * proyecto/lección. Prefiere `item.startDate`/`item.endDate` literales; si
+ * no, cae al cálculo legacy en semanas (relativo al módulo, o absoluto si
+ * tiene `absoluteStartOffset`) — sin cambios respecto al comportamiento
+ * anterior a esta spec.
+ * @param {Object} item - tal como lo devuelve `getModulePlannerItems()`
+ * @param {number} moduleStartWeeks - inicio absoluto (semanas) del módulo
+ *   padre, SOLO se usa en el camino de respaldo
+ * @param {Date} baseDate
+ * @returns {{ startDate: Date, endDate: Date }}
+ */
+function getItemDateRange(item, moduleStartWeeks, baseDate) {
+    const literalStart = parseISODate(item.startDate);
+    const literalEnd = parseISODate(item.endDate);
+    if (literalStart && literalEnd) {
+        return { startDate: literalStart, endDate: literalEnd };
+    }
+
+    const startWeeks = getItemStartWeeks(item, moduleStartWeeks);
+    const durationWeeks = Number(item.duration) || 1;
+    const startDate = addDays(baseDate, startWeeks * 7);
+    return { startDate, endDate: addDays(startDate, durationWeeks * 7 - 1) };
+}
+
+/**
+ * Rango de fechas [startDate, endDate] (ambas inclusive) de un bloque de
+ * "Tiempo flexible". Mismo criterio preferir-fechas-literales que módulos/
+ * items.
+ * @param {Object} block
+ * @param {Date} baseDate
+ * @returns {{ startDate: Date, endDate: Date }}
+ */
+function getFlexibleBlockDateRange(block, baseDate) {
+    const literalStart = parseISODate(block.startDate);
+    const literalEnd = parseISODate(block.endDate);
+    if (literalStart && literalEnd) {
+        return { startDate: literalStart, endDate: literalEnd };
+    }
+
+    const startOffset = Number(block.startOffset) || 0;
+    const durationWeeks = Number(block.duration) || 1;
+    const startDate = addDays(baseDate, startOffset * 7);
+    return { startDate, endDate: addDays(startDate, durationWeeks * 7 - 1) };
+}
+
+/**
  * Devuelve la lista unificada de items de un módulo (cursos + proyectos + lecciones).
  * Fuente de verdad: `module.plannerItems[]` (TASK-RM-05c) cuando existe y no está
  * vacío — es la única fuente que incluye las `leccion`. Si el módulo es legacy
@@ -97,14 +221,19 @@ function getItemStartWeeks(item, moduleStartWeeks) {
  * usan `title` (nombre) y `links[]` (0..N enlaces), sin `duration`/`startOffset`
  * propios (no se planifican en el tiempo desde el planificador de módulo).
  *
+ * `startDate`/`endDate` (spec "roadmap por fechas"): se pasan a través tal
+ * cual si el item ya los tiene (string ISO), o `null` si no — es
+ * `getItemDateRange()` quien decide si usarlos o caer al cálculo legacy.
+ *
  * @param {Object} module
- * @returns {Array<{ plannerItemId: string|null, type: string, name: string, url: string, duration: number, startOffset: number, links: Array }>}
+ * @returns {Array<{ plannerItemId: string|null, type: string, name: string, url: string, duration: number, startOffset: number, absoluteStartOffset: number|null, startDate: string|null, endDate: string|null, links: Array }>}
  */
 function getModulePlannerItems(module) {
     // Normaliza absoluteStartOffset: número válido tal cual, cualquier otra
     // cosa (undefined/null/NaN) se normaliza a null para que getItemStartWeeks()
     // sepa que debe caer al cálculo legacy relativo al módulo.
     const normalizeAbsolute = (v) => (typeof v === 'number' && !Number.isNaN(v)) ? v : null;
+    const normalizeDateStr = (v) => (typeof v === 'string' && v) ? v : null;
 
     if (Array.isArray(module.plannerItems) && module.plannerItems.length > 0) {
         return module.plannerItems.map(item => {
@@ -117,6 +246,8 @@ function getModulePlannerItems(module) {
                 duration: Number(item.duration) || 1,
                 startOffset: Number(item.startOffset) || 0,
                 absoluteStartOffset: normalizeAbsolute(item.absoluteStartOffset),
+                startDate: normalizeDateStr(item.startDate),
+                endDate: normalizeDateStr(item.endDate),
                 links: isLeccion ? (item.links || []) : [],
             };
         });
@@ -133,6 +264,8 @@ function getModulePlannerItems(module) {
             duration: isObj ? (Number(c.duration) || 1) : 1,
             startOffset: isObj ? (Number(c.startOffset) || 0) : 0,
             absoluteStartOffset: isObj ? normalizeAbsolute(c.absoluteStartOffset) : null,
+            startDate: isObj ? normalizeDateStr(c.startDate) : null,
+            endDate: isObj ? normalizeDateStr(c.endDate) : null,
             links: [],
         });
     });
@@ -146,11 +279,50 @@ function getModulePlannerItems(module) {
             duration: isObj ? (Number(p.duration) || 1) : 1,
             startOffset: isObj ? (Number(p.startOffset) || 0) : 0,
             absoluteStartOffset: isObj ? normalizeAbsolute(p.absoluteStartOffset) : null,
+            startDate: isObj ? normalizeDateStr(p.startDate) : null,
+            endDate: isObj ? normalizeDateStr(p.endDate) : null,
             links: [],
         });
     });
     return items;
 }
+
+/**
+ * Reconstruye los arrays legacy `module.courses`/`module.projects` a partir
+ * de `module.plannerItems` (fuente de verdad cuando existe) — copia
+ * `startDate`/`endDate` cuando el item ya está migrado a fechas literales, o
+ * `duration`/`startOffset`/`absoluteStartOffset` cuando todavía no (superset
+ * de campos: nunca fuerza una forma sobre el item). Consolida un patrón que
+ * antes vivía duplicado en `applyGanttTaskChange`, `deleteGanttPlannerItem`,
+ * `persistGanttRowOrder` y los guardados de `#item-edit-form`/
+ * `#create-item-form` en promotion-detail.js.
+ * @param {Object} module - se muta in-place (`module.courses`/`module.projects`)
+ */
+function syncLegacyCoursesProjects(module) {
+    if (!Array.isArray(module.plannerItems)) return;
+
+    const mapCommon = (i) => {
+        const out = { name: i.name, url: i.url || '' };
+        if (typeof i.startDate === 'string' && typeof i.endDate === 'string') {
+            out.startDate = i.startDate;
+            out.endDate = i.endDate;
+        } else {
+            out.duration = Number(i.duration) || 1;
+            out.startOffset = Number(i.startOffset) || 0;
+            out.absoluteStartOffset = (typeof i.absoluteStartOffset === 'number' ? i.absoluteStartOffset : null);
+        }
+        return out;
+    };
+
+    module.courses = module.plannerItems
+        .filter(i => i.type === 'curso')
+        .map(mapCommon);
+    module.projects = module.plannerItems
+        .filter(i => i.type === 'proyecto')
+        .map(i => ({ ...mapCommon(i), competenceIds: i.competenceIds || [] }));
+}
+
+window.syncLegacyCoursesProjects = syncLegacyCoursesProjects;
 
 /**
  * Construye el dataset { data, links } que DHTMLX Gantt puede cargar con gantt.parse().
@@ -192,9 +364,10 @@ function buildGanttDataset(promotion) {
     // ── Módulos y sus cursos/proyectos/lecciones ────────────────────────────────
     modules.forEach((module, moduleIndex) => {
         const moduleId = `module-${moduleIndex}`;
-        const moduleStartWeeks = getModuleStartWeeks(modules, moduleIndex);
-        const moduleStartDate = addDays(baseDate, moduleStartWeeks * 7);
-        const moduleDurationWeeks = Number(module.duration) || 1;
+        // Necesario solo como camino de respaldo para items sin startDate/endDate
+        // propios (getItemDateRange) — ver comentario en getModuleStartWeeks.
+        const moduleStartWeeksForFallback = getModuleStartWeeks(modules, moduleIndex);
+        const moduleRange = getModuleDateRange(modules, moduleIndex, baseDate);
         const moduleRows = [];
 
         moduleRows.push({
@@ -202,8 +375,8 @@ function buildGanttDataset(promotion) {
             text: `M${moduleIndex + 1}: ${module.name || 'Sin nombre'}`,
             type: 'project',
             open: true,
-            start_date: formatGanttDate(moduleStartDate),
-            duration: moduleDurationWeeks * 7,
+            start_date: formatGanttDate(moduleRange.startDate),
+            duration: daysSpanInclusive(moduleRange.startDate, moduleRange.endDate),
             progress: 0,
             itemType: 'module',
             itemIndex: moduleIndex,
@@ -224,7 +397,7 @@ function buildGanttDataset(promotion) {
                 return;
             }
 
-            const startDate = addDays(baseDate, getItemStartWeeks(item, moduleStartWeeks) * 7);
+            const itemRange = getItemDateRange(item, moduleStartWeeksForFallback, baseDate);
 
             // Índice dentro del array legacy correspondiente — solo se usa
             // cuando el módulo no tiene plannerItems (fallback de compatibilidad).
@@ -240,8 +413,8 @@ function buildGanttDataset(promotion) {
                 id: `item-${moduleIndex}-${idSuffix}`,
                 text: item.name,
                 parent: moduleId,
-                start_date: formatGanttDate(startDate),
-                duration: item.duration * 7,
+                start_date: formatGanttDate(itemRange.startDate),
+                duration: daysSpanInclusive(itemRange.startDate, itemRange.endDate),
                 progress: 0,
                 url: item.url,
                 itemType,
@@ -255,18 +428,13 @@ function buildGanttDataset(promotion) {
         // ── Grupo "Lecciones" del módulo (nodo desplegable, puramente visual) ──
         // Fase 5: ya no tiene posición propia editable (no se lee/escribe
         // `module.lessonsBlock`) — su rango se calcula como el min/max de las
-        // semanas absolutas de sus lecciones hijas, que ahora se posicionan de
-        // forma individual e independiente (ver `getItemStartWeeks`).
+        // fechas de sus lecciones hijas, que se posicionan de forma individual
+        // e independiente (ver `getItemDateRange`).
         if (lessonItems.length > 0) {
             const lessonsGroupId = `module-${moduleIndex}-lecciones`;
-            const lessonWeekRanges = lessonItems.map(item => {
-                const startWeeks = getItemStartWeeks(item, moduleStartWeeks);
-                return { startWeeks, endWeeks: startWeeks + (Number(item.duration) || 1) };
-            });
-            const groupStartWeeks = Math.min(...lessonWeekRanges.map(r => r.startWeeks));
-            const groupEndWeeks = Math.max(...lessonWeekRanges.map(r => r.endWeeks));
-            const groupDurationWeeks = Math.max(1, groupEndWeeks - groupStartWeeks);
-            const groupStartDate = addDays(baseDate, groupStartWeeks * 7);
+            const lessonRanges = lessonItems.map(item => getItemDateRange(item, moduleStartWeeksForFallback, baseDate));
+            const groupStartDate = new Date(Math.min(...lessonRanges.map(r => r.startDate.getTime())));
+            const groupEndDate = new Date(Math.max(...lessonRanges.map(r => r.endDate.getTime())));
 
             moduleRows.push({
                 id: lessonsGroupId,
@@ -275,23 +443,23 @@ function buildGanttDataset(promotion) {
                 type: 'project',
                 open: false,
                 start_date: formatGanttDate(groupStartDate),
-                duration: groupDurationWeeks * 7,
+                duration: daysSpanInclusive(groupStartDate, groupEndDate),
                 progress: 0,
                 itemType: 'leccion-group',
                 moduleIndex,
                 moduleId: module.id,
             });
 
-            lessonItems.forEach((item) => {
-                const startDate = addDays(baseDate, getItemStartWeeks(item, moduleStartWeeks) * 7);
+            lessonItems.forEach((item, idx) => {
+                const itemRange = lessonRanges[idx];
                 const firstLink = Array.isArray(item.links) && item.links.length > 0 ? item.links[0] : null;
 
                 moduleRows.push({
                     id: `item-${moduleIndex}-${item.plannerItemId}`,
                     text: item.name,
                     parent: lessonsGroupId,
-                    start_date: formatGanttDate(startDate),
-                    duration: item.duration * 7,
+                    start_date: formatGanttDate(itemRange.startDate),
+                    duration: daysSpanInclusive(itemRange.startDate, itemRange.endDate),
                     progress: 0,
                     url: firstLink ? (firstLink.url || '') : '',
                     links: item.links || [],
@@ -303,28 +471,26 @@ function buildGanttDataset(promotion) {
             });
         }
 
-        topLevelGroups.push({ startWeeks: moduleStartWeeks, order: topLevelGroups.length, rows: moduleRows });
+        topLevelGroups.push({ startDate: moduleRange.startDate, order: topLevelGroups.length, rows: moduleRows });
     });
 
     // ── Bloques de "Tiempo flexible" (vacaciones/festivos) ──────────────────────
     // Nivel superior, sin `parent` (mismo nivel que un módulo). Posición y
-    // duración son siempre absolutas (`startOffset`/`duration` en semanas desde
-    // `promotion.startDate`) y no dependen de módulos vecinos. Su FILA se
-    // intercala entre las de los módulos según esa misma fecha (ver sort más
-    // abajo) — no se guarda un "orden" aparte: la posición temporal ES el orden.
+    // duración son siempre absolutas (independientes de módulos vecinos). Su
+    // FILA se intercala entre las de los módulos según esa misma fecha (ver
+    // sort más abajo) — no se guarda un "orden" aparte: la posición temporal
+    // ES el orden.
     (promotion.flexibleBlocks || []).forEach((block) => {
-        const blockStartOffset = Number(block.startOffset) || 0;
-        const blockDurationWeeks = Number(block.duration) || 1;
-        const blockStartDate = addDays(baseDate, blockStartOffset * 7);
+        const blockRange = getFlexibleBlockDateRange(block, baseDate);
 
         topLevelGroups.push({
-            startWeeks: blockStartOffset,
+            startDate: blockRange.startDate,
             order: topLevelGroups.length,
             rows: [{
                 id: `flexible-${block.id}`,
                 text: block.name || 'Tiempo flexible',
-                start_date: formatGanttDate(blockStartDate),
-                duration: blockDurationWeeks * 7,
+                start_date: formatGanttDate(blockRange.startDate),
+                duration: daysSpanInclusive(blockRange.startDate, blockRange.endDate),
                 progress: 0,
                 itemType: 'flexible',
                 flexibleBlockId: block.id,
@@ -333,9 +499,9 @@ function buildGanttDataset(promotion) {
     });
 
     // Orden visual: por fecha de inicio ascendente. `order` (posición original,
-    // módulos antes que flexibles) desempata cuando dos filas empiezan la misma
-    // semana, para que el resultado sea determinista.
-    topLevelGroups.sort((a, b) => (a.startWeeks - b.startWeeks) || (a.order - b.order));
+    // módulos antes que flexibles) desempata cuando dos filas empiezan el mismo
+    // día, para que el resultado sea determinista.
+    topLevelGroups.sort((a, b) => (a.startDate - b.startDate) || (a.order - b.order));
     topLevelGroups.forEach((group) => { group.rows.forEach((row) => data.push(row)); });
 
     return { data, links };
@@ -663,33 +829,26 @@ window.buildRoadmapIcsContent = buildRoadmapIcsContent;
  * Traduce el cambio hecho por el docente (drag/resize) sobre una tarea del
  * Gantt de vuelta al modelo de dominio de la promoción (in-place).
  *
- * Precisión por día: `startOffset`/`duration` siguen expresándose en la misma
- * unidad de siempre ("semanas absolutas desde `promotion.startDate`"), pero
- * ya NO se redondean a la semana completa más cercana — se redondea al DÍA
- * más cercano y se expresa como fracción de semana (p.ej. 15 días = 15/7
- * semanas). Como `buildGanttDataset()`/`getModuleStartWeeks()`/
- * `getItemStartWeeks()` ya multiplican esta misma cifra por 7 para obtener
- * días, esto basta para que el Gantt (en cualquier zoom, incluido "Día")
- * refleje y persista posiciones/duraciones con precisión de un día, sin tocar
- * el resto del pipeline de lectura/render ni los datos de promociones
- * existentes (un valor entero de semanas sigue significando exactamente lo
- * mismo que antes — es un caso particular de esta misma fracción).
+ * Spec "roadmap por fechas" (Fase 1): a diferencia de la versión anterior de
+ * esta función (que convertía la posición arrastrada — ya en días exactos —
+ * a una fracción de semana, `startWeeksPrecise = startDaysRounded / 7`,
+ * perdiendo precisión y generando offsets como `0.142857...`), ahora se
+ * guardan `startDate`/`endDate` LITERALES (string ISO "YYYY-MM-DD",
+ * `endDate` = último día activo inclusive) — sin ninguna conversión con
+ * pérdida por el medio. Se borran los campos viejos
+ * (`duration`/`startOffset`/`absoluteStartOffset`) del item tocado: cada
+ * arrastre migra ese item limpiamente de forma orgánica, incluso antes de
+ * correr una migración masiva sobre el resto de la promoción.
  *
  * Reglas de negocio (siguen la misma convención que el Gantt original):
- * - Módulos: se puede cambiar tanto su posición (`startOffset`, semanas
- *   absolutas desde `promotion.startDate`) como su `duration`. Si un módulo
- *   nunca se movió, `startOffset` no existe y su posición se sigue derivando
- *   secuencialmente (ver `getModuleStartWeeks`) — mover otro módulo cercano
- *   no lo afecta hasta que también se mueva explícitamente.
- * - Cursos/Proyectos/Lecciones (Fase 5): tienen `duration` y
- *   `absoluteStartOffset` (semanas absolutas desde `promotion.startDate`,
- *   independientes de su módulo — mover el módulo padre no los afecta). Si el
- *   módulo tiene `plannerItems` (fuente de verdad), se actualiza ahí por `id`
- *   y se resincronizan los arrays legacy `courses`/`projects` derivados
- *   (igual que hace el modal de módulo al guardar). Si el módulo es legacy
- *   (sin plannerItems), se actualiza directamente el array `courses`/`projects`
- *   por índice. El `startOffset` legacy (relativo al módulo) ya no se escribe
- *   aquí — ver `getItemStartWeeks()`.
+ * - Módulos: se puede cambiar tanto su posición como su duración.
+ * - Cursos/Proyectos/Lecciones (Fase 5): su posición es siempre absoluta
+ *   (independiente de su módulo — mover el módulo padre no los afecta). Si
+ *   el módulo tiene `plannerItems` (fuente de verdad), se actualiza ahí por
+ *   `id` y se resincronizan los arrays legacy `courses`/`projects`
+ *   derivados vía `syncLegacyCoursesProjects()`. Si el módulo es legacy (sin
+ *   plannerItems), se actualiza directamente el array `courses`/`projects`
+ *   por índice.
  * - La empleabilidad ya no se representa en el Gantt (TASK-7), por lo que
  *   no hay una rama `employability` que traducir aquí.
  *
@@ -700,19 +859,22 @@ window.buildRoadmapIcsContent = buildRoadmapIcsContent;
 function applyGanttTaskChange(promotion, task) {
     if (!promotion || !task) return false;
 
-    const baseDate = promotion.startDate ? new Date(promotion.startDate) : new Date();
-    // Redondeo al día (no a la semana): así el Gantt es editable día a día en
-    // cualquier zoom, no solo en semana completa.
-    const startDaysRounded = Math.round((task.start_date - baseDate) / 86400000);
-    const durationDaysRounded = Math.max(1, Math.round(Number(task.duration) || 1));
-    const startWeeksPrecise = Math.max(0, startDaysRounded) / 7;
-    const durationWeeksPrecise = durationDaysRounded / 7;
+    // Normaliza a medianoche local (task.start_date de DHTMLX ya viene a
+    // medianoche, pero por si acaso) antes de formatear a ISO.
+    const rawStart = task.start_date;
+    const startDate = new Date(rawStart.getFullYear(), rawStart.getMonth(), rawStart.getDate());
+    const durationDays = Math.max(1, Math.round(Number(task.duration) || 1));
+    const endDate = addDays(startDate, durationDays - 1); // último día activo, inclusive
+    const startDateStr = formatISODate(startDate);
+    const endDateStr = formatISODate(endDate);
 
     if (task.itemType === 'module') {
         const module = (promotion.modules || [])[task.itemIndex];
         if (!module) return false;
-        module.startOffset = startWeeksPrecise;
-        module.duration = durationWeeksPrecise;
+        module.startDate = startDateStr;
+        module.endDate = endDateStr;
+        delete module.startOffset;
+        delete module.duration;
         return true;
     }
 
@@ -720,8 +882,10 @@ function applyGanttTaskChange(promotion, task) {
         const block = (promotion.flexibleBlocks || []).find(b => b.id === task.flexibleBlockId);
         if (!block) return false;
 
-        block.startOffset = startWeeksPrecise;
-        block.duration = durationWeeksPrecise;
+        block.startDate = startDateStr;
+        block.endDate = endDateStr;
+        delete block.startOffset;
+        delete block.duration;
         return true;
     }
 
@@ -734,27 +898,17 @@ function applyGanttTaskChange(promotion, task) {
         const module = (promotion.modules || [])[task.moduleIndex];
         if (!module) return false;
 
-        // Fase 5: la posición se guarda como semana ABSOLUTA (independiente del
-        // módulo), no relativa. `startOffset` legacy ya no se escribe en este
-        // flujo — se conserva tal cual para lectura de compatibilidad (TASK-19).
-        const absoluteStartOffset = startWeeksPrecise;
-
         if (Array.isArray(module.plannerItems) && module.plannerItems.length > 0 && task.plannerItemId) {
             const plannerItem = module.plannerItems.find(i => i.id === task.plannerItemId);
             if (!plannerItem) return false;
 
-            plannerItem.duration = durationWeeksPrecise;
-            plannerItem.absoluteStartOffset = absoluteStartOffset;
+            plannerItem.startDate = startDateStr;
+            plannerItem.endDate = endDateStr;
+            delete plannerItem.duration;
+            delete plannerItem.startOffset;
+            delete plannerItem.absoluteStartOffset;
 
-            // Resincroniza los arrays legacy derivados (mismo criterio que
-            // usa el modal de módulo al guardar el planificador).
-            module.courses = module.plannerItems
-                .filter(i => i.type === 'curso')
-                .map(i => ({ name: i.name, url: i.url || '', duration: Number(i.duration) || 1, startOffset: Number(i.startOffset) || 0, absoluteStartOffset: (typeof i.absoluteStartOffset === 'number' ? i.absoluteStartOffset : null) }));
-            module.projects = module.plannerItems
-                .filter(i => i.type === 'proyecto')
-                .map(i => ({ name: i.name, url: i.url || '', duration: Number(i.duration) || 1, startOffset: Number(i.startOffset) || 0, absoluteStartOffset: (typeof i.absoluteStartOffset === 'number' ? i.absoluteStartOffset : null), competenceIds: i.competenceIds || [] }));
-
+            syncLegacyCoursesProjects(module);
             return true;
         }
 
@@ -764,10 +918,13 @@ function applyGanttTaskChange(promotion, task) {
 
         const current = list[task.legacyIndex];
         if (typeof current === 'string') {
-            list[task.legacyIndex] = { name: current, duration: durationWeeksPrecise, absoluteStartOffset };
+            list[task.legacyIndex] = { name: current, startDate: startDateStr, endDate: endDateStr };
         } else {
-            current.duration = durationWeeksPrecise;
-            current.absoluteStartOffset = absoluteStartOffset;
+            current.startDate = startDateStr;
+            current.endDate = endDateStr;
+            delete current.duration;
+            delete current.startOffset;
+            delete current.absoluteStartOffset;
         }
         return true;
     }
