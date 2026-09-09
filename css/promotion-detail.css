@@ -1218,6 +1218,19 @@ th, td {
     background-color: rgba(0, 0, 0, 0.15);
 }
 
+/* Días no lectivos (fin de semana o festivo) en el zoom "Día" — mismo gris
+   que ya usa la Lista de Asistencia para lo mismo (#e5e5e5), ver
+   renderAttendanceTable(). scale_cell_class pinta la cabecera de fecha,
+   task_cell_class la celda de fondo de cada fila (detrás de las barras) —
+   ambas comparten esta clase, asignada solo cuando el zoom activo es "Día"
+   (ver gantt.templates.scale_cell_class/task_cell_class en
+   initGanttInstance). La barra de una tarea que atraviesa un día no lectivo
+   se sigue dibujando encima, continua — el gris solo es el fondo. */
+.gantt_scale_cell.gantt-nonworking-cell,
+.gantt_task_cell.gantt-nonworking-cell {
+    background-color: #e5e5e5;
+}
+
 /* ─── Botones de zoom (día/semana/mes) — pill segmentada (spec design-cleanup) ─── */
 .gantt-zoom-group {
     background-color: var(--app-color-neutral-100);
