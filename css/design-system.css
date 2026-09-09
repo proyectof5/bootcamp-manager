@@ -37,6 +37,13 @@
     --app-color-danger-500:  #dc3545;
     --app-color-info-500:    #0dcaf0;
 
+    /* === Color — tipos de elemento del roadmap/Gantt (ver docs/design-system.md) === */
+    --app-color-gantt-module:   #667eea;
+    --app-color-gantt-course:   #6bbf9c;
+    --app-color-gantt-project:  var(--app-color-brand-300);
+    --app-color-gantt-leccion:  #8e7cc3;
+    --app-color-gantt-flexible: #6f42c1;
+
     /* === Color — semántico (esto es lo que usa el código de los componentes) === */
     --app-color-primary:        var(--app-color-brand-500);
     --app-color-primary-hover:  var(--app-color-brand-700);
