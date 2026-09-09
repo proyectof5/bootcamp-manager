@@ -1862,6 +1862,13 @@ th, td {
 /* La cabecera de "Área de administración" siempre está oculta mientras esta vista es
    visible (ver regla #teacher-area-tab:has(...) más arriba), así que el presupuesto de
    altura ya no necesita reservarle espacio — solo el navbar/padding restante. */
+/* display:flex de abajo es el estado "abierto" — se gana en especificidad a
+   cualquier clase SIN !important (p.ej. la .hidden de Tailwind, que no lo
+   lleva), así que el toggle real de abrir/cerrar tiene que usar una clase
+   CON !important. Ver EvaluationGridPanel.tsx: monta este div con
+   className="legacy-hidden" (display:none !important, sí gana), NUNCA
+   "hidden" — bug real corregido ahí (quedaba siempre en display:flex, sin
+   importar el estado, apilado debajo del accordion de proyectos). */
 #eval-project-view {
     display: flex;
     flex-direction: column;
