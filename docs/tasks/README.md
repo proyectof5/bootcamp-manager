@@ -4,8 +4,14 @@ Un archivo por feature/iniciativa grande (no por PR). Objetivo: que retomar
 un trabajo, o entender por qué el código es como es, no requiera releer todo
 el historial de conversación — con abrir este archivo basta.
 
+Ver [INDEX.md](INDEX.md) para el mapa de todas las áreas funcionales de la
+app y cuáles tienen spec todavía.
+
 **Cuándo crear uno**: al empezar cualquier feature de varias fases/PRs, o
-cualquier cosa que probablemente se retome más adelante.
+cualquier cosa que probablemente se retome más adelante. Usa `/spec-new
+<nombre> [contexto]` para crearlo y `/spec-update <nombre>` para
+actualizarlo — evita reexplorar el código de cero cuando ya hay contexto en
+la sesión.
 
 **Formato** (ver `roadmap-por-fechas.md` como ejemplo real):
 
