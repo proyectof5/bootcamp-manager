@@ -14112,12 +14112,12 @@ function selectEvalTarget(targetId) {
 
 // Umbral para dar por alcanzado un nivel (1/2/3) de una competencia: % de SUS
 // PROPIOS indicadores marcados como hechos.
-const EVAL_LEVEL_THRESHOLD = 0.7;
+const EVAL_LEVEL_THRESHOLD = 0.6;
 
 /**
  * Nivel alcanzado de una competencia a partir de sus indicadores marcados.
  * Cada nivel se evalúa de forma INDEPENDIENTE: se alcanza en cuanto se ha
- * marcado al menos EVAL_LEVEL_THRESHOLD (70%) de sus propios indicadores —
+ * marcado al menos EVAL_LEVEL_THRESHOLD (60%) de sus propios indicadores —
  * SIN exigir que el nivel anterior esté completo (antes de este cambio hacía
  * falta el 100% de un nivel para "desbloquear" el siguiente, de forma
  * secuencial: para marcar Avanzado había que tener Básico y Medio al 100%).
