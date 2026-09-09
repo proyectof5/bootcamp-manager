@@ -368,6 +368,22 @@ const GANTT_ITEM_TYPE_COLOR_ID = {
     flexible: '3',  // Grape     #8e24aa ≈ #6f42c1 del Gantt
 };
 
+// Mismos colores (hex, sin '#') que .gantt_task_line.gantt-task-* en
+// css/promotion-detail.css — reutilizados por el export a Excel
+// "pintado" (_exportRoadmapXlsx/ExcelJS, ver buildRoadmapGanttGridExport)
+// para que una barra se vea del mismo color en la app y en el Excel.
+// 'leccion-group' comparte el color de 'leccion' — igual que
+// gantt.templates.task_class en promotion-detail.js (que mapea
+// leccion-group -> 'gantt-task-leccion').
+const GANTT_ITEM_TYPE_HEX = {
+    module: '667eea',
+    course: '6bbf9c',
+    project: 'ff8a5c',   // var(--app-color-brand-300) en design-system.css
+    leccion: '8e7cc3',
+    'leccion-group': '8e7cc3',
+    flexible: '6f42c1',
+};
+
 /**
  * Construye filas planas (una por módulo/curso/proyecto/lección/bloque de
  * tiempo flexible) listas para exportar a Excel — reutiliza el mismo dataset
@@ -407,6 +423,146 @@ function buildRoadmapExportRows(promotion) {
 }
 
 window.buildRoadmapExportRows = buildRoadmapExportRows;
+
+const _GANTT_EXPORT_MONTH_NAMES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+
+/**
+ * Construye una grilla de TODO el roadmap (con la misma jerarquía módulo →
+ * curso/proyecto/lección/grupo de lecciones → lección que ve el docente en
+ * pantalla) lista para "pintar" un Gantt real en Excel — _exportRoadmapXlsx
+ * (ExcelJS) la consume para reproducir el mismo diagrama que dibuja DHTMLX
+ * Gantt, en vez de una tabla plana de fechas.
+ *
+ * `granularity` determina la unidad de columna — 'day'/'week'/'month', las
+ * mismas tres que setGanttZoomLevel() en promotion-detail.js — para que el
+ * Excel se pueda exportar en la MISMA granularidad que el docente esté
+ * viendo en el Gantt en ese momento. Con 'week' (por defecto), la
+ * numeración "Sem. N" coincide con _ganttWeekLabel (semana 1 = los 7 días
+ * desde promotion.startDate, sin alinear a lunes).
+ * @param {Object} promotion
+ * @param {'day'|'week'|'month'} [granularity]
+ * @returns {{
+ *   granularity: 'day'|'week'|'month',
+ *   columns: Array<{ index: number, label: string, monthLabel: string }>,
+ *   rows: Array<{ id: string, text: string, itemType: string, typeLabel: string,
+ *                 indent: number, startColIndex: number, colSpan: number, url: string }>
+ * } | null} null si el roadmap no tiene módulos todavía.
+ */
+function buildRoadmapGanttGridExport(promotion, granularity) {
+    const unit = (granularity === 'day' || granularity === 'month') ? granularity : 'week';
+    const { data } = buildGanttDataset(promotion);
+    if (!data.length) return null;
+
+    // Misma normalización a medianoche local que _ganttWeekLabel — evita que
+    // un cambio de horario de verano de por medio desplace el cálculo un día.
+    const baseDateRaw = promotion.startDate ? new Date(promotion.startDate) : new Date();
+    const baseDate = new Date(baseDateRaw.getFullYear(), baseDateRaw.getMonth(), baseDateRaw.getDate());
+
+    // Cada fila expresada en DÍAS absolutos desde baseDate — unidad común de
+    // partida, independiente de la granularidad de columna elegida.
+    const rowsInDays = data.map((row) => {
+        const [dd, mm, yyyy] = row.start_date.split('-').map(Number);
+        const rowStartDate = new Date(yyyy, mm - 1, dd);
+        const startDayIndex = Math.round((rowStartDate - baseDate) / 86400000);
+        const durationDays = Math.max(1, Math.round(row.duration));
+        // Mismo nivel de sangría que se ve en el árbol del Gantt: módulo (0)
+        // → curso/proyecto/tiempo flexible/grupo "Lecciones" (1) → lección (2).
+        const indent = row.itemType === 'leccion' ? 2 : (row.itemType === 'module' ? 0 : 1);
+        return {
+            base: {
+                id: row.id,
+                text: row.text,
+                itemType: row.itemType,
+                typeLabel: GANTT_ITEM_TYPE_LABELS[row.itemType] || row.itemType,
+                indent,
+                url: row.url || '',
+            },
+            startDayIndex,
+            durationDays,
+        };
+    });
+
+    // ── Rollup del rango de un módulo a partir de sus hijos ─────────────────
+    // DHTMLX Gantt recalcula automáticamente el start/end de cualquier tarea
+    // `type: 'project'` (que es lo que usa una fila de módulo) para que cubra
+    // exactamente el rango de SUS HIJOS, en cuanto tiene alguno — así es como
+    // se ve realmente la barra del módulo en pantalla. El start_date/duration
+    // "en crudo" de la fila del módulo (derivado de module.duration/
+    // startOffset) se desincroniza en cuanto CUALQUIER curso/proyecto/lección
+    // del módulo se movió alguna vez a mano en el Gantt (queda con un
+    // absoluteStartOffset propio que ya no coincide con el del módulo) — sin
+    // este ajuste, el Excel mostraría el dato crudo del módulo en vez de lo
+    // que el docente realmente ve dibujado.
+    data.forEach((row, idx) => {
+        if (row.itemType !== 'module') return;
+        const childIdx = data
+            .map((r, i) => i)
+            .filter((i) => data[i].itemType !== 'module' && data[i].moduleIndex === row.itemIndex);
+        if (!childIdx.length) return;
+        const starts = childIdx.map((i) => rowsInDays[i].startDayIndex);
+        const ends = childIdx.map((i) => rowsInDays[i].startDayIndex + rowsInDays[i].durationDays);
+        const minStart = Math.min(...starts);
+        const maxEnd = Math.max(...ends);
+        rowsInDays[idx].startDayIndex = minStart;
+        rowsInDays[idx].durationDays = Math.max(1, maxEnd - minStart);
+    });
+
+    if (unit === 'day' || unit === 'week') {
+        const step = unit === 'day' ? 1 : 7;
+        const startCol = (r) => Math.floor(r.startDayIndex / step);
+        const endColExclusive = (r) => Math.ceil((r.startDayIndex + r.durationDays) / step);
+
+        const minCol = Math.min(...rowsInDays.map(startCol));
+        const maxCol = Math.max(...rowsInDays.map(endColExclusive));
+
+        const columns = [];
+        for (let c = minCol; c < maxCol; c++) {
+            const colDate = addDays(baseDate, c * step);
+            const label = unit === 'day'
+                ? `${String(colDate.getDate()).padStart(2, '0')}/${String(colDate.getMonth() + 1).padStart(2, '0')}`
+                : `Sem. ${c + 1}`;
+            columns.push({
+                index: c,
+                label,
+                monthLabel: `${_GANTT_EXPORT_MONTH_NAMES[colDate.getMonth()]} ${colDate.getFullYear()}`,
+            });
+        }
+
+        const rows = rowsInDays.map((r) => ({
+            ...r.base,
+            startColIndex: startCol(r),
+            colSpan: Math.max(1, endColExclusive(r) - startCol(r)),
+        }));
+
+        return { granularity: unit, columns, rows };
+    }
+
+    // ── 'month': columnas de mes de calendario (no un tamaño fijo de días) —
+    //    una fila puede caer en 1 o varios meses según dónde empiece/acabe. ──
+    const minDate = addDays(baseDate, Math.min(...rowsInDays.map((r) => r.startDayIndex)));
+    const maxDate = addDays(baseDate, Math.max(...rowsInDays.map((r) => r.startDayIndex + r.durationDays)) - 1); // último día activo
+
+    const columns = [];
+    for (let cursor = new Date(minDate.getFullYear(), minDate.getMonth(), 1), end = new Date(maxDate.getFullYear(), maxDate.getMonth(), 1);
+        cursor <= end;
+        cursor = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1)) {
+        const label = `${_GANTT_EXPORT_MONTH_NAMES[cursor.getMonth()]} ${cursor.getFullYear()}`;
+        columns.push({ index: columns.length, label, monthLabel: label, year: cursor.getFullYear(), month: cursor.getMonth() });
+    }
+    const monthColIndex = (date) => columns.findIndex((c) => c.year === date.getFullYear() && c.month === date.getMonth());
+
+    const rows = rowsInDays.map((r) => {
+        const rStart = addDays(baseDate, r.startDayIndex);
+        const rEnd = addDays(baseDate, r.startDayIndex + r.durationDays - 1); // último día activo
+        const startColIndex = monthColIndex(rStart);
+        const endColIndex = monthColIndex(rEnd);
+        return { ...r.base, startColIndex, colSpan: Math.max(1, endColIndex - startColIndex + 1) };
+    });
+
+    return { granularity: 'month', columns, rows };
+}
+
+window.buildRoadmapGanttGridExport = buildRoadmapGanttGridExport;
 
 /**
  * Construye la lista de eventos de día completo del roadmap (módulos,

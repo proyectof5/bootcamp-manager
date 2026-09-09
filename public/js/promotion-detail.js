@@ -3439,6 +3439,13 @@ function displayModules(modules) {
 // Guards so gantt.init() only runs once per page load
 let _ganttInitialized = false;
 
+// Nivel de zoom actual del Gantt ('day'/'week'/'month') — lo fija
+// setGanttZoomLevel() más abajo. Se lee al exportar a Excel (spec
+// design-cleanup: _exportRoadmapXlsx) para que el Excel se dibuje en la
+// MISMA granularidad que el docente está viendo en pantalla en ese momento,
+// en vez de siempre en semanas.
+let _ganttZoomLevel = 'week';
+
 /**
  * Etiqueta "Sem. N" de una columna del Gantt en zoom Semana, contando desde
  * la fecha de inicio REAL de la promoción (semana 1 = los 7 días desde
@@ -3616,6 +3623,7 @@ function setGanttZoomLevel(level) {
         }
     };
     const config = scaleConfigs[level] || scaleConfigs.week;
+    _ganttZoomLevel = scaleConfigs[level] ? level : 'week';
 
     if (typeof gantt === 'undefined' || !_ganttInitialized) return;
 
@@ -3654,7 +3662,7 @@ async function exportRoadmap(format) {
     }
 
     if (format === 'xlsx') {
-        _exportRoadmapXlsx(promotion);
+        await _exportRoadmapXlsx(promotion);
     } else if (format === 'ics') {
         _exportRoadmapIcs(promotion);
     } else if (format === 'png' || format === 'pdf') {
@@ -3663,21 +3671,177 @@ async function exportRoadmap(format) {
 }
 window.exportRoadmap = exportRoadmap;
 
-function _exportRoadmapXlsx(promotion) {
-    if (typeof XLSX === 'undefined' || typeof window.buildRoadmapExportRows !== 'function') {
+// Gris neutro para la fila-grupo "Lecciones" (nodo puramente organizativo,
+// sin color propio en el Gantt — ver gantt.templates.task_class, que SÍ le
+// da a leccion-group el color de 'leccion' para la BARRA, pero aquí se deja
+// la banda de fondo de toda la fila en gris neutro para diferenciarla
+// visualmente de una lección real).
+const _XLSX_GANTT_ROW_BAND = 'FFF7F8FA'; // var(--app-color-neutral-50)
+const _XLSX_GANTT_HEADER_BG = 'FFEEF0F3'; // var(--app-color-neutral-100)
+const _XLSX_GANTT_BORDER = { style: 'thin', color: { argb: 'FFEEF0F3' } };
+
+/**
+ * Exporta el roadmap a Excel "pintado" como el propio diagrama Gantt (spec
+ * design-cleanup) — antes era una tabla plana módulo/elemento/fechas
+ * (XLSX.utils.json_to_sheet); ahora dibuja una grilla con las barras
+ * coloreadas por tipo de elemento, usando exactamente el mismo dataset
+ * (buildRoadmapGanttGridExport, en gantt-adapter.js) que alimenta el Gantt
+ * en pantalla. Usa ExcelJS (no SheetJS/XLSX): la edición community de
+ * SheetJS no soporta escribir estilos de celda (relleno de color) — solo
+ * lee, no escribe — así que sin ExcelJS el Excel exportado no podría
+ * "verse como" el Gantt en absoluto, por bien que se maquetara el resto.
+ *
+ * La granularidad de columna (día/semana/mes) se toma de `_ganttZoomLevel`
+ * — el mismo zoom que el docente tiene puesto en el Gantt en pantalla en
+ * ese momento (ver setGanttZoomLevel) — para que "exportar en día" saque de
+ * verdad un Excel día a día, no siempre semanas.
+ * @param {Object} promotion
+ */
+async function _exportRoadmapXlsx(promotion) {
+    if (typeof ExcelJS === 'undefined' || typeof window.buildRoadmapGanttGridExport !== 'function') {
         showToast('No se pudo cargar la librería de exportación (Excel).', 'danger');
         return;
     }
-    const rows = window.buildRoadmapExportRows(promotion);
-    if (!rows.length) {
+    const grid = window.buildRoadmapGanttGridExport(promotion, _ganttZoomLevel);
+    if (!grid || !grid.rows.length) {
         showToast('El roadmap no tiene módulos que exportar todavía.', 'warning');
         return;
     }
-    const ws = XLSX.utils.json_to_sheet(rows);
-    ws['!cols'] = [{ wch: 28 }, { wch: 36 }, { wch: 14 }, { wch: 12 }, { wch: 12 }, { wch: 16 }];
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Roadmap');
-    XLSX.writeFile(wb, `roadmap-${_exportSafeFileName(promotion.name)}.xlsx`);
+    const { granularity, columns, rows } = grid;
+
+    const NAME_COL = 1;
+    const TYPE_COL = 2;
+    const FIRST_COL = 3;
+    const lastCol = FIRST_COL + columns.length - 1;
+    // En zoom Mes, cada columna YA es un mes — una fila extra de "mes" por
+    // encima sería redundante (repetiría la misma etiqueta letra por letra).
+    const showMonthHeader = granularity !== 'month';
+    const HEADER_ROW = showMonthHeader ? 2 : 1;
+    const FIRST_DATA_ROW = HEADER_ROW + 1;
+
+    const wb = new ExcelJS.Workbook();
+    wb.creator = 'Bootcamp Manager';
+    wb.created = new Date();
+    const ws = wb.addWorksheet('Roadmap', { views: [{ state: 'frozen', xSplit: NAME_COL, ySplit: HEADER_ROW }] });
+
+    // ── Columnas: nombre / tipo / una por día, semana o mes ────────────────
+    ws.getColumn(NAME_COL).width = 34;
+    ws.getColumn(TYPE_COL).width = 14;
+    const colWidth = granularity === 'day' ? 6 : (granularity === 'month' ? 14 : 9);
+    for (let i = 0; i < columns.length; i++) ws.getColumn(FIRST_COL + i).width = colWidth;
+
+    // ── Fila de cabecera de meses (una celda combinada por cada mes que
+    //    cubran las columnas visibles — igual que la fila superior del
+    //    Gantt en pantalla). Se omite en zoom Mes (ver showMonthHeader). ───
+    if (showMonthHeader) {
+        const monthRow = ws.getRow(1);
+        monthRow.height = 20;
+        ws.mergeCells(1, NAME_COL, 1, TYPE_COL);
+        let monthColCursor = FIRST_COL;
+        while (monthColCursor <= lastCol) {
+            const monthLabel = columns[monthColCursor - FIRST_COL].monthLabel;
+            let endCol = monthColCursor;
+            while (endCol + 1 <= lastCol && columns[endCol + 1 - FIRST_COL].monthLabel === monthLabel) endCol++;
+            if (endCol > monthColCursor) ws.mergeCells(1, monthColCursor, 1, endCol);
+            const cell = ws.getCell(1, monthColCursor);
+            cell.value = monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1);
+            cell.alignment = { horizontal: 'center', vertical: 'middle' };
+            cell.font = { size: 10, bold: true, color: { argb: 'FF6B7280' } };
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: _XLSX_GANTT_HEADER_BG } };
+            monthColCursor = endCol + 1;
+        }
+    }
+
+    // ── Cabecera de columnas ("Elemento" / "Tipo" / "Sem. N", "DD/MM" o
+    //    "Mes AAAA" según granularidad) ──────────────────────────────────
+    const headerRow = ws.getRow(HEADER_ROW);
+    headerRow.height = 18;
+    headerRow.getCell(NAME_COL).value = 'Elemento';
+    headerRow.getCell(TYPE_COL).value = 'Tipo';
+    columns.forEach((col, i) => {
+        headerRow.getCell(FIRST_COL + i).value = granularity === 'month'
+            ? col.label.charAt(0).toUpperCase() + col.label.slice(1)
+            : col.label;
+    });
+    for (let c = NAME_COL; c <= lastCol; c++) {
+        const cell = headerRow.getCell(c);
+        cell.font = { size: 10, bold: true, color: { argb: 'FF374151' } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: _XLSX_GANTT_HEADER_BG } };
+        cell.alignment = { horizontal: c >= FIRST_COL ? 'center' : 'left', vertical: 'middle' };
+        cell.border = { bottom: _XLSX_GANTT_BORDER, right: _XLSX_GANTT_BORDER };
+    }
+
+    // ── Filas de datos: una por módulo/curso/proyecto/lección/grupo de
+    //    lecciones/bloque de tiempo flexible, en el MISMO orden que se ve
+    //    en pantalla — con la barra de color combinando las celdas que
+    //    ocupa, igual que una barra del Gantt. ─────────────────────────────
+    rows.forEach((row, rowIdx) => {
+        const excelRow = FIRST_DATA_ROW + rowIdx;
+        const isEvenBand = rowIdx % 2 === 1;
+        const r = ws.getRow(excelRow);
+        r.height = 20;
+
+        const nameCell = r.getCell(NAME_COL);
+        nameCell.value = row.text;
+        nameCell.font = { size: 10, bold: row.itemType === 'module', color: { argb: 'FF111827' } };
+        nameCell.alignment = { indent: row.indent * 2, vertical: 'middle', wrapText: false };
+        if (row.url) nameCell.value = { text: row.text, hyperlink: row.url };
+
+        const typeCell = r.getCell(TYPE_COL);
+        typeCell.value = row.typeLabel;
+        typeCell.font = { size: 9, color: { argb: 'FF6B7280' } };
+        typeCell.alignment = { vertical: 'middle' };
+
+        [nameCell, typeCell].forEach((cell) => {
+            if (isEvenBand) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: _XLSX_GANTT_ROW_BAND } };
+            cell.border = { bottom: _XLSX_GANTT_BORDER, right: _XLSX_GANTT_BORDER };
+        });
+
+        // Celdas vacías (fondo de banda + rejilla), luego la barra combinada
+        // encima de las que ocupa este elemento.
+        for (let i = 0; i < columns.length; i++) {
+            const cell = r.getCell(FIRST_COL + i);
+            if (isEvenBand) cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: _XLSX_GANTT_ROW_BAND } };
+            cell.border = { bottom: _XLSX_GANTT_BORDER, right: _XLSX_GANTT_BORDER };
+        }
+
+        const barStartCol = FIRST_COL + (row.startColIndex - columns[0].index);
+        const barEndCol = barStartCol + row.colSpan - 1;
+        if (barEndCol > barStartCol) ws.mergeCells(excelRow, barStartCol, excelRow, barEndCol);
+        const barCell = ws.getCell(excelRow, barStartCol);
+        barCell.value = row.text;
+        const hex = GANTT_ITEM_TYPE_HEX[row.itemType] || '6b7280';
+        barCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: `FF${hex}` } };
+        barCell.font = { size: 9, bold: true, color: { argb: 'FFFFFFFF' } };
+        barCell.alignment = { horizontal: 'left', vertical: 'middle', indent: 1, wrapText: false };
+        barCell.border = { top: _XLSX_GANTT_BORDER, bottom: _XLSX_GANTT_BORDER, left: _XLSX_GANTT_BORDER, right: _XLSX_GANTT_BORDER };
+    });
+
+    // ── Leyenda de colores, un par de filas después de la última — mismos
+    //    tipos/colores que la leyenda que se ve sobre el Gantt en pantalla.
+    //    Se pinta con las 2 columnas fijas (color / etiqueta) para no
+    //    depender de cuántas columnas haya. ─────────────────────────────────
+    const legendStartRow = FIRST_DATA_ROW + rows.length + 1;
+    ['module', 'course', 'project', 'leccion', 'flexible'].forEach((type, i) => {
+        const r = legendStartRow + i;
+        const swatch = ws.getCell(r, NAME_COL);
+        swatch.value = '';
+        swatch.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: `FF${GANTT_ITEM_TYPE_HEX[type]}` } };
+        const label = ws.getCell(r, TYPE_COL);
+        label.value = GANTT_ITEM_TYPE_LABELS[type];
+        label.font = { size: 9, color: { argb: 'FF6B7280' } };
+    });
+
+    const buffer = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `roadmap-${_exportSafeFileName(promotion.name)}.xlsx`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
     showToast('Roadmap exportado a Excel ✓', 'success');
 }
 
