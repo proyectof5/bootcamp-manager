@@ -12,10 +12,14 @@
  *   - #evaluation-tab-view + #evaluation-content → loadEvaluation()/renderEvaluationTab() (null-safe)
  *     pintan el accordion de módulos/proyectos. window._evalState guarda los datos.
  *   - #team-history-panel (+ #team-history-panel-body) → openTeamHistoryView/closeTeamHistoryView
- *     togglean la clase `hidden`.
+ *     togglean la clase `legacy-hidden` (bug real corregido: el JSX las montaba con `hidden` —la
+ *     utilidad de Tailwind, SIN !important— mientras TODO el orquestador comprueba/togglea
+ *     `legacy-hidden`; #eval-project-view además tiene su propia regla de ID con display:flex, que
+ *     le gana en especificidad a una clase sin !important, así que con `hidden` nunca llegaba a
+ *     ocultarse de verdad y quedaba apilada debajo del accordion de proyectos).
  *   - #eval-project-view (split-view: #eval-targets-list sidebar + #eval-right-panel con
  *     #eval-right-empty/#eval-right-content/#eval-right-header/#eval-right-body) → el flujo de
- *     evaluación individual lo abre/cierra togglando `hidden`/`d-none` y poblando por innerHTML.
+ *     evaluación individual lo abre/cierra togglando `legacy-hidden`/`d-none` y poblando por innerHTML.
  *   - #student-eval-panel (+ #student-eval-panel-body) → panel legacy de evaluación individual.
  * Los editores rich-text `.eval-feedback-rte` (contenteditable) se inyectan dinámicamente por JS en
  * #eval-right-body y #student-eval-panel-body; el keydown handler se ancla por DELEGACIÓN a
@@ -133,7 +137,7 @@ function EvaluationGridPanel() {
       </div>
 
       {/* ── Histórico de equipos ──────────────────────────────────────────── */}
-      <div id="team-history-panel" className="hidden">
+      <div id="team-history-panel" className="legacy-hidden">
         <div className="d-flex align-items-center gap-3 my-4">
           <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => w().closeTeamHistoryView?.()}>
             <i className="bi bi-arrow-left me-1" />Volver
@@ -144,7 +148,7 @@ function EvaluationGridPanel() {
       </div>
 
       {/* ── Split-view de evaluación individual (sidebar + panel derecho) ──── */}
-      <div id="eval-project-view" className="hidden">
+      <div id="eval-project-view" className="legacy-hidden">
         <div className={`eval-view-topbar d-flex align-items-center gap-3 mb-0 ${topbarCollapsed ? 'py-1' : 'py-3'}`}>
           {/* Contenido de la barra: se oculta con .d-none (no se desmonta) para que el legacy
               (openEvaluationView/selectEvalTarget) pueda seguir poblando #eval-view-title/
@@ -238,7 +242,7 @@ function EvaluationGridPanel() {
       </div>
 
       {/* ── Panel legacy de evaluación individual ─────────────────────────── */}
-      <div id="student-eval-panel" className="hidden">
+      <div id="student-eval-panel" className="legacy-hidden">
         <div className="d-flex align-items-center gap-3 my-4">
           <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => w().cancelStudentEvalPanel?.()}>
             <i className="bi bi-arrow-left me-1" />Volver
