@@ -297,8 +297,9 @@ const promotionDetailBody = `
                          docs/design-system.md "Navegación de Contenido del Programa"). Antes 10
                          pestañas sueltas en una sola fila; ahora se agrupan por tema en
                          #program-details-group-nav (4 botones) y la fila de siempre
-                         (#program-details-tabs, MISMOS 10 <button id="program-details-X-tab">
-                         de siempre, sin tocar ids/onclick) se filtra por data-group para mostrar
+                         (#program-details-tabs, <button id="program-details-X-tab"> — 11 desde
+                         que la spec horas-lectivas.md añadió "Cómputo de horas", sin tocar
+                         ids/onclick del resto) se filtra por data-group para mostrar
                          solo las del grupo activo. switchProgramDetailsTab() en promotion-detail.js
                          no cambia — sigue siendo la única fuente de verdad de qué tab-pane se ve;
                          el nivel de grupo es puramente visual y se sincroniza solo (ver
@@ -333,6 +334,10 @@ const promotionDetailBody = `
                         <button class="nav-link" id="program-details-schedule-tab" type="button" role="tab"
                             aria-selected="false" data-group="planning" onclick="switchProgramDetailsTab('schedule')">
                             <i class="bi bi-clock me-2"></i>Horario
+                        </button>
+                        <button class="nav-link" id="program-details-hours-tab" type="button" role="tab"
+                            aria-selected="false" data-group="planning" onclick="switchProgramDetailsTab('hours')">
+                            <i class="bi bi-clock-history me-2"></i>Cómputo de horas
                         </button>
                         <button class="nav-link" id="program-details-pildoras-tab" type="button" role="tab"
                             aria-selected="false" data-group="content" style="display:none" onclick="switchProgramDetailsTab('pildoras')">
@@ -393,6 +398,20 @@ const promotionDetailBody = `
                                  ScheduleSettingsHost (_components/ScheduleSettings.tsx) monta aquí por
                                  portal (franjas online/presencial + notas, auto-guardado). Usa los IDs
                                  legacy (sched-*) porque saveExtendedInfo() los lee al "guardar todo". -->
+                        </div>
+
+                        <!-- Cómputo de horas Tab (spec horas-lectivas.md) -->
+                        <div class="tab-pane fade" id="program-details-hours" role="tabpanel"
+                            aria-labelledby="program-details-hours-tab">
+                            <!-- HoursPanelHost (_components/HoursPanel.tsx) monta aquí por portal.
+                                 Panel puramente derivado: computa horas lectivas (días lectivos entre
+                                 fechas del roadmap × promotion.hoursPerDay, mismo criterio de
+                                 workingDays/holidays que el Gantt) con window.buildHoursBreakdown de
+                                 gantt-adapter.js — total de la formación, desglose por módulo y por
+                                 proyecto, y comparación contra extendedInfo.totalHours (déficit/
+                                 superávit). No edita ni guarda nada; hoursPerDay se edita en el modal
+                                 de la promoción (edit-promotion-hours-per-day). El orquestador dispara
+                                 el refresco vía window.__refreshHoursPanel(). -->
                         </div>
 
                         <!-- Team Tab -->
