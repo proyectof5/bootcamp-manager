@@ -293,47 +293,74 @@ const promotionDetailBody = `
                         </div>
                     </div>
 
-                    <!-- Program Details Navigation Tabs -->
+                    <!-- Program Details Navigation — dos niveles (spec design-cleanup, ver
+                         docs/design-system.md "Navegación de Contenido del Programa"). Antes 10
+                         pestañas sueltas en una sola fila; ahora se agrupan por tema en
+                         #program-details-group-nav (4 botones) y la fila de siempre
+                         (#program-details-tabs, MISMOS 10 <button id="program-details-X-tab">
+                         de siempre, sin tocar ids/onclick) se filtra por data-group para mostrar
+                         solo las del grupo activo. switchProgramDetailsTab() en promotion-detail.js
+                         no cambia — sigue siendo la única fuente de verdad de qué tab-pane se ve;
+                         el nivel de grupo es puramente visual y se sincroniza solo (ver
+                         switchProgramDetailsGroup() y el hook al final de switchProgramDetailsTab). -->
+                    <nav class="nav program-details-group-nav mb-2" id="program-details-group-nav">
+                        <button class="group-nav-link active" data-group="planning" type="button"
+                            onclick="switchProgramDetailsGroup('planning')">
+                            <i class="bi bi-calendar3 me-2"></i>Planificación
+                        </button>
+                        <button class="group-nav-link" data-group="content" type="button"
+                            onclick="switchProgramDetailsGroup('content')">
+                            <i class="bi bi-journal-richtext me-2"></i>Contenido
+                        </button>
+                        <button class="group-nav-link" data-group="resources" type="button"
+                            onclick="switchProgramDetailsGroup('resources')">
+                            <i class="bi bi-link-45deg me-2"></i>Recursos
+                        </button>
+                        <button class="group-nav-link" data-group="team" type="button"
+                            onclick="switchProgramDetailsGroup('team')">
+                            <i class="bi bi-people-fill me-2"></i>Equipo
+                        </button>
+                    </nav>
                     <nav class="nav nav-tabs mb-4" id="program-details-tabs" role="tablist">
                         <button class="nav-link active" id="program-details-roadmap-tab" type="button" role="tab"
-                            aria-selected="true" onclick="switchProgramDetailsTab('roadmap')">
+                            aria-selected="true" data-group="planning" onclick="switchProgramDetailsTab('roadmap')">
                             <i class="bi bi-map me-2"></i>Roadmap
                         </button>
                         <button class="nav-link" id="program-details-calendar-tab" type="button" role="tab"
-                            aria-selected="false" onclick="switchProgramDetailsTab('calendar')">
+                            aria-selected="false" data-group="planning" onclick="switchProgramDetailsTab('calendar')">
                             <i class="bi bi-calendar me-2"></i>Calendario
                         </button>
                         <button class="nav-link" id="program-details-schedule-tab" type="button" role="tab"
-                            aria-selected="false" onclick="switchProgramDetailsTab('schedule')">
+                            aria-selected="false" data-group="planning" onclick="switchProgramDetailsTab('schedule')">
                             <i class="bi bi-clock me-2"></i>Horario
                         </button>
-                        <button class="nav-link" id="program-details-team-tab" type="button" role="tab"
-                            aria-selected="false" onclick="switchProgramDetailsTab('team')">
-                            <i class="bi bi-people me-2"></i>Equipo
-                        </button>
-                        <button class="nav-link" id="program-details-resources-tab" type="button" role="tab"
-                            aria-selected="false" onclick="switchProgramDetailsTab('resources')">
-                            <i class="bi bi-tools me-2"></i>Recursos
-                        </button>
                         <button class="nav-link" id="program-details-pildoras-tab" type="button" role="tab"
-                            aria-selected="false" onclick="switchProgramDetailsTab('pildoras')">
+                            aria-selected="false" data-group="content" style="display:none" onclick="switchProgramDetailsTab('pildoras')">
                             <i class="bi bi-lightbulb me-2"></i>Píldoras
                         </button>
                         <button class="nav-link" id="program-details-evaluation-tab" type="button" role="tab"
-                            aria-selected="false" onclick="switchProgramDetailsTab('evaluation')">
+                            aria-selected="false" data-group="content" style="display:none" onclick="switchProgramDetailsTab('evaluation')">
                             <i class="bi bi-clipboard-check me-2"></i>Criterios
                         </button>
-                        <button class="nav-link" id="program-details-virtual-classroom-tab" type="button" role="tab"
-                            aria-selected="false" onclick="switchProgramDetailsTab('virtual-classroom')">
-                            <i class="bi bi-laptop me-2"></i>Aula Virtual
+                        <button class="nav-link" id="program-details-sections-tab" type="button" role="tab"
+                            aria-selected="false" data-group="content" style="display:none" onclick="switchProgramDetailsTab('sections')">
+                            <i class="bi bi-file-text me-2"></i>Secciones
+                        </button>
+                        <button class="nav-link" id="program-details-resources-tab" type="button" role="tab"
+                            aria-selected="false" data-group="resources" style="display:none" onclick="switchProgramDetailsTab('resources')">
+                            <i class="bi bi-tools me-2"></i>Recursos
                         </button>
                         <button class="nav-link" id="program-details-quicklinks-tab" type="button" role="tab"
-                            aria-selected="false" onclick="switchProgramDetailsTab('quicklinks')">
+                            aria-selected="false" data-group="resources" style="display:none" onclick="switchProgramDetailsTab('quicklinks')">
                             <i class="bi bi-lightning me-2"></i>Quick Links
                         </button>
-                        <button class="nav-link" id="program-details-sections-tab" type="button" role="tab"
-                            aria-selected="false" onclick="switchProgramDetailsTab('sections')">
-                            <i class="bi bi-file-text me-2"></i>Secciones
+                        <button class="nav-link" id="program-details-team-tab" type="button" role="tab"
+                            aria-selected="false" data-group="team" style="display:none" onclick="switchProgramDetailsTab('team')">
+                            <i class="bi bi-people me-2"></i>Equipo
+                        </button>
+                        <button class="nav-link" id="program-details-virtual-classroom-tab" type="button" role="tab"
+                            aria-selected="false" data-group="team" style="display:none" onclick="switchProgramDetailsTab('virtual-classroom')">
+                            <i class="bi bi-laptop me-2"></i>Aula Virtual
                         </button>
                     </nav>
 

@@ -3770,21 +3770,38 @@ async function syncRoadmapGoogleCalendar() {
         if (result.created) parts.push(`${result.created} creado${result.created !== 1 ? 's' : ''}`);
         if (result.updated) parts.push(`${result.updated} actualizado${result.updated !== 1 ? 's' : ''}`);
         if (result.deleted) parts.push(`${result.deleted} eliminado${result.deleted !== 1 ? 's' : ''} del calendario`);
+        const summary = parts.join(', ') || 'sin cambios';
 
         // Compartir por ACL da acceso, pero Google NO añade el calendario solo
         // a la lista "Mis calendarios" del profesor — hay que aceptarlo una vez.
         // Este enlace abre esa pantalla de "¿Añadir este calendario?" (funciona
         // con cualquier calendario al que el usuario logueado tenga acceso, no
-        // solo los recién creados). En la primera sincronización (isNewCalendar)
-        // lo abrimos solos en una pestaña nueva para que no haga falta ni un
-        // clic más; en resincronizaciones posteriores solo lo dejamos en el
-        // toast, por si el profesor todavía no lo había aceptado.
+        // solo los recién creados).
         const addCalendarUrl = `https://calendar.google.com/calendar/render?cid=${encodeURIComponent(result.googleCalendarId)}`;
-        const linkHtml = `<br><a href="${addCalendarUrl}" target="_blank" rel="noopener" class="text-white text-decoration-underline">Abrir en Google Calendar (para añadirlo a tu lista)</a>`;
-        window.showApiToast?.(`Google Calendar sincronizado ✓ (${parts.join(', ') || 'sin cambios'})${linkHtml}`, 'success', 15000);
 
         if (result.isNewCalendar) {
-            window.open(addCalendarUrl, '_blank', 'noopener');
+            // Antes se abría solo una pestaña nueva (window.open) — pasaba
+            // desapercibido/demasiado rápido si el navegador la abría detrás o
+            // el usuario no se fijaba. Ahora, en la primera sincronización de
+            // la promoción (cuando de verdad hace falta añadir el calendario),
+            // se muestra un modal que se queda en pantalla hasta que el
+            // profesor pulsa un botón — ver _showConfirmModal más abajo
+            // (mismo diálogo reutilizable que ya usa el resto de la app).
+            _showConfirmModal(
+                `<p>Se han sincronizado ${result.created + result.updated} elemento${(result.created + result.updated) !== 1 ? 's' : ''} del roadmap a un calendario nuevo de Google Calendar, compartido con el profesor y los colaboradores de esta promoción.</p>
+                 <p class="mb-0">Para verlo en tu lista de <strong>Mis calendarios</strong> en Google Calendar, tienes que añadirlo una vez — pulsa el botón para abrirlo.</p>`,
+                () => window.open(addCalendarUrl, '_blank', 'noopener'),
+                'Abrir en Google Calendar',
+                'btn-primary'
+            );
+            showToast(`Google Calendar sincronizado ✓ (${summary})`, 'success');
+        } else {
+            // Resincronizaciones posteriores: normalmente el calendario ya se
+            // añadió la primera vez, así que un toast (con el enlace, por si
+            // acaso) es suficiente — no hace falta interrumpir con un modal
+            // cada vez que se pulsa "Sincronizar".
+            const linkHtml = `<br><a href="${addCalendarUrl}" target="_blank" rel="noopener" class="text-white text-decoration-underline">Abrir en Google Calendar</a>`;
+            window.showApiToast?.(`Google Calendar sincronizado ✓ (${summary})${linkHtml}`, 'success', 8000);
         }
 
         if (result.failed) {
@@ -11388,6 +11405,62 @@ function updateProgramDetailsSubtitle(sectionName) {
     }
 }
 
+// ── Navegación de "Contenido del Programa" en dos niveles (spec design-cleanup,
+// ver docs/design-system.md § Navegación de Contenido del Programa) ──────────
+// Antes eran 10 pestañas sueltas en una sola fila; ahora se agrupan por tema.
+// switchProgramDetailsTab() (justo debajo) sigue siendo la ÚNICA fuente de
+// verdad de qué tab-pane se muestra — este mapa y las dos funciones de abajo
+// son puramente de presentación (qué fila de sub-tabs se ve) y se mantienen
+// sincronizadas automáticamente desde dentro de switchProgramDetailsTab, así
+// que da igual desde dónde se dispare un cambio de tab (clic en una sub-tab,
+// restaurar el tab guardado en sessionStorage al cargar, o un salto directo
+// como el de Evaluación → 'virtual-classroom').
+const PROGRAM_DETAILS_TAB_GROUPS = {
+    roadmap: 'planning', calendar: 'planning', schedule: 'planning',
+    pildoras: 'content', evaluation: 'content', sections: 'content',
+    resources: 'resources', quicklinks: 'resources',
+    team: 'team', 'virtual-classroom': 'team',
+};
+
+// Recuerda, por grupo, cuál fue la última sub-tab activa dentro de él — así
+// volver a un grupo ya visitado no salta siempre a su primera pestaña.
+const _programDetailsGroupLastTab = {};
+
+/**
+ * Sincroniza SOLO la UI del nivel de grupo (botón de grupo activo + qué fila
+ * de sub-tabs se ve) con la sub-tab actualmente activa. No toca ninguna
+ * tab-pane — eso lo hace switchProgramDetailsTab, que llama a esta función
+ * al final de cada cambio.
+ * @param {string} tabName
+ */
+function _syncProgramDetailsGroupNav(tabName) {
+    const group = PROGRAM_DETAILS_TAB_GROUPS[tabName];
+    if (!group) return;
+    _programDetailsGroupLastTab[group] = tabName;
+
+    document.querySelectorAll('#program-details-group-nav .group-nav-link').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.group === group);
+    });
+    document.querySelectorAll('#program-details-tabs .nav-link[data-group]').forEach(btn => {
+        btn.style.display = btn.dataset.group === group ? '' : 'none';
+    });
+}
+
+/**
+ * Handler de los botones de grupo (Planificación/Contenido/Recursos/Equipo).
+ * Activa dentro del grupo elegido la última sub-tab visitada (o la primera,
+ * si es la primera vez en esta sesión) reutilizando switchProgramDetailsTab
+ * — que ya sincroniza el nivel de grupo al final, sin lógica duplicada aquí.
+ * @param {string} groupKey
+ */
+function switchProgramDetailsGroup(groupKey) {
+    const groupTabs = Object.keys(PROGRAM_DETAILS_TAB_GROUPS).filter(t => PROGRAM_DETAILS_TAB_GROUPS[t] === groupKey);
+    if (!groupTabs.length) return;
+    const targetTab = _programDetailsGroupLastTab[groupKey] || groupTabs[0];
+    switchProgramDetailsTab(targetTab);
+}
+window.switchProgramDetailsGroup = switchProgramDetailsGroup;
+
 /**
  * Switch Program Details Tabs with reliable behavior
  * @param {string} tabName - Name of the tab to activate (schedule, team, resources, pildoras, evaluation, quicklinks, sections)
@@ -11458,6 +11531,10 @@ function switchProgramDetailsTab(tabName) {
 
     // Update subtitle
     updateProgramDetailsSubtitle(tab.label);
+
+    // Nivel de grupo (Planificación/Contenido/Recursos/Equipo) — puramente
+    // visual, ver PROGRAM_DETAILS_TAB_GROUPS más arriba.
+    _syncProgramDetailsGroupNav(tabName);
 }
 
 // Selection state management
