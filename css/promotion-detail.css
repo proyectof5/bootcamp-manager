@@ -1428,7 +1428,6 @@ th, td {
     z-index: 51;
     display: flex;
     gap: 8px;
-    background-color: var(--app-color-bg-page, #f7f8fa);
     padding-bottom: 10px;
 }
 
