@@ -12,6 +12,7 @@ Leyenda: ✅ spec completo · 🟡 spec con pendientes · ⬜ sin spec todavía.
 | Área | Spec | Componentes/archivos principales |
 |---|---|---|
 | Roadmap y Gantt (fechas, módulos, cursos/proyectos/lecciones, tiempo flexible) | 🟡 [roadmap-por-fechas.md](roadmap-por-fechas.md) | `RoadmapPanel.tsx`, `public/js/gantt-adapter.js`, `public/js/promotion-detail.js` |
+| Horas lectivas (total formación, por módulo/proyecto, jornada por promoción) | 🟡 [horas-lectivas.md](horas-lectivas.md) | `public/js/gantt-adapter.js`, `app/promotion/page.tsx`, `Promotion.js` (backend) |
 | Selector de fecha al editar (mes actual) | 🟡 [fecha-picker-mes-actual.md](fecha-picker-mes-actual.md) | `app/promotion/page.tsx` (inputs de fecha), `promotion-detail.js` |
 | Evaluación de competencias / rúbricas | 🟡 [evaluacion-competencias.md](evaluacion-competencias.md) | `EvaluationGridPanel.tsx`, `EvaluationCriteria.tsx`, `ProgramCompetences.tsx`, `_lib/reports.ts` |
 | Asistencia y festivos | ✅ [asistencia-festivos.md](asistencia-festivos.md) | `AttendancePanel.tsx`, `renderAttendanceTable` (promotion-detail.js) |
