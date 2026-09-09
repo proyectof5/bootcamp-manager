@@ -3446,6 +3446,28 @@ let _ganttInitialized = false;
 // en vez de siempre en semanas.
 let _ganttZoomLevel = 'week';
 
+// Días lectivos (promotion.workingDays, por defecto Lun-Vie) y festivos
+// (promotion.holidays — los MISMOS que ya se marcan en la Lista de
+// Asistencia, clic derecho en un día) de la promoción actual — se
+// recalculan en generateGanttChart() cada vez que se recarga el roadmap y
+// los usan los templates de DHTMLX más abajo para pintar en gris los días
+// no lectivos en el zoom "Día" (no aplica a Semana/Mes: ahí cada columna
+// agrupa varios días, así que "es festivo" no tiene un único color que
+// pintar por columna).
+let _ganttWorkingDaysSet = new Set([1, 2, 3, 4, 5]);
+let _ganttHolidaysSet = new Set();
+
+/**
+ * `true` si `date` es fin de semana (según promotion.workingDays) o festivo
+ * (según promotion.holidays) para la promoción actual.
+ * @param {Date} date
+ * @returns {boolean}
+ */
+function _ganttIsNonWorkingDay(date) {
+    if (!_ganttWorkingDaysSet.has(date.getDay())) return true;
+    return _ganttHolidaysSet.has(formatISODate(date));
+}
+
 /**
  * Etiqueta "Sem. N" de una columna del Gantt en zoom Semana, contando desde
  * la fecha de inicio REAL de la promoción (semana 1 = los 7 días desde
@@ -3549,6 +3571,22 @@ function initGanttInstance() {
             linksHtml = `<br><a href="${escapeHtml(task.url)}" target="_blank" rel="noopener">Ver enlace</a>`;
         }
         return `<b>${escapeHtml(task.text)}</b><br>${range}${linksHtml}`;
+    };
+
+    // Pinta en gris los días no lectivos (fin de semana según
+    // promotion.workingDays, o festivo según promotion.holidays — los
+    // mismos festivos que ya se marcan en la Lista de Asistencia) — SOLO en
+    // el zoom "Día": en Semana/Mes cada columna agrupa varios días, así que
+    // "es festivo" no tiene un único color que pintar por columna.
+    // scale_cell_class colorea la cabecera (la fila de fechas); task_cell_class
+    // colorea la celda de fondo de cada fila, detrás de las barras — juntos
+    // dan el mismo aspecto de calendario que ya se usa en la Lista de
+    // Asistencia (clases .attendance-weekend/.attendance-holiday, mismo gris).
+    gantt.templates.scale_cell_class = function (date) {
+        return (_ganttZoomLevel === 'day' && _ganttIsNonWorkingDay(date)) ? 'gantt-nonworking-cell' : '';
+    };
+    gantt.templates.task_cell_class = function (task, date) {
+        return (_ganttZoomLevel === 'day' && _ganttIsNonWorkingDay(date)) ? 'gantt-nonworking-cell' : '';
     };
 
     gantt.init('gantt-container');
@@ -4740,6 +4778,16 @@ function generateGanttChart(promotion) {
     }
 
     initGanttInstance();
+
+    // Días lectivos/festivos de ESTA promoción — se recalculan en cada
+    // recarga (promotion.holidays puede haber cambiado desde la Lista de
+    // Asistencia entre una carga y otra). Los templates de scale_cell_class/
+    // task_cell_class (ver initGanttInstance) leen estas variables en cada
+    // render, así que basta con actualizarlas aquí antes de gantt.parse().
+    _ganttWorkingDaysSet = new Set(
+        Array.isArray(promotion.workingDays) && promotion.workingDays.length ? promotion.workingDays : [1, 2, 3, 4, 5]
+    );
+    _ganttHolidaysSet = new Set(Array.isArray(promotion.holidays) ? promotion.holidays : []);
 
     // Antes de reconstruir el dataset: capturar el scroll actual y qué grupos
     // (el nodo "Lecciones" de cada módulo, sobre todo) estaban abiertos, para
