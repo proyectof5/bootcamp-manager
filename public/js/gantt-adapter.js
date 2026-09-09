@@ -76,6 +76,64 @@ function daysSpanInclusive(startDate, endDate) {
 }
 
 /**
+ * Nº de días LECTIVOS en el rango [startDate, endDate], AMBOS extremos
+ * inclusive. Un día cuenta si su día de semana (0=domingo…6=sábado) está en
+ * `workingDaysSet` Y su fecha ISO "YYYY-MM-DD" no está en `holidaysSet`.
+ *
+ * Mismo criterio que el conteo del backend (`countWorkingDaysInclusive` en
+ * roadmap-manager-service/server.js y en scripts/migrate-roadmap-dates.mjs),
+ * más la exclusión de festivos que pide la spec de "horas lectivas"
+ * (docs/tasks/horas-lectivas.md) — `promotion.holidays` es la MISMA lista que
+ * el Gantt ya pinta en gris y que define la Lista de Asistencia. Si
+ * `endDate` < `startDate` el rango está vacío y devuelve 0.
+ *
+ * @param {Date} startDate
+ * @param {Date} endDate
+ * @param {Set<number>} workingDaysSet - nº de día de semana lectivos
+ * @param {Set<string>} [holidaysSet] - fechas ISO "YYYY-MM-DD" no lectivas
+ * @returns {number}
+ */
+function countWorkingDaysInclusive(startDate, endDate, workingDaysSet, holidaysSet) {
+    if (!(startDate instanceof Date) || !(endDate instanceof Date)) return 0;
+    if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime())) return 0;
+    if (endDate < startDate) return 0;
+    const working = workingDaysSet instanceof Set ? workingDaysSet : new Set([1, 2, 3, 4, 5]);
+    const holidays = holidaysSet instanceof Set ? holidaysSet : new Set();
+    let count = 0;
+    const cur = new Date(startDate.getTime());
+    while (cur <= endDate) {
+        if (working.has(cur.getDay()) && !holidays.has(formatISODate(cur))) count++;
+        cur.setDate(cur.getDate() + 1);
+    }
+    return count;
+}
+
+/**
+ * Horas lectivas que suma el rango [startDate, endDate] (ambos inclusive) =
+ * nº de días lectivos (ver `countWorkingDaysInclusive`) × `hoursPerDay`.
+ *
+ * Cómputo puramente derivado para el panel "Cómputo de horas"
+ * (docs/tasks/horas-lectivas.md): NO cambia cómo se dibuja ni se guarda el
+ * roadmap — la barra del Gantt sigue continua sobre fines de semana/festivos.
+ * Devuelve 0 si `hoursPerDay` no es un número > 0.
+ *
+ * @param {Date} startDate
+ * @param {Date} endDate
+ * @param {Set<number>} workingDaysSet
+ * @param {Set<string>} holidaysSet
+ * @param {number} hoursPerDay - jornada de la promoción (ej. 7 o 7.5)
+ * @returns {number}
+ */
+function computeLectiveHours(startDate, endDate, workingDaysSet, holidaysSet, hoursPerDay) {
+    const perDay = Number(hoursPerDay);
+    if (!Number.isFinite(perDay) || perDay <= 0) return 0;
+    return countWorkingDaysInclusive(startDate, endDate, workingDaysSet, holidaysSet) * perDay;
+}
+
+window.countWorkingDaysInclusive = countWorkingDaysInclusive;
+window.computeLectiveHours = computeLectiveHours;
+
+/**
  * Traduce el `type` de un plannerItem ('curso'/'proyecto'/'leccion') al
  * `itemType` que usa el Gantt ('course'/'project'/'leccion').
  */
@@ -510,6 +568,103 @@ function buildGanttDataset(promotion) {
 window.buildGanttDataset = buildGanttDataset;
 window.formatGanttDate = formatGanttDate;
 window.GANTT_DATE_FORMAT = GANTT_DATE_FORMAT;
+
+/**
+ * Cómputo derivado de HORAS LECTIVAS de la formación, para el panel "Cómputo
+ * de horas" (docs/tasks/horas-lectivas.md). Puramente derivado de las fechas
+ * del roadmap + la jornada de la promoción — no cambia ni cómo se dibuja ni
+ * cómo se guarda nada.
+ *
+ * Criterio:
+ *  - `hoursPerDay` = `promotion.hoursPerDay` (jornada, ej. 7 o 7.5); fallback 7.
+ *  - Días lectivos = `promotion.workingDays` (fallback Lun-Vie) menos
+ *    `promotion.holidays` — mismo criterio que el Gantt (`countWorkingDaysInclusive`).
+ *  - Horas de un módulo = días lectivos en su rango completo
+ *    [`getModuleDateRange`] × `hoursPerDay`. Asume módulos NO solapados (el
+ *    roadmap es conceptualmente secuencial); si se solapan, la suma los
+ *    cuenta dos veces — mismo supuesto que la conversión inversa
+ *    fecha→semanas del backend (`durationWeeksFromDates`).
+ *  - `total` = suma de las horas de todos los módulos.
+ *  - `byProject` es un SUB-desglose informativo dentro de cada módulo (los
+ *    proyectos pueden solaparse con cursos, así que sus horas NO tienen por
+ *    qué sumar las del módulo).
+ *  - `target` = `extendedInfo.totalHours` (el objetivo de la titulación, el
+ *    mismo dato del syllabus/acta); `diff` = `total - target` (negativo =
+ *    déficit, faltan horas; positivo = por encima del objetivo). `null` si no
+ *    hay objetivo definido.
+ *
+ * @param {Object} promotion - tal como lo devuelve la API (modules[],
+ *   startDate, workingDays, holidays, hoursPerDay)
+ * @param {{ totalHours?: number|string }} [extendedInfo]
+ * @returns {{
+ *   hoursPerDay: number,
+ *   total: number,
+ *   byModule: Array<{ moduleIndex: number, name: string, hours: number, lectiveDays: number, startDate: string, endDate: string }>,
+ *   byProject: Array<{ moduleIndex: number, moduleName: string, name: string, hours: number, lectiveDays: number, startDate: string, endDate: string }>,
+ *   target: number|null,
+ *   diff: number|null
+ * }}
+ */
+function buildHoursBreakdown(promotion, extendedInfo) {
+    const rawPerDay = Number(promotion && promotion.hoursPerDay);
+    const hoursPerDay = Number.isFinite(rawPerDay) && rawPerDay > 0 ? rawPerDay : 7;
+
+    const workingDaysArr = Array.isArray(promotion && promotion.workingDays) && promotion.workingDays.length
+        ? promotion.workingDays
+        : [1, 2, 3, 4, 5];
+    const workingDaysSet = new Set(workingDaysArr.map(Number));
+    const holidaysSet = new Set(
+        Array.isArray(promotion && promotion.holidays) ? promotion.holidays.filter(h => typeof h === 'string') : []
+    );
+
+    const modules = (promotion && Array.isArray(promotion.modules)) ? promotion.modules : [];
+    const baseDate = (promotion && promotion.startDate) ? new Date(promotion.startDate) : new Date();
+
+    const byModule = [];
+    const byProject = [];
+    let total = 0;
+
+    modules.forEach((module, moduleIndex) => {
+        const moduleStartWeeksForFallback = getModuleStartWeeks(modules, moduleIndex);
+        const moduleRange = getModuleDateRange(modules, moduleIndex, baseDate);
+        const lectiveDays = countWorkingDaysInclusive(moduleRange.startDate, moduleRange.endDate, workingDaysSet, holidaysSet);
+        const hours = lectiveDays * hoursPerDay;
+        total += hours;
+
+        const moduleName = `M${moduleIndex + 1}: ${module.name || 'Sin nombre'}`;
+        byModule.push({
+            moduleIndex,
+            name: moduleName,
+            hours,
+            lectiveDays,
+            startDate: formatISODate(moduleRange.startDate),
+            endDate: formatISODate(moduleRange.endDate),
+        });
+
+        getModulePlannerItems(module).forEach((item) => {
+            if (item.type !== 'proyecto') return;
+            const range = getItemDateRange(item, moduleStartWeeksForFallback, baseDate);
+            const projDays = countWorkingDaysInclusive(range.startDate, range.endDate, workingDaysSet, holidaysSet);
+            byProject.push({
+                moduleIndex,
+                moduleName,
+                name: item.name || 'Sin nombre',
+                hours: projDays * hoursPerDay,
+                lectiveDays: projDays,
+                startDate: formatISODate(range.startDate),
+                endDate: formatISODate(range.endDate),
+            });
+        });
+    });
+
+    const rawTarget = Number(extendedInfo && extendedInfo.totalHours);
+    const target = Number.isFinite(rawTarget) && rawTarget > 0 ? rawTarget : null;
+    const diff = target === null ? null : Math.round((total - target) * 100) / 100;
+
+    return { hoursPerDay, total: Math.round(total * 100) / 100, byModule, byProject, target, diff };
+}
+
+window.buildHoursBreakdown = buildHoursBreakdown;
 
 const GANTT_ITEM_TYPE_LABELS = {
     module: 'Módulo',
