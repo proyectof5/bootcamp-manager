@@ -7654,10 +7654,23 @@ async function importStudentsFromExcel(input) {
 
     const token = localStorage.getItem('token');
 
-    const btn = document.querySelector('button[onclick*="students-excel-input"]');
-    const originalBtnContent = btn.innerHTML;
-    btn.disabled = true;
-    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Importando...';
+    // Bug: buscaba `button[onclick*="students-excel-input"]" — el botón real
+    // (StudentsPanel.tsx) es un componente React con onClick (no un atributo
+    // HTML onclick, que React nunca renderiza), así que ese selector nunca
+    // encontraba nada. btn salía null, `btn.innerHTML` de la línea de abajo
+    // lanzaba un TypeError ANTES de entrar al try/catch (que solo envolvía el
+    // fetch) — la excepción quedaba sin capturar y sin aviso: no se llegaba
+    // ni a enviar el archivo, y no se mostraba ningún mensaje. Ahora se busca
+    // por id (el que sí tiene el botón) y se protege con un guard además de
+    // meter todo dentro del try/catch, para que un futuro cambio de markup
+    // rompa como mucho el estado de "cargando", nunca la importación entera
+    // en silencio.
+    const btn = document.getElementById('import-students-excel-btn');
+    const originalBtnContent = btn ? btn.innerHTML : null;
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Importando...';
+    }
 
     try {
         const response = await fetch(`${API_URL}/api/promotions/${promotionId}/students/upload-excel`, {
@@ -7697,8 +7710,10 @@ async function importStudentsFromExcel(input) {
         console.error('Error importing students:', error);
         showToast('Error al importar estudiantes desde Excel', 'danger');
     } finally {
-        btn.disabled = false;
-        btn.innerHTML = originalBtnContent;
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = originalBtnContent;
+        }
         input.value = '';
     }
 }
