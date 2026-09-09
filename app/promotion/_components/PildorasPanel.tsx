@@ -72,7 +72,7 @@ function PildorasPanel() {
     <div className="card">
       <div className="card-header bg-light">
         <div className="d-flex flex-wrap align-items-center justify-content-between gap-2">
-          <div className="d-flex align-items-center gap-2">
+          <div className="d-flex flex-wrap align-items-center gap-2 pildoras-header-title">
             <h6 className="mb-0"><i className="bi bi-lightbulb me-2" />Píldoras</h6>
             <div className="d-flex align-items-center gap-2" id="pildoras-module-nav">
               <button type="button" className="btn btn-sm btn-outline-secondary" id="prev-module-btn" onClick={() => w().navigateToPreviousModule?.()} disabled>
@@ -87,7 +87,7 @@ function PildorasPanel() {
               <span id="module-pildoras-count">0</span> píldoras
             </div>
           </div>
-          <div className="form-check form-switch">
+          <div className="form-check form-switch pildoras-header-toggle">
             <input className="form-check-input" type="checkbox" id="pildoras-assignment-toggle" onChange={(e) => w().togglePildorasAssignment?.(e.target.checked)} />
             <label className="form-check-label fw-semibold" htmlFor="pildoras-assignment-toggle">Self-Assignment</label>
           </div>

@@ -2980,3 +2980,22 @@ html {
     pointer-events: none;
 }
 
+/* ── Cabecera de "Píldoras" (PildorasPanel.tsx) — bug de layout real, no
+   solo estética: el bloque título+navegación de módulo (h6 + flechas +
+   nombre + badge) vivía en un .d-flex SIN flex-wrap propio, así que ante
+   poco ancho se encogía entero (en vez de que sus hijos pasaran a una
+   segunda línea) y el nombre del módulo quedaba aplastado en una columna
+   de ~230px con 3 líneas de texto, pegado al switch "Self-Assignment" de
+   al lado. flex-wrap en pildoras-header-title dejar sitio a la izquierda
+   antes de recurrir a la 2ª línea, y flex-shrink:0 en el toggle evita que
+   éste se comprima. */
+.pildoras-header-title {
+    flex: 1 1 260px;
+    row-gap: 4px;
+}
+
+.pildoras-header-toggle {
+    flex: 0 0 auto;
+    white-space: nowrap;
+}
+
