@@ -482,6 +482,31 @@ function buildRoadmapGanttGridExport(promotion, granularity) {
         };
     });
 
+    // ── Rollup del rango de un módulo a partir de sus hijos ─────────────────
+    // DHTMLX Gantt recalcula automáticamente el start/end de cualquier tarea
+    // `type: 'project'` (que es lo que usa una fila de módulo) para que cubra
+    // exactamente el rango de SUS HIJOS, en cuanto tiene alguno — así es como
+    // se ve realmente la barra del módulo en pantalla. El start_date/duration
+    // "en crudo" de la fila del módulo (derivado de module.duration/
+    // startOffset) se desincroniza en cuanto CUALQUIER curso/proyecto/lección
+    // del módulo se movió alguna vez a mano en el Gantt (queda con un
+    // absoluteStartOffset propio que ya no coincide con el del módulo) — sin
+    // este ajuste, el Excel mostraría el dato crudo del módulo en vez de lo
+    // que el docente realmente ve dibujado.
+    data.forEach((row, idx) => {
+        if (row.itemType !== 'module') return;
+        const childIdx = data
+            .map((r, i) => i)
+            .filter((i) => data[i].itemType !== 'module' && data[i].moduleIndex === row.itemIndex);
+        if (!childIdx.length) return;
+        const starts = childIdx.map((i) => rowsInDays[i].startDayIndex);
+        const ends = childIdx.map((i) => rowsInDays[i].startDayIndex + rowsInDays[i].durationDays);
+        const minStart = Math.min(...starts);
+        const maxEnd = Math.max(...ends);
+        rowsInDays[idx].startDayIndex = minStart;
+        rowsInDays[idx].durationDays = Math.max(1, maxEnd - minStart);
+    });
+
     if (unit === 'day' || unit === 'week') {
         const step = unit === 'day' ? 1 : 7;
         const startCol = (r) => Math.floor(r.startDayIndex / step);
