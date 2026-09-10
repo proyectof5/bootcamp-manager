@@ -68,6 +68,8 @@ design canvas ("Gantt a pantalla completa").
 |---|---|---|
 | A — layout a pantalla completa | `feat(roadmap): Gantt a pantalla completa…` | `RoadmapPanel.tsx` (barra compacta + medición de alto), `promotion-detail.css` (`.roadmap-fullbleed`, `#gantt-container` sin borde/overflow, override `:has()`), `promotion-detail.js` (`ganttScrollToToday`, hook en `switchProgramDetailsTab`) |
 | B — panel lateral | `feat(roadmap): panel lateral de detalle…` | `RoadmapDetailDrawer.tsx` (nuevo), `page.tsx` (host), `promotion-detail.js` (`persistRoadmapItemEdit`, `onTaskClick`), `promotion-detail.css` (`.roadmap-drawer`) |
+| C — zoom con rueda | `feat(roadmap): zoom del Gantt con Ctrl/⌘ + rueda` | `promotion-detail.js` (`setupGanttWheelZoom`, `_GANTT_ZOOM_ORDER`): Ctrl/⌘ + rueda recorre mes↔semana↔día y re-centra en la fecha bajo el cursor. La rueda a secas sigue haciendo scroll. Listener en `gantt.$container` (el root interno de DHTMLX, no `#gantt-container`), con guard `dataset.wheelZoom`. |
+| — | merge de `feat/horas-lectivas` | Esta rama incluye ahora la pestaña "Cómputo de horas" (PR #69) para que conviva con el rediseño en el mismo preview/PR. |
 
 ### Verificado en vivo (promo "IA School Bootcamp - P7", 1440×900)
 

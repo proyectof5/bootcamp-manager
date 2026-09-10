@@ -3603,6 +3603,7 @@ function initGanttInstance() {
 
     gantt.init('gantt-container');
     setGanttZoomLevel('week');
+    setupGanttWheelZoom();
 
     if (canEdit) {
         bindGanttEditingEvents();
@@ -3692,8 +3693,52 @@ function setGanttZoomLevel(level) {
     gantt.render();
 
     document.querySelectorAll('.gantt-zoom-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.zoomLevel === level);
+        btn.classList.toggle('active', btn.dataset.zoomLevel === _ganttZoomLevel);
     });
+}
+
+// Orden de zoom, de más lejos a más cerca. Ctrl/⌘ + rueda del ratón (o pellizco
+// en trackpad, que el navegador entrega como wheel+ctrlKey) recorre esta lista.
+const _GANTT_ZOOM_ORDER = ['month', 'week', 'day'];
+
+/**
+ * Zoom del Gantt con Ctrl/⌘ + rueda del ratón — hacia arriba acerca
+ * (mes→semana→día), hacia abajo aleja. Solo con la tecla modificadora pulsada:
+ * la rueda a secas sigue haciendo scroll del diagrama. Mantiene bajo el cursor
+ * la misma fecha tras el cambio de escala.
+ */
+function setupGanttWheelZoom() {
+    const container = gantt && (gantt.$container || document.getElementById('gantt-container'));
+    if (!container || container.dataset.wheelZoom === '1') return;
+    container.dataset.wheelZoom = '1';
+
+    container.addEventListener('wheel', function (e) {
+        if (!(e.ctrlKey || e.metaKey)) return;
+        if (!_ganttInitialized) return;
+        e.preventDefault();
+
+        // Fecha ahora mismo bajo el cursor, para re-centrar tras el zoom.
+        let cursorDate = null;
+        try {
+            const taskArea = gantt.$task || container.querySelector('.gantt_task_bg');
+            if (taskArea) {
+                const rect = taskArea.getBoundingClientRect();
+                const x = (e.clientX - rect.left) + gantt.getScrollState().x;
+                if (x >= 0) cursorDate = gantt.dateFromPos(x);
+            }
+        } catch (err) { /* si falla, no re-centramos: no bloquea el zoom */ }
+
+        const cur = _GANTT_ZOOM_ORDER.indexOf(_ganttZoomLevel);
+        const idx = cur === -1 ? 1 : cur;
+        // deltaY < 0 (rueda arriba / pellizco de acercar) → acercar
+        const next = e.deltaY < 0 ? idx + 1 : idx - 1;
+        if (next < 0 || next >= _GANTT_ZOOM_ORDER.length || next === idx) return;
+
+        setGanttZoomLevel(_GANTT_ZOOM_ORDER[next]);
+        if (cursorDate) {
+            try { gantt.showDate(cursorDate); } catch (err) { /* fuera de rango: se ignora */ }
+        }
+    }, { passive: false });
 }
 
 /**
