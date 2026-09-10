@@ -3476,6 +3476,12 @@ let _ganttZoomLevel = 'week';
 let _ganttWorkingDaysSet = new Set([1, 2, 3, 4, 5]);
 let _ganttHolidaysSet = new Set();
 
+// Timestamp del último clic derecho gestionado en el Gantt. onEmptyClick lo
+// consulta para NO abrir el modal de "crear elemento" cuando el gesto es en
+// realidad un clic derecho (en algunas plataformas/trackpads el contextmenu
+// va acompañado de un click que DHTMLX interpreta como onEmptyClick).
+let _ganttLastCtxMenuAt = 0;
+
 /**
  * `true` si `date` es fin de semana (según promotion.workingDays) o festivo
  * (según promotion.holidays) para la promoción actual.
@@ -4765,6 +4771,7 @@ function bindGanttEditingEvents() {
     // línea de tiempo → menú "Marcar/Quitar festivo" del día bajo el cursor
     // (mismos festivos que la Lista de Asistencia — promotion.holidays).
     gantt.attachEvent('onContextMenu', function (taskId, linkId, e) {
+        _ganttLastCtxMenuAt = Date.now();
         if (taskId) {
             e.preventDefault();
             showGanttContextMenu(gantt.getTask(taskId), e.clientX, e.clientY);
@@ -4777,6 +4784,23 @@ function bindGanttEditingEvents() {
         return false;
     });
 
+    // Red de seguridad: algunos navegadores/trackpads disparan un `contextmenu`
+    // nativo aquí sin pasar por onContextMenu de DHTMLX. Se escucha en $root
+    // (estable entre renders, igual que el zoom con rueda); _ganttDateKeyFromEvent
+    // ya descarta los clics fuera de la línea de tiempo (árbol/grid).
+    const _root = (gantt && gantt.$root) || document.getElementById('gantt-container');
+    if (_root && !_root.dataset.ctxFestivoBound) {
+        _root.dataset.ctxFestivoBound = '1';
+        _root.addEventListener('contextmenu', function (e) {
+            _ganttLastCtxMenuAt = Date.now();
+            if (document.getElementById('gantt-context-menu')) { e.preventDefault(); return; }
+            const dateKey = _ganttDateKeyFromEvent(e);
+            if (!dateKey) return;   // fuera de la línea de tiempo → menú del navegador
+            e.preventDefault();
+            showGanttDateContextMenu(dateKey, e.clientX, e.clientY);
+        });
+    }
+
     // Clic en un hueco vacío de la línea de tiempo: abre el selector de tipo
     // (Fase 7, TASK-33) — módulo/curso/proyecto/lección/tiempo flexible —
     // precargado con la semana donde se hizo clic. Nota: solo funciona si el
@@ -4784,6 +4808,13 @@ function bindGanttEditingEvents() {
     // de nombres) — un clic sobre el árbol/grid no corresponde a ninguna
     // fecha y se ignora (con aviso en consola).
     gantt.attachEvent('onEmptyClick', function (e) {
+        // No abrir el modal de crear si el gesto fue un clic derecho (menú de
+        // festivo) — ni el propio evento, ni un click "fantasma" que llega
+        // justo después del contextmenu en algunos trackpads/navegadores.
+        if (e && (e.button === 2 || e.which === 3)) return true;
+        if (document.getElementById('gantt-context-menu')) return true;
+        if (Date.now() - _ganttLastCtxMenuAt < 500) return true;
+
         const timelineArea = gantt.$task || (gantt.$container && gantt.$container.querySelector('.gantt_task_bg'));
         if (!timelineArea) {
             console.warn('[Gantt] onEmptyClick: no se encontró el área de la línea de tiempo (gantt.$task)');
