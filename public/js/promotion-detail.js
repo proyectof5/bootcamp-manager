@@ -10005,6 +10005,26 @@ async function asanaDisconnect() {
 }
 window.asanaDisconnect = asanaDisconnect;
 
+// Fase 2: exporta el roadmap de la promoción actual bajo la tarea de Asana
+// cuya URL se pega. Devuelve { parentTaskUrl, parentTaskGid, created, errors }.
+async function exportRoadmapToAsana(parentTaskUrl) {
+    const token = localStorage.getItem('token');
+    const res = await fetch(`${API_URL}/api/promotions/${promotionId}/export-asana`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ parentTaskUrl })
+    });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+        const err = new Error(data.error || `Error ${res.status}`);
+        err.code = data.error;
+        err.httpStatus = res.status;
+        throw err;
+    }
+    return data;
+}
+window.exportRoadmapToAsana = exportRoadmapToAsana;
+
 // ==================== STUDENT SELECTION FUNCTIONS ====================
 
 // ── Bulk Reports ──────────────────────────────────────────────────────────

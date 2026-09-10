@@ -196,6 +196,127 @@ function LegendPopover() {
   );
 }
 
+// Exportar el roadmap a Asana como subtareas (Fase 2 de
+// docs/tasks/exportar-roadmap-asana.md). Requiere que el docente haya conectado
+// su cuenta de Asana en Área del Docente › Accesos. Al pulsar se comprueba el
+// estado; si está conectado se pide la URL de la tarea padre y se exporta.
+function AsanaExportButton() {
+  const [open, setOpen] = useState(false);
+  const [url, setUrl] = useState('');
+  const [phase, setPhase] = useState<'idle' | 'checking' | 'running'>('idle');
+  const [result, setResult] = useState<{ ok: boolean; text: string; link?: string } | null>(null);
+
+  const start = async () => {
+    setPhase('checking');
+    setResult(null);
+    try {
+      const s = await w().asanaGetStatus?.();
+      if (!s?.configured) {
+        w().showToast?.('La integración con Asana no está activada en el servidor.', 'warning');
+        setPhase('idle');
+        return;
+      }
+      if (!s?.connected) {
+        w().showToast?.('Conecta tu cuenta de Asana primero (Área del Docente › Accesos).', 'warning');
+        setPhase('idle');
+        return;
+      }
+      setOpen(true);
+      setPhase('idle');
+    } catch {
+      w().showToast?.('No se pudo comprobar la conexión con Asana.', 'danger');
+      setPhase('idle');
+    }
+  };
+
+  const run = async () => {
+    if (!url.trim()) return;
+    setPhase('running');
+    setResult(null);
+    try {
+      const r = await w().exportRoadmapToAsana?.(url.trim());
+      const errs = Array.isArray(r?.errors) ? r.errors.length : 0;
+      setResult({
+        ok: true,
+        text: `Creadas ${r?.created ?? 0} tareas en Asana${errs ? ` · ${errs} con error` : ''}.`,
+        link: r?.parentTaskUrl,
+      });
+    } catch (e) {
+      const err = e as { code?: string; message?: string };
+      const msg = err?.code === 'asana_not_connected'
+        ? 'Tu cuenta de Asana ya no está conectada. Vuelve a conectarla en Accesos.'
+        : err?.code === 'asana_not_configured'
+          ? 'La integración con Asana no está activada en el servidor.'
+          : (err?.message || 'No se pudo exportar a Asana.');
+      setResult({ ok: false, text: msg });
+    }
+    setPhase('idle');
+  };
+
+  const close = () => { setOpen(false); setResult(null); setPhase('idle'); };
+
+  return (
+    <>
+      <button type="button" className="btn btn-outline-secondary btn-sm" disabled={phase === 'checking'} onClick={start}>
+        {phase === 'checking'
+          ? <><span className="spinner-border spinner-border-sm me-1" role="status" />Asana…</>
+          : <><i className="bi bi-kanban me-1" />Asana</>}
+      </button>
+
+      {open && createPortal(
+        <div
+          role="dialog"
+          aria-modal="true"
+          style={{ position: 'fixed', inset: 0, zIndex: 1060, background: 'rgba(17,24,39,.45)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+          onMouseDown={(e) => { if (e.target === e.currentTarget && phase !== 'running') close(); }}
+        >
+          <div style={{ background: '#fff', borderRadius: 12, width: 460, maxWidth: '92vw', boxShadow: '0 20px 50px rgba(17,24,39,.25)', padding: '20px 22px' }}>
+            <h6 className="mb-1"><i className="bi bi-kanban me-2" />Exportar roadmap a Asana</h6>
+            <p className="text-muted small mb-3">
+              Pega la URL de la tarea de Asana bajo la que colgar el roadmap. Se
+              creará una subtarea por módulo y una sub-subtarea por
+              curso/proyecto/lección, con fechas.
+            </p>
+            <label className="form-label small fw-semibold">URL de la tarea de Asana</label>
+            <input
+              type="url"
+              className="form-control form-control-sm"
+              placeholder="https://app.asana.com/0/…/…"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              disabled={phase === 'running'}
+              autoFocus
+            />
+
+            {result && (
+              <div className={`alert ${result.ok ? 'alert-success' : 'alert-warning'} small mt-3 mb-0 p-2`}>
+                {result.text}
+                {result.ok && result.link && (
+                  <> <a href={result.link} target="_blank" rel="noopener noreferrer">Abrir en Asana →</a></>
+                )}
+              </div>
+            )}
+
+            <div className="d-flex gap-2 justify-content-end mt-3">
+              <button type="button" className="btn btn-outline-secondary btn-sm" disabled={phase === 'running'} onClick={close}>
+                {result?.ok ? 'Cerrar' : 'Cancelar'}
+              </button>
+              {!result?.ok && (
+                <button type="button" className="btn btn-primary btn-sm" disabled={phase === 'running' || !url.trim()} onClick={run}>
+                  {phase === 'running'
+                    ? <><span className="spinner-border spinner-border-sm me-1" role="status" />Exportando…</>
+                    : <><i className="bi bi-box-arrow-up-right me-1" />Exportar</>}
+                </button>
+              )}
+            </div>
+          </div>
+        </div>,
+        document.body,
+      )}
+    </>
+  );
+}
+
 function RoadmapPanel() {
   const wrapRef = useRef<HTMLDivElement>(null);
 
@@ -280,6 +401,7 @@ function RoadmapPanel() {
           <LegendPopover />
           <GoogleCalendarSyncButton />
           <ExportDropdown />
+          <AsanaExportButton />
         </div>
       </div>
 
