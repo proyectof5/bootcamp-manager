@@ -5220,7 +5220,23 @@ function _updateCreateItemFieldsVisibility() {
     show('create-item-name-wrapper', type !== 'leccion');
     show('create-item-title-wrapper', type === 'leccion');
     show('create-item-lessontype-wrapper', type === 'leccion');
+    show('create-item-links-wrapper', type === 'leccion');
     show('create-item-url-wrapper', type === 'curso' || type === 'proyecto');
+
+    // Al pasar a "lección": si el panel de links todavía no está pintado
+    // (primer cambio a este tipo en esta apertura del modal), sembramos el
+    // borrador en currentPlannerItems y lo renderizamos. addPlannerLink/
+    // deletePlannerLink trabajan sobre ese mismo item por id.
+    const linksWrap = document.getElementById('create-item-links-wrapper');
+    if (type === 'leccion' && linksWrap && !linksWrap.querySelector('.planner-links-panel')) {
+        let draft = Array.isArray(currentPlannerItems) ? currentPlannerItems[0] : null;
+        if (!draft || draft.id !== (linksWrap.dataset.plannerId || '')) {
+            draft = { id: generatePlannerId(), title: '', links: [] };
+            currentPlannerItems = [draft];
+        }
+        linksWrap.dataset.plannerId = draft.id;
+        linksWrap.innerHTML = renderPlannerItemLinks(draft);
+    }
 }
 
 /**
@@ -5247,6 +5263,12 @@ async function openCreateItemModal(clickDate) {
         window._openShadcnModal?.('createItemModal');
         _whenMounted('create-item-type', () => {
             document.getElementById('create-item-form')?.reset();
+
+            // Empieza sin borrador de lección: _updateCreateItemFieldsVisibility
+            // lo siembra la primera vez que se elige el tipo "lección".
+            currentPlannerItems = [];
+            const _linksWrap = document.getElementById('create-item-links-wrapper');
+            if (_linksWrap) { _linksWrap.innerHTML = ''; delete _linksWrap.dataset.plannerId; }
 
             const weekInfo = document.getElementById('create-item-week-info');
             if (weekInfo) weekInfo.textContent = `Empieza en la semana ${currentCreateItemWeekOffset + 1} del roadmap.`;
@@ -8077,7 +8099,11 @@ function setupForms() {
                 if (!title) { window.showApiToast('El título es obligatorio', 'warning'); return; }
                 newItem.title = title;
                 newItem.lessonType = document.querySelector('input[name="create-item-lessontype"]:checked')?.value || 'teorica';
-                newItem.links = [];
+                // Links añadidos en el propio modal de creación (borrador en
+                // currentPlannerItems[0], igual que hace itemEditModal al guardar).
+                newItem.links = (currentPlannerItems[0] && Array.isArray(currentPlannerItems[0].links))
+                    ? currentPlannerItems[0].links
+                    : [];
             } else {
                 const name = document.getElementById('create-item-name').value.trim();
                 if (!name) { window.showApiToast('El nombre es obligatorio', 'warning'); return; }
@@ -8100,6 +8126,7 @@ function setupForms() {
             if (updateResponse.ok) {
                 window._closeShadcnModal?.('createItemModal');
                 document.getElementById('create-item-form').reset();
+                currentPlannerItems = [];
                 loadModules();
                 window.showApiToast('Elemento creado correctamente', 'success');
             } else {
