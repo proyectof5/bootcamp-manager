@@ -16,6 +16,7 @@ import { PromoResourcesManagerHost } from './_components/PromoResourcesManager';
 import { EvaluationCriteriaHost } from './_components/EvaluationCriteria';
 import { VirtualClassroomPanelHost } from './_components/VirtualClassroomPanel';
 import { RoadmapPanelHost } from './_components/RoadmapPanel';
+import { RoadmapDetailDrawerHost } from './_components/RoadmapDetailDrawer';
 import { PildorasPanelHost } from './_components/PildorasPanel';
 import { CollaboratorsPanelHost } from './_components/CollaboratorsPanel';
 import { StudentsPanelHost } from './_components/StudentsPanel';
@@ -545,6 +546,10 @@ export default function PromotionPage() {
           #program-details-roadmap. Renderiza cabecera + #modules-list + #gantt-table con ids legacy;
           la lógica (loadModules/generateGanttChart) sigue en el orquestador y los pobla por id. */}
       <RoadmapPanelHost />
+      {/* Panel lateral de detalle del Gantt (rediseño "Gantt a pantalla completa"):
+          se abre por la derecha al hacer clic en una barra/fila. Se monta por portal
+          en <body>; lo controla window.__openRoadmapDrawer desde promotion-detail.js. */}
+      <RoadmapDetailDrawerHost />
       {/* Sub-tab "Píldoras" de Contenido del Programa (spec 0014 Fase C): React vía portal a
           #program-details-pildoras. Renderiza el panel con ids legacy; la lógica
           (displayPildoras/updateModuleNavigation/navegación) sigue en el orquestador y lo pobla por id.

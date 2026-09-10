@@ -4244,6 +4244,27 @@ function bindGanttEditingEvents() {
         persistGanttRowOrder(task);
     });
 
+    // Clic simple en una fila → abre el panel lateral de detalle
+    // (RoadmapDetailDrawer.tsx, rediseño "Gantt a pantalla completa"): estilo
+    // Asana, sin modal centrado que tape el diagrama. No roba el clic del
+    // triángulo de plegar ni del asa de arrastre. El doble clic sigue abriendo
+    // el modal completo (competencias/enlaces).
+    gantt.attachEvent('onTaskClick', function (id, e) {
+        if (e && e.target && e.target.closest &&
+            e.target.closest('.gantt_tree_icon, .gantt-drag-handle, .gantt_add, a')) {
+            return true;
+        }
+        const task = gantt.getTask(id);
+        if (task && (
+            task.itemType === 'course' || task.itemType === 'project' ||
+            task.itemType === 'leccion' || task.itemType === 'module' ||
+            task.itemType === 'leccion-group'
+        ) && window.__openRoadmapDrawer) {
+            window.__openRoadmapDrawer(task);
+        }
+        return true;
+    });
+
     // Doble click: abre un modal enfocado según el tipo de tarea (Fase 7).
     // Módulo → nombre/duración (editModule, ya simplificado en TASK-30).
     // Curso/Proyecto/Lección → itemEditModal (TASK-31/32). Tiempo flexible →
@@ -4971,6 +4992,93 @@ async function openItemEditModal(task) {
         window.showApiToast('Error loading item data', 'danger');
     }
 }
+
+/**
+ * Guarda los campos básicos de un curso/proyecto/lección desde el panel lateral
+ * (RoadmapDetailDrawer.tsx) — sin pasar por el modal itemEditModal ni por los
+ * pickers de competencias/enlaces. Localiza el item igual que openItemEditModal
+ * (plannerItems por id, o array legacy courses/projects por legacyIndex),
+ * aplica SOLO los campos que llegan en `fields` (los demás se conservan:
+ * competenceIds, links…), y hace el mismo PUT de la promoción completa +
+ * loadModules() que el modal.
+ *
+ * @param {Object} task - tarea de DHTMLX (itemType course|project|leccion)
+ * @param {{name?:string, title?:string, lessonType?:string, url?:string, startDate?:string, endDate?:string}} fields
+ * @returns {Promise<{ok:boolean, error?:string}>}
+ */
+async function persistRoadmapItemEdit(task, fields) {
+    if (!task) return { ok: false, error: 'Sin elemento' };
+    const f = fields || {};
+    if (f.startDate && f.endDate && f.endDate < f.startDate) {
+        return { ok: false, error: 'La fecha de fin no puede ser anterior a la de inicio.' };
+    }
+    const token = localStorage.getItem('token');
+    try {
+        const res = await fetch(`${API_URL}/api/promotions/${promotionId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!res.ok) return { ok: false, error: 'No se pudo cargar la promoción' };
+        const promotion = await res.json();
+        const module = promotion.modules[task.moduleIndex];
+        if (!module) return { ok: false, error: 'Módulo no encontrado' };
+
+        const applyDates = (obj) => {
+            if (f.startDate) obj.startDate = f.startDate;
+            if (f.endDate) obj.endDate = f.endDate;
+            if (f.startDate || f.endDate) {
+                delete obj.duration; delete obj.startOffset; delete obj.absoluteStartOffset;
+            }
+        };
+
+        const isLesson = task.itemType === 'leccion';
+        let found = false;
+
+        if (Array.isArray(module.plannerItems) && module.plannerItems.length > 0 && task.plannerItemId) {
+            const it = module.plannerItems.find(i => i.id === task.plannerItemId);
+            if (it) {
+                found = true;
+                if (isLesson) {
+                    if (f.title !== undefined) it.title = f.title;
+                    if (f.lessonType) it.lessonType = f.lessonType;
+                } else {
+                    if (f.name !== undefined) it.name = f.name;
+                    if (f.url !== undefined) it.url = f.url;
+                }
+                applyDates(it);
+                syncLegacyCoursesProjects(module);
+            }
+        }
+        if (!found && !isLesson) {
+            const list = task.itemType === 'course' ? module.courses : module.projects;
+            const raw = Array.isArray(list) ? list[task.legacyIndex] : null;
+            if (raw != null) {
+                found = true;
+                const cur = (typeof raw === 'object' && raw) ? raw : { name: String(raw) };
+                if (f.name !== undefined) cur.name = f.name;
+                if (f.url !== undefined) cur.url = f.url;
+                applyDates(cur);
+                list[task.legacyIndex] = cur;
+            }
+        }
+        if (!found) return { ok: false, error: 'Elemento no encontrado' };
+
+        const put = await fetch(`${API_URL}/api/promotions/${promotionId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify(promotion)
+        });
+        if (!put.ok) {
+            const err = await put.json().catch(() => ({}));
+            return { ok: false, error: err.error || 'No se pudo guardar' };
+        }
+        loadModules();
+        return { ok: true };
+    } catch (e) {
+        console.error('[persistRoadmapItemEdit]', e);
+        return { ok: false, error: 'Error de red al guardar' };
+    }
+}
+window.persistRoadmapItemEdit = persistRoadmapItemEdit;
 
 async function editModule(moduleId) {
     const token = localStorage.getItem('token');
