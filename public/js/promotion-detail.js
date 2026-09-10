@@ -13205,11 +13205,18 @@ function _buildPickerRow(comp, state) {
         ${allTools.length ? `<div class="mt-2 ps-4 epcp-tools-section" ${isSelected ? '' : 'style="display:none;"'}>
             <small class="text-muted fw-semibold d-block mb-1"><i class="bi bi-tools me-1"></i>Herramientas a evaluar:</small>
             <div class="d-flex flex-wrap gap-1">${toolsHtml}</div>
-            <button type="button" class="btn btn-link btn-sm p-0 mt-1 text-primary epcp-select-all-tools"
-                data-comp-id="${escapeHtml(String(comp.id))}"
-                onclick="window._evalProjPickerSelectAllTools('${escapeHtml(String(comp.id))}')">
-                <i class="bi bi-check-all me-1"></i>Seleccionar todas
-            </button>
+            <div class="d-flex gap-3 mt-1">
+                <button type="button" class="btn btn-link btn-sm p-0 text-primary epcp-select-all-tools"
+                    data-comp-id="${escapeHtml(String(comp.id))}"
+                    onclick="window._evalProjPickerSelectAllTools('${escapeHtml(String(comp.id))}')">
+                    <i class="bi bi-check-all me-1"></i>Seleccionar todas
+                </button>
+                <button type="button" class="btn btn-link btn-sm p-0 text-secondary epcp-deselect-all-tools"
+                    data-comp-id="${escapeHtml(String(comp.id))}"
+                    onclick="window._evalProjPickerDeselectAllTools('${escapeHtml(String(comp.id))}')">
+                    <i class="bi bi-x-lg me-1"></i>Deseleccionar todas
+                </button>
+            </div>
         </div>` : ''}
     </div>`;
 }
@@ -13300,42 +13307,28 @@ window._evalProjPickerToggleTool = function (checkbox) {
     }
 };
 
-window._evalProjPickerSelectAllTools = function (compId) {
+// Marca (select=true) o desmarca (select=false) TODAS las herramientas de una
+// competencia concreta, desde los enlaces "Seleccionar/Deseleccionar todas" de
+// su fila. Solo afecta a esa competencia.
+function _evalProjPickerSetAllTools(compId, select) {
     const state = window._evalProjPickerState;
     if (!state) return;
     const comp = state.catalog.find(c => String(c.id) === compId);
     if (!comp) return;
-    state.competenceTools[compId] = [...(comp.allTools || [])];
-    // Update checkboxes in DOM
-    document.querySelectorAll(`.epcp-tool-check[data-comp-id="${escapeHtml(compId)}"]`).forEach(cb => { cb.checked = true; });
-    // Update count badge
+    const allTools = comp.allTools || [];
+    state.competenceTools[compId] = select ? [...allTools] : [];
+    document.querySelectorAll(`.epcp-tool-check[data-comp-id="${escapeHtml(compId)}"]`)
+        .forEach(cb => { cb.checked = select; });
     const row = document.querySelector(`.epcp-row[data-comp-id="${escapeHtml(compId)}"]`);
-    if (row) {
-        const badge = row.querySelector('.badge.bg-light.text-muted');
-        if (badge) badge.textContent = `${state.competenceTools[compId].length}/${state.competenceTools[compId].length} herramientas`;
-    }
-};
+    const badge = row && row.querySelector('.badge.bg-light.text-muted');
+    if (badge) badge.textContent = `${select ? allTools.length : 0}/${allTools.length} herramientas`;
+}
 
-// Botones globales de HERRAMIENTAS: marca / desmarca todas las herramientas de
-// las competencias que YA están seleccionadas (y visibles según el filtro de
-// búsqueda/área). No toca la selección de competencias: una competencia no
-// seleccionada tiene sus herramientas deshabilitadas y se ignora.
-window._evalProjPickerBulkTools = function (select) {
-    const state = window._evalProjPickerState;
-    if (!state) return;
-    const rows = [...document.querySelectorAll('#epcp-list .epcp-row')]
-        .filter(r => r.style.display !== 'none');
-    const compIds = (rows.length
-        ? rows.map(r => String(r.dataset.compId))
-        : state.catalog.map(c => String(c.id))
-    ).filter(id => state.selectedIds.has(id));
-    compIds.forEach(compId => {
-        const comp = state.catalog.find(c => String(c.id) === compId);
-        if (!comp) return;
-        state.competenceTools[compId] = select ? [...(comp.allTools || [])] : [];
-    });
-    _renderEvalProjPickerList();
-    _filterEvalProjPicker();   // re-aplica el filtro visible tras el re-render
+window._evalProjPickerSelectAllTools = function (compId) {
+    _evalProjPickerSetAllTools(compId, true);
+};
+window._evalProjPickerDeselectAllTools = function (compId) {
+    _evalProjPickerSetAllTools(compId, false);
 };
 
 async function saveEvalProjectCompetences() {
