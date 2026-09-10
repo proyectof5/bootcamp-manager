@@ -9968,6 +9968,43 @@ async function removeAsanaWorkspace(source = 'default') {
     }, 'Eliminar', 'btn-danger');
 }
 
+// ==================== ASANA OAUTH (conexión por docente) ====================
+// Fase 1 de docs/tasks/exportar-roadmap-asana.md. Helpers finos sobre
+// /api/integrations/asana/*; la UI (popup + poll + estado) vive en React
+// (AccessSettingsPanel.tsx → AsanaAccountCard).
+
+async function asanaGetAuthorizeUrl() {
+    const token = localStorage.getItem('token');
+    const res = await fetch(`${API_URL}/api/integrations/asana/authorize`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (res.status === 501) throw new Error('asana_not_configured');
+    if (!res.ok) throw new Error('No se pudo iniciar la conexión con Asana');
+    const data = await res.json();
+    return data.url;
+}
+window.asanaGetAuthorizeUrl = asanaGetAuthorizeUrl;
+
+async function asanaGetStatus() {
+    const token = localStorage.getItem('token');
+    const res = await fetch(`${API_URL}/api/integrations/asana/status`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (!res.ok) return { configured: false, connected: false };
+    return res.json();
+}
+window.asanaGetStatus = asanaGetStatus;
+
+async function asanaDisconnect() {
+    const token = localStorage.getItem('token');
+    const res = await fetch(`${API_URL}/api/integrations/asana`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (!res.ok) throw new Error('No se pudo desconectar Asana');
+}
+window.asanaDisconnect = asanaDisconnect;
+
 // ==================== STUDENT SELECTION FUNCTIONS ====================
 
 // ── Bulk Reports ──────────────────────────────────────────────────────────
