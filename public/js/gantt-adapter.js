@@ -488,6 +488,14 @@ function buildGanttDataset(promotion) {
         // `module.lessonsBlock`) — su rango se calcula como el min/max de las
         // fechas de sus lecciones hijas, que se posicionan de forma individual
         // e independiente (ver `getItemDateRange`).
+        //
+        // Nace ABIERTO (como el nodo del módulo): al editar una lección el Gantt
+        // se reconstruye entero y, si naciera cerrado, "Lecciones" se
+        // recolapsaba en cada guardado aunque el docente lo tuviera abierto. El
+        // estado de plegado que el docente elige a mano se recuerda aparte, por
+        // promoción, en sessionStorage — ver _getGanttCollapsedIds() y los
+        // listeners onTaskClosed/onTaskOpened en promotion-detail.js. La
+        // ausencia de entrada ahí = se respeta este `open: true`.
         if (lessonItems.length > 0) {
             const lessonsGroupId = `module-${moduleIndex}-lecciones`;
             const lessonRanges = lessonItems.map(item => getItemDateRange(item, moduleStartWeeksForFallback, baseDate));
@@ -499,7 +507,7 @@ function buildGanttDataset(promotion) {
                 text: 'Lecciones',
                 parent: moduleId,
                 type: 'project',
-                open: false,
+                open: true,
                 start_date: formatGanttDate(groupStartDate),
                 duration: daysSpanInclusive(groupStartDate, groupEndDate),
                 progress: 0,
