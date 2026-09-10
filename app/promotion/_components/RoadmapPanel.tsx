@@ -108,7 +108,7 @@ function ExportDropdown() {
         aria-expanded={open}
         onClick={(e) => { e.stopPropagation(); setOpen((o) => !o); }}
       >
-        <i className="bi bi-box-arrow-up-right me-1" />Exportar roadmap
+        <i className="bi bi-box-arrow-up-right me-1" />Exportar
       </button>
       <ul className={`dropdown-menu dropdown-menu-end${open ? ' show' : ''}`} style={{ position: 'absolute', right: 0 }}>
         <li><button type="button" className="dropdown-item" onClick={(e) => pick(e, 'png')}><i className="bi bi-file-earmark-image me-2" />Imagen (PNG)</button></li>
@@ -143,12 +143,62 @@ function GoogleCalendarSyncButton() {
     <button type="button" className="btn btn-outline-primary btn-sm" onClick={onClick} disabled={syncing}>
       {syncing
         ? <><span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true" />Sincronizando…</>
-        : <><i className="bi bi-google me-1" />Sincronizar con Google Calendar</>}
+        : <><i className="bi bi-google me-1" />Google Calendar</>}
     </button>
   );
 }
 
+// Leyenda de colores por tipo de elemento — en la vista a pantalla completa la
+// fila suelta de antes ocupaba espacio vertical valioso, así que pasa a un
+// popover pequeño en la barra de herramientas. Mismos tokens
+// --app-color-gantt-* que .gantt_task_line.gantt-task-* en promotion-detail.css.
+function LegendPopover() {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!open) return;
+    const onDoc = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    const onEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+    document.addEventListener('mousedown', onDoc);
+    document.addEventListener('keydown', onEsc);
+    return () => { document.removeEventListener('mousedown', onDoc); document.removeEventListener('keydown', onEsc); };
+  }, [open]);
+  const items: [string, string][] = [
+    ['var(--app-color-gantt-module)', 'Módulo'],
+    ['var(--app-color-gantt-course)', 'Curso'],
+    ['var(--app-color-gantt-project)', 'Proyecto'],
+    ['var(--app-color-gantt-leccion)', 'Lección'],
+    ['var(--app-color-gantt-flexible)', 'Tiempo flexible'],
+  ];
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+      <button
+        type="button"
+        className="btn btn-outline-secondary btn-sm"
+        aria-expanded={open}
+        onClick={(e) => { e.stopPropagation(); setOpen((o) => !o); }}
+      >
+        <i className="bi bi-palette me-1" />Leyenda
+      </button>
+      {open && (
+        <div
+          className="roadmap-legend-popover"
+          style={{ position: 'absolute', right: 0, top: 'calc(100% + 6px)', zIndex: 1010 }}
+        >
+          {items.map(([c, label]) => (
+            <span key={label} className="gantt-legend-item">
+              <span className="gantt-legend-dot" style={{ background: c }} />{label}
+            </span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function RoadmapPanel() {
+  const wrapRef = useRef<HTMLDivElement>(null);
+
   // Tras montar, dispara el render legacy del roadmap. loadModules() puede no estar definido aún
   // (carga de promotion-detail.js) → poll corto hasta que exista y se llama una vez.
   useEffect(() => {
@@ -161,48 +211,87 @@ function RoadmapPanel() {
     return () => clearInterval(iv);
   }, []);
 
+  // Rediseño "Gantt a pantalla completa" (docs/tasks/gantt-pantalla-completa-drawer.md):
+  // el diagrama ocupa TODO el alto disponible bajo las pestañas — sin la caja de
+  // 500px con overflow:auto que sumaba una tercera barra de scroll. Las únicas
+  // barras son las internas de DHTMLX (una vertical de filas, una horizontal de
+  // línea de tiempo). Aquí solo se mide el alto: `--roadmap-h` en el wrapper la
+  // consume el CSS (.roadmap-fullbleed). El ancho lo rompe el CSS con márgenes
+  // negativos contra el padding de <main>.
+  useEffect(() => {
+    const wrap = wrapRef.current;
+    if (!wrap) return;
+    const fit = () => {
+      // Pestaña oculta (display:none del tab-pane) → getBoundingClientRect da 0.
+      if (!wrap.offsetParent) return;
+      const top = wrap.getBoundingClientRect().top;
+      if (top <= 0) return;
+      // El min-height/padding-bottom de <main> los neutraliza el CSS con :has()
+      // mientras esta pestaña está activa, así que basta restar al alto del
+      // viewport la distancia desde arriba + un colchón pequeño.
+      const h = Math.max(360, Math.round(window.innerHeight - top - 6));
+      if (wrap.style.getPropertyValue('--roadmap-h') !== h + 'px') {
+        wrap.style.setProperty('--roadmap-h', h + 'px');
+        const g = w().gantt;
+        if (g) { g.setSizes?.(); g.render?.(); }
+      }
+    };
+    fit();
+    window.addEventListener('resize', fit);
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(fit) : null;
+    ro?.observe(document.documentElement);
+    // Cubre el caso "se abre la pestaña Roadmap después" (el pane pasa de
+    // display:none a block y recién entonces top es real) y layout asíncrono.
+    const iv = setInterval(fit, 500);
+    const stopper = setTimeout(() => clearInterval(iv), 6000);
+    w().__fitRoadmapGantt = fit;
+    return () => {
+      window.removeEventListener('resize', fit);
+      ro?.disconnect();
+      clearInterval(iv);
+      clearTimeout(stopper);
+      if (w().__fitRoadmapGantt === fit) delete w().__fitRoadmapGantt;
+    };
+  }, []);
+
   return (
-    <>
-      <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2 detail-card">
-        <h5 className="mb-0">Roadmap &amp; Módulos</h5>
-        <div className="d-flex flex-wrap gap-2 align-items-center">
-          <button type="button" className="btn btn-brand-soft btn-sm" onClick={() => w().openEmployabilityModal?.()}>
-            <i className="bi bi-briefcase me-2" />Sesiones Empleabilidad
-          </button>
-          <button type="button" className="btn btn-primary btn-sm" onClick={() => w().openModuleModal?.()}>
-            <i className="bi bi-plus-circle me-2" />Agregar Módulo
-          </button>
-        </div>
-      </div>
-      <div id="modules-list" className="row">
-        {/* Lo puebla el legacy (displayModules) por innerHTML. */}
-      </div>
-      <div className="mt-4">
-        <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
-          <h6 className="mb-0">Diagrama Gantt</h6>
-          <div className="d-flex gap-2">
-            <div className="btn-group btn-group-sm gantt-zoom-group" role="group" aria-label="Zoom del Gantt">
-              <button type="button" className="btn btn-outline-secondary gantt-zoom-btn" data-zoom-level="day" onClick={() => w().setGanttZoomLevel?.('day')}>Día</button>
-              <button type="button" className="btn btn-outline-secondary gantt-zoom-btn active" data-zoom-level="week" onClick={() => w().setGanttZoomLevel?.('week')}>Semana</button>
-              <button type="button" className="btn btn-outline-secondary gantt-zoom-btn" data-zoom-level="month" onClick={() => w().setGanttZoomLevel?.('month')}>Mes</button>
-            </div>
-            <GoogleCalendarSyncButton />
-            <ExportDropdown />
+    <div className="roadmap-fullbleed" ref={wrapRef}>
+      {/* Barra compacta — una sola fila, reemplaza la cabecera "Roadmap & Módulos"
+          + el subtítulo "Diagrama Gantt" + la fila de leyenda. */}
+      <div className="roadmap-toolbar">
+        <div className="roadmap-toolbar-group">
+          <span className="roadmap-toolbar-title">Roadmap</span>
+          <div className="btn-group btn-group-sm gantt-zoom-group" role="group" aria-label="Zoom del Gantt">
+            <button type="button" className="btn btn-outline-secondary gantt-zoom-btn" data-zoom-level="day" onClick={() => w().setGanttZoomLevel?.('day')}>Día</button>
+            <button type="button" className="btn btn-outline-secondary gantt-zoom-btn active" data-zoom-level="week" onClick={() => w().setGanttZoomLevel?.('week')}>Semana</button>
+            <button type="button" className="btn btn-outline-secondary gantt-zoom-btn" data-zoom-level="month" onClick={() => w().setGanttZoomLevel?.('month')}>Mes</button>
           </div>
+          <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => w().ganttScrollToToday?.()}>
+            <i className="bi bi-calendar-event me-1" />Hoy
+          </button>
         </div>
-        {/* Leyenda de colores por tipo de elemento (spec design-cleanup, nuevo) —
-            mismos tokens --app-color-gantt-* que .gantt_task_line.gantt-task-*
-            en css/promotion-detail.css. Puramente informativa/decorativa. */}
-        <div className="gantt-legend" aria-hidden="true">
-          <span className="gantt-legend-item"><span className="gantt-legend-dot" style={{ background: 'var(--app-color-gantt-module)' }} />Módulo</span>
-          <span className="gantt-legend-item"><span className="gantt-legend-dot" style={{ background: 'var(--app-color-gantt-course)' }} />Curso</span>
-          <span className="gantt-legend-item"><span className="gantt-legend-dot" style={{ background: 'var(--app-color-gantt-project)' }} />Proyecto</span>
-          <span className="gantt-legend-item"><span className="gantt-legend-dot" style={{ background: 'var(--app-color-gantt-leccion)' }} />Lección</span>
-          <span className="gantt-legend-item"><span className="gantt-legend-dot" style={{ background: 'var(--app-color-gantt-flexible)' }} />Tiempo flexible</span>
+        <div className="roadmap-toolbar-group roadmap-toolbar-group--end">
+          <button type="button" className="btn btn-primary btn-sm" onClick={() => w().openModuleModal?.()}>
+            <i className="bi bi-plus-circle me-1" />Módulo
+          </button>
+          <button type="button" className="btn btn-brand-soft btn-sm" onClick={() => w().openEmployabilityModal?.()}>
+            <i className="bi bi-briefcase me-1" />Empleabilidad
+          </button>
+          <LegendPopover />
+          <GoogleCalendarSyncButton />
+          <ExportDropdown />
         </div>
-        {/* Lo puebla el legacy (generateGanttChart → DHTMLX Gantt, Fase 6). */}
-        <div id="gantt-container" style={{ width: '100%', height: 500, overflow: 'auto' }} />
       </div>
-    </>
+
+      {/* Lista de tarjetas de módulo: su render está comentado en el legacy
+          (displayModules) → casi siempre vacía. Se mantiene en el DOM oculta para
+          no romper los `document.getElementById('modules-list')` del orquestador. */}
+      <div id="modules-list" hidden />
+
+      {/* Lo puebla el legacy (generateGanttChart → DHTMLX Gantt). Sin height ni
+          overflow inline: el alto lo da .roadmap-fullbleed (flex:1) y el scroll
+          es 100% interno de DHTMLX. */}
+      <div id="gantt-container" className="roadmap-gantt-fill" />
+    </div>
   );
 }

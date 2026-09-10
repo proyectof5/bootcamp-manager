@@ -3610,6 +3610,7 @@ function initGanttInstance() {
 
     gantt.init('gantt-container');
     setGanttZoomLevel('week');
+    setupGanttWheelZoom();
 
     if (canEdit) {
         bindGanttEditingEvents();
@@ -3668,6 +3669,16 @@ function _renderTodayMarker() {
 }
 
 /**
+ * Centra la línea de tiempo del Gantt en la fecha de hoy (botón "Hoy" de la
+ * barra compacta del rediseño a pantalla completa, ver RoadmapPanel.tsx).
+ */
+function ganttScrollToToday() {
+    if (typeof gantt === 'undefined' || !_ganttInitialized) return;
+    try { gantt.showDate(new Date()); } catch (e) { /* rango sin cubrir hoy — no bloquea */ }
+}
+window.ganttScrollToToday = ganttScrollToToday;
+
+/**
  * Cambia la escala de tiempo visible del Gantt (día/semana/mes).
  * Implementación propia y ligera (sin depender de la extensión ext/zoom
  * de DHTMLX) para no añadir otro recurso CDN.
@@ -3701,8 +3712,60 @@ function setGanttZoomLevel(level) {
     gantt.render();
 
     document.querySelectorAll('.gantt-zoom-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.zoomLevel === level);
+        btn.classList.toggle('active', btn.dataset.zoomLevel === _ganttZoomLevel);
     });
+}
+
+// Orden de zoom, de más lejos a más cerca. Ctrl/⌘ + rueda del ratón (o pellizco
+// en trackpad, que el navegador entrega como wheel+ctrlKey) recorre esta lista.
+const _GANTT_ZOOM_ORDER = ['month', 'week', 'day'];
+
+/**
+ * Zoom del Gantt con Ctrl/⌘ + rueda del ratón — hacia arriba acerca
+ * (mes→semana→día), hacia abajo aleja. Solo con la tecla modificadora pulsada:
+ * la rueda a secas sigue haciendo scroll del diagrama. Mantiene bajo el cursor
+ * la misma fecha tras el cambio de escala.
+ */
+let _ganttWheelZoomBound = false;
+function setupGanttWheelZoom() {
+    if (_ganttWheelZoomBound) return;
+    // OJO: NO tocar gantt.$container (el root interno de DHTMLX v10) — ni sus
+    // atributos ni añadirle listeners: DHTMLX lo observa y pierde su propio
+    // manejo de scroll con la rueda. El listener va en gantt.$root
+    // (#gantt-container, el div que controlamos nosotros), que es ancestro del
+    // área de tareas, así que el zoom con Ctrl/⌘ + rueda funciona igual y la
+    // rueda a secas la sigue gestionando DHTMLX sin interferencias.
+    const target = (gantt && gantt.$root) || document.getElementById('gantt-container');
+    if (!target) return;
+    _ganttWheelZoomBound = true;
+
+    target.addEventListener('wheel', function (e) {
+        if (!(e.ctrlKey || e.metaKey)) return;
+        if (!_ganttInitialized) return;
+        e.preventDefault();
+
+        // Fecha ahora mismo bajo el cursor, para re-centrar tras el zoom.
+        let cursorDate = null;
+        try {
+            const taskArea = gantt.$task || target.querySelector('.gantt_task_bg');
+            if (taskArea) {
+                const rect = taskArea.getBoundingClientRect();
+                const x = (e.clientX - rect.left) + gantt.getScrollState().x;
+                if (x >= 0) cursorDate = gantt.dateFromPos(x);
+            }
+        } catch (err) { /* si falla, no re-centramos: no bloquea el zoom */ }
+
+        const cur = _GANTT_ZOOM_ORDER.indexOf(_ganttZoomLevel);
+        const idx = cur === -1 ? 1 : cur;
+        // deltaY < 0 (rueda arriba / pellizco de acercar) → acercar
+        const next = e.deltaY < 0 ? idx + 1 : idx - 1;
+        if (next < 0 || next >= _GANTT_ZOOM_ORDER.length || next === idx) return;
+
+        setGanttZoomLevel(_GANTT_ZOOM_ORDER[next]);
+        if (cursorDate) {
+            try { gantt.showDate(cursorDate); } catch (err) { /* fuera de rango: se ignora */ }
+        }
+    }, { passive: false });
 }
 
 /**
@@ -4263,6 +4326,27 @@ function bindGanttEditingEvents() {
     gantt.attachEvent('onRowDragEnd', function (id) {
         const task = gantt.getTask(id);
         persistGanttRowOrder(task);
+    });
+
+    // Clic simple en una fila → abre el panel lateral de detalle
+    // (RoadmapDetailDrawer.tsx, rediseño "Gantt a pantalla completa"): estilo
+    // Asana, sin modal centrado que tape el diagrama. No roba el clic del
+    // triángulo de plegar ni del asa de arrastre. El doble clic sigue abriendo
+    // el modal completo (competencias/enlaces).
+    gantt.attachEvent('onTaskClick', function (id, e) {
+        if (e && e.target && e.target.closest &&
+            e.target.closest('.gantt_tree_icon, .gantt-drag-handle, .gantt_add, a')) {
+            return true;
+        }
+        const task = gantt.getTask(id);
+        if (task && (
+            task.itemType === 'course' || task.itemType === 'project' ||
+            task.itemType === 'leccion' || task.itemType === 'module' ||
+            task.itemType === 'leccion-group'
+        ) && window.__openRoadmapDrawer) {
+            window.__openRoadmapDrawer(task);
+        }
+        return true;
     });
 
     // Doble click: abre un modal enfocado según el tipo de tarea (Fase 7).
@@ -5056,6 +5140,93 @@ async function openItemEditModal(task) {
         window.showApiToast('Error loading item data', 'danger');
     }
 }
+
+/**
+ * Guarda los campos básicos de un curso/proyecto/lección desde el panel lateral
+ * (RoadmapDetailDrawer.tsx) — sin pasar por el modal itemEditModal ni por los
+ * pickers de competencias/enlaces. Localiza el item igual que openItemEditModal
+ * (plannerItems por id, o array legacy courses/projects por legacyIndex),
+ * aplica SOLO los campos que llegan en `fields` (los demás se conservan:
+ * competenceIds, links…), y hace el mismo PUT de la promoción completa +
+ * loadModules() que el modal.
+ *
+ * @param {Object} task - tarea de DHTMLX (itemType course|project|leccion)
+ * @param {{name?:string, title?:string, lessonType?:string, url?:string, startDate?:string, endDate?:string}} fields
+ * @returns {Promise<{ok:boolean, error?:string}>}
+ */
+async function persistRoadmapItemEdit(task, fields) {
+    if (!task) return { ok: false, error: 'Sin elemento' };
+    const f = fields || {};
+    if (f.startDate && f.endDate && f.endDate < f.startDate) {
+        return { ok: false, error: 'La fecha de fin no puede ser anterior a la de inicio.' };
+    }
+    const token = localStorage.getItem('token');
+    try {
+        const res = await fetch(`${API_URL}/api/promotions/${promotionId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (!res.ok) return { ok: false, error: 'No se pudo cargar la promoción' };
+        const promotion = await res.json();
+        const module = promotion.modules[task.moduleIndex];
+        if (!module) return { ok: false, error: 'Módulo no encontrado' };
+
+        const applyDates = (obj) => {
+            if (f.startDate) obj.startDate = f.startDate;
+            if (f.endDate) obj.endDate = f.endDate;
+            if (f.startDate || f.endDate) {
+                delete obj.duration; delete obj.startOffset; delete obj.absoluteStartOffset;
+            }
+        };
+
+        const isLesson = task.itemType === 'leccion';
+        let found = false;
+
+        if (Array.isArray(module.plannerItems) && module.plannerItems.length > 0 && task.plannerItemId) {
+            const it = module.plannerItems.find(i => i.id === task.plannerItemId);
+            if (it) {
+                found = true;
+                if (isLesson) {
+                    if (f.title !== undefined) it.title = f.title;
+                    if (f.lessonType) it.lessonType = f.lessonType;
+                } else {
+                    if (f.name !== undefined) it.name = f.name;
+                    if (f.url !== undefined) it.url = f.url;
+                }
+                applyDates(it);
+                syncLegacyCoursesProjects(module);
+            }
+        }
+        if (!found && !isLesson) {
+            const list = task.itemType === 'course' ? module.courses : module.projects;
+            const raw = Array.isArray(list) ? list[task.legacyIndex] : null;
+            if (raw != null) {
+                found = true;
+                const cur = (typeof raw === 'object' && raw) ? raw : { name: String(raw) };
+                if (f.name !== undefined) cur.name = f.name;
+                if (f.url !== undefined) cur.url = f.url;
+                applyDates(cur);
+                list[task.legacyIndex] = cur;
+            }
+        }
+        if (!found) return { ok: false, error: 'Elemento no encontrado' };
+
+        const put = await fetch(`${API_URL}/api/promotions/${promotionId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify(promotion)
+        });
+        if (!put.ok) {
+            const err = await put.json().catch(() => ({}));
+            return { ok: false, error: err.error || 'No se pudo guardar' };
+        }
+        loadModules();
+        return { ok: true };
+    } catch (e) {
+        console.error('[persistRoadmapItemEdit]', e);
+        return { ok: false, error: 'Error de red al guardar' };
+    }
+}
+window.persistRoadmapItemEdit = persistRoadmapItemEdit;
 
 async function editModule(moduleId) {
     const token = localStorage.getItem('token');
@@ -11448,7 +11619,16 @@ function switchProgramDetailsTab(tabName) {
     }
 
     // Lazy-load data for roadmap, calendar and aula virtual sub-tabs
-    if (tabName === 'roadmap') loadModules();
+    if (tabName === 'roadmap') {
+        loadModules();
+        // El pane pasa de display:none a block justo ahora → recién ahora
+        // RoadmapPanel puede medir el alto disponible del Gantt a pantalla
+        // completa (ver RoadmapPanel.tsx). Doble tick para dar tiempo al layout.
+        if (window.__fitRoadmapGantt) {
+            window.__fitRoadmapGantt();
+            requestAnimationFrame(() => window.__fitRoadmapGantt && window.__fitRoadmapGantt());
+        }
+    }
     if (tabName === 'calendar') loadCalendar();
     if (tabName === 'hours' && window.__refreshHoursPanel) window.__refreshHoursPanel();
     if (tabName === 'virtual-classroom') {
