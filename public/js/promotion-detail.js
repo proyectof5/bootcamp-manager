@@ -13316,28 +13316,23 @@ window._evalProjPickerSelectAllTools = function (compId) {
     }
 };
 
-// Botones globales: selecciona / deselecciona TODAS las herramientas de todas
-// las competencias visibles (respeta el filtro de búsqueda/área). Con select=true
-// también marca la competencia; con select=false la desmarca (una competencia
-// sin herramientas que evaluar no aporta nada).
+// Botones globales de HERRAMIENTAS: marca / desmarca todas las herramientas de
+// las competencias que YA están seleccionadas (y visibles según el filtro de
+// búsqueda/área). No toca la selección de competencias: una competencia no
+// seleccionada tiene sus herramientas deshabilitadas y se ignora.
 window._evalProjPickerBulkTools = function (select) {
     const state = window._evalProjPickerState;
     if (!state) return;
     const rows = [...document.querySelectorAll('#epcp-list .epcp-row')]
         .filter(r => r.style.display !== 'none');
-    const compIds = rows.length
+    const compIds = (rows.length
         ? rows.map(r => String(r.dataset.compId))
-        : state.catalog.map(c => String(c.id));
+        : state.catalog.map(c => String(c.id))
+    ).filter(id => state.selectedIds.has(id));
     compIds.forEach(compId => {
         const comp = state.catalog.find(c => String(c.id) === compId);
         if (!comp) return;
-        if (select) {
-            state.selectedIds.add(compId);
-            state.competenceTools[compId] = [...(comp.allTools || [])];
-        } else {
-            state.selectedIds.delete(compId);
-            delete state.competenceTools[compId];
-        }
+        state.competenceTools[compId] = select ? [...(comp.allTools || [])] : [];
     });
     _renderEvalProjPickerList();
     _filterEvalProjPicker();   // re-aplica el filtro visible tras el re-render
