@@ -3451,6 +3451,13 @@ function displayModules(modules) {
 // Guards so gantt.init() only runs once per page load
 let _ganttInitialized = false;
 
+// `true` solo mientras generateGanttChart() re-aplica el estado de plegado
+// guardado tras un clearAll()+parse(). Los listeners onTaskClosed/onTaskOpened
+// lo consultan para NO volver a persistir un cambio que hemos provocado
+// nosotros (si no, el parse —que abre los nodos que nacen abiertos— borraría de
+// sessionStorage lo que el docente había colapsado antes de re-cerrarlo).
+let _ganttRestoringState = false;
+
 // Nivel de zoom actual del Gantt ('day'/'week'/'month') — lo fija
 // setGanttZoomLevel() más abajo. Se lee al exportar a Excel (spec
 // design-cleanup: _exportRoadmapXlsx) para que el Excel se dibuje en la
@@ -3618,6 +3625,18 @@ function initGanttInstance() {
     // marcador si no se reinserta.
     gantt.attachEvent('onGanttRender', _renderTodayMarker);
     _renderTodayMarker();
+
+    // Recuerda qué nodos del árbol cierra/abre el docente a mano, para
+    // restaurarlo tras cada reconstrucción del Gantt (ver _getGanttCollapsedIds).
+    // Disponible para todos (también lectura): plegar/desplegar no es edición.
+    // El guard _ganttRestoringState evita re-persistir cuando el propio
+    // generateGanttChart está re-aplicando el estado guardado.
+    gantt.attachEvent('onTaskClosed', function (id) {
+        if (!_ganttRestoringState) _setGanttNodeCollapsed(id, true);
+    });
+    gantt.attachEvent('onTaskOpened', function (id) {
+        if (!_ganttRestoringState) _setGanttNodeCollapsed(id, false);
+    });
 }
 
 /**
@@ -4858,6 +4877,37 @@ async function openCreateItemModal(clickDate) {
     }
 }
 
+// ── Estado de plegado del árbol del Gantt ────────────────────────────────────
+// Qué nodos desplegables (el nodo "Módulo" y el nodo "Lecciones" de cada
+// módulo) ha COLAPSADO el docente a mano. Se recuerda por promoción en
+// sessionStorage para que cualquier reconstrucción del roadmap (guardar un
+// modal, arrastrar/redimensionar una barra, borrar un elemento — todas pasan
+// por generateGanttChart) no lo resetee. Antes de esto, "Lecciones" —que ahora
+// nace abierto— se recolapsaba en cada guardado de lección.
+//
+// Se guarda SOLO lo colapsado: la ausencia de un id en el set = ese nodo
+// respeta su estado por defecto del dataset (abierto). Los ids son estables
+// entre recargas (`module-<i>` / `module-<i>-lecciones`, ver gantt-adapter.js);
+// un id obsoleto en el set es inofensivo (nunca casa con ninguna tarea).
+function _ganttCollapsedStorageKey() {
+    return `ganttCollapsed_${promotionId}`;
+}
+function _getGanttCollapsedIds() {
+    try {
+        const raw = sessionStorage.getItem(_ganttCollapsedStorageKey());
+        return new Set(raw ? JSON.parse(raw) : []);
+    } catch (e) {
+        return new Set();
+    }
+}
+function _setGanttNodeCollapsed(taskId, collapsed) {
+    const set = _getGanttCollapsedIds();
+    if (collapsed) set.add(String(taskId)); else set.delete(String(taskId));
+    try {
+        sessionStorage.setItem(_ganttCollapsedStorageKey(), JSON.stringify(Array.from(set)));
+    } catch (e) { /* sessionStorage lleno/no disponible — no bloquea nada */ }
+}
+
 function generateGanttChart(promotion) {
     const container = document.getElementById('gantt-container');
     if (!container) return;
@@ -4885,23 +4935,34 @@ function generateGanttChart(promotion) {
     );
     _ganttHolidaysSet = new Set(Array.isArray(promotion.holidays) ? promotion.holidays : []);
 
-    // Antes de reconstruir el dataset: capturar el scroll actual y qué grupos
-    // (el nodo "Lecciones" de cada módulo, sobre todo) estaban abiertos, para
-    // restaurarlo después de gantt.parse() más abajo. Sin esto, CUALQUIER
-    // actualización — arrastrar una barra, guardar un modal, borrar un
-    // elemento — hacía gantt.clearAll()+parse() sin más: la vista volvía
-    // siempre a la esquina superior izquierda y "Lecciones" se recolapsaba
-    // (nace cerrado, ver `open: false` en buildGanttDataset), dando la falsa
-    // impresión de que el elemento recién movido/editado "saltaba" a otro
-    // sitio — reportado como bug ("quiero que se actualice pero no que
-    // recargue de esa manera").
+    // Antes de reconstruir el dataset: recordar QUÉ FECHA hay en el borde
+    // izquierdo visible (no el píxel — el rango del timeline se recalcula justo
+    // abajo y el mismo píxel caería en otra fecha: ese era el "salto" que se
+    // veía al guardar) y el scroll vertical. Sin esto, CUALQUIER actualización
+    // —arrastrar una barra, guardar un modal, borrar un elemento— hacía
+    // clearAll()+parse() y la vista volvía a la esquina superior izquierda.
+    //
+    // El estado de plegado del árbol (nodo "Módulo" / "Lecciones" que el
+    // docente cerró a mano) NO se captura aquí: ya está persistido en
+    // sessionStorage por los listeners onTaskClosed/onTaskOpened y se re-aplica
+    // tras el parse (ver _getGanttCollapsedIds). Los nodos que nacen abiertos
+    // (`open: true` en buildGanttDataset) se quedan abiertos solos.
     const _ganttWasInitialized = _ganttInitialized;
-    let _ganttSavedScroll = null;
-    let _ganttOpenTaskIds = [];
+    let _ganttSavedLeftDate = null;
+    let _ganttSavedScrollY = 0;
     if (_ganttWasInitialized) {
-        try { _ganttSavedScroll = gantt.getScrollState(); } catch (e) { _ganttSavedScroll = null; }
-        try { gantt.eachTask((task) => { if (task.$open) _ganttOpenTaskIds.push(task.id); }); } catch (e) { _ganttOpenTaskIds = []; }
+        try {
+            const st = gantt.getScrollState();
+            _ganttSavedScrollY = st && typeof st.y === 'number' ? st.y : 0;
+            if (st && typeof st.x === 'number' && typeof gantt.dateFromPos === 'function') {
+                _ganttSavedLeftDate = gantt.dateFromPos(st.x) || null;
+            }
+        } catch (e) { _ganttSavedLeftDate = null; _ganttSavedScrollY = 0; }
     }
+
+    // Se lee ANTES del parse: clearAll()+parse() disparan onTaskOpened para los
+    // nodos que nacen abiertos y, sin el guard de abajo, eso vaciaría el set.
+    const _ganttCollapsedIds = _getGanttCollapsedIds();
 
     const dataset = buildGanttDataset(promotion);
 
@@ -4928,17 +4989,39 @@ function generateGanttChart(promotion) {
     gantt.config.start_date = rangeStart;
     gantt.config.end_date = new Date(rangeEnd.getTime() + 7 * 86400000);
 
+    // El guard evita que los onTaskClosed/onTaskOpened disparados por
+    // clearAll()+parse()+close() re-escriban sessionStorage mientras somos
+    // nosotros los que aplicamos el estado, no el docente.
+    _ganttRestoringState = true;
     gantt.clearAll();
     gantt.parse(dataset);
 
-    // Restaura el estado visual capturado arriba — grupos abiertos primero
-    // (afecta al layout/alturas de fila), scroll después (para que las
-    // coordenadas de scroll se calculen ya con las filas correctas visibles).
+    // Re-aplica el plegado que el docente había elegido a mano. Se recogen los
+    // ids primero y se cierran después (cerrar durante eachTask alteraría el
+    // recorrido del subárbol).
+    if (_ganttCollapsedIds.size) {
+        const _toClose = [];
+        gantt.eachTask((task) => {
+            if (_ganttCollapsedIds.has(String(task.id))) _toClose.push(task.id);
+        });
+        _toClose.forEach((id) => gantt.close(id));
+    }
+    _ganttRestoringState = false;
+
+    // Restaura el scroll: la MISMA fecha en el borde izquierdo (su píxel se
+    // recalcula con el rango nuevo, así el contenido no "salta") y el mismo
+    // scroll vertical. Va después de re-aplicar el plegado para que las alturas
+    // de fila ya sean las definitivas.
     if (_ganttWasInitialized) {
-        _ganttOpenTaskIds.forEach((id) => { if (gantt.isTaskExists(id)) gantt.open(id); });
-        if (_ganttSavedScroll) {
-            try { gantt.scrollTo(_ganttSavedScroll.x, _ganttSavedScroll.y); } catch (e) { /* rango de fechas pudo cambiar — no bloquea el render */ }
-        }
+        try {
+            const x = (_ganttSavedLeftDate && typeof gantt.posFromDate === 'function')
+                ? gantt.posFromDate(_ganttSavedLeftDate)
+                : 0;
+            gantt.scrollTo(
+                (typeof x === 'number' && !isNaN(x) && x > 0) ? x : 0,
+                _ganttSavedScrollY
+            );
+        } catch (e) { /* el rango de fechas pudo cambiar — no bloquea el render */ }
     }
 }
 
