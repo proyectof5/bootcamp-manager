@@ -579,10 +579,15 @@ window.GANTT_DATE_FORMAT = GANTT_DATE_FORMAT;
  *  - `hoursPerDay` = `promotion.hoursPerDay` (jornada, ej. 7 o 7.5); fallback 7.
  *  - Días lectivos = `promotion.workingDays` (fallback Lun-Vie) menos
  *    `promotion.holidays` — mismo criterio que el Gantt (`countWorkingDaysInclusive`).
- *  - Horas de un módulo = días lectivos en su rango completo
- *    [`getModuleDateRange`] × `hoursPerDay`. Asume módulos NO solapados (el
- *    roadmap es conceptualmente secuencial); si se solapan, la suma los
- *    cuenta dos veces — mismo supuesto que la conversión inversa
+ *  - Horas de un módulo = días lectivos en su rango ENVOLVENTE × `hoursPerDay`.
+ *    El rango envolvente va desde la fecha más temprana hasta la más tardía
+ *    entre la barra del propio módulo (`getModuleDateRange`) y TODOS sus
+ *    elementos (cursos + proyectos + lecciones, `getItemDateRange`). Así el
+ *    total reacciona al mover o redimensionar cualquier cosa dentro del
+ *    módulo, no solo su barra. La barra del módulo actúa de suelo: la
+ *    envolvente nunca es más corta que ella. Asume módulos NO solapados
+ *    entre sí (el roadmap es conceptualmente secuencial); si se solapan, la
+ *    suma los cuenta dos veces — mismo supuesto que la conversión inversa
  *    fecha→semanas del backend (`durationWeeksFromDates`).
  *  - `total` = suma de las horas de todos los módulos.
  *  - `byProject` es un SUB-desglose informativo dentro de cada módulo (los
@@ -626,8 +631,22 @@ function buildHoursBreakdown(promotion, extendedInfo) {
 
     modules.forEach((module, moduleIndex) => {
         const moduleStartWeeksForFallback = getModuleStartWeeks(modules, moduleIndex);
-        const moduleRange = getModuleDateRange(modules, moduleIndex, baseDate);
-        const lectiveDays = countWorkingDaysInclusive(moduleRange.startDate, moduleRange.endDate, workingDaysSet, holidaysSet);
+        const ownRange = getModuleDateRange(modules, moduleIndex, baseDate);
+        const items = getModulePlannerItems(module);
+
+        // Rango ENVOLVENTE: parte de la barra del módulo y se ensancha con las
+        // fechas de cada elemento (cursos, proyectos, lecciones) — nunca se
+        // acorta. Es lo que hace que mover/redimensionar cualquier elemento
+        // dentro del módulo se refleje en el total.
+        let envStart = ownRange.startDate;
+        let envEnd = ownRange.endDate;
+        items.forEach((item) => {
+            const r = getItemDateRange(item, moduleStartWeeksForFallback, baseDate);
+            if (r.startDate < envStart) envStart = r.startDate;
+            if (r.endDate > envEnd) envEnd = r.endDate;
+        });
+
+        const lectiveDays = countWorkingDaysInclusive(envStart, envEnd, workingDaysSet, holidaysSet);
         const hours = lectiveDays * hoursPerDay;
         total += hours;
 
@@ -637,11 +656,11 @@ function buildHoursBreakdown(promotion, extendedInfo) {
             name: moduleName,
             hours,
             lectiveDays,
-            startDate: formatISODate(moduleRange.startDate),
-            endDate: formatISODate(moduleRange.endDate),
+            startDate: formatISODate(envStart),
+            endDate: formatISODate(envEnd),
         });
 
-        getModulePlannerItems(module).forEach((item) => {
+        items.forEach((item) => {
             if (item.type !== 'proyecto') return;
             const range = getItemDateRange(item, moduleStartWeeksForFallback, baseDate);
             const projDays = countWorkingDaysInclusive(range.startDate, range.endDate, workingDaysSet, holidaysSet);
