@@ -1158,6 +1158,110 @@ th, td {
     background-color: var(--app-color-bg-surface);
 }
 
+/* ═══════════════════════════════════════════════════════════════════════════
+   Rediseño "Gantt a pantalla completa" (RoadmapPanel.tsx,
+   docs/tasks/gantt-pantalla-completa-drawer.md)
+   ---------------------------------------------------------------------------
+   Antes el Gantt vivía en una caja de 500px con overflow:auto dentro de una
+   página que también scrollea → hasta 3 barras de scroll y el diagrama
+   siempre apretado. Ahora ocupa todo el alto que queda bajo las pestañas y el
+   scroll es 100% interno de DHTMLX (una barra vertical de filas, una
+   horizontal de línea de tiempo). El alto lo mide RoadmapPanel y lo pasa como
+   --roadmap-h; el ancho lo recupera rompiendo el padding de <main class="px-md-4">.
+   ═══════════════════════════════════════════════════════════════════════════ */
+#program-details-roadmap .roadmap-fullbleed {
+    display: flex;
+    flex-direction: column;
+    height: var(--roadmap-h, 72vh);
+    /* romper el padding horizontal de <main> (0 en <md, 1.5rem en md, 2rem en ≥lg) */
+    margin: -0.25rem -1.5rem 0;
+    background-color: var(--app-color-bg-surface);
+    border-top: 1px solid var(--app-color-border);
+}
+
+@media (min-width: 992px) {
+    #program-details-roadmap .roadmap-fullbleed {
+        margin-left: -2rem;
+        margin-right: -2rem;
+    }
+}
+
+@media (max-width: 767.98px) {
+    #program-details-roadmap .roadmap-fullbleed {
+        margin-left: 0;
+        margin-right: 0;
+        height: var(--roadmap-h, 64vh);
+    }
+}
+
+/* Solo con el Gantt a pantalla completa activo: neutraliza el min-height y el
+   padding-bottom que arrastran <main> (min-height: calc(100vh - 80px);
+   padding-bottom: 2rem) y #info-tab (padding-bottom: 2rem) — si no, la página
+   entera gana una barra de scroll aunque el roadmap quepa. El :has() lo limita
+   al momento en que la pestaña Roadmap está activa (.show/.active del tab-pane). */
+#main-content:has(#program-details-roadmap.show .roadmap-fullbleed),
+#main-content:has(#program-details-roadmap.active .roadmap-fullbleed),
+#info-tab:has(#program-details-roadmap.show .roadmap-fullbleed),
+#info-tab:has(#program-details-roadmap.active .roadmap-fullbleed) {
+    min-height: 0 !important;
+    padding-bottom: 0 !important;
+}
+
+.roadmap-fullbleed .roadmap-toolbar {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 6px 14px;
+    flex-wrap: wrap;
+    padding: 6px 1.5rem;
+    border-bottom: 1px solid var(--app-color-border);
+    background-color: var(--app-color-bg-surface);
+}
+
+.roadmap-fullbleed .roadmap-toolbar-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.roadmap-fullbleed .roadmap-toolbar-group--end {
+    margin-left: auto;
+}
+
+.roadmap-fullbleed .roadmap-toolbar-title {
+    font-weight: var(--app-font-weight-semi);
+    font-size: var(--app-font-size-md);
+    margin-right: 4px;
+}
+
+.roadmap-fullbleed #gantt-container.roadmap-gantt-fill {
+    flex: 1 1 auto;
+    min-height: 0;
+    width: 100%;
+    border: 0;
+    border-radius: 0;
+    background-color: var(--app-color-bg-surface);
+    /* DHTMLX dibuja sus propias barras dentro de este alto — nada de overflow aquí */
+    overflow: hidden;
+}
+
+.roadmap-legend-popover {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 12px 14px;
+    background-color: var(--app-color-bg-surface);
+    border: 1px solid var(--app-color-border);
+    border-radius: var(--app-radius-md);
+    box-shadow: var(--app-shadow-md);
+    white-space: nowrap;
+}
+
+.roadmap-legend-popover .gantt-legend-item {
+    margin: 0;
+}
+
 .gantt_grid_scale,
 .gantt_task_scale {
     background-color: var(--app-color-neutral-50);

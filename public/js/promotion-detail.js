@@ -3637,6 +3637,16 @@ function _renderTodayMarker() {
 }
 
 /**
+ * Centra la línea de tiempo del Gantt en la fecha de hoy (botón "Hoy" de la
+ * barra compacta del rediseño a pantalla completa, ver RoadmapPanel.tsx).
+ */
+function ganttScrollToToday() {
+    if (typeof gantt === 'undefined' || !_ganttInitialized) return;
+    try { gantt.showDate(new Date()); } catch (e) { /* rango sin cubrir hoy — no bloquea */ }
+}
+window.ganttScrollToToday = ganttScrollToToday;
+
+/**
  * Cambia la escala de tiempo visible del Gantt (día/semana/mes).
  * Implementación propia y ligera (sin depender de la extensión ext/zoom
  * de DHTMLX) para no añadir otro recurso CDN.
@@ -11339,7 +11349,16 @@ function switchProgramDetailsTab(tabName) {
     }
 
     // Lazy-load data for roadmap, calendar and aula virtual sub-tabs
-    if (tabName === 'roadmap') loadModules();
+    if (tabName === 'roadmap') {
+        loadModules();
+        // El pane pasa de display:none a block justo ahora → recién ahora
+        // RoadmapPanel puede medir el alto disponible del Gantt a pantalla
+        // completa (ver RoadmapPanel.tsx). Doble tick para dar tiempo al layout.
+        if (window.__fitRoadmapGantt) {
+            window.__fitRoadmapGantt();
+            requestAnimationFrame(() => window.__fitRoadmapGantt && window.__fitRoadmapGantt());
+        }
+    }
     if (tabName === 'calendar') loadCalendar();
     if (tabName === 'virtual-classroom') {
         // Aseguramos que el estado de evaluación (proyectos + competences) esté cargado
