@@ -155,6 +155,14 @@ function HoursPanel() {
               La jornada se edita en «Modificar promoción».
             </p>
           </div>
+          <button
+            type="button"
+            className="btn btn-outline-primary btn-sm flex-shrink-0"
+            disabled={noModules}
+            onClick={() => w().exportHoursXlsx?.()}
+          >
+            <i className="bi bi-file-earmark-excel me-1" />Exportar a Excel
+          </button>
         </div>
 
         {/* Resumen */}

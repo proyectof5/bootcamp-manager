@@ -3978,6 +3978,398 @@ async function _exportRoadmapXlsx(promotion) {
 }
 
 /**
+ * Exporta el "Cómputo de horas" a un .xlsx con la estructura del cronograma
+ * que usa el equipo (IA_School_BCN_Calendario850h.xlsx): cabecera, calendario
+ * mes a mes con los días coloreados (lectivo / fin de semana / festivo /
+ * inicio de programa / inicio de módulo / fin), leyenda, "Resumen de módulos y
+ * horas" y "Festivos en el periodo". Todo derivado de
+ * promotion.startDate/endDate/workingDays/holidays/hoursPerDay + modules, y de
+ * window.buildHoursBreakdown (mismo cálculo que el panel en pantalla).
+ *
+ * Campos que el reporte de referencia trae a mano y aquí NO hay dato: la
+ * descripción y el ámbito de cada festivo, y el texto "Semanas (Syllabus)" —
+ * se dejan en blanco / se usa module.weeks si existe, para que el equipo los
+ * complete.
+ *
+ * Usa ExcelJS (ya cargado global en app/promotion/page.tsx) porque SheetJS
+ * community no escribe estilos de celda — igual que _exportRoadmapXlsx.
+ *
+ * @param {Object} promotion
+ * @param {{ totalHours?: number|string }} [extendedInfo]
+ */
+async function _exportHoursXlsx(promotion, extendedInfo) {
+    if (typeof ExcelJS === 'undefined') {
+        showToast('No se pudo cargar la librería de exportación (Excel).', 'danger');
+        return;
+    }
+    if (!promotion || !Array.isArray(promotion.modules) || !promotion.modules.length) {
+        showToast('Esta promoción no tiene módulos todavía.', 'warning');
+        return;
+    }
+    const ext = extendedInfo || (typeof extendedInfoData !== 'undefined' ? extendedInfoData : {}) || {};
+    const bd = (typeof window.buildHoursBreakdown === 'function')
+        ? window.buildHoursBreakdown(promotion, ext)
+        : null;
+    if (!bd) {
+        showToast('No se pudo calcular el cómputo de horas.', 'danger');
+        return;
+    }
+
+    const perDay = bd.hoursPerDay;
+    const workingDaysArr = Array.isArray(promotion.workingDays) && promotion.workingDays.length
+        ? promotion.workingDays : [1, 2, 3, 4, 5];
+    const workingSet = new Set(workingDaysArr.map(Number));
+    const holidaysSet = new Set(Array.isArray(promotion.holidays) ? promotion.holidays.filter(h => typeof h === 'string') : []);
+    const moduleStartSet = new Set(bd.byModule.map(m => m.startDate));
+
+    // Bloques de "Tiempo flexible" (vacaciones, no lectivo). Se marcan aparte en
+    // el calendario y en su propia tabla — no cuentan como horas.
+    const _flexBase = promotion.startDate ? new Date(promotion.startDate) : new Date();
+    const flexBlocks = (Array.isArray(promotion.flexibleBlocks) ? promotion.flexibleBlocks : []).map((b) => {
+        const r = (typeof getFlexibleBlockDateRange === 'function')
+            ? getFlexibleBlockDateRange(b, _flexBase)
+            : { startDate: parseISODate(b.startDate), endDate: parseISODate(b.endDate) };
+        return { name: b.name || 'Tiempo flexible', start: r.startDate, end: r.endDate };
+    }).filter(b => b.start instanceof Date && b.end instanceof Date && !Number.isNaN(b.start.getTime()));
+    const inFlex = (d) => flexBlocks.some(b => d >= b.start && d <= b.end);
+
+    // Rango del programa: promotion.startDate/endDate; si falta el fin, el máximo
+    // fin de módulo del cómputo.
+    const rangeStart = parseISODate(promotion.startDate)
+        || (bd.byModule[0] && parseISODate(bd.byModule[0].startDate))
+        || new Date();
+    let rangeEnd = parseISODate(promotion.endDate);
+    if (!rangeEnd) {
+        rangeEnd = rangeStart;
+        bd.byModule.forEach(m => { const e = parseISODate(m.endDate); if (e && e > rangeEnd) rangeEnd = e; });
+    }
+
+    // ── Estilos ───────────────────────────────────────────────────────────
+    const FILL = {
+        lectivo: 'FFE8F5E9', weekend: 'FFF1F2F4', outside: 'FFFAFBFC',
+        festivo: 'FFFDE68A', inicio: 'FFC8E6C9', modstart: 'FFEADCFB', fin: 'FFCFE3FD',
+        flexible: 'FFE3D9F5',
+    };
+    const TEXT = {
+        lectivo: 'FF2E7D32', weekend: 'FFAAB0B8', outside: 'FFCED3D9',
+        festivo: 'FF92400E', inicio: 'FF1B5E20', modstart: 'FF6B21A8', fin: 'FF1E3A8A',
+        flexible: 'FF5B21B6',
+    };
+    const BRAND = 'FFFF4700', BRAND_50 = 'FFFFF1EA', BRAND_700 = 'FFD63900';
+    const INK = 'FF111827', MUTED = 'FF6B7280', HAIR = 'FFE4E7EB';
+    const thin = { top: { style: 'thin', color: { argb: HAIR } }, left: { style: 'thin', color: { argb: HAIR } }, bottom: { style: 'thin', color: { argb: HAIR } }, right: { style: 'thin', color: { argb: HAIR } } };
+    const centre = { horizontal: 'center', vertical: 'middle' };
+
+    const MONTHS = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+    const WD_LBL = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+    const fmtLong = (d) => `${String(d.getDate()).padStart(2, '0')} ${MONTHS[d.getMonth()].toLowerCase()} ${d.getFullYear()}`;
+    const dayKind = (d) => {
+        const iso = formatISODate(d);
+        if (d < rangeStart || d > rangeEnd) return 'outside';
+        if (!workingSet.has(d.getDay())) return 'weekend';
+        if (holidaysSet.has(iso)) return 'festivo';
+        if (inFlex(d)) return 'flexible';
+        if (+d === +rangeStart) return 'inicio';
+        if (+d === +rangeEnd) return 'fin';
+        if (moduleStartSet.has(iso)) return 'modstart';
+        return 'lectivo';
+    };
+
+    const wb = new ExcelJS.Workbook();
+    wb.creator = 'Bootcamp Manager';
+    wb.created = new Date();
+    const ws = wb.addWorksheet('Cómputo de horas');
+    for (let c = 1; c <= 21; c++) ws.getColumn(c).width = 4.6;
+    for (let c = 22; c <= 26; c++) ws.getColumn(c).width = 10;
+
+    const title = (row, text) => {
+        ws.mergeCells(row, 1, row, 21);
+        const cell = ws.getCell(row, 1);
+        cell.value = text;
+        cell.font = { bold: true, size: 11, color: { argb: BRAND_700 } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: BRAND_50 } };
+        cell.alignment = { vertical: 'middle' };
+        ws.getRow(row).height = 20;
+    };
+
+    // ── Cabecera ──────────────────────────────────────────────────────────
+    ws.mergeCells('A1:U1');
+    const h1 = ws.getCell('A1');
+    h1.value = `Cómputo de horas  ·  ${promotion.name || 'Promoción'}`;
+    h1.font = { bold: true, size: 14, color: { argb: 'FFFFFFFF' } };
+    h1.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: BRAND } };
+    h1.alignment = { vertical: 'middle' };
+    ws.getRow(1).height = 26;
+    ws.mergeCells('A2:U2');
+    const wdNames = workingDaysArr.slice().sort((a, b) => a - b).map(n => WD_LBL[(Number(n) + 6) % 7]).join('-');
+    const h2 = ws.getCell('A2');
+    h2.value = `Inicio: ${fmtLong(rangeStart)}   ·   Fin: ${fmtLong(rangeEnd)}   ·   ${wdNames}, ${perDay.toLocaleString('es-ES', { maximumFractionDigits: 2 })} h/día`;
+    h2.font = { size: 10, color: { argb: MUTED } };
+    ws.getRow(2).height = 16;
+
+    // ── Calendario mes a mes (3 por banda) ────────────────────────────────
+    const monthsList = [];
+    {
+        const cur = new Date(rangeStart.getFullYear(), rangeStart.getMonth(), 1);
+        const last = new Date(rangeEnd.getFullYear(), rangeEnd.getMonth(), 1);
+        while (cur <= last) { monthsList.push(new Date(cur)); cur.setMonth(cur.getMonth() + 1); }
+    }
+    let bandTop = 4;
+    const monthHours = [];
+    monthsList.forEach((mDate, i) => {
+        const colInBand = i % 3;
+        const blockCol = 1 + colInBand * 8;           // 1-7, 9-15, 17-23
+        const top = bandTop + Math.floor(i / 3) * 10;
+
+        // nombre del mes
+        ws.mergeCells(top, blockCol, top, blockCol + 6);
+        const mc = ws.getCell(top, blockCol);
+        mc.value = `${MONTHS[mDate.getMonth()]} ${mDate.getFullYear()}`;
+        mc.font = { bold: true, size: 10, color: { argb: INK } };
+        mc.alignment = centre;
+        // cabecera de días de la semana
+        for (let k = 0; k < 7; k++) {
+            const c = ws.getCell(top + 1, blockCol + k);
+            c.value = WD_LBL[k];
+            c.font = { size: 8, bold: true, color: { argb: k >= 5 ? TEXT.weekend : MUTED } };
+            c.alignment = centre;
+        }
+        // días
+        const y = mDate.getFullYear(), m = mDate.getMonth();
+        const daysInMonth = new Date(y, m + 1, 0).getDate();
+        let lectiveInMonth = 0;
+        for (let day = 1; day <= daysInMonth; day++) {
+            const d = new Date(y, m, day);
+            const wcol = (d.getDay() + 6) % 7;            // Lun=0 … Dom=6
+            const weekIdx = Math.floor((day - 1 + ((new Date(y, m, 1).getDay() + 6) % 7)) / 7);
+            const r = top + 2 + weekIdx;
+            const kind = dayKind(d);
+            if (kind === 'lectivo' || kind === 'inicio' || kind === 'modstart' || kind === 'fin') lectiveInMonth++;
+            const cell = ws.getCell(r, blockCol + wcol);
+            cell.value = day;
+            cell.alignment = centre;
+            cell.font = { size: 9, color: { argb: TEXT[kind] }, bold: kind === 'inicio' || kind === 'fin' || kind === 'modstart' };
+            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: FILL[kind] } };
+            cell.border = thin;
+        }
+        monthHours.push(lectiveInMonth * perDay);
+        // pie del mes
+        ws.mergeCells(top + 8, blockCol, top + 8, blockCol + 6);
+        const foot = ws.getCell(top + 8, blockCol);
+        foot.value = `${MONTHS[mDate.getMonth()]}: ${(lectiveInMonth * perDay).toLocaleString('es-ES', { maximumFractionDigits: 1 })} h lectivas`;
+        foot.font = { size: 9, italic: true, color: { argb: MUTED } };
+        foot.alignment = centre;
+    });
+
+    let row = bandTop + Math.ceil(monthsList.length / 3) * 10 + 1;
+    const calTotal = monthHours.reduce((a, b) => a + b, 0);
+    ws.mergeCells(row, 1, row, 21);
+    const sumCell = ws.getCell(row, 1);
+    sumCell.value = `Suma jornadas lectivas del periodo: ${monthHours.map(h => Math.round(h)).join(' + ')} = ${calTotal.toLocaleString('es-ES', { maximumFractionDigits: 1 })} h`;
+    sumCell.font = { bold: true, size: 10, color: { argb: INK } };
+    row += 2;
+
+    // ── Leyenda ───────────────────────────────────────────────────────────
+    title(row, 'Leyenda'); row += 1;
+    const legend = [
+        ['lectivo', 'Día lectivo'], ['weekend', 'Fin de semana'], ['outside', 'Fuera del programa'],
+        ['festivo', 'Festivo'], ['flexible', 'Tiempo flexible'],
+        ['inicio', 'Inicio del programa'], ['modstart', 'Inicio de módulo'], ['fin', 'Fin del programa'],
+    ];
+    legend.forEach(([k, label], i) => {
+        const c0 = 1 + (i % 5) * 4;
+        if (i === 5) row += 1;
+        const sw = ws.getCell(row, c0);
+        sw.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: FILL[k] } };
+        sw.border = thin;
+        const lc = ws.getCell(row, c0 + 1);
+        ws.mergeCells(row, c0 + 1, row, c0 + 2);
+        lc.value = label;
+        lc.font = { size: 9, color: { argb: MUTED } };
+        lc.alignment = { vertical: 'middle' };
+    });
+    row += 2;
+
+    // ── Resumen de módulos y horas ────────────────────────────────────────
+    title(row, 'Resumen de módulos y horas'); row += 1;
+    const cols = [
+        ['Módulo', 1, 9], ['Inicio', 10, 12], ['Fin', 13, 15],
+        ['Días lectivos', 16, 17], ['Horas', 18, 19], ['Semanas (Syllabus)', 20, 21],
+    ];
+    const headerRow = row;
+    cols.forEach(([label, c1, c2]) => {
+        ws.mergeCells(headerRow, c1, headerRow, c2);
+        const c = ws.getCell(headerRow, c1);
+        c.value = label;
+        c.font = { bold: true, size: 9, color: { argb: 'FFFFFFFF' } };
+        c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: BRAND } };
+        c.alignment = { vertical: 'middle', wrapText: true };
+        c.border = thin;
+    });
+    row += 1;
+    const putRow = (values, opts) => {
+        const o = opts || {};
+        values.forEach((v, i) => {
+            const [, c1, c2] = cols[i];
+            ws.mergeCells(row, c1, row, c2);
+            const c = ws.getCell(row, c1);
+            c.value = v;
+            c.font = { size: 9, bold: !!o.bold, color: { argb: o.color || INK } };
+            c.alignment = { vertical: 'middle', horizontal: i === 0 || i === 5 ? 'left' : 'center' };
+            c.border = thin;
+            if (o.fill) c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: o.fill } };
+        });
+        row += 1;
+    };
+    bd.byModule.forEach((m) => {
+        const mod = promotion.modules[m.moduleIndex] || {};
+        const weeks = Number(mod.weeks) || Number(mod.duration) || 0;
+        putRow([
+            m.name,
+            fmtLong(parseISODate(m.startDate) || rangeStart),
+            fmtLong(parseISODate(m.endDate) || rangeEnd),
+            m.lectiveDays,
+            `${m.hours.toLocaleString('es-ES', { maximumFractionDigits: 1 })} h`,
+            weeks ? `${weeks} semanas` : '',
+        ]);
+    });
+    putRow(['TOTAL', '', '', bd.byModule.reduce((a, m) => a + m.lectiveDays, 0),
+        `${bd.total.toLocaleString('es-ES', { maximumFractionDigits: 1 })} h`, ''], { bold: true, fill: BRAND_50, color: BRAND_700 });
+    if (bd.target !== null) {
+        putRow(['Objetivo de la titulación', '', '', '', `${bd.target.toLocaleString('es-ES', { maximumFractionDigits: 1 })} h`, ''], { color: MUTED });
+        const diffTxt = bd.diff < 0
+            ? `Faltan ${Math.abs(bd.diff).toLocaleString('es-ES', { maximumFractionDigits: 1 })} h`
+            : bd.diff > 0
+                ? `+${bd.diff.toLocaleString('es-ES', { maximumFractionDigits: 1 })} h sobre el objetivo`
+                : 'Justo en el objetivo';
+        putRow(['Diferencia', '', '', '', diffTxt, ''], { bold: true, color: bd.diff < 0 ? 'FFB91C1C' : bd.diff > 0 ? 'FF92400E' : 'FF1B5E20' });
+    }
+    row += 2;
+
+    // ── Por proyecto ─────────────────────────────────────────────────────
+    if (bd.byProject.length) {
+        title(row, 'Detalle por proyecto (orientativo)'); row += 1;
+        const pcols = [['Módulo', 1, 7], ['Proyecto', 8, 13], ['Inicio', 14, 16], ['Fin', 17, 19], ['Días', 20, 20], ['Horas', 21, 21]];
+        pcols.forEach(([label, c1, c2]) => {
+            ws.mergeCells(row, c1, row, c2);
+            const c = ws.getCell(row, c1);
+            c.value = label;
+            c.font = { bold: true, size: 9, color: { argb: 'FFFFFFFF' } };
+            c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFF8A5C' } };
+            c.alignment = centre; c.border = thin;
+        });
+        row += 1;
+        bd.byProject.forEach((p) => {
+            const vals = [p.moduleName, p.name, fmtLong(parseISODate(p.startDate) || rangeStart), fmtLong(parseISODate(p.endDate) || rangeEnd), p.lectiveDays, `${p.hours.toLocaleString('es-ES', { maximumFractionDigits: 1 })} h`];
+            pcols.forEach(([, c1, c2], i) => {
+                ws.mergeCells(row, c1, row, c2);
+                const c = ws.getCell(row, c1);
+                c.value = vals[i];
+                c.font = { size: 9, color: { argb: INK } };
+                c.alignment = { vertical: 'middle', horizontal: i <= 1 ? 'left' : 'center' };
+                c.border = thin;
+            });
+            row += 1;
+        });
+        row += 2;
+    }
+
+    // ── Tiempo flexible (no lectivo) ────────────────────────────────────
+    title(row, 'Tiempo flexible (vacaciones · no lectivo)'); row += 1;
+    const xcols = [['Bloque', 1, 9], ['Inicio', 10, 13], ['Fin', 14, 17], ['Días naturales', 18, 21]];
+    xcols.forEach(([label, c1, c2]) => {
+        ws.mergeCells(row, c1, row, c2);
+        const c = ws.getCell(row, c1);
+        c.value = label;
+        c.font = { bold: true, size: 9, color: { argb: 'FFFFFFFF' } };
+        c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF7C3AED' } };
+        c.alignment = centre; c.border = thin;
+    });
+    row += 1;
+    if (!flexBlocks.length) {
+        ws.mergeCells(row, 1, row, 21);
+        ws.getCell(row, 1).value = 'No hay bloques de tiempo flexible en este roadmap.';
+        ws.getCell(row, 1).font = { size: 9, italic: true, color: { argb: MUTED } };
+        row += 1;
+    } else {
+        flexBlocks.slice().sort((a, b) => a.start - b.start).forEach((b) => {
+            const days = Math.round((b.end - b.start) / 86400000) + 1;
+            const vals = [b.name, fmtLong(b.start), fmtLong(b.end), days];
+            xcols.forEach(([, c1, c2], i) => {
+                ws.mergeCells(row, c1, row, c2);
+                const c = ws.getCell(row, c1);
+                c.value = vals[i];
+                c.font = { size: 9, color: { argb: INK } };
+                c.alignment = { vertical: 'middle', horizontal: i === 0 ? 'left' : 'center' };
+                c.border = thin;
+                if (i === 0) c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: FILL.flexible } };
+            });
+            row += 1;
+        });
+    }
+    row += 2;
+
+    // ── Festivos en el periodo ───────────────────────────────────────────
+    title(row, 'Festivos en el periodo'); row += 1;
+    const fcols = [['Fecha', 1, 6], ['Día', 7, 9], ['Descripción', 10, 17], ['Ámbito', 18, 21]];
+    fcols.forEach(([label, c1, c2]) => {
+        ws.mergeCells(row, c1, row, c2);
+        const c = ws.getCell(row, c1);
+        c.value = label;
+        c.font = { bold: true, size: 9, color: { argb: 'FFFFFFFF' } };
+        c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: BRAND } };
+        c.alignment = centre; c.border = thin;
+    });
+    row += 1;
+    const holsInRange = Array.from(holidaysSet)
+        .map(iso => parseISODate(iso))
+        .filter(d => d && d >= rangeStart && d <= rangeEnd)
+        .sort((a, b) => a - b);
+    if (!holsInRange.length) {
+        ws.mergeCells(row, 1, row, 21);
+        ws.getCell(row, 1).value = 'No hay festivos marcados dentro del periodo del programa.';
+        ws.getCell(row, 1).font = { size: 9, italic: true, color: { argb: MUTED } };
+        row += 1;
+    } else {
+        holsInRange.forEach((d) => {
+            const computa = workingSet.has(d.getDay());
+            const vals = [fmtLong(d), WD_LBL[(d.getDay() + 6) % 7], computa ? '' : '(cae en fin de semana — no resta horas)', ''];
+            fcols.forEach(([, c1, c2], i) => {
+                ws.mergeCells(row, c1, row, c2);
+                const c = ws.getCell(row, c1);
+                c.value = vals[i];
+                c.font = { size: 9, color: { argb: i === 2 && !computa ? MUTED : INK } };
+                c.alignment = { vertical: 'middle', horizontal: i <= 1 ? 'left' : 'left' };
+                c.border = thin;
+            });
+            row += 1;
+        });
+    }
+    row += 1;
+    ws.mergeCells(row, 1, row, 21);
+    ws.getCell(row, 1).value = 'Descripción y ámbito de cada festivo: completar a mano (no hay ese dato en la app).';
+    ws.getCell(row, 1).font = { size: 8, italic: true, color: { argb: MUTED } };
+
+    // ── Descarga ─────────────────────────────────────────────────────────
+    const buffer = await wb.xlsx.writeBuffer();
+    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `computo-horas-${_exportSafeFileName(promotion.name)}.xlsx`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    showToast('Cómputo de horas exportado a Excel ✓', 'success');
+}
+window.exportHoursXlsx = function () {
+    const promo = window.currentPromotion;
+    const ext = (typeof extendedInfoData !== 'undefined' ? extendedInfoData : null) || window.__promotionExtendedInfo || {};
+    return _exportHoursXlsx(promo, ext);
+};
+
+/**
  * Descarga un archivo .ics (iCalendar) con un evento de día completo por cada
  * elemento del roadmap — pensado para "Ajustes > Importar y exportar >
  * Importar" en Google Calendar. No usa ninguna librería (formato de texto
