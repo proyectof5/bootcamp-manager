@@ -1095,6 +1095,9 @@ export default function PromotionPage() {
                 </label>
               </div>
             </div>
+            {/* Links de la lección al crearla — lo puebla el legacy
+                (renderPlannerItemLinks / addPlannerLink) igual que en itemEditModal. */}
+            <div id="create-item-links-wrapper" style={{ display: 'none' }} />
             <div className="space-y-2" id="create-item-url-wrapper" style={{ display: 'none' }}>
               <Label htmlFor="create-item-url">URL</Label>
               <Input id="create-item-url" type="url" placeholder="https://... (opcional)" />
