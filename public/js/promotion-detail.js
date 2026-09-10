@@ -3707,12 +3707,20 @@ const _GANTT_ZOOM_ORDER = ['month', 'week', 'day'];
  * la rueda a secas sigue haciendo scroll del diagrama. Mantiene bajo el cursor
  * la misma fecha tras el cambio de escala.
  */
+let _ganttWheelZoomBound = false;
 function setupGanttWheelZoom() {
-    const container = gantt && (gantt.$container || document.getElementById('gantt-container'));
-    if (!container || container.dataset.wheelZoom === '1') return;
-    container.dataset.wheelZoom = '1';
+    if (_ganttWheelZoomBound) return;
+    // OJO: NO tocar gantt.$container (el root interno de DHTMLX v10) — ni sus
+    // atributos ni añadirle listeners: DHTMLX lo observa y pierde su propio
+    // manejo de scroll con la rueda. El listener va en gantt.$root
+    // (#gantt-container, el div que controlamos nosotros), que es ancestro del
+    // área de tareas, así que el zoom con Ctrl/⌘ + rueda funciona igual y la
+    // rueda a secas la sigue gestionando DHTMLX sin interferencias.
+    const target = (gantt && gantt.$root) || document.getElementById('gantt-container');
+    if (!target) return;
+    _ganttWheelZoomBound = true;
 
-    container.addEventListener('wheel', function (e) {
+    target.addEventListener('wheel', function (e) {
         if (!(e.ctrlKey || e.metaKey)) return;
         if (!_ganttInitialized) return;
         e.preventDefault();
@@ -3720,7 +3728,7 @@ function setupGanttWheelZoom() {
         // Fecha ahora mismo bajo el cursor, para re-centrar tras el zoom.
         let cursorDate = null;
         try {
-            const taskArea = gantt.$task || container.querySelector('.gantt_task_bg');
+            const taskArea = gantt.$task || target.querySelector('.gantt_task_bg');
             if (taskArea) {
                 const rect = taskArea.getBoundingClientRect();
                 const x = (e.clientX - rect.left) + gantt.getScrollState().x;
