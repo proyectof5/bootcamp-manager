@@ -587,11 +587,18 @@ window.GANTT_DATE_FORMAT = GANTT_DATE_FORMAT;
  *  - `hoursPerDay` = `promotion.hoursPerDay` (jornada, ej. 7 o 7.5); fallback 7.
  *  - Días lectivos = `promotion.workingDays` (fallback Lun-Vie) menos
  *    `promotion.holidays` — mismo criterio que el Gantt (`countWorkingDaysInclusive`).
- *  - Horas de un módulo = días lectivos en su rango completo
- *    [`getModuleDateRange`] × `hoursPerDay`. Asume módulos NO solapados (el
- *    roadmap es conceptualmente secuencial); si se solapan, la suma los
- *    cuenta dos veces — mismo supuesto que la conversión inversa
- *    fecha→semanas del backend (`durationWeeksFromDates`).
+ *  - Horas de un módulo = días lectivos en su rango × `hoursPerDay`. El rango
+ *    es el ENVOLVENTE de sus elementos (cursos + proyectos + lecciones): de la
+ *    fecha más temprana a la más tardía entre `getItemDateRange` de todos
+ *    ellos. Es EXACTAMENTE lo que dibuja la barra del módulo en el Gantt —
+ *    DHTMLX recalcula toda tarea `type: 'project'` (una fila de módulo) para
+ *    cubrir el rango de sus hijos en cuanto tiene alguno (ver
+ *    `buildRoadmapGanttGridExport`). Solo si el módulo NO tiene elementos se
+ *    cae a su rango propio (`getModuleDateRange`). Así el total reacciona a
+ *    mover/redimensionar cualquier elemento del módulo. Asume módulos NO
+ *    solapados entre sí (el roadmap es conceptualmente secuencial); si se
+ *    solapan, la suma los cuenta dos veces — mismo supuesto que la conversión
+ *    inversa fecha→semanas del backend (`durationWeeksFromDates`).
  *  - `total` = suma de las horas de todos los módulos.
  *  - `byProject` es un SUB-desglose informativo dentro de cada módulo (los
  *    proyectos pueden solaparse con cursos, así que sus horas NO tienen por
@@ -634,8 +641,25 @@ function buildHoursBreakdown(promotion, extendedInfo) {
 
     modules.forEach((module, moduleIndex) => {
         const moduleStartWeeksForFallback = getModuleStartWeeks(modules, moduleIndex);
-        const moduleRange = getModuleDateRange(modules, moduleIndex, baseDate);
-        const lectiveDays = countWorkingDaysInclusive(moduleRange.startDate, moduleRange.endDate, workingDaysSet, holidaysSet);
+        const items = getModulePlannerItems(module);
+
+        // Rango ENVOLVENTE de los elementos del módulo (lo que dibuja la barra
+        // del módulo en el Gantt). Si el módulo no tiene elementos, se cae a su
+        // rango propio — mismo criterio que DHTMLX con las tareas `type:'project'`.
+        let envStart = null;
+        let envEnd = null;
+        items.forEach((item) => {
+            const r = getItemDateRange(item, moduleStartWeeksForFallback, baseDate);
+            if (!envStart || r.startDate < envStart) envStart = r.startDate;
+            if (!envEnd || r.endDate > envEnd) envEnd = r.endDate;
+        });
+        if (!envStart || !envEnd) {
+            const ownRange = getModuleDateRange(modules, moduleIndex, baseDate);
+            envStart = ownRange.startDate;
+            envEnd = ownRange.endDate;
+        }
+
+        const lectiveDays = countWorkingDaysInclusive(envStart, envEnd, workingDaysSet, holidaysSet);
         const hours = lectiveDays * hoursPerDay;
         total += hours;
 
@@ -645,11 +669,11 @@ function buildHoursBreakdown(promotion, extendedInfo) {
             name: moduleName,
             hours,
             lectiveDays,
-            startDate: formatISODate(moduleRange.startDate),
-            endDate: formatISODate(moduleRange.endDate),
+            startDate: formatISODate(envStart),
+            endDate: formatISODate(envEnd),
         });
 
-        getModulePlannerItems(module).forEach((item) => {
+        items.forEach((item) => {
             if (item.type !== 'proyecto') return;
             const range = getItemDateRange(item, moduleStartWeeksForFallback, baseDate);
             const projDays = countWorkingDaysInclusive(range.startDate, range.endDate, workingDaysSet, holidaysSet);

@@ -63,6 +63,19 @@ promoción real end-to-end, requiere reiniciar el backend de dev).
 | 3 | Input "Horas lectivas por día" (`number`, `step 0.5`) en `editPromotionModal` (`app/promotion/page.tsx`), bajo "Días lectivos". Prefill desde `promotion.hoursPerDay` (fallback 7) en `openEditPromotionModal`; se envía en el `payload` del `PUT` en `saveEditPromotion` solo si es `> 0`. | frontend | `feat/horas-lectivas` | ✅ código, sin PR |
 | 4 | `gantt-adapter.js`: `buildHoursBreakdown(promotion, extendedInfo)` puro → `{ hoursPerDay, total, byModule[], byProject[], target, diff }` (horas de módulo = días lectivos de su `getModuleDateRange` × jornada; `total` = suma de módulos; `byProject` sub-desglose informativo; `diff` = `total − extendedInfo.totalHours`). Panel React `_components/HoursPanel.tsx` (portal a `#program-details-hours`, refresco vía `window.__refreshHoursPanel`). Pestaña **"Cómputo de horas"** en grupo `planning`: `<button>`/`<div>` en `body.ts`, entrada en `tabNameMap` y en `PROGRAM_DETAILS_TAB_GROUPS`, `__refreshHoursPanel()` disparado desde `loadPromotion`/`loadModules`/`loadExtendedInfo` y al abrir la pestaña. Verificado: `buildHoursBreakdown` con harness Node (20 casos) + `next build` OK + panel renderizado en vivo contra la promo "IA School Bootcamp - P6" (4 módulos, total 1246 h, camino "Faltan 254 h" con objetivo simulado). | frontend | `feat/horas-lectivas` | ✅ código, sin PR |
 
+## Cambios posteriores
+
+- **Horas de módulo = rango ENVOLVENTE** (rama `feat/gantt-fullscreen-redesign`,
+  a petición del usuario): antes `buildHoursBreakdown` usaba solo la barra del
+  módulo (`getModuleDateRange`), así que mover/redimensionar un curso o
+  proyecto dentro del módulo no cambiaba el total — el usuario esperaba que sí.
+  Ahora el rango de cada módulo va desde la fecha más temprana hasta la más
+  tardía entre su barra y TODOS sus elementos (cursos + proyectos + lecciones);
+  la barra actúa de suelo (nunca acorta). Así el total reacciona a cualquier
+  movimiento dentro del módulo. El refresco (`__refreshHoursPanel` desde
+  `loadModules` tras `persistGanttTaskChange`) ya funcionaba; lo que no
+  cambiaba era el número. `byProject` no cambia (sigue siendo por-proyecto).
+
 ## Pendiente / Próximos pasos
 
 - **Fase 5 (cerrar verificación)**: el backend de dev seguía con el código

@@ -75,12 +75,34 @@ function lectiveDays(startIso: string, endIso: string): number {
 // openItemEditModal), leyendo de window.currentPromotion (ya cargada).
 function itemForTask(task: GanttTask): { item: Item | null; moduleName: string } {
   const pm = w().currentPromotion;
-  const module = pm && Array.isArray(pm.modules) ? pm.modules[task.moduleIndex] : null;
+  const modules: Item[] = pm && Array.isArray(pm.modules) ? pm.modules : [];
+  // Las tareas de módulo traen `itemIndex` (no `moduleIndex`); los hijos traen
+  // `moduleIndex`. Fallback por `moduleId` por si acaso.
+  const mIdx =
+    typeof task.moduleIndex === 'number' ? task.moduleIndex
+    : typeof task.itemIndex === 'number' ? task.itemIndex
+    : modules.findIndex((m) => m && m.id === task.moduleId);
+  const module = mIdx >= 0 ? modules[mIdx] : null;
+
+  if (task.itemType === 'module' || task.itemType === 'leccion-group') {
+    // Las fechas se leen de la tarea de DHTMLX (start_date/end_date), que
+    // SIEMPRE están (dibujadas), a diferencia de module.startDate/endDate que
+    // pueden no ser literales (módulo sin migrar). end_date de DHTMLX es
+    // exclusivo → se resta un día para el último día activo.
+    const toISO = (d: unknown) =>
+      d instanceof Date && !Number.isNaN(d.getTime())
+        ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+        : '';
+    let endISO = '';
+    if (task.end_date instanceof Date && !Number.isNaN(task.end_date.getTime())) {
+      const e = new Date(task.end_date.getFullYear(), task.end_date.getMonth(), task.end_date.getDate() - 1);
+      endISO = toISO(e);
+    }
+    const nm = (module && module.name) || task.text || 'Módulo';
+    return { item: { name: task.text || nm, startDate: toISO(task.start_date), endDate: endISO }, moduleName: nm };
+  }
   if (!module) return { item: null, moduleName: '' };
   const moduleName = module.name || 'Módulo';
-  if (task.itemType === 'module' || task.itemType === 'leccion-group') {
-    return { item: { name: task.text || moduleName, startDate: module.startDate, endDate: module.endDate }, moduleName };
-  }
   let item: Item | null = null;
   if (Array.isArray(module.plannerItems) && module.plannerItems.length && task.plannerItemId) {
     item = module.plannerItems.find((i: Item) => i.id === task.plannerItemId) || null;
