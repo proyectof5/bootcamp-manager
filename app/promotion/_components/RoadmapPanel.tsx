@@ -196,13 +196,15 @@ function LegendPopover() {
   );
 }
 
-// Exportar el roadmap a Asana como subtareas (Fase 2 de
-// docs/tasks/exportar-roadmap-asana.md). Requiere que el docente haya conectado
-// su cuenta de Asana en Área del Docente › Accesos. Al pulsar se comprueba el
-// estado; si está conectado se pide la URL de la tarea padre y se exporta.
+// Exportar el roadmap a Asana como subtareas (docs/tasks/exportar-roadmap-asana.md).
+// Requiere que el docente haya conectado su cuenta de Asana en Área del Docente ›
+// Accesos. Al pulsar se comprueba el estado; si está conectado se pide la URL de
+// la tarea padre y se exporta. IDEMPOTENTE (Fase 3): re-exportar actualiza las
+// tareas ya creadas en vez de duplicar; prefija la última URL usada.
 function AsanaExportButton() {
   const [open, setOpen] = useState(false);
   const [url, setUrl] = useState('');
+  const [lastAt, setLastAt] = useState<string | null>(null);
   const [phase, setPhase] = useState<'idle' | 'checking' | 'running'>('idle');
   const [result, setResult] = useState<{ ok: boolean; text: string; link?: string } | null>(null);
 
@@ -221,6 +223,13 @@ function AsanaExportButton() {
         setPhase('idle');
         return;
       }
+      try {
+        const info = await w().asanaGetExportInfo?.();
+        if (info?.exported) {
+          if (info.parentTaskUrl && !url) setUrl(info.parentTaskUrl);
+          setLastAt(info.lastExportedAt || null);
+        }
+      } catch { /* prefijado opcional */ }
       setOpen(true);
       setPhase('idle');
     } catch {
@@ -236,11 +245,16 @@ function AsanaExportButton() {
     try {
       const r = await w().exportRoadmapToAsana?.(url.trim());
       const errs = Array.isArray(r?.errors) ? r.errors.length : 0;
+      const orphans = Array.isArray(r?.orphans) ? r.orphans.length : 0;
+      const parts = [`Creadas ${r?.created ?? 0}`, `actualizadas ${r?.updated ?? 0}`];
+      if (orphans) parts.push(`${orphans} ya no están en el roadmap (revísalas en Asana)`);
+      if (errs) parts.push(`${errs} con error`);
       setResult({
         ok: true,
-        text: `Creadas ${r?.created ?? 0} tareas en Asana${errs ? ` · ${errs} con error` : ''}.`,
+        text: (r?.parentChanged ? 'Tarea padre nueva: se creó todo de cero. ' : '') + parts.join(' · ') + '.',
         link: r?.parentTaskUrl,
       });
+      setLastAt(new Date().toISOString());
     } catch (e) {
       const err = e as { code?: string; message?: string };
       const msg = err?.code === 'asana_not_connected'
@@ -275,8 +289,16 @@ function AsanaExportButton() {
             <p className="text-muted small mb-3">
               Pega la URL de la tarea de Asana bajo la que colgar el roadmap. Se
               creará una subtarea por módulo y una sub-subtarea por
-              curso/proyecto/lección, con fechas.
+              curso/proyecto/lección, con fechas. Si ya exportaste antes a esa
+              misma tarea, se actualizan las subtareas existentes en vez de
+              duplicarlas.
             </p>
+            {lastAt && (
+              <p className="text-muted small mb-3">
+                Última exportación:{' '}
+                {new Date(lastAt).toLocaleString('es-ES', { dateStyle: 'medium', timeStyle: 'short' })}
+              </p>
+            )}
             <label className="form-label small fw-semibold">URL de la tarea de Asana</label>
             <input
               type="url"
