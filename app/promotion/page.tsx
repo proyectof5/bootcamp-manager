@@ -8,6 +8,7 @@ import { ProgramCompetencesHost } from './_components/ProgramCompetences';
 import { StudentTrackingHost } from './_components/StudentTracking';
 import { CalendarSettingsHost } from './_components/CalendarSettings';
 import { ScheduleSettingsHost } from './_components/ScheduleSettings';
+import { HoursPanelHost } from './_components/HoursPanel';
 import { SectionsManagerHost } from './_components/SectionsManager';
 import { QuickLinksManagerHost } from './_components/QuickLinksManager';
 import { TeamManagerHost } from './_components/TeamManager';
@@ -511,6 +512,11 @@ export default function PromotionPage() {
       {/* Sub-tab "Horario" de Contenido del Programa (spec 0014 Fase C): React vía portal
           a #program-details-schedule (ids legacy sched-* preservados para saveExtendedInfo). */}
       <ScheduleSettingsHost />
+      {/* Sub-tab "Cómputo de horas" de Contenido del Programa (spec horas-lectivas.md): React
+          vía portal a #program-details-hours. Panel derivado (sin edición): computa horas
+          lectivas del roadmap con window.buildHoursBreakdown (gantt-adapter.js) y las compara
+          con extendedInfo.totalHours. Se refresca vía window.__refreshHoursPanel(). */}
+      <HoursPanelHost />
       {/* Sub-tab "Secciones" de Contenido del Programa (spec 0014 Fase C): React vía portal
           a #program-details-sections (lista + CRUD con Dialog propio). El sectionModal de
           abajo queda inerte (nada lo abre). */}
@@ -671,6 +677,22 @@ export default function PromotionPage() {
                   </label>
                 ))}
               </div>
+            </div>
+            {/* Horas lectivas por día (promotion.hoursPerDay) — jornada de la
+                promoción. Alimenta el cómputo derivado de la pestaña "Cómputo de
+                horas". Admite decimales (7.5 = 7h30). Si se deja vacío, el
+                backend mantiene el default (7). */}
+            <div className="space-y-2 max-w-[12rem]">
+              <Label htmlFor="edit-promotion-hours-per-day" className="font-semibold">
+                Horas lectivas por día
+              </Label>
+              <Input
+                id="edit-promotion-hours-per-day"
+                type="number"
+                min={0.5}
+                step={0.5}
+                placeholder="ej. 7.5"
+              />
             </div>
             {/* Alert manipulado por JS legacy: añade/quita 'd-none' y setea textContent */}
             <div id="edit-promotion-alert" className="d-none mt-2" role="alert">

@@ -520,6 +520,10 @@ async function loadExtendedInfo() {
             // Expose competences globally so the project competence picker can access them
             // even before ProgramCompetences.init() runs
             window._extendedInfoCompetences = extendedInfoData.competences || [];
+            // Expuesto para el panel "Cómputo de horas" (React, spec horas-lectivas.md):
+            // solo necesita extendedInfoData.totalHours como objetivo de la titulación.
+            window.__promotionExtendedInfo = extendedInfoData;
+            if (window.__refreshHoursPanel) window.__refreshHoursPanel();
 
             // Populate Schedule + auto-save: migrado a React (spec 0014 Fase C →
             // _components/ScheduleSettings.tsx, portal a #program-details-schedule).
@@ -3217,6 +3221,11 @@ async function loadPromotion() {
                     addCollabBtn.style.display = isOwner ? 'block' : 'none';
                 }
             }
+
+            // Panel "Cómputo de horas" (spec horas-lectivas.md): depende de
+            // promotion.hoursPerDay/workingDays/holidays/modules — refrescar tras
+            // recargar la promo (p.ej. después de guardar el modal de edición).
+            if (window.__refreshHoursPanel) window.__refreshHoursPanel();
         }
     } catch (error) {
         console.error('Error loading promotion:', error);
@@ -3239,6 +3248,9 @@ async function loadModules() {
             window.promotionModules = promotionModules;
             displayModules(promotion.modules || []);
             generateGanttChart(promotion);
+            // Roadmap recargado → las fechas que computa el panel "Cómputo de
+            // horas" pueden haber cambiado (spec horas-lectivas.md).
+            if (window.__refreshHoursPanel) window.__refreshHoursPanel();
         }
     } catch (error) {
         console.error('Error loading modules:', error);
@@ -8342,6 +8354,7 @@ function openEditPromotionModal() {
         const descEl   = document.getElementById('edit-promotion-desc');
         const weeksEl  = document.getElementById('edit-promotion-weeks');
         const hoursEl  = document.getElementById('edit-promotion-hours');
+        const hoursPerDayEl = document.getElementById('edit-promotion-hours-per-day');
         const startEl  = document.getElementById('edit-promotion-start');
         const endEl    = document.getElementById('edit-promotion-end');
         const alertEl  = document.getElementById('edit-promotion-alert');
@@ -8351,6 +8364,10 @@ function openEditPromotionModal() {
         if (weeksEl) weeksEl.value = promotion.weeks       || '';
         // Pre-fill totalHours from extendedInfoData if available
         if (hoursEl) hoursEl.value = extendedInfoData?.totalHours || '';
+        // Jornada lectiva (horas lectivas, spec horas-lectivas.md). El backend
+        // ya la devuelve como número con default 7 para las promos previas a
+        // la columna, así que promotion.hoursPerDay siempre trae algo usable.
+        if (hoursPerDayEl) hoursPerDayEl.value = promotion.hoursPerDay ?? 7;
 
         // Dates arrive as ISO strings — convert to YYYY-MM-DD for <input type="date">
         if (startEl) startEl.value = promotion.startDate ? promotion.startDate.slice(0, 10) : '';
@@ -8376,6 +8393,7 @@ async function saveEditPromotion(event) {
     const descEl   = document.getElementById('edit-promotion-desc');
     const weeksEl  = document.getElementById('edit-promotion-weeks');
     const hoursEl  = document.getElementById('edit-promotion-hours');
+    const hoursPerDayEl = document.getElementById('edit-promotion-hours-per-day');
     const startEl  = document.getElementById('edit-promotion-start');
     const endEl    = document.getElementById('edit-promotion-end');
     const alertEl  = document.getElementById('edit-promotion-alert');
@@ -8387,11 +8405,18 @@ async function saveEditPromotion(event) {
         .map((cb) => parseInt(cb.value, 10))
         .sort((a, b) => a - b);
 
+    // Jornada lectiva: número > 0 (admite decimales, 7.5 = 7h30). Solo se
+    // envía si es válido; vacío/0/negativo → undefined y el backend mantiene
+    // el valor que ya tuviera (o su default 7).
+    const hoursPerDayRaw = parseFloat(hoursPerDayEl?.value);
+    const hoursPerDay = Number.isFinite(hoursPerDayRaw) && hoursPerDayRaw > 0 ? hoursPerDayRaw : undefined;
+
     const payload = {
         name:        nameEl?.value.trim(),
         description: descEl?.value.trim(),
         weeks:       parseInt(weeksEl?.value, 10) || undefined,
         totalHours:  parseInt(hoursEl?.value, 10) || undefined,
+        hoursPerDay,
         startDate:   startEl?.value || undefined,
         endDate:     endEl?.value   || undefined,
         // Días lectivos (roadmap por fechas): solo se envían si al menos uno
@@ -11357,7 +11382,7 @@ function updateProgramDetailsSubtitle(sectionName) {
 // restaurar el tab guardado en sessionStorage al cargar, o un salto directo
 // como el de Evaluación → 'virtual-classroom').
 const PROGRAM_DETAILS_TAB_GROUPS = {
-    roadmap: 'planning', calendar: 'planning', schedule: 'planning',
+    roadmap: 'planning', calendar: 'planning', schedule: 'planning', hours: 'planning',
     pildoras: 'content', evaluation: 'content', sections: 'content',
     resources: 'resources', quicklinks: 'resources',
     team: 'team', 'virtual-classroom': 'team',
@@ -11414,6 +11439,7 @@ function switchProgramDetailsTab(tabName) {
         'roadmap': { tabId: 'program-details-roadmap', buttonId: 'program-details-roadmap-tab', label: 'Roadmap' },
         'calendar': { tabId: 'program-details-calendar', buttonId: 'program-details-calendar-tab', label: 'Calendario' },
         'schedule': { tabId: 'program-details-schedule', buttonId: 'program-details-schedule-tab', label: 'Horario' },
+        'hours': { tabId: 'program-details-hours', buttonId: 'program-details-hours-tab', label: 'Cómputo de horas' },
         'team': { tabId: 'program-details-team', buttonId: 'program-details-team-tab', label: 'Team' },
         'resources': { tabId: 'program-details-resources', buttonId: 'program-details-resources-tab', label: 'Resources' },
         'pildoras': { tabId: 'program-details-pildoras', buttonId: 'program-details-pildoras-tab', label: 'Píldoras' },
@@ -11468,6 +11494,7 @@ function switchProgramDetailsTab(tabName) {
         }
     }
     if (tabName === 'calendar') loadCalendar();
+    if (tabName === 'hours' && window.__refreshHoursPanel) window.__refreshHoursPanel();
     if (tabName === 'virtual-classroom') {
         // Aseguramos que el estado de evaluación (proyectos + competences) esté cargado
         if (!window._evalState || !(window._evalState.modules || []).length) {
