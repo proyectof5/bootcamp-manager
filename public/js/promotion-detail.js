@@ -10025,6 +10025,17 @@ async function exportRoadmapToAsana(parentTaskUrl) {
 }
 window.exportRoadmapToAsana = exportRoadmapToAsana;
 
+// Fase 3: info de la última exportación (para prefijar el modal).
+async function asanaGetExportInfo() {
+    const token = localStorage.getItem('token');
+    const res = await fetch(`${API_URL}/api/promotions/${promotionId}/asana-export-info`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (!res.ok) return { exported: false };
+    return res.json();
+}
+window.asanaGetExportInfo = asanaGetExportInfo;
+
 // ==================== STUDENT SELECTION FUNCTIONS ====================
 
 // ── Bulk Reports ──────────────────────────────────────────────────────────
