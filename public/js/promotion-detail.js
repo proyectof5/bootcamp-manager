@@ -3476,6 +3476,12 @@ let _ganttZoomLevel = 'week';
 let _ganttWorkingDaysSet = new Set([1, 2, 3, 4, 5]);
 let _ganttHolidaysSet = new Set();
 
+// Timestamp del último clic derecho gestionado en el Gantt. onEmptyClick lo
+// consulta para NO abrir el modal de "crear elemento" cuando el gesto es en
+// realidad un clic derecho (en algunas plataformas/trackpads el contextmenu
+// va acompañado de un click que DHTMLX interpreta como onEmptyClick).
+let _ganttLastCtxMenuAt = 0;
+
 /**
  * `true` si `date` es fin de semana (según promotion.workingDays) o festivo
  * (según promotion.holidays) para la promoción actual.
@@ -4761,14 +4767,39 @@ function bindGanttEditingEvents() {
         return false; // evita que se abra el lightbox nativo de DHTMLX
     });
 
-    // Clic derecho: menú contextual ligero con la opción "Eliminar".
+    // Clic derecho: sobre una barra → menú "Eliminar"; sobre un hueco de la
+    // línea de tiempo → menú "Marcar/Quitar festivo" del día bajo el cursor
+    // (mismos festivos que la Lista de Asistencia — promotion.holidays).
     gantt.attachEvent('onContextMenu', function (taskId, linkId, e) {
-        if (!taskId) return true;
+        _ganttLastCtxMenuAt = Date.now();
+        if (taskId) {
+            e.preventDefault();
+            showGanttContextMenu(gantt.getTask(taskId), e.clientX, e.clientY);
+            return false;
+        }
+        const dateKey = _ganttDateKeyFromEvent(e);
+        if (!dateKey) return true;   // clic sobre el árbol de nombres → menú del navegador
         e.preventDefault();
-        const task = gantt.getTask(taskId);
-        showGanttContextMenu(task, e.clientX, e.clientY);
+        showGanttDateContextMenu(dateKey, e.clientX, e.clientY);
         return false;
     });
+
+    // Red de seguridad: algunos navegadores/trackpads disparan un `contextmenu`
+    // nativo aquí sin pasar por onContextMenu de DHTMLX. Se escucha en $root
+    // (estable entre renders, igual que el zoom con rueda); _ganttDateKeyFromEvent
+    // ya descarta los clics fuera de la línea de tiempo (árbol/grid).
+    const _root = (gantt && gantt.$root) || document.getElementById('gantt-container');
+    if (_root && !_root.dataset.ctxFestivoBound) {
+        _root.dataset.ctxFestivoBound = '1';
+        _root.addEventListener('contextmenu', function (e) {
+            _ganttLastCtxMenuAt = Date.now();
+            if (document.getElementById('gantt-context-menu')) { e.preventDefault(); return; }
+            const dateKey = _ganttDateKeyFromEvent(e);
+            if (!dateKey) return;   // fuera de la línea de tiempo → menú del navegador
+            e.preventDefault();
+            showGanttDateContextMenu(dateKey, e.clientX, e.clientY);
+        });
+    }
 
     // Clic en un hueco vacío de la línea de tiempo: abre el selector de tipo
     // (Fase 7, TASK-33) — módulo/curso/proyecto/lección/tiempo flexible —
@@ -4777,6 +4808,13 @@ function bindGanttEditingEvents() {
     // de nombres) — un clic sobre el árbol/grid no corresponde a ninguna
     // fecha y se ignora (con aviso en consola).
     gantt.attachEvent('onEmptyClick', function (e) {
+        // No abrir el modal de crear si el gesto fue un clic derecho (menú de
+        // festivo) — ni el propio evento, ni un click "fantasma" que llega
+        // justo después del contextmenu en algunos trackpads/navegadores.
+        if (e && (e.button === 2 || e.which === 3)) return true;
+        if (document.getElementById('gantt-context-menu')) return true;
+        if (Date.now() - _ganttLastCtxMenuAt < 500) return true;
+
         const timelineArea = gantt.$task || (gantt.$container && gantt.$container.querySelector('.gantt_task_bg'));
         if (!timelineArea) {
             console.warn('[Gantt] onEmptyClick: no se encontró el área de la línea de tiempo (gantt.$task)');
@@ -4843,6 +4881,124 @@ function removeGanttContextMenu() {
     const existing = document.getElementById('gantt-context-menu');
     if (existing) existing.remove();
     document.removeEventListener('keydown', _ganttContextMenuEscHandler);
+}
+
+/**
+ * Fecha ISO ("YYYY-MM-DD") del día bajo el cursor en la línea de tiempo del
+ * Gantt a partir del evento de ratón, o null si el clic no cae sobre la línea
+ * de tiempo (p.ej. sobre el árbol de nombres). Mismo cálculo que onEmptyClick.
+ * @param {MouseEvent} e
+ * @returns {string|null}
+ */
+function _ganttDateKeyFromEvent(e) {
+    const timelineArea = gantt.$task || (gantt.$container && gantt.$container.querySelector('.gantt_task_bg'));
+    if (!timelineArea) return null;
+    const rect = timelineArea.getBoundingClientRect();
+    if (e.clientX < rect.left || e.clientX > rect.right) return null;
+    const x = (e.clientX - rect.left) + gantt.getScrollState().x;
+    const d = gantt.dateFromPos(x);
+    return d ? formatISODate(d) : null;
+}
+
+/**
+ * Menú contextual del día del Gantt: marcar/quitar festivo. Los festivos son
+ * los MISMOS que la Lista de Asistencia (promotion.holidays), así que el
+ * cambio se ve también allí y en el Cómputo de horas.
+ * @param {string} dateKey - "YYYY-MM-DD"
+ * @param {number} x @param {number} y - coords viewport del clic
+ */
+function showGanttDateContextMenu(dateKey, x, y) {
+    removeGanttContextMenu();
+
+    const [yy, mm, dd] = dateKey.split('-').map(Number);
+    const dow = new Date(yy, mm - 1, dd).getDay();
+    const isWeekend = !_ganttWorkingDaysSet.has(dow);
+    const isHoliday = _ganttHolidaysSet.has(dateKey);
+    const pretty = new Date(yy, mm - 1, dd).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long' });
+
+    const menu = document.createElement('div');
+    menu.id = 'gantt-context-menu';
+    menu.className = 'dropdown-menu show';
+    menu.style.cssText = `position:fixed;left:${x}px;top:${y}px;z-index:3000;`;
+
+    const header = document.createElement('h6');
+    header.className = 'dropdown-header text-capitalize';
+    header.textContent = pretty;
+    menu.appendChild(header);
+
+    if (isWeekend && !isHoliday) {
+        const note = document.createElement('span');
+        note.className = 'dropdown-item-text text-muted small';
+        note.textContent = 'Fin de semana (ya no lectivo)';
+        menu.appendChild(note);
+    } else {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'dropdown-item';
+        btn.innerHTML = isHoliday
+            ? '<i class="bi bi-calendar-check me-2"></i>Quitar festivo (volver a lectivo)'
+            : '<i class="bi bi-calendar-x me-2"></i>Marcar como festivo';
+        btn.onclick = () => {
+            removeGanttContextMenu();
+            _ganttToggleHoliday(dateKey);
+        };
+        menu.appendChild(btn);
+    }
+
+    document.body.appendChild(menu);
+    // Reposiciona si se sale por la derecha/abajo.
+    const r = menu.getBoundingClientRect();
+    if (r.right > window.innerWidth) menu.style.left = `${Math.max(4, window.innerWidth - r.width - 4)}px`;
+    if (r.bottom > window.innerHeight) menu.style.top = `${Math.max(4, window.innerHeight - r.height - 4)}px`;
+
+    setTimeout(() => {
+        document.addEventListener('click', removeGanttContextMenu, { once: true });
+        document.addEventListener('keydown', _ganttContextMenuEscHandler);
+    }, 0);
+}
+
+/**
+ * Alterna un día como festivo desde el Gantt: actualiza los sets en memoria
+ * (_ganttHolidaysSet, promotionHolidays, currentPromotion.holidays), lo
+ * persiste con PUT /holidays y refresca Gantt + Cómputo de horas + Asistencia.
+ * @param {string} dateKey - "YYYY-MM-DD"
+ */
+async function _ganttToggleHoliday(dateKey) {
+    const wasHoliday = _ganttHolidaysSet.has(dateKey);
+    if (wasHoliday) _ganttHolidaysSet.delete(dateKey);
+    else _ganttHolidaysSet.add(dateKey);
+
+    // Mantener sincronizadas las otras vistas que leen festivos.
+    promotionHolidays = new Set(_ganttHolidaysSet);
+    if (window.currentPromotion) window.currentPromotion.holidays = [..._ganttHolidaysSet];
+
+    try {
+        const token = localStorage.getItem('token');
+        const res = await fetch(`${API_URL}/api/promotions/${promotionId}/holidays`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+            body: JSON.stringify({ holidays: [...promotionHolidays] })
+        });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    } catch (err) {
+        // Revertir el cambio en memoria si no se pudo guardar.
+        if (wasHoliday) _ganttHolidaysSet.add(dateKey);
+        else _ganttHolidaysSet.delete(dateKey);
+        promotionHolidays = new Set(_ganttHolidaysSet);
+        if (window.currentPromotion) window.currentPromotion.holidays = [..._ganttHolidaysSet];
+        window.showApiToast?.('No se pudo guardar el festivo', 'danger');
+        return;
+    }
+
+    if (typeof gantt !== 'undefined' && gantt.render) gantt.render();
+    if (typeof renderAttendanceTable === 'function') renderAttendanceTable();
+    if (window.__refreshHoursPanel) window.__refreshHoursPanel();
+
+    const hint = _ganttZoomLevel === 'day' ? '' : ' (cambia el zoom a «Día» para verlo sombreado)';
+    window.showApiToast?.(
+        wasHoliday ? 'Día vuelto a lectivo' : `Día marcado como festivo${hint}`,
+        'success', 2500
+    );
 }
 
 /**
