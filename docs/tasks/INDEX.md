@@ -15,6 +15,7 @@ Leyenda: ✅ spec completo · 🟡 spec con pendientes · ⬜ sin spec todavía.
 | Gantt a pantalla completa + panel lateral (estilo Asana) | 🟡 [gantt-pantalla-completa-drawer.md](gantt-pantalla-completa-drawer.md) | `RoadmapPanel.tsx`, `RoadmapDetailDrawer.tsx`, `promotion-detail.js` (`persistRoadmapItemEdit`/`onTaskClick`), `promotion-detail.css` |
 | Horas lectivas (total formación, por módulo/proyecto, jornada por promoción) | 🟡 [horas-lectivas.md](horas-lectivas.md) | `public/js/gantt-adapter.js`, `app/promotion/page.tsx`, `Promotion.js` (backend) |
 | Selector de fecha al editar (mes actual) | 🟡 [fecha-picker-mes-actual.md](fecha-picker-mes-actual.md) | `app/promotion/page.tsx` (inputs de fecha), `promotion-detail.js` |
+| Exportar roadmap a Asana (OAuth por docente + subtareas) | ⬜ [exportar-roadmap-asana.md](exportar-roadmap-asana.md) | `server.js` (`/api/integrations/asana/*`, `/export-asana`), `AsanaConnection.js` / `AsanaRoadmapExport.js` (backend), `AccessSettingsPanel.tsx`, `RoadmapPanel.tsx` |
 | Evaluación de competencias / rúbricas | 🟡 [evaluacion-competencias.md](evaluacion-competencias.md) | `EvaluationGridPanel.tsx`, `EvaluationCriteria.tsx`, `ProgramCompetences.tsx`, `_lib/reports.ts` |
 | Asistencia y festivos | ✅ [asistencia-festivos.md](asistencia-festivos.md) | `AttendancePanel.tsx`, `renderAttendanceTable` (promotion-detail.js) |
 | Plantillas de bootcamp | ⬜ | `BootcampTemplate` (backend), `templates-from-promotion` (server.js) |
