@@ -151,6 +151,17 @@ const evalProjPickerBodyHtml = `
         </select>
         <span class="ms-auto badge bg-light text-dark border" id="epcp-selected-count">0 seleccionadas</span>
     </div>
+    <div class="px-3 py-2 border-bottom bg-light d-flex flex-wrap gap-2 align-items-center">
+        <small class="text-muted fw-semibold me-1"><i class="bi bi-tools me-1"></i>Herramientas de las competencias visibles:</small>
+        <button type="button" class="btn btn-outline-primary btn-sm" id="epcp-select-all-tools-global"
+            onclick="window._evalProjPickerBulkTools(true)">
+            <i class="bi bi-check-all me-1"></i>Seleccionar todas
+        </button>
+        <button type="button" class="btn btn-outline-secondary btn-sm" id="epcp-clear-all-tools-global"
+            onclick="window._evalProjPickerBulkTools(false)">
+            <i class="bi bi-x-lg me-1"></i>Deseleccionar todas
+        </button>
+    </div>
     <div id="epcp-list" class="p-3" style="max-height:60vh;overflow-y:auto;"></div>
 `;
 const EvalProjPickerBody = memo(function EvalProjPickerBody() {

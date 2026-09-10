@@ -13316,6 +13316,33 @@ window._evalProjPickerSelectAllTools = function (compId) {
     }
 };
 
+// Botones globales: selecciona / deselecciona TODAS las herramientas de todas
+// las competencias visibles (respeta el filtro de búsqueda/área). Con select=true
+// también marca la competencia; con select=false la desmarca (una competencia
+// sin herramientas que evaluar no aporta nada).
+window._evalProjPickerBulkTools = function (select) {
+    const state = window._evalProjPickerState;
+    if (!state) return;
+    const rows = [...document.querySelectorAll('#epcp-list .epcp-row')]
+        .filter(r => r.style.display !== 'none');
+    const compIds = rows.length
+        ? rows.map(r => String(r.dataset.compId))
+        : state.catalog.map(c => String(c.id));
+    compIds.forEach(compId => {
+        const comp = state.catalog.find(c => String(c.id) === compId);
+        if (!comp) return;
+        if (select) {
+            state.selectedIds.add(compId);
+            state.competenceTools[compId] = [...(comp.allTools || [])];
+        } else {
+            state.selectedIds.delete(compId);
+            delete state.competenceTools[compId];
+        }
+    });
+    _renderEvalProjPickerList();
+    _filterEvalProjPicker();   // re-aplica el filtro visible tras el re-render
+};
+
 async function saveEvalProjectCompetences() {
     const state = window._evalProjPickerState;
     if (!state) return;
