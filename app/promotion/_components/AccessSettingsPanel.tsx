@@ -159,6 +159,11 @@ function AccessSettingsPanel() {
           </div>
         </div>
 
+        {/* Asana — conexión OAuth de mi cuenta (para exportar el roadmap a Asana) */}
+        <div className="col-lg-6">
+          <AsanaAccountCard />
+        </div>
+
         {/* Zoom Credentials Card */}
         <div className="col-lg-6">
           <div className="card h-100 border-0 shadow-sm">
@@ -208,6 +213,128 @@ function AccessSettingsPanel() {
             </div>
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Asana: conexión OAuth de la cuenta del docente ──────────────────────────
+// Fase 1 de docs/tasks/exportar-roadmap-asana.md. Cada docente conecta su
+// cuenta de Asana una vez (OAuth); esa conexión luego permitirá exportar el
+// roadmap como subtareas. Popup + poll de estado + postMessage del callback.
+interface AsanaStatus {
+  configured: boolean;
+  connected: boolean;
+  asanaName?: string | null;
+  asanaEmail?: string | null;
+}
+
+function AsanaAccountCard() {
+  const [status, setStatus] = useState<AsanaStatus | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const refresh = async () => {
+    try {
+      const s = (await w().asanaGetStatus?.()) as AsanaStatus | undefined;
+      setStatus(s || { configured: false, connected: false });
+    } catch {
+      setStatus({ configured: false, connected: false });
+    }
+  };
+
+  useEffect(() => {
+    refresh();
+    const onFocus = () => refresh();
+    window.addEventListener('focus', onFocus);
+    return () => window.removeEventListener('focus', onFocus);
+  }, []);
+
+  const connect = async () => {
+    setError(null);
+    setBusy(true);
+    try {
+      const url = await w().asanaGetAuthorizeUrl?.();
+      if (!url) throw new Error('sin_url');
+      window.open(url, 'asana-oauth', 'width=620,height=780,noopener=no');
+
+      // Espera a que el callback avise (postMessage) o a que el estado cambie.
+      const started = Date.now();
+      const onMsg = (e: MessageEvent) => {
+        if (e?.data?.source === 'asana-oauth') { cleanup(); refresh().finally(() => setBusy(false)); }
+      };
+      const poll = setInterval(async () => {
+        const s = (await w().asanaGetStatus?.()) as AsanaStatus | undefined;
+        if (s?.connected || Date.now() - started > 120000) {
+          cleanup();
+          setStatus(s || null);
+          setBusy(false);
+        }
+      }, 2500);
+      const cleanup = () => { clearInterval(poll); window.removeEventListener('message', onMsg); };
+      window.addEventListener('message', onMsg);
+    } catch (e) {
+      setBusy(false);
+      setError((e as Error)?.message === 'asana_not_configured'
+        ? 'La integración con Asana no está configurada en el servidor.'
+        : 'No se pudo iniciar la conexión con Asana.');
+    }
+  };
+
+  const disconnect = async () => {
+    setBusy(true);
+    setError(null);
+    try {
+      await w().asanaDisconnect?.();
+    } catch {
+      setError('No se pudo desconectar.');
+    }
+    await refresh();
+    setBusy(false);
+  };
+
+  return (
+    <div className="card h-100 border-0 shadow-sm">
+      <div className="card-header" style={{ background: 'linear-gradient(135deg, #F06595 0%, #CC5DE8 100%)' }}>
+        <h6 className="mb-0 text-white"><i className="bi bi-person-badge me-2" />Asana — mi cuenta</h6>
+      </div>
+      <div className="card-body">
+        <p className="small text-muted mb-3">
+          Conecta tu cuenta de Asana para poder <strong>exportar el roadmap</strong> como
+          subtareas. Cada docente conecta la suya; solo hace falta una vez.
+        </p>
+
+        {status == null ? (
+          <div className="text-muted small"><span className="spinner-border spinner-border-sm me-2" role="status" />Comprobando…</div>
+        ) : !status.configured ? (
+          <div className="alert alert-secondary small mb-0 p-2">
+            La integración con Asana no está activada en el servidor todavía.
+          </div>
+        ) : status.connected ? (
+          <>
+            <div className="d-flex align-items-center gap-2 mb-3">
+              <span className="badge rounded-pill text-bg-success"><i className="bi bi-check-lg me-1" />Conectado</span>
+              <span className="small text-truncate">{status.asanaEmail || status.asanaName}</span>
+            </div>
+            <button type="button" className="btn btn-sm btn-outline-danger w-100" disabled={busy} onClick={disconnect}>
+              <i className="bi bi-x-circle me-1" />Desconectar mi cuenta de Asana
+            </button>
+          </>
+        ) : (
+          <button
+            type="button"
+            className="btn btn-sm w-100"
+            style={{ backgroundColor: '#F06595', color: 'white', border: 'none', fontWeight: 600 }}
+            disabled={busy}
+            onClick={connect}
+          >
+            {busy
+              ? <><span className="spinner-border spinner-border-sm me-1" role="status" />Esperando a Asana…</>
+              : <><i className="bi bi-box-arrow-up-right me-1" />Conectar mi cuenta de Asana</>}
+          </button>
+        )}
+
+        {error && <div className="alert alert-warning small mt-2 mb-0 p-2">{error}</div>}
       </div>
     </div>
   );
