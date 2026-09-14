@@ -30,9 +30,43 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { apiFetch } from '@/lib/api';
+import {
+  DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function w(): any { return (typeof window !== 'undefined' ? window : {}) as unknown as any; }
+
+// Ciudades con festivos automáticos: el backend carga los nacionales y autonómicos de su
+// comunidad (Nager.Date) más los locales de la ciudad (backend/data/localHolidays.js).
+const HOLIDAY_CITIES = [
+  { key: 'madrid', label: 'Madrid' },
+  { key: 'barcelona', label: 'Barcelona' },
+  { key: 'oviedo', label: 'Oviedo (Asturias)' },
+  { key: 'valencia', label: 'Valencia' },
+  { key: 'malaga', label: 'Málaga' },
+  { key: 'sevilla', label: 'Sevilla' },
+];
+// Nombre corto de la comunidad para la etiqueta de los festivos autonómicos.
+const REGION_SHORT: Record<string, string> = {
+  'ES-MD': 'Madrid', 'ES-CT': 'Cataluña', 'ES-AS': 'Asturias', 'ES-VC': 'C. Valenciana', 'ES-AN': 'Andalucía',
+};
+
+interface RegionalHoliday {
+  date: string; name: string; national: boolean; regions: string[]; cities?: string[]; provisional?: boolean;
+}
+interface MissingLocalData { city: string; year: number }
+
+/** Agrupa festivos (ya ordenados por fecha) por mes: [["octubre 2026", [...]], ...]. */
+function groupHolidaysByMonth(holidays: RegionalHoliday[]): [string, RegionalHoliday[]][] {
+  const groups = new Map<string, RegionalHoliday[]>();
+  for (const h of holidays) {
+    const label = new Date(`${h.date}T00:00:00`).toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+    groups.set(label, [...(groups.get(label) || []), h]);
+  }
+  return [...groups.entries()];
+}
 
 function usePortalNode(id: string): HTMLElement | null {
   const [node, setNode] = useState<HTMLElement | null>(null);
@@ -191,6 +225,292 @@ function LegendPopover() {
             </span>
           ))}
         </div>
+      )}
+    </div>
+  );
+}
+
+// Festivos por comunidad autónoma: el docente elige una o varias comunidades y el backend
+// (PUT /api/promotions/:id/holiday-regions) carga sus festivos para toda la duración del
+// bootcamp, solo los que caen en días lectivos (workingDays). Se fusionan en promotion.holidays,
+// así que el Gantt los sombrea y el Cómputo de horas los descuenta como los marcados a mano.
+function HolidaysPopover() {
+  const [open, setOpen] = useState(false);
+  const [selected, setSelected] = useState<string[]>([]);
+  const [loaded, setLoaded] = useState<RegionalHoliday[]>([]);
+  const [excludedCount, setExcludedCount] = useState(0);
+  const [missing, setMissing] = useState<MissingLocalData[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [removing, setRemoving] = useState<string | null>(null);
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const promo = w().currentPromotion;
+    if (promo) {
+      // Promos que cargaron festivos por comunidad antes de existir las ciudades: se preselecciona
+      // la ciudad equivalente (Andalucía se omite porque puede ser Málaga o Sevilla).
+      const REGION_TO_CITY: Record<string, string> = { 'ES-MD': 'madrid', 'ES-CT': 'barcelona', 'ES-AS': 'oviedo', 'ES-VC': 'valencia' };
+      setSelected(
+        promo.holidayCities?.length
+          ? promo.holidayCities
+          : (promo.holidayRegions || []).map((code: string) => REGION_TO_CITY[code]).filter(Boolean),
+      );
+      setLoaded(promo.regionalHolidays || []);
+      setExcludedCount((promo.excludedHolidays || []).length);
+    }
+    // Radix pinta el menú del dropdown en un portal fuera de `ref`: no cerrar el popover
+    // cuando el clic cae dentro de ese menú.
+    const onDoc = (e: MouseEvent) => {
+      const t = e.target as Element;
+      if (ref.current?.contains(t) || t.closest?.('[role="menu"]')) return;
+      setOpen(false);
+    };
+    document.addEventListener('mousedown', onDoc);
+    return () => document.removeEventListener('mousedown', onDoc);
+  }, [open]);
+
+  // Panel lateral de festivos: se resincroniza con currentPromotion al abrirse y cada vez que
+  // cambian los festivos desde fuera (clic derecho en Gantt/Asistencia → promotion-holidays-changed).
+  useEffect(() => {
+    const sync = () => {
+      const p = w().currentPromotion;
+      if (!p) return;
+      setLoaded(p.regionalHolidays || []);
+      setExcludedCount((p.excludedHolidays || []).length);
+    };
+    if (drawerOpen) sync();
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setDrawerOpen(false); };
+    window.addEventListener('promotion-holidays-changed', sync);
+    if (drawerOpen) document.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('promotion-holidays-changed', sync);
+      document.removeEventListener('keydown', onKey);
+    };
+  }, [drawerOpen]);
+
+  const toggle = (code: string) =>
+    setSelected(cur => (cur.includes(code) ? cur.filter(c => c !== code) : [...cur, code]));
+
+  // Quita un festivo de la promoción — mismo efecto que el clic derecho en el Gantt: PUT /holidays
+  // sin esa fecha; el backend lo marca como excluido para que "Cargar festivos" no lo reañada.
+  const removeHoliday = async (date: string) => {
+    const promotionId = new URLSearchParams(window.location.search).get('id');
+    const promo = w().currentPromotion;
+    if (!promotionId || !promo) return;
+    setRemoving(date);
+    try {
+      const holidays = (promo.holidays || []).filter((d: string) => d !== date);
+      const r = await apiFetch(`/api/promotions/${promotionId}/holidays`, {
+        method: 'PUT',
+        body: JSON.stringify({ holidays }),
+      });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const body = await r.json();
+      Object.assign(promo, { regionalHolidays: body.regionalHolidays, excludedHolidays: body.excludedHolidays });
+      setLoaded(body.regionalHolidays);
+      setExcludedCount(body.excludedHolidays.length);
+      w().__applyPromotionHolidays?.(body.holidays);
+    } catch {
+      w().showApiToast?.('No se pudo quitar el festivo', 'danger');
+    }
+    setRemoving(null);
+  };
+
+  const save = async (resetExclusions = false) => {
+    const promotionId = new URLSearchParams(window.location.search).get('id');
+    if (!promotionId) return;
+    setSaving(true);
+    try {
+      const r = await apiFetch(`/api/promotions/${promotionId}/holiday-regions`, {
+        method: 'PUT',
+        body: JSON.stringify({ cities: selected, resetExclusions }),
+      });
+      const body = await r.json().catch(() => ({}));
+      if (!r.ok) {
+        w().showApiToast?.(body.error || 'No se pudieron cargar los festivos', 'danger');
+      } else {
+        const promo = w().currentPromotion;
+        if (promo) {
+          Object.assign(promo, {
+            holidayCities: body.holidayCities,
+            holidayRegions: body.holidayRegions,
+            regionalHolidays: body.regionalHolidays,
+            excludedHolidays: body.excludedHolidays,
+          });
+        }
+        setLoaded(body.regionalHolidays);
+        setExcludedCount(body.excludedHolidays.length);
+        setMissing(body.missingLocalData || []);
+        w().__applyPromotionHolidays?.(body.holidays);
+        w().showApiToast?.(
+          selected.length ? `${body.regionalHolidays.length} festivos en días lectivos cargados` : 'Festivos automáticos eliminados',
+          'success',
+        );
+      }
+    } catch {
+      w().showApiToast?.('No se pudieron cargar los festivos', 'danger');
+    }
+    setSaving(false);
+  };
+
+  return (
+    <div ref={ref} style={{ position: 'relative' }}>
+      <button
+        type="button"
+        className="btn btn-outline-secondary btn-sm"
+        aria-expanded={open}
+        onClick={(e) => { e.stopPropagation(); setOpen((o) => !o); }}
+      >
+        <i className="bi bi-calendar-x me-1" />Festivos
+      </button>
+      {open && (
+        <div
+          className="roadmap-legend-popover"
+          // .roadmap-legend-popover fuerza white-space:nowrap (pensado para la leyenda) → aquí se
+          // restablece para que el texto de ayuda y la lista de festivos hagan salto de línea.
+          style={{ position: 'absolute', right: 0, top: 'calc(100% + 6px)', zIndex: 1010, width: 360, maxWidth: 'calc(100vw - 32px)', display: 'block', whiteSpace: 'normal' }}
+        >
+          <div className="fw-semibold small mb-2">Festivos de la ciudad</div>
+          {/* Botón en la misma fila que el selector: el menú se despliega hacia abajo con el
+              ancho del selector, así nunca tapa "Cargar". modal={false} permite pulsarlo con el
+              menú aún abierto (en modo modal el primer clic fuera solo cierra el menú). */}
+          <div className="d-flex gap-2 align-items-stretch">
+          <DropdownMenu modal={false}>
+            <DropdownMenuTrigger asChild>
+              <button type="button" className="form-select form-select-sm text-start text-truncate flex-grow-1" style={{ minWidth: 0 }} aria-label="Ciudades">
+                {selected.length === 0
+                  ? <span className="text-muted">Selecciona una o varias…</span>
+                  : HOLIDAY_CITIES.filter(c => selected.includes(c.key)).map(c => c.label).join(', ')}
+              </button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start" className="min-w-0" style={{ width: 'var(--radix-dropdown-menu-trigger-width)' }}>
+              {HOLIDAY_CITIES.map(c => (
+                <DropdownMenuCheckboxItem
+                  key={c.key}
+                  checked={selected.includes(c.key)}
+                  onCheckedChange={() => toggle(c.key)}
+                  // Mantiene el menú abierto para marcar varias ciudades seguidas
+                  onSelect={e => e.preventDefault()}
+                >
+                  {c.label}
+                </DropdownMenuCheckboxItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <button type="button" className="btn btn-primary btn-sm text-nowrap" onClick={() => save()} disabled={saving}>
+            {saving ? 'Cargando…' : 'Cargar festivos'}
+          </button>
+          </div>
+          <small className="text-muted d-block mt-2">
+            Se cargan los festivos nacionales, autonómicos y locales de cada ciudad entre las fechas de la
+            promoción que caen en días lectivos. Puedes quitar cualquiera desde la lista o con clic derecho
+            en el Gantt.
+          </small>
+          {missing.length > 0 && (
+            <div className="holidays-summary-note is-warning">
+              <i className="bi bi-exclamation-triangle me-1" />
+              Aún no hay festivos locales publicados para{' '}
+              {missing.map(m => `${m.city} ${m.year}`).join(', ')}. Márcalos con clic derecho cuando se aprueben.
+            </div>
+          )}
+          {excludedCount > 0 && (
+            <div className="holidays-summary-note">
+              {excludedCount === 1 ? '1 festivo quitado' : `${excludedCount} festivos quitados`} no se volverán a cargar ·{' '}
+              <button type="button" className="holidays-summary-link" onClick={() => save(true)} disabled={saving}>
+                Restaurar
+              </button>
+            </div>
+          )}
+          {loaded.length > 0 && (
+            <button
+              type="button"
+              className="btn btn-outline-secondary btn-sm w-100 mt-3"
+              onClick={() => { setOpen(false); setDrawerOpen(true); }}
+            >
+              <i className="bi bi-layout-sidebar-inset-reverse me-1" />Ver {loaded.length} festivos cargados
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Lista de festivos en el mismo panel lateral que el detalle de los elementos del Gantt
+          (.roadmap-drawer de RoadmapDetailDrawer). Portal a <body> por el mismo motivo: no quedar
+          atrapado por el transform del tab-pane. Siempre montado para que anime al abrir/cerrar. */}
+      {createPortal(
+        <aside
+          className={`roadmap-drawer${drawerOpen ? ' is-open' : ''}`}
+          aria-hidden={!drawerOpen}
+          role="dialog"
+          aria-label="Festivos cargados"
+        >
+          <div className="roadmap-drawer-head">
+            <div className="roadmap-drawer-eyebrow">
+              <i className="bi bi-calendar-x" />Festivos cargados
+            </div>
+            <button type="button" className="btn btn-sm btn-link roadmap-drawer-x" onClick={() => setDrawerOpen(false)} aria-label="Cerrar">
+              <i className="bi bi-x-lg" />
+            </button>
+          </div>
+          <div className="roadmap-drawer-body">
+            <h5 className="roadmap-drawer-title">
+              {loaded.length === 1 ? '1 festivo en días lectivos' : `${loaded.length} festivos en días lectivos`}
+            </h5>
+            <div className="holidays-drawer-stats">
+              <span className="holidays-drawer-stat">{loaded.filter(h => h.national).length} nacionales</span>
+              <span className="holidays-drawer-stat">{loaded.filter(h => !h.national && !h.cities?.length).length} autonómicos</span>
+              <span className="holidays-drawer-stat">{loaded.filter(h => h.cities?.length).length} locales</span>
+              {excludedCount > 0 && <span className="holidays-drawer-stat">{excludedCount} quitados</span>}
+            </div>
+            <p className="text-muted small mb-2">
+              Quita un festivo con <i className="bi bi-x-lg" /> o con clic derecho en el Gantt: el día vuelve a ser
+              lectivo y no se volverá a cargar.
+            </p>
+            {loaded.length === 0 ? (
+              <p className="text-muted small mb-0">No hay festivos cargados.</p>
+            ) : (
+              groupHolidaysByMonth(loaded).map(([month, items]) => (
+                <section key={month}>
+                  <div className="holidays-summary-month">{month}</div>
+                  {items.map(h => {
+                    const d = new Date(`${h.date}T00:00:00`);
+                    return (
+                      <div key={h.date} className="holidays-summary-row">
+                        <div className="holidays-summary-date">
+                          <span className="holidays-summary-day">{d.getDate()}</span>
+                          <span className="holidays-summary-weekday">{d.toLocaleDateString('es-ES', { weekday: 'short' })}</span>
+                        </div>
+                        <div className="holidays-summary-name">{h.name}</div>
+                        <span
+                          className={`holidays-summary-badge${h.national ? ' is-national' : h.cities?.length ? ' is-local' : ''}`}
+                          title={h.provisional ? 'Aprobado por el ayuntamiento, pendiente de publicación oficial' : undefined}
+                        >
+                          {h.national
+                            ? 'Nacional'
+                            : h.cities?.length
+                              ? `Local · ${h.cities.join(' · ')}${h.provisional ? ' (provisional)' : ''}`
+                              : h.regions.map(c => REGION_SHORT[c] || c).join(' · ')}
+                        </span>
+                        <button
+                          type="button"
+                          className="holidays-summary-remove"
+                          aria-label={`Quitar festivo ${h.name}`}
+                          title="Quitar festivo (el día vuelve a ser lectivo)"
+                          onClick={() => removeHoliday(h.date)}
+                          disabled={removing === h.date}
+                        >
+                          <i className="bi bi-x-lg" />
+                        </button>
+                      </div>
+                    );
+                  })}
+                </section>
+              ))
+            )}
+          </div>
+        </aside>,
+        document.body,
       )}
     </div>
   );
@@ -421,6 +741,7 @@ function RoadmapPanel() {
             <i className="bi bi-briefcase me-1" />Empleabilidad
           </button>
           <LegendPopover />
+          <HolidaysPopover />
           <GoogleCalendarSyncButton />
           <ExportDropdown />
           <AsanaExportButton />

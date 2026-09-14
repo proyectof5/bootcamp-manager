@@ -18,6 +18,7 @@ Leyenda: ✅ spec completo · 🟡 spec con pendientes · ⬜ sin spec todavía.
 | Exportar roadmap a Asana (OAuth por docente + subtareas) | ⬜ [exportar-roadmap-asana.md](exportar-roadmap-asana.md) | `server.js` (`/api/integrations/asana/*`, `/export-asana`), `AsanaConnection.js` / `AsanaRoadmapExport.js` (backend), `AccessSettingsPanel.tsx`, `RoadmapPanel.tsx` |
 | Evaluación de competencias / rúbricas | 🟡 [evaluacion-competencias.md](evaluacion-competencias.md) | `EvaluationGridPanel.tsx`, `EvaluationCriteria.tsx`, `ProgramCompetences.tsx`, `_lib/reports.ts` |
 | Asistencia y festivos | ✅ [asistencia-festivos.md](asistencia-festivos.md) | `AttendancePanel.tsx`, `renderAttendanceTable` (promotion-detail.js) |
+| Festivos por ciudad (nacionales, autonómicos y locales; panel lateral; tooltip en el Gantt) | 🟡 [festivos-por-ciudad.md](festivos-por-ciudad.md) | `RoadmapPanel.tsx` (`HolidaysPopover`), `promotion-detail.js` (`setupGanttHolidayTooltip`), `server.js` (`/holiday-regions`) + `backend/data/localHolidays.js` (backend) |
 | Plantillas de bootcamp | ⬜ | `BootcampTemplate` (backend), `templates-from-promotion` (server.js) |
 | Píldoras | ⬜ | `PildorasPanel.tsx` |
 | Calendario / horario / Google Calendar sync | ⬜ | `CalendarSettings.tsx`, `ScheduleSettings.tsx`, `buildRoadmapCalendarEvents` |

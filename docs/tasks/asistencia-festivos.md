@@ -18,6 +18,11 @@ en un día).
 - Persistencia: `GET`/`PUT /api/promotions/:id/holidays` (server.js,
   `{holidays: [...]}`) — endpoint dedicado, aunque `holidays` también viaja
   dentro del objeto `Promotion` completo (`GET /api/promotions/:id`).
+- Los festivos también se pueden cargar automáticamente por ciudad
+  ([festivos-por-ciudad.md](festivos-por-ciudad.md)): se fusionan en esta
+  misma lista. Quitar con clic derecho un festivo cargado automáticamente lo
+  guarda en `excludedHolidays` (el `PUT /holidays` lo detecta solo) para que
+  no se vuelva a cargar.
 
 ## Estado
 
