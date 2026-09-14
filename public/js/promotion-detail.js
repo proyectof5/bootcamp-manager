@@ -3617,6 +3617,7 @@ function initGanttInstance() {
     gantt.init('gantt-container');
     setGanttZoomLevel('week');
     setupGanttWheelZoom();
+    setupGanttHolidayTooltip();
 
     if (canEdit) {
         bindGanttEditingEvents();
@@ -4883,6 +4884,71 @@ function removeGanttContextMenu() {
     document.removeEventListener('keydown', _ganttContextMenuEscHandler);
 }
 
+const _GANTT_REGION_NAMES = {
+    'ES-MD': 'Comunidad de Madrid',
+    'ES-CT': 'Cataluña',
+    'ES-AS': 'Asturias',
+    'ES-VC': 'Comunitat Valenciana',
+    'ES-AN': 'Andalucía',
+};
+
+/**
+ * Comentario flotante al pasar el ratón por un festivo del Gantt (zoom "Día", el único
+ * donde cada columna es un día y los festivos se ven en gris): nombre del festivo y si
+ * es nacional, autonómico (qué comunidad), local (qué ciudad) o marcado a mano. Los datos
+ * salen de currentPromotion.regionalHolidays (festivos cargados por ciudad) y
+ * _ganttHolidaysSet (todos los festivos, incluidos los marcados con clic derecho).
+ * Sobre las barras de tareas se oculta para no solaparse con su propio tooltip.
+ */
+let _ganttHolidayTooltipBound = false;
+function setupGanttHolidayTooltip() {
+    if (_ganttHolidayTooltipBound) return;
+    // OJO: igual que setupGanttWheelZoom — NO usar gantt.$container (root interno de DHTMLX):
+    // si se le añaden atributos o listeners, DHTMLX pierde su scroll con rueda/trackpad.
+    // gantt.$root (#gantt-container, nuestro div) es ancestro del área de tareas y es seguro.
+    const container = (gantt && gantt.$root) || document.getElementById('gantt-container');
+    if (!container) return;
+    _ganttHolidayTooltipBound = true;
+
+    const tip = document.createElement('div');
+    tip.className = 'gantt-holiday-tooltip';
+    tip.hidden = true;
+    document.body.appendChild(tip);
+    const hide = () => { tip.hidden = true; };
+
+    container.addEventListener('mousemove', (e) => {
+        if (_ganttZoomLevel !== 'day' || e.target.closest('.gantt_task_line')) return hide();
+        const dateKey = _ganttDateKeyFromEvent(e);
+        if (!dateKey || !_ganttHolidaysSet.has(dateKey)) return hide();
+
+        const info = (window.currentPromotion?.regionalHolidays || []).find(h => h.date === dateKey);
+        let scope;
+        if (!info) scope = 'Festivo marcado a mano';
+        else if (info.national) scope = 'Festivo nacional';
+        else if (info.cities && info.cities.length) scope = `Festivo local · ${info.cities.join(', ')}${info.provisional ? ' (provisional)' : ''}`;
+        else scope = `Festivo autonómico · ${(info.regions || []).map(c => _GANTT_REGION_NAMES[c] || c).join(', ')}`;
+
+        const [yy, mm, dd] = dateKey.split('-').map(Number);
+        const pretty = new Date(yy, mm - 1, dd).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+        tip.innerHTML =
+            `<div class="gantt-holiday-tooltip-date">${escapeHtml(pretty)}</div>` +
+            `<div class="gantt-holiday-tooltip-name">${escapeHtml(info ? info.name : 'Festivo')}</div>` +
+            `<div class="gantt-holiday-tooltip-scope">${escapeHtml(scope)}</div>`;
+        tip.hidden = false;
+
+        // Junto al cursor; se voltea si se sale por la derecha/abajo de la ventana.
+        const offset = 14;
+        const { width, height } = tip.getBoundingClientRect();
+        const left = e.clientX + offset + width > window.innerWidth ? e.clientX - offset - width : e.clientX + offset;
+        const top = e.clientY + offset + height > window.innerHeight ? e.clientY - offset - height : e.clientY + offset;
+        tip.style.left = `${Math.max(4, left)}px`;
+        tip.style.top = `${Math.max(4, top)}px`;
+    });
+    container.addEventListener('mouseleave', hide);
+    container.addEventListener('wheel', hide, { passive: true });
+    container.addEventListener('contextmenu', hide);
+}
+
 /**
  * Fecha ISO ("YYYY-MM-DD") del día bajo el cursor en la línea de tiempo del
  * Gantt a partir del evento de ratón, o null si el clic no cae sobre la línea
@@ -4963,6 +5029,22 @@ function showGanttDateContextMenu(dateKey, x, y) {
  * persiste con PUT /holidays y refresca Gantt + Cómputo de horas + Asistencia.
  * @param {string} dateKey - "YYYY-MM-DD"
  */
+/**
+ * Sustituye la lista completa de festivos en memoria (p.ej. tras cargar festivos por
+ * comunidad autónoma desde el popover "Festivos" del Roadmap) y refresca las vistas
+ * que los leen: Gantt, Asistencia y Cómputo de horas. No persiste — el backend ya guardó.
+ * @param {string[]} holidays - fechas "YYYY-MM-DD"
+ */
+window.__applyPromotionHolidays = function (holidays) {
+    _ganttHolidaysSet = new Set(Array.isArray(holidays) ? holidays : []);
+    promotionHolidays = new Set(_ganttHolidaysSet);
+    if (window.currentPromotion) window.currentPromotion.holidays = [..._ganttHolidaysSet];
+    if (typeof gantt !== 'undefined' && gantt.render) gantt.render();
+    if (typeof renderAttendanceTable === 'function' && document.getElementById('attendance-table')) renderAttendanceTable();
+    if (window.__refreshHoursPanel) window.__refreshHoursPanel();
+    window.dispatchEvent(new Event('promotion-holidays-changed'));
+};
+
 async function _ganttToggleHoliday(dateKey) {
     const wasHoliday = _ganttHolidaysSet.has(dateKey);
     if (wasHoliday) _ganttHolidaysSet.delete(dateKey);
@@ -4980,6 +5062,15 @@ async function _ganttToggleHoliday(dateKey) {
             body: JSON.stringify({ holidays: [...promotionHolidays] })
         });
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        // Si se quitó un festivo cargado automáticamente, el backend lo marca como excluido:
+        // sincronizar para que la lista del popover "Festivos" lo refleje.
+        const saved = await res.json().catch(() => null);
+        if (saved && window.currentPromotion) {
+            window.currentPromotion.regionalHolidays = saved.regionalHolidays;
+            window.currentPromotion.excludedHolidays = saved.excludedHolidays;
+        }
+        // Refresca el panel lateral "Festivos cargados" si está abierto (RoadmapPanel.tsx)
+        window.dispatchEvent(new Event('promotion-holidays-changed'));
     } catch (err) {
         // Revertir el cambio en memoria si no se pudo guardar.
         if (wasHoliday) _ganttHolidaysSet.add(dateKey);
@@ -10821,11 +10912,18 @@ async function toggleHoliday(dateKey) {
     }
     // Persist to server
     try {
-        await fetch(`${API_URL}/api/promotions/${promotionId}/holidays`, {
+        const res = await fetch(`${API_URL}/api/promotions/${promotionId}/holidays`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
             body: JSON.stringify({ holidays: [...promotionHolidays] })
         });
+        const saved = res.ok ? await res.json().catch(() => null) : null;
+        if (saved && window.currentPromotion) {
+            window.currentPromotion.holidays = saved.holidays;
+            window.currentPromotion.regionalHolidays = saved.regionalHolidays;
+            window.currentPromotion.excludedHolidays = saved.excludedHolidays;
+            window.dispatchEvent(new Event('promotion-holidays-changed'));
+        }
     } catch (_) { }
     renderAttendanceTable();
 }
