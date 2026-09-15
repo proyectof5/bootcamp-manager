@@ -1349,6 +1349,53 @@ function downloadPildorasExcelTemplate() {
     URL.revokeObjectURL(url);
 }
 
+/**
+ * Descarga en Excel las píldoras de TODOS los módulos de la promoción.
+ * Columnas = las que lee el importador (Presentación, Fecha, Píldora, Student, Estado) más
+ * "Módulo" al principio, que el importador ignora — así el archivo se puede volver a importar.
+ * Antes sincroniza la tabla visible para incluir los cambios del módulo actual aún sin guardar.
+ */
+function exportPildorasExcel() {
+    if (typeof XLSX === 'undefined') {
+        window.showApiToast('No se pudo cargar la librería de Excel. Recarga la página e inténtalo de nuevo.', 'danger');
+        return;
+    }
+    syncPildorasFromUIToState();
+
+    const students = window.currentStudents || [];
+    const studentName = (s) => {
+        const src = students.find(st => st.id === s.id) || s;
+        return `${src.name || ''} ${src.lastname || ''}`.trim() || src.id || '';
+    };
+    const modulesPildoras = extendedInfoData.modulesPildoras || [];
+    const rows = [];
+    (promotionModules || []).forEach(module => {
+        const modulePildoras = modulesPildoras.find(mp => mp.moduleId === module.id);
+        (modulePildoras ? modulePildoras.pildoras : []).forEach(p => {
+            rows.push({
+                'Módulo': module.name || '',
+                'Presentación': p.mode || '',
+                'Fecha': p.date || '',
+                'Píldora': p.title || '',
+                'Student': (p.students || []).map(studentName).filter(Boolean).join(', '),
+                'Estado': p.status || '',
+            });
+        });
+    });
+
+    if (rows.length === 0) {
+        window.showApiToast('No hay píldoras para exportar.', 'warning');
+        return;
+    }
+
+    const ws = XLSX.utils.json_to_sheet(rows);
+    ws['!cols'] = [{ wch: 32 }, { wch: 13 }, { wch: 12 }, { wch: 48 }, { wch: 40 }, { wch: 14 }];
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Píldoras');
+    const promoName = _exportSafeFileName(window.currentPromotion?.name || 'promocion');
+    XLSX.writeFile(wb, `pildoras-${promoName}-${new Date().toISOString().split('T')[0]}.xlsx`);
+}
+
 function importPildorasFromExcel(input) {
     const file = input.files && input.files[0];
     if (!file) return;
