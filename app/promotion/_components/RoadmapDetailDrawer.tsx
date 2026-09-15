@@ -58,6 +58,8 @@ function lectiveDays(startIso: string, endIso: string): number {
   const wd: number[] = Array.isArray(pm.workingDays) && pm.workingDays.length ? pm.workingDays : [1, 2, 3, 4, 5];
   const wdSet = new Set(wd.map(Number));
   const hol = new Set(Array.isArray(pm.holidays) ? pm.holidays : []);
+  // Los bloques de "Tiempo flexible" (vacaciones) tampoco son lectivos — mismo criterio que el Cómputo de horas.
+  (w().getFlexibleBlockDateKeys?.(pm) || []).forEach((d: string) => hol.add(d));
   const p = (s: string) => { const x = /^(\d{4})-(\d{2})-(\d{2})/.exec(s); return x ? new Date(+x[1], +x[2] - 1, +x[3]) : null; };
   const a = p(startIso), b = p(endIso);
   if (!a || !b || b < a) return 0;

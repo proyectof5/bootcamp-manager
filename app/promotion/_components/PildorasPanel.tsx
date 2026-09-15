@@ -14,7 +14,7 @@
  * puebla: displayPildoras() + updateModuleNavigation() (ambos null-safe) rellenan #pildoras-list-body,
  * #current-module-name, #module-pildoras-count y el estado disabled de los botones. Los controles
  * llaman a window.navigateToPreviousModule/navigateToNextModule/togglePildorasAssignment/addPildoraRow/
- * downloadPildorasExcelTemplate/importPildorasFromExcel.
+ * downloadPildorasExcelTemplate/importPildorasFromExcel/exportPildorasExcel.
  *
  * Trigger de render: switchProgramDetailsTab NO tiene rama 'pildoras' → el único render es
  * loadModulesPildoras() (on load, tras cargar datos) + el CRUD. Para garantizar el pintado tras montar
@@ -104,6 +104,9 @@ function PildorasPanel() {
           <input type="file" id="pildoras-excel-input" accept=".xlsx,.xls,.csv" className="d-none" onChange={(e) => w().importPildorasFromExcel?.(e.target)} />
           <button type="button" className="btn btn-sm btn-outline-success" id="pildoras-import-excel-btn" onClick={() => document.getElementById('pildoras-excel-input')?.click()}>
             <i className="bi bi-file-earmark-spreadsheet" /> Importar Excel
+          </button>
+          <button type="button" className="btn btn-sm btn-outline-secondary" id="pildoras-export-excel-btn" onClick={() => w().exportPildorasExcel?.()}>
+            <i className="bi bi-file-earmark-excel" /> Descargar Excel
           </button>
         </div>
       </div>

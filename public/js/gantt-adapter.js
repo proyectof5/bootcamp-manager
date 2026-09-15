@@ -269,6 +269,34 @@ function getFlexibleBlockDateRange(block, baseDate) {
 }
 
 /**
+ * Fechas ISO "YYYY-MM-DD" de TODOS los días que cubren los bloques de "Tiempo flexible"
+ * (vacaciones) de la promoción, ambos extremos inclusive. El cómputo de horas los trata
+ * como no lectivos (igual que `promotion.holidays`): un bloque de vacaciones bloquea las
+ * horas de los días lectivos que ocupa. No cambia cómo se dibuja el Gantt.
+ * @param {Object} promotion - con `flexibleBlocks[]` y `startDate`
+ * @returns {Set<string>}
+ */
+function getFlexibleBlockDateKeys(promotion) {
+    const keys = new Set();
+    const blocks = (promotion && Array.isArray(promotion.flexibleBlocks)) ? promotion.flexibleBlocks : [];
+    if (blocks.length === 0) return keys;
+    const baseDate = (promotion && promotion.startDate) ? new Date(promotion.startDate) : new Date();
+    blocks.forEach((block) => {
+        const { startDate, endDate } = getFlexibleBlockDateRange(block, baseDate);
+        if (!(startDate instanceof Date) || !(endDate instanceof Date)) return;
+        if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime()) || endDate < startDate) return;
+        const cur = new Date(startDate.getTime());
+        while (cur <= endDate) {
+            keys.add(formatISODate(cur));
+            cur.setDate(cur.getDate() + 1);
+        }
+    });
+    return keys;
+}
+
+window.getFlexibleBlockDateKeys = getFlexibleBlockDateKeys;
+
+/**
  * Devuelve la lista unificada de items de un módulo (cursos + proyectos + lecciones).
  * Fuente de verdad: `module.plannerItems[]` (TASK-RM-05c) cuando existe y no está
  * vacío — es la única fuente que incluye las `leccion`. Si el módulo es legacy
@@ -586,7 +614,9 @@ window.GANTT_DATE_FORMAT = GANTT_DATE_FORMAT;
  * Criterio:
  *  - `hoursPerDay` = `promotion.hoursPerDay` (jornada, ej. 7 o 7.5); fallback 7.
  *  - Días lectivos = `promotion.workingDays` (fallback Lun-Vie) menos
- *    `promotion.holidays` — mismo criterio que el Gantt (`countWorkingDaysInclusive`).
+ *    `promotion.holidays` — mismo criterio que el Gantt (`countWorkingDaysInclusive`) —
+ *    y menos los días de los bloques de "Tiempo flexible" (vacaciones,
+ *    `getFlexibleBlockDateKeys`).
  *  - Horas de un módulo = días lectivos en su rango × `hoursPerDay`. El rango
  *    es el ENVOLVENTE de sus elementos (cursos + proyectos + lecciones): de la
  *    fecha más temprana a la más tardía entre `getItemDateRange` de todos
@@ -631,6 +661,8 @@ function buildHoursBreakdown(promotion, extendedInfo) {
     const holidaysSet = new Set(
         Array.isArray(promotion && promotion.holidays) ? promotion.holidays.filter(h => typeof h === 'string') : []
     );
+    // Los bloques de "Tiempo flexible" son vacaciones: sus días tampoco suman horas.
+    getFlexibleBlockDateKeys(promotion).forEach((d) => holidaysSet.add(d));
 
     const modules = (promotion && Array.isArray(promotion.modules)) ? promotion.modules : [];
     const baseDate = (promotion && promotion.startDate) ? new Date(promotion.startDate) : new Date();

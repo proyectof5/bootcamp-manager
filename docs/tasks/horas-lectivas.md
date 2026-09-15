@@ -75,6 +75,15 @@ promoción real end-to-end, requiere reiniciar el backend de dev).
   movimiento dentro del módulo. El refresco (`__refreshHoursPanel` desde
   `loadModules` tras `persistGanttTaskChange`) ya funcionaba; lo que no
   cambiaba era el número. `byProject` no cambia (sigue siendo por-proyecto).
+- **Tiempo flexible = vacaciones, no suma horas** (rama `feat/pildoras-excel`,
+  a petición del usuario): los días que cubre un bloque de "Tiempo flexible"
+  (`promotion.flexibleBlocks`, rango de `getFlexibleBlockDateRange`) se tratan
+  como festivos en el cómputo — `getFlexibleBlockDateKeys(promotion)` en
+  `gantt-adapter.js` los añade al conjunto de no lectivos de
+  `buildHoursBreakdown` (total, por módulo, por proyecto y export a Excel) y de
+  `lectiveDays` en `RoadmapDetailDrawer.tsx`. Si un módulo o proyecto cruza un
+  bloque, pierde las horas de los días lectivos que el bloque ocupa. Igual que
+  con los festivos, **la barra del Gantt no cambia** (sigue continua).
 
 ## Pendiente / Próximos pasos
 
