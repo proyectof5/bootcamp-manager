@@ -150,7 +150,7 @@ function HoursPanel() {
             </h5>
             <p className="text-muted small mb-0">
               Horas lectivas que suma el roadmap contando solo días lectivos
-              (fines de semana y festivos de la promoción excluidos) a{' '}
+              (fines de semana, festivos y bloques de tiempo flexible excluidos) a{' '}
               <strong>{hoursPerDay.toLocaleString('es-ES', { maximumFractionDigits: 2 })} h/día</strong>.
               La jornada se edita en «Modificar promoción».
             </p>
