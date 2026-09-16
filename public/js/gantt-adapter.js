@@ -696,11 +696,14 @@ function buildHoursBreakdown(promotion, extendedInfo) {
         total += hours;
 
         const moduleName = `M${moduleIndex + 1}: ${module.name || 'Sin nombre'}`;
+        const targetHours = Number(module.targetHours) > 0 ? Number(module.targetHours) : null;
         byModule.push({
             moduleIndex,
             name: moduleName,
             hours,
             lectiveDays,
+            targetHours,
+            targetDays: targetHours === null ? null : targetLectiveDays(targetHours, hoursPerDay),
             startDate: formatISODate(envStart),
             endDate: formatISODate(envEnd),
         });
@@ -729,6 +732,223 @@ function buildHoursBreakdown(promotion, extendedInfo) {
 }
 
 window.buildHoursBreakdown = buildHoursBreakdown;
+
+/**
+ * Días lectivos que necesita un módulo para cubrir `targetHours` a `hoursPerDay` h/día
+ * (redondeando hacia arriba: 247,5 h a 7,5 h/día = 33 días; 250 h = 34 días).
+ * @param {number} targetHours
+ * @param {number} hoursPerDay
+ * @returns {number}
+ */
+function targetLectiveDays(targetHours, hoursPerDay) {
+    const perDay = Number(hoursPerDay) > 0 ? Number(hoursPerDay) : 7;
+    return Math.max(1, Math.ceil(Number(targetHours) / perDay - 1e-9));
+}
+
+window.targetLectiveDays = targetLectiveDays;
+
+/**
+ * Calendario lectivo de una promoción (o de una "foto" anterior de ella): días de semana
+ * lectivos (`workingDays`) menos `holidays` y menos los días de los bloques de tiempo flexible.
+ * @param {{ startDate?: string, workingDays?: number[], holidays?: string[], flexibleBlocks?: Object[] }} source
+ * @returns {{ working: Set<number>, holidays: Set<string>, isLective: (d: Date) => boolean }|null}
+ *   `null` si no hay ningún día de semana lectivo válido (no se puede recolocar nada).
+ */
+function buildLectiveCalendar(source) {
+    const wd = Array.isArray(source && source.workingDays) && source.workingDays.length
+        ? source.workingDays
+        : [1, 2, 3, 4, 5];
+    const working = new Set(wd.map(Number).filter(n => Number.isInteger(n) && n >= 0 && n <= 6));
+    if (working.size === 0) return null;
+    const holidays = new Set(
+        Array.isArray(source && source.holidays) ? source.holidays.filter(h => typeof h === 'string') : []
+    );
+    getFlexibleBlockDateKeys(source || {}).forEach((d) => holidays.add(d));
+    return {
+        working,
+        holidays,
+        isLective: (d) => working.has(d.getDay()) && !holidays.has(formatISODate(d)),
+    };
+}
+
+/** Primer día lectivo en `date` o después (copia nueva, a medianoche local). */
+function nextLectiveDay(date, calendar) {
+    const d = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+    for (let i = 0; i < 3700 && !calendar.isLective(d); i++) d.setDate(d.getDate() + 1);
+    return d;
+}
+
+/** Día lectivo que está `n` días lectivos después del primer día lectivo desde `start` (n=0 → ese mismo). */
+function addLectiveDays(start, n, calendar) {
+    let d = nextLectiveDay(start, calendar);
+    for (let k = 0; k < n; k++) {
+        d.setDate(d.getDate() + 1);
+        d = nextLectiveDay(d, calendar);
+    }
+    return d;
+}
+
+/** Días lectivos en [a, b), es decir, antes de `b` y desde `a` (0 si b <= a). */
+function lectiveDaysBefore(a, b, calendar) {
+    if (!(b > a)) return 0;
+    return countWorkingDaysInclusive(a, addDays(b, -1), calendar.working, calendar.holidays);
+}
+
+/**
+ * Recoloca las fechas del roadmap para que cada módulo con horas objetivo (`module.targetHours`)
+ * siga sumando esas horas tras añadir o quitar festivos o bloques de tiempo flexible
+ * (docs/tasks/horas-objetivo-modulo.md). Muta `promotion.modules` in-place.
+ *
+ * Criterio (confirmado con el usuario):
+ *  - Duración de un módulo: con `targetHours` → `targetLectiveDays(targetHours, hoursPerDay)` días
+ *    lectivos; sin objetivo → conserva los días lectivos que tenía con el calendario anterior.
+ *  - Módulos en cadena: el primero empieza en su primer día lectivo; cada siguiente empieza tras el
+ *    fin del anterior, conservando el hueco (en días lectivos) que hubiera entre ellos.
+ *  - Cursos, proyectos, lecciones y píldoras se recolocan por días lectivos: conservan cuántos días
+ *    lectivos hay desde el inicio del módulo hasta ellos y cuántos duran (medido con el calendario
+ *    ANTERIOR). Los que llegaban hasta el final del módulo se estiran/encogen con él.
+ *  - Los festivos y los bloques de tiempo flexible no se mueven.
+ * Sin ningún módulo con `targetHours` no hace nada (el roadmap se comporta como siempre).
+ *
+ * @param {Object} promotion - con modules[], startDate, workingDays, holidays, flexibleBlocks, hoursPerDay
+ * @param {Object} [previousCalendar] - {workingDays, holidays, flexibleBlocks, startDate} con el que
+ *   estaban colocadas las fechas actuales; por defecto, el de la propia promoción.
+ * @returns {{ changed: boolean, modules: Array<{ moduleIndex: number, name: string, oldStart: string, oldEnd: string, newStart: string, newEnd: string }> }}
+ */
+function reflowModulesToTargetHours(promotion, previousCalendar) {
+    const result = { changed: false, modules: [] };
+    const modules = (promotion && Array.isArray(promotion.modules)) ? promotion.modules : [];
+    if (!modules.some(m => m && Number(m.targetHours) > 0)) return result;
+
+    const newCal = buildLectiveCalendar(promotion);
+    const oldCal = buildLectiveCalendar({ ...promotion, ...(previousCalendar || {}) });
+    if (!newCal || !oldCal) return result;
+
+    const rawPerDay = Number(promotion.hoursPerDay);
+    const hoursPerDay = Number.isFinite(rawPerDay) && rawPerDay > 0 ? rawPerDay : 7;
+    const baseDate = promotion.startDate ? new Date(promotion.startDate) : new Date();
+
+    // 1ª pasada: disposición ACTUAL (antes de mutar nada, porque los rangos legacy en semanas
+    // de un módulo dependen de los anteriores).
+    const layout = modules.map((module, moduleIndex) => {
+        const fallbackWeeks = getModuleStartWeeks(modules, moduleIndex);
+        const items = getModulePlannerItems(module).map(item => ({
+            item,
+            range: getItemDateRange(item, fallbackWeeks, baseDate),
+        }));
+        let start = null;
+        let end = null;
+        items.forEach(({ range }) => {
+            if (!start || range.startDate < start) start = range.startDate;
+            if (!end || range.endDate > end) end = range.endDate;
+        });
+        if (!start || !end) {
+            const own = getModuleDateRange(modules, moduleIndex, baseDate);
+            start = own.startDate;
+            end = own.endDate;
+        }
+        return { items, start, end };
+    });
+
+    // 2ª pasada: nueva disposición, módulo a módulo y en cadena.
+    let prevOldEnd = null;
+    let prevNewEnd = null;
+    modules.forEach((module, moduleIndex) => {
+        const { items, start: oldEnvStart, end: oldEnvEnd } = layout[moduleIndex];
+        const oldStart = nextLectiveDay(oldEnvStart, oldCal);
+        const oldLen = Math.max(1, countWorkingDaysInclusive(oldEnvStart, oldEnvEnd, oldCal.working, oldCal.holidays));
+
+        let newStart;
+        if (!prevNewEnd) {
+            newStart = nextLectiveDay(oldEnvStart, newCal);
+        } else {
+            const gap = lectiveDaysBefore(addDays(prevOldEnd, 1), oldEnvStart, oldCal);
+            newStart = addLectiveDays(addDays(prevNewEnd, 1), gap, newCal);
+        }
+        const target = Number(module.targetHours);
+        const newLen = target > 0 ? targetLectiveDays(target, hoursPerDay) : oldLen;
+        const newEnd = addLectiveDays(newStart, newLen - 1, newCal);
+
+        // Posición (en días lectivos) dentro del módulo → fechas con el calendario nuevo.
+        const place = (rangeStart, rangeEnd, stretchWithModule) => {
+            let offset = lectiveDaysBefore(oldStart, rangeStart, oldCal);
+            let len = Math.max(1, countWorkingDaysInclusive(rangeStart, rangeEnd, oldCal.working, oldCal.holidays));
+            if (stretchWithModule && offset + len >= oldLen) len = newLen - offset;
+            offset = Math.min(offset, newLen - 1);
+            len = Math.max(1, Math.min(len, newLen - offset));
+            return {
+                start: formatISODate(addLectiveDays(newStart, offset, newCal)),
+                end: formatISODate(addLectiveDays(newStart, offset + len - 1, newCal)),
+            };
+        };
+
+        let moduleChanged = false;
+        const usePlanner = Array.isArray(module.plannerItems) && module.plannerItems.length > 0;
+        const courseCount = Array.isArray(module.courses) ? module.courses.length : 0;
+        items.forEach(({ range }, idx) => {
+            const next = place(range.startDate, range.endDate, true);
+            let source;
+            if (usePlanner) {
+                source = module.plannerItems[idx];
+            } else {
+                const list = idx < courseCount ? module.courses : module.projects;
+                const listIdx = idx < courseCount ? idx : idx - courseCount;
+                if (typeof list[listIdx] === 'string') list[listIdx] = { name: list[listIdx] };
+                source = list[listIdx];
+            }
+            if (!source || (source.startDate === next.start && source.endDate === next.end)) return;
+            source.startDate = next.start;
+            source.endDate = next.end;
+            delete source.duration;
+            delete source.startOffset;
+            delete source.absoluteStartOffset;
+            moduleChanged = true;
+        });
+        if (usePlanner && moduleChanged) syncLegacyCoursesProjects(module);
+
+        (Array.isArray(module.pildoras) ? module.pildoras : []).forEach((pildora) => {
+            const d = pildora && parseISODate(pildora.date);
+            if (!d || d < oldEnvStart || d > oldEnvEnd) return;
+            const next = place(d, d, false).start;
+            if (pildora.date !== next) {
+                pildora.date = next;
+                moduleChanged = true;
+            }
+        });
+
+        const newStartStr = formatISODate(newStart);
+        const newEndStr = formatISODate(newEnd);
+        if (module.startDate !== newStartStr || module.endDate !== newEndStr) {
+            module.startDate = newStartStr;
+            module.endDate = newEndStr;
+            delete module.startOffset;
+            delete module.duration;
+            moduleChanged = true;
+        }
+
+        const oldStartStr = formatISODate(oldEnvStart);
+        const oldEndStr = formatISODate(oldEnvEnd);
+        if (moduleChanged) {
+            result.changed = true;
+            if (oldStartStr !== newStartStr || oldEndStr !== newEndStr) {
+                result.modules.push({
+                    moduleIndex,
+                    name: `M${moduleIndex + 1}: ${module.name || 'Sin nombre'}`,
+                    oldStart: oldStartStr,
+                    oldEnd: oldEndStr,
+                    newStart: newStartStr,
+                    newEnd: newEndStr,
+                });
+            }
+        }
+        prevOldEnd = oldEnvEnd;
+        prevNewEnd = newEnd;
+    });
+
+    return result;
+}
+
+window.reflowModulesToTargetHours = reflowModulesToTargetHours;
 
 const GANTT_ITEM_TYPE_LABELS = {
     module: 'Módulo',

@@ -1344,6 +1344,40 @@ th, td {
     color: #fff;
 }
 
+/* Festivo marcado a mano: badge neutro con borde discontinuo + nombre editable en línea */
+.holidays-summary-badge.is-manual {
+    background-color: transparent;
+    border: 1px dashed var(--app-color-neutral-300);
+    color: var(--app-color-neutral-700);
+}
+
+.holidays-summary-name-input {
+    width: 100%;
+    padding: 2px 6px;
+    margin-left: -6px;
+    border: 1px solid transparent;
+    border-radius: var(--app-radius-sm);
+    background: transparent;
+    font: inherit;
+    color: inherit;
+}
+
+.holidays-summary-name-input::placeholder {
+    color: var(--app-color-text-muted, #6b7280);
+    font-style: italic;
+}
+
+.holidays-summary-name-input:hover {
+    border-color: var(--app-color-border);
+}
+
+.holidays-summary-name-input:focus {
+    outline: none;
+    border-color: var(--app-color-primary);
+    background: var(--app-color-bg-surface, #fff);
+    box-shadow: 0 0 0 2px var(--app-color-primary-soft);
+}
+
 .holidays-summary-remove {
     flex: 0 0 auto;
     display: inline-flex;

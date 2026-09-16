@@ -84,6 +84,10 @@ promoción real end-to-end, requiere reiniciar el backend de dev).
   `lectiveDays` en `RoadmapDetailDrawer.tsx`. Si un módulo o proyecto cruza un
   bloque, pierde las horas de los días lectivos que el bloque ocupa. Igual que
   con los festivos, **la barra del Gantt no cambia** (sigue continua).
+- **Horas objetivo por módulo** (rama `feat/horas-objetivo-modulo`): columna
+  editable en el panel; si un módulo tiene objetivo, cambiar festivos o tiempo
+  flexible recoloca las fechas del roadmap para mantener sus horas. Ver
+  [horas-objetivo-modulo.md](horas-objetivo-modulo.md).
 
 ## Pendiente / Próximos pasos
 
