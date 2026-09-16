@@ -4379,6 +4379,20 @@ async function _exportHoursXlsx(promotion, extendedInfo) {
         .map(iso => parseISODate(iso))
         .filter(d => d && d >= rangeStart && d <= rangeEnd)
         .sort((a, b) => a - b);
+    // Nombre y ámbito: los cargados por ciudad traen ambos (regionalHolidays); los marcados a mano
+    // usan el nombre que el docente les puso en Roadmap › Festivos (holidayNames).
+    const autoByDate = new Map((promotion.regionalHolidays || []).map(h => [h.date, h]));
+    const manualNames = promotion.holidayNames || {};
+    const holidayInfo = (iso) => {
+        const auto = autoByDate.get(iso);
+        if (!auto) return { name: manualNames[iso] || '', scope: 'Añadido a mano' };
+        let scope;
+        if (auto.national) scope = 'Nacional';
+        else if (auto.cities && auto.cities.length) scope = `Local · ${auto.cities.join(', ')}${auto.provisional ? ' (provisional)' : ''}`;
+        else scope = `Autonómico · ${(auto.regions || []).map(c => _GANTT_REGION_NAMES[c] || c).join(', ')}`;
+        return { name: manualNames[iso] || auto.name || '', scope };
+    };
+    let unnamedHolidays = 0;
     if (!holsInRange.length) {
         ws.mergeCells(row, 1, row, 21);
         ws.getCell(row, 1).value = 'No hay festivos marcados dentro del periodo del programa.';
@@ -4387,22 +4401,28 @@ async function _exportHoursXlsx(promotion, extendedInfo) {
     } else {
         holsInRange.forEach((d) => {
             const computa = workingSet.has(d.getDay());
-            const vals = [fmtLong(d), WD_LBL[(d.getDay() + 6) % 7], computa ? '' : '(cae en fin de semana — no resta horas)', ''];
+            const info = holidayInfo(formatISODate(d));
+            if (!info.name) unnamedHolidays += 1;
+            const description = [info.name || 'Sin nombre', computa ? '' : '(cae en fin de semana — no resta horas)'].filter(Boolean).join(' ');
+            const vals = [fmtLong(d), WD_LBL[(d.getDay() + 6) % 7], description, info.scope];
             fcols.forEach(([, c1, c2], i) => {
                 ws.mergeCells(row, c1, row, c2);
                 const c = ws.getCell(row, c1);
                 c.value = vals[i];
-                c.font = { size: 9, color: { argb: i === 2 && !computa ? MUTED : INK } };
-                c.alignment = { vertical: 'middle', horizontal: i <= 1 ? 'left' : 'left' };
+                c.font = { size: 9, color: { argb: (i === 2 && (!computa || !info.name)) ? MUTED : INK } };
+                c.alignment = { vertical: 'middle', horizontal: 'left', wrapText: i >= 2 };
                 c.border = thin;
+                if (i === 0) c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: FILL.festivo } };
             });
             row += 1;
         });
     }
-    row += 1;
-    ws.mergeCells(row, 1, row, 21);
-    ws.getCell(row, 1).value = 'Descripción y ámbito de cada festivo: completar a mano (no hay ese dato en la app).';
-    ws.getCell(row, 1).font = { size: 8, italic: true, color: { argb: MUTED } };
+    if (unnamedHolidays > 0) {
+        row += 1;
+        ws.mergeCells(row, 1, row, 21);
+        ws.getCell(row, 1).value = `${unnamedHolidays === 1 ? '1 festivo añadido a mano no tiene' : `${unnamedHolidays} festivos añadidos a mano no tienen`} nombre: puedes ponérselo en Roadmap › Festivos.`;
+        ws.getCell(row, 1).font = { size: 8, italic: true, color: { argb: MUTED } };
+    }
 
     // ── Descarga ─────────────────────────────────────────────────────────
     const buffer = await wb.xlsx.writeBuffer();
@@ -4979,7 +4999,7 @@ function setupGanttHolidayTooltip() {
         const pretty = new Date(yy, mm - 1, dd).toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
         tip.innerHTML =
             `<div class="gantt-holiday-tooltip-date">${escapeHtml(pretty)}</div>` +
-            `<div class="gantt-holiday-tooltip-name">${escapeHtml(info ? info.name : 'Festivo')}</div>` +
+            `<div class="gantt-holiday-tooltip-name">${escapeHtml(info ? info.name : (window.currentPromotion?.holidayNames?.[dateKey] || 'Festivo'))}</div>` +
             `<div class="gantt-holiday-tooltip-scope">${escapeHtml(scope)}</div>`;
         tip.hidden = false;
 
@@ -5076,13 +5096,140 @@ function showGanttDateContextMenu(dateKey, x, y) {
  * persiste con PUT /holidays y refresca Gantt + Cómputo de horas + Asistencia.
  * @param {string} dateKey - "YYYY-MM-DD"
  */
+// ── Horas objetivo por módulo (docs/tasks/horas-objetivo-modulo.md) ─────────
+// Si algún módulo tiene `targetHours`, al añadir/quitar festivos o bloques de tiempo flexible
+// las fechas del roadmap se recolocan solas (reflowModulesToTargetHours en gantt-adapter.js)
+// para que cada módulo siga sumando sus horas. Las operaciones van en cola para que dos
+// cambios seguidos (p.ej. quitar varios festivos rápido) no se pisen.
+let _roadmapReflowQueue = Promise.resolve();
+
+function _enqueueRoadmapReflow(job) {
+    const run = _roadmapReflowQueue.then(job, job);
+    _roadmapReflowQueue = run.catch(() => false);
+    return run;
+}
+
+/**
+ * "Foto" del calendario lectivo con el que están colocadas las fechas actuales del roadmap.
+ * Se toma ANTES de cambiar festivos o tiempo flexible y se pasa al recálculo.
+ */
+function _roadmapCalendarOf(promo) {
+    if (!promo) return null;
+    return JSON.parse(JSON.stringify({
+        startDate: promo.startDate || null,
+        workingDays: promo.workingDays || null,
+        holidays: promo.holidays || [],
+        flexibleBlocks: promo.flexibleBlocks || [],
+    }));
+}
+
+async function _putPromotionModules(modules) {
+    const token = localStorage.getItem('token');
+    const res = await fetch(`${API_URL}/api/promotions/${promotionId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ modules })
+    });
+    return res.ok;
+}
+
+async function _fetchPromotionForReflow() {
+    const token = localStorage.getItem('token');
+    const res = await fetch(`${API_URL}/api/promotions/${promotionId}`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+    });
+    return res.ok ? res.json() : null;
+}
+
+/**
+ * Recoloca las fechas del roadmap para mantener las horas objetivo de los módulos tras un
+ * cambio de festivos o tiempo flexible (ya guardado). No hace nada si ningún módulo tiene
+ * horas objetivo o si las fechas ya cuadran.
+ * @param {Object|null} previousCalendar - `_roadmapCalendarOf(promo)` tomado antes del cambio
+ * @returns {Promise<boolean>} true si movió y guardó fechas
+ */
+function reflowRoadmapToTargetHours(previousCalendar) {
+    return _enqueueRoadmapReflow(async () => {
+        if (typeof reflowModulesToTargetHours !== 'function' || !promotionId) return false;
+        try {
+            const promotion = await _fetchPromotionForReflow();
+            if (!promotion) return false;
+            const { changed, modules } = reflowModulesToTargetHours(promotion, previousCalendar);
+            if (!changed) return false;
+            if (!(await _putPromotionModules(promotion.modules))) {
+                window.showApiToast?.('No se pudieron recalcular las fechas del roadmap', 'danger');
+                return false;
+            }
+            if (window.currentPromotion) window.currentPromotion.modules = promotion.modules;
+            const n = modules.length;
+            window.showApiToast?.(
+                n > 0
+                    ? `Fechas del roadmap recalculadas para mantener las horas objetivo (${n} módulo${n === 1 ? '' : 's'})`
+                    : 'Roadmap recolocado para mantener las horas objetivo',
+                'success', 4000
+            );
+            loadModules();
+            return true;
+        } catch (error) {
+            console.error('Error recalculating roadmap dates:', error);
+            window.showApiToast?.('No se pudieron recalcular las fechas del roadmap', 'danger');
+            return false;
+        }
+    });
+}
+window.reflowRoadmapToTargetHours = reflowRoadmapToTargetHours;
+
+/**
+ * Guarda las horas objetivo de un módulo (pestaña "Horas lectivas") y recoloca el roadmap
+ * para que el módulo las sume. `hours` vacío o <= 0 quita el objetivo (sin mover fechas).
+ * @param {number} moduleIndex
+ * @param {number|string|null} hours
+ * @returns {Promise<boolean>}
+ */
+window.saveModuleTargetHours = function (moduleIndex, hours) {
+    return _enqueueRoadmapReflow(async () => {
+        try {
+            const promotion = await _fetchPromotionForReflow();
+            const module = promotion && (promotion.modules || [])[moduleIndex];
+            if (!module) {
+                window.showApiToast?.('Módulo no encontrado', 'warning');
+                return false;
+            }
+            const value = Number(String(hours ?? '').replace(',', '.'));
+            if (Number.isFinite(value) && value > 0) module.targetHours = value;
+            else delete module.targetHours;
+
+            const { modules } = reflowModulesToTargetHours(promotion, _roadmapCalendarOf(promotion));
+            if (!(await _putPromotionModules(promotion.modules))) {
+                window.showApiToast?.('No se pudieron guardar las horas objetivo', 'danger');
+                return false;
+            }
+            if (window.currentPromotion) window.currentPromotion.modules = promotion.modules;
+            window.showApiToast?.(
+                modules.length > 0
+                    ? `Horas objetivo guardadas y fechas del roadmap recalculadas (${modules.length} módulo${modules.length === 1 ? '' : 's'})`
+                    : 'Horas objetivo guardadas',
+                'success', 4000
+            );
+            loadModules();
+            return true;
+        } catch (error) {
+            console.error('Error saving module target hours:', error);
+            window.showApiToast?.('No se pudieron guardar las horas objetivo', 'danger');
+            return false;
+        }
+    });
+};
+
 /**
  * Sustituye la lista completa de festivos en memoria (p.ej. tras cargar festivos por
  * comunidad autónoma desde el popover "Festivos" del Roadmap) y refresca las vistas
  * que los leen: Gantt, Asistencia y Cómputo de horas. No persiste — el backend ya guardó.
+ * Si hay horas objetivo por módulo, recoloca las fechas del roadmap.
  * @param {string[]} holidays - fechas "YYYY-MM-DD"
  */
 window.__applyPromotionHolidays = function (holidays) {
+    const previousCalendar = _roadmapCalendarOf(window.currentPromotion);
     _ganttHolidaysSet = new Set(Array.isArray(holidays) ? holidays : []);
     promotionHolidays = new Set(_ganttHolidaysSet);
     if (window.currentPromotion) window.currentPromotion.holidays = [..._ganttHolidaysSet];
@@ -5090,9 +5237,11 @@ window.__applyPromotionHolidays = function (holidays) {
     if (typeof renderAttendanceTable === 'function' && document.getElementById('attendance-table')) renderAttendanceTable();
     if (window.__refreshHoursPanel) window.__refreshHoursPanel();
     window.dispatchEvent(new Event('promotion-holidays-changed'));
+    reflowRoadmapToTargetHours(previousCalendar);
 };
 
 async function _ganttToggleHoliday(dateKey) {
+    const previousCalendar = _roadmapCalendarOf(window.currentPromotion);
     const wasHoliday = _ganttHolidaysSet.has(dateKey);
     if (wasHoliday) _ganttHolidaysSet.delete(dateKey);
     else _ganttHolidaysSet.add(dateKey);
@@ -5115,6 +5264,7 @@ async function _ganttToggleHoliday(dateKey) {
         if (saved && window.currentPromotion) {
             window.currentPromotion.regionalHolidays = saved.regionalHolidays;
             window.currentPromotion.excludedHolidays = saved.excludedHolidays;
+            window.currentPromotion.holidayNames = saved.holidayNames || {};
         }
         // Refresca el panel lateral "Festivos cargados" si está abierto (RoadmapPanel.tsx)
         window.dispatchEvent(new Event('promotion-holidays-changed'));
@@ -5131,6 +5281,7 @@ async function _ganttToggleHoliday(dateKey) {
     if (typeof gantt !== 'undefined' && gantt.render) gantt.render();
     if (typeof renderAttendanceTable === 'function') renderAttendanceTable();
     if (window.__refreshHoursPanel) window.__refreshHoursPanel();
+    reflowRoadmapToTargetHours(previousCalendar);
 
     const hint = _ganttZoomLevel === 'day' ? '' : ' (cambia el zoom a «Día» para verlo sombreado)';
     window.showApiToast?.(
@@ -5248,6 +5399,7 @@ async function persistGanttTaskChange(task) {
         }
 
         const promotion = await response.json();
+        const previousCalendar = task.itemType === 'flexible' ? _roadmapCalendarOf(promotion) : null;
         const changed = applyGanttTaskChange(promotion, task);
         if (!changed) return;
 
@@ -5263,6 +5415,8 @@ async function persistGanttTaskChange(task) {
         if (updateResponse.ok) {
             window.showApiToast('Roadmap actualizado', 'success');
             loadModules();
+            // Mover o redimensionar tiempo flexible cambia los días lectivos de los módulos.
+            if (previousCalendar) reflowRoadmapToTargetHours(previousCalendar);
         } else {
             window.showApiToast('Error al guardar el cambio en el Gantt', 'danger');
         }
@@ -5385,6 +5539,7 @@ async function createFlexibleBlockAt(clickDate, overrides = {}) {
         const durationWeeks = Math.max(1, Number(overrides.duration) || 4);
         const endDate = addDays(clickStartDate, durationWeeks * 7 - 1);
 
+        const previousCalendar = _roadmapCalendarOf(promotion);
         if (!Array.isArray(promotion.flexibleBlocks)) promotion.flexibleBlocks = [];
         promotion.flexibleBlocks.push({
             id: 'flex-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 7),
@@ -5405,6 +5560,7 @@ async function createFlexibleBlockAt(clickDate, overrides = {}) {
         if (updateResponse.ok) {
             window.showApiToast('Bloque de tiempo flexible creado', 'success');
             loadModules();
+            reflowRoadmapToTargetHours(previousCalendar);
         } else {
             window.showApiToast('Error al crear el bloque de tiempo flexible', 'danger');
         }
@@ -5474,6 +5630,7 @@ async function deleteFlexibleBlock(task) {
             window.showApiToast('Bloque de tiempo flexible no encontrado', 'warning');
             return;
         }
+        const previousCalendar = _roadmapCalendarOf(promotion);
         promotion.flexibleBlocks = promotion.flexibleBlocks.filter(b => b.id !== task.flexibleBlockId);
 
         const updateResponse = await fetch(`${API_URL}/api/promotions/${promotionId}`, {
@@ -5488,6 +5645,7 @@ async function deleteFlexibleBlock(task) {
         if (updateResponse.ok) {
             window.showApiToast('Bloque eliminado', 'success');
             loadModules();
+            reflowRoadmapToTargetHours(previousCalendar);
         } else {
             window.showApiToast('Error al eliminar el bloque', 'danger');
         }
@@ -8248,6 +8406,7 @@ function setupForms() {
                 window.showApiToast('Bloque de tiempo flexible no encontrado', 'warning');
                 return;
             }
+            const previousCalendar = _roadmapCalendarOf(promotion);
             block.name = name || 'Tiempo flexible';
             block.startDate = startDateStr;
             block.endDate = endDateStr;
@@ -8269,6 +8428,7 @@ function setupForms() {
                 currentEditingFlexibleTask = null;
                 loadModules();
                 window.showApiToast('Bloque actualizado', 'success');
+                reflowRoadmapToTargetHours(previousCalendar);
             } else {
                 window.showApiToast('Error al guardar el bloque', 'danger');
             }
@@ -10952,6 +11112,9 @@ function renderAttendanceTable() {
 // ── Holiday toggle ───────────────────────────────────────────────────────────
 async function toggleHoliday(dateKey) {
     const token = localStorage.getItem('token');
+    const previousCalendar = _roadmapCalendarOf(window.currentPromotion
+        ? { ...window.currentPromotion, holidays: [...promotionHolidays] }
+        : null);
     if (promotionHolidays.has(dateKey)) {
         promotionHolidays.delete(dateKey);
     } else {
@@ -10969,7 +11132,9 @@ async function toggleHoliday(dateKey) {
             window.currentPromotion.holidays = saved.holidays;
             window.currentPromotion.regionalHolidays = saved.regionalHolidays;
             window.currentPromotion.excludedHolidays = saved.excludedHolidays;
+            window.currentPromotion.holidayNames = saved.holidayNames || {};
             window.dispatchEvent(new Event('promotion-holidays-changed'));
+            reflowRoadmapToTargetHours(previousCalendar);
         }
     } catch (_) { }
     renderAttendanceTable();

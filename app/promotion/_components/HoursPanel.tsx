@@ -62,6 +62,57 @@ interface ModuleRow {
   lectiveDays: number;
   startDate: string;
   endDate: string;
+  targetHours?: number | null;
+  targetDays?: number | null;
+}
+
+/**
+ * Input de "Horas objetivo" de un módulo. Guarda al salir del campo o con Enter
+ * (window.saveModuleTargetHours en promotion-detail.js), que además recoloca las
+ * fechas del roadmap para que el módulo sume esas horas.
+ */
+function TargetHoursInput({ row }: { row: ModuleRow }) {
+  const current = row.targetHours ?? null;
+  const [value, setValue] = useState(current === null ? '' : String(current));
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setValue(current === null ? '' : String(current));
+  }, [current]);
+
+  const commit = async () => {
+    const normalized = value.trim().replace(',', '.');
+    const next = normalized === '' ? null : Number(normalized);
+    if (next !== null && (!Number.isFinite(next) || next <= 0)) {
+      setValue(current === null ? '' : String(current));
+      return;
+    }
+    if (next === current) return;
+    setSaving(true);
+    const ok = await w().saveModuleTargetHours?.(row.moduleIndex, next);
+    setSaving(false);
+    if (!ok) setValue(current === null ? '' : String(current));
+  };
+
+  return (
+    <input
+      type="number"
+      inputMode="decimal"
+      min={0}
+      step={0.5}
+      className="form-control form-control-sm text-end ms-auto"
+      style={{ maxWidth: '7rem' }}
+      placeholder="—"
+      aria-label={`Horas objetivo de ${row.name}`}
+      value={value}
+      disabled={saving}
+      onChange={(e) => setValue(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+      }}
+    />
+  );
 }
 interface ProjectRow extends ModuleRow {
   moduleName: string;
@@ -217,19 +268,34 @@ function HoursPanel() {
                     <th className="text-nowrap">Fechas</th>
                     <th className="text-end">Días lectivos</th>
                     <th className="text-end">Horas</th>
+                    <th className="text-end text-nowrap">Horas objetivo</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {byModule.map((m) => (
-                    <tr key={m.moduleIndex}>
-                      <td>{m.name}</td>
-                      <td className="text-nowrap text-muted small">
-                        {fmtDate(m.startDate)} – {fmtDate(m.endDate)}
-                      </td>
-                      <td className="text-end">{m.lectiveDays}</td>
-                      <td className="text-end fw-semibold">{fmtHours(m.hours)}</td>
-                    </tr>
-                  ))}
+                  {byModule.map((m) => {
+                    const hasTarget = m.targetHours != null;
+                    const offTarget = hasTarget && m.targetDays != null && m.lectiveDays !== m.targetDays;
+                    return (
+                      <tr key={m.moduleIndex}>
+                        <td>{m.name}</td>
+                        <td className="text-nowrap text-muted small">
+                          {fmtDate(m.startDate)} – {fmtDate(m.endDate)}
+                        </td>
+                        <td className="text-end">{m.lectiveDays}</td>
+                        <td className={`text-end fw-semibold ${offTarget ? 'text-danger' : ''}`}>
+                          {fmtHours(m.hours)}
+                        </td>
+                        <td className="text-end">
+                          <TargetHoursInput row={m} />
+                          {hasTarget ? (
+                            <div className="text-muted small text-nowrap mt-1">
+                              {m.targetDays} días lectivos
+                            </div>
+                          ) : null}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
                 <tfoot>
                   <tr>
@@ -237,10 +303,22 @@ function HoursPanel() {
                       Total
                     </th>
                     <th className="text-end">{fmtHours(total)}</th>
+                    <th className="text-end text-muted fw-normal">
+                      {byModule.some((m) => m.targetHours != null)
+                        ? fmtHours(byModule.reduce((sum, m) => sum + (m.targetHours ?? 0), 0))
+                        : null}
+                    </th>
                   </tr>
                 </tfoot>
               </table>
             </div>
+            <p className="text-muted small mb-3">
+              <i className="bi bi-info-circle me-1" />
+              Si defines las horas objetivo de un módulo, al añadir o quitar festivos o tiempo
+              flexible las fechas del roadmap se recalculan solas: el módulo se alarga o se acorta
+              para mantener esas horas, sus cursos, proyectos y píldoras se recolocan por días
+              lectivos y los módulos siguientes se desplazan. Deja el campo vacío para no fijarlas.
+            </p>
 
             {/* Por proyecto */}
             <h6 className="fw-semibold mt-3 mb-2">Por proyecto</h6>
