@@ -47,6 +47,29 @@ Sevilla, con posibilidad de elegir varias.
 Implementado en la rama `feat/festivos-por-ciudad` de ambos repos
 (bootcamp-manager y bootcamp-manager-server), PR abierto en cada uno.
 
+## Festivos marcados a mano con nombre
+
+Pedido posterior del usuario: que los festivos añadidos a mano (clic derecho en
+Gantt o Asistencia) también salgan en la lista de festivos, con un nombre
+opcional, y que el Excel del Cómputo de horas diga qué festivo es cada día.
+
+- Backend (rama `feat/festivos-manuales-con-nombre` en `bootcamp-manager-server`):
+  columna `holidayNames` (TEXT JSON, `{ "YYYY-MM-DD": "nombre" }`, default `{}`)
+  en `Promotion`, añadida a `JSON_COLUMNS`/`JSON_COLS_PROMOTION`.
+  `PUT /holidays` acepta `holidayNames` opcional (solo los cambios; nombre vacío
+  = quitarlo, máx. 120 caracteres) y `mergeHolidayNames` descarta los nombres de
+  fechas que ya no son festivo; también se limpia en `PUT /holiday-regions`.
+  Ambos devuelven `holidayNames`. La columna la crea `db.sync({ alter })` al arrancar.
+- Frontend (rama `feat/horas-objetivo-modulo`): el panel lateral pasa a llamarse
+  "Festivos" y junta los cargados por ciudad + los marcados a mano
+  (`manualHolidaysOf`: fechas de `holidays` que no están en `regionalHolidays`),
+  con badge "A mano" y nombre editable en línea (`ManualHolidayName`, guarda al
+  salir o con Enter vía `renameHoliday`). El tooltip del Gantt muestra ese nombre.
+- Excel del Cómputo de horas (`_exportHoursXlsx`): la tabla "Festivos en el
+  periodo" rellena Descripción (nombre) y Ámbito (Nacional / Autonómico ·
+  comunidad / Local · ciudad / Añadido a mano) y avisa de cuántos festivos a mano
+  no tienen nombre. Verificado en vivo con la P8 (sin descargar ni escribir).
+
 ## Pendiente / Próximos pasos
 
 - **Mantener `localHolidays.js` cada año**: añadir el año siguiente cuando

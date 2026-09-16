@@ -55,6 +55,47 @@ const REGION_SHORT: Record<string, string> = {
 
 interface RegionalHoliday {
   date: string; name: string; national: boolean; regions: string[]; cities?: string[]; provisional?: boolean;
+  /** Marcado a mano (clic derecho en Gantt/Asistencia), no cargado por ciudad. */
+  manual?: boolean;
+}
+
+/**
+ * Festivos marcados a mano: fechas de promotion.holidays que no vienen de "Cargar festivos"
+ * (regionalHolidays). Su nombre, si el docente le puso uno, vive en promotion.holidayNames.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function manualHolidaysOf(promo: any): RegionalHoliday[] {
+  if (!promo) return [];
+  const auto = new Set((promo.regionalHolidays || []).map((h: RegionalHoliday) => h.date));
+  const names = promo.holidayNames || {};
+  return (promo.holidays || [])
+    .filter((d: unknown): d is string => typeof d === 'string' && !auto.has(d))
+    .map((date: string) => ({ date, name: names[date] || '', national: false, regions: [], manual: true }));
+}
+
+/** Nombre editable de un festivo marcado a mano; guarda al salir del campo o con Enter. */
+function ManualHolidayName({ holiday, onSave }: { holiday: RegionalHoliday; onSave: (date: string, name: string) => Promise<void> }) {
+  const [value, setValue] = useState(holiday.name);
+  useEffect(() => setValue(holiday.name), [holiday.name]);
+  const commit = () => {
+    if (value.trim() !== holiday.name) onSave(holiday.date, value.trim());
+  };
+  return (
+    <input
+      type="text"
+      className="holidays-summary-name-input"
+      value={value}
+      maxLength={120}
+      placeholder="Añadir nombre…"
+      aria-label={`Nombre del festivo del ${holiday.date}`}
+      onChange={(e) => setValue(e.target.value)}
+      onBlur={commit}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') (e.target as HTMLInputElement).blur();
+        if (e.key === 'Escape') { setValue(holiday.name); e.stopPropagation(); }
+      }}
+    />
+  );
 }
 interface MissingLocalData { city: string; year: number }
 
@@ -238,6 +279,7 @@ function HolidaysPopover() {
   const [open, setOpen] = useState(false);
   const [selected, setSelected] = useState<string[]>([]);
   const [loaded, setLoaded] = useState<RegionalHoliday[]>([]);
+  const [manual, setManual] = useState<RegionalHoliday[]>([]);
   const [excludedCount, setExcludedCount] = useState(0);
   const [missing, setMissing] = useState<MissingLocalData[]>([]);
   const [saving, setSaving] = useState(false);
@@ -258,6 +300,7 @@ function HolidaysPopover() {
           : (promo.holidayRegions || []).map((code: string) => REGION_TO_CITY[code]).filter(Boolean),
       );
       setLoaded(promo.regionalHolidays || []);
+      setManual(manualHolidaysOf(promo));
       setExcludedCount((promo.excludedHolidays || []).length);
     }
     // Radix pinta el menú del dropdown en un portal fuera de `ref`: no cerrar el popover
@@ -278,6 +321,7 @@ function HolidaysPopover() {
       const p = w().currentPromotion;
       if (!p) return;
       setLoaded(p.regionalHolidays || []);
+      setManual(manualHolidaysOf(p));
       setExcludedCount((p.excludedHolidays || []).length);
     };
     if (drawerOpen) sync();
@@ -308,15 +352,44 @@ function HolidaysPopover() {
       });
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       const body = await r.json();
-      Object.assign(promo, { regionalHolidays: body.regionalHolidays, excludedHolidays: body.excludedHolidays });
+      Object.assign(promo, {
+        regionalHolidays: body.regionalHolidays,
+        excludedHolidays: body.excludedHolidays,
+        holidayNames: body.holidayNames || {},
+      });
       setLoaded(body.regionalHolidays);
       setExcludedCount(body.excludedHolidays.length);
       w().__applyPromotionHolidays?.(body.holidays);
+      setManual(manualHolidaysOf(promo));
     } catch {
       w().showApiToast?.('No se pudo quitar el festivo', 'danger');
     }
     setRemoving(null);
   };
+
+  // Pone (o quita, si llega vacío) el nombre de un festivo marcado a mano. No cambia qué días son festivos.
+  const renameHoliday = async (date: string, name: string) => {
+    const promotionId = new URLSearchParams(window.location.search).get('id');
+    const promo = w().currentPromotion;
+    if (!promotionId || !promo) return;
+    try {
+      const r = await apiFetch(`/api/promotions/${promotionId}/holidays`, {
+        method: 'PUT',
+        body: JSON.stringify({ holidays: promo.holidays || [], holidayNames: { [date]: name } }),
+      });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const body = await r.json();
+      promo.holidayNames = body.holidayNames || {};
+      setManual(manualHolidaysOf(promo));
+      window.dispatchEvent(new Event('promotion-holidays-changed'));
+      w().showApiToast?.(name ? 'Nombre del festivo guardado' : 'Nombre del festivo quitado', 'success', 2000);
+    } catch {
+      w().showApiToast?.('No se pudo guardar el nombre del festivo', 'danger');
+      setManual(manualHolidaysOf(promo));
+    }
+  };
+
+  const allHolidays = [...loaded, ...manual].sort((a, b) => a.date.localeCompare(b.date));
 
   const save = async (resetExclusions = false) => {
     const promotionId = new URLSearchParams(window.location.search).get('id');
@@ -338,12 +411,14 @@ function HolidaysPopover() {
             holidayRegions: body.holidayRegions,
             regionalHolidays: body.regionalHolidays,
             excludedHolidays: body.excludedHolidays,
+            holidayNames: body.holidayNames || {},
           });
         }
         setLoaded(body.regionalHolidays);
         setExcludedCount(body.excludedHolidays.length);
         setMissing(body.missingLocalData || []);
         w().__applyPromotionHolidays?.(body.holidays);
+        setManual(manualHolidaysOf(promo));
         w().showApiToast?.(
           selected.length ? `${body.regionalHolidays.length} festivos en días lectivos cargados` : 'Festivos automáticos eliminados',
           'success',
@@ -423,13 +498,14 @@ function HolidaysPopover() {
               </button>
             </div>
           )}
-          {loaded.length > 0 && (
+          {allHolidays.length > 0 && (
             <button
               type="button"
               className="btn btn-outline-secondary btn-sm w-100 mt-3"
               onClick={() => { setOpen(false); setDrawerOpen(true); }}
             >
-              <i className="bi bi-layout-sidebar-inset-reverse me-1" />Ver {loaded.length} festivos cargados
+              <i className="bi bi-layout-sidebar-inset-reverse me-1" />
+              Ver {allHolidays.length === 1 ? '1 festivo' : `${allHolidays.length} festivos`}
             </button>
           )}
         </div>
@@ -443,11 +519,11 @@ function HolidaysPopover() {
           className={`roadmap-drawer${drawerOpen ? ' is-open' : ''}`}
           aria-hidden={!drawerOpen}
           role="dialog"
-          aria-label="Festivos cargados"
+          aria-label="Festivos"
         >
           <div className="roadmap-drawer-head">
             <div className="roadmap-drawer-eyebrow">
-              <i className="bi bi-calendar-x" />Festivos cargados
+              <i className="bi bi-calendar-x" />Festivos
             </div>
             <button type="button" className="btn btn-sm btn-link roadmap-drawer-x" onClick={() => setDrawerOpen(false)} aria-label="Cerrar">
               <i className="bi bi-x-lg" />
@@ -455,22 +531,24 @@ function HolidaysPopover() {
           </div>
           <div className="roadmap-drawer-body">
             <h5 className="roadmap-drawer-title">
-              {loaded.length === 1 ? '1 festivo en días lectivos' : `${loaded.length} festivos en días lectivos`}
+              {allHolidays.length === 1 ? '1 festivo' : `${allHolidays.length} festivos`}
             </h5>
             <div className="holidays-drawer-stats">
               <span className="holidays-drawer-stat">{loaded.filter(h => h.national).length} nacionales</span>
               <span className="holidays-drawer-stat">{loaded.filter(h => !h.national && !h.cities?.length).length} autonómicos</span>
               <span className="holidays-drawer-stat">{loaded.filter(h => h.cities?.length).length} locales</span>
+              {manual.length > 0 && <span className="holidays-drawer-stat">{manual.length} a mano</span>}
               {excludedCount > 0 && <span className="holidays-drawer-stat">{excludedCount} quitados</span>}
             </div>
             <p className="text-muted small mb-2">
-              Quita un festivo con <i className="bi bi-x-lg" /> o con clic derecho en el Gantt: el día vuelve a ser
-              lectivo y no se volverá a cargar.
+              Los festivos que marcas con clic derecho en el Gantt o en Asistencia también aparecen aquí:
+              escribe su nombre si quieres. Quita cualquier festivo con <i className="bi bi-x-lg" /> o con clic
+              derecho: el día vuelve a ser lectivo.
             </p>
-            {loaded.length === 0 ? (
-              <p className="text-muted small mb-0">No hay festivos cargados.</p>
+            {allHolidays.length === 0 ? (
+              <p className="text-muted small mb-0">No hay festivos.</p>
             ) : (
-              groupHolidaysByMonth(loaded).map(([month, items]) => (
+              groupHolidaysByMonth(allHolidays).map(([month, items]) => (
                 <section key={month}>
                   <div className="holidays-summary-month">{month}</div>
                   {items.map(h => {
@@ -481,21 +559,25 @@ function HolidaysPopover() {
                           <span className="holidays-summary-day">{d.getDate()}</span>
                           <span className="holidays-summary-weekday">{d.toLocaleDateString('es-ES', { weekday: 'short' })}</span>
                         </div>
-                        <div className="holidays-summary-name">{h.name}</div>
+                        <div className="holidays-summary-name">
+                          {h.manual ? <ManualHolidayName holiday={h} onSave={renameHoliday} /> : h.name}
+                        </div>
                         <span
-                          className={`holidays-summary-badge${h.national ? ' is-national' : h.cities?.length ? ' is-local' : ''}`}
+                          className={`holidays-summary-badge${h.manual ? ' is-manual' : h.national ? ' is-national' : h.cities?.length ? ' is-local' : ''}`}
                           title={h.provisional ? 'Aprobado por el ayuntamiento, pendiente de publicación oficial' : undefined}
                         >
-                          {h.national
-                            ? 'Nacional'
-                            : h.cities?.length
-                              ? `Local · ${h.cities.join(' · ')}${h.provisional ? ' (provisional)' : ''}`
-                              : h.regions.map(c => REGION_SHORT[c] || c).join(' · ')}
+                          {h.manual
+                            ? 'A mano'
+                            : h.national
+                              ? 'Nacional'
+                              : h.cities?.length
+                                ? `Local · ${h.cities.join(' · ')}${h.provisional ? ' (provisional)' : ''}`
+                                : h.regions.map(c => REGION_SHORT[c] || c).join(' · ')}
                         </span>
                         <button
                           type="button"
                           className="holidays-summary-remove"
-                          aria-label={`Quitar festivo ${h.name}`}
+                          aria-label={`Quitar festivo ${h.name || h.date}`}
                           title="Quitar festivo (el día vuelve a ser lectivo)"
                           onClick={() => removeHoliday(h.date)}
                           disabled={removing === h.date}
