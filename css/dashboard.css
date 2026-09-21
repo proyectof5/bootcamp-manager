@@ -408,130 +408,27 @@ main {
         position: relative;
     }
 }
-/* ── "Mi semana": lo pendiente de todas las promociones (Fase 5) ── */
+/* ── Campana de avisos en la tarjeta de promoción (Fase 5) ── */
 
-.myweek {
-    margin-bottom: var(--app-space-5);
-    padding: var(--app-space-4);
-    background: var(--app-color-bg-surface);
-    border-radius: var(--app-radius-lg);
-    box-shadow: var(--app-shadow-md);
-}
-
-.myweek-head {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: var(--app-space-2);
-    margin-bottom: var(--app-space-3);
-}
-
-.myweek-head h2 {
-    margin: 0;
-    font-size: var(--app-font-size-lg);
-    font-weight: var(--app-font-weight-semi);
-}
-
-.myweek-date {
-    color: var(--app-color-text-muted);
-    font-size: var(--app-font-size-sm);
-    text-transform: capitalize;
-}
-
-.myweek-msg {
-    margin: 0;
-    color: var(--app-color-text-muted);
-}
-
-.myweek-list {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-}
-
-.myweek-item {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: var(--app-space-3);
-    padding: var(--app-space-3) 0;
-    border-top: 1px solid var(--app-color-border);
-}
-
-.myweek-item:first-child {
-    border-top: 0;
-}
-
-.myweek-level {
-    flex: 0 0 auto;
-    color: var(--app-color-text-muted);
-}
-
-.myweek-item.is-late .myweek-level { color: var(--app-color-danger-500); }
-.myweek-item.is-soon .myweek-level { color: #8a5a00; }
-
-.myweek-what {
-    flex: 1 1 240px;
-    min-width: 0;
-    display: flex;
-    flex-direction: column;
-}
-
-.myweek-where {
-    color: var(--app-color-text-muted);
-    font-size: var(--app-font-size-sm);
-}
-
-.myweek-cta {
-    flex: 0 0 auto;
+.pending-bell {
     display: inline-flex;
     align-items: center;
-    min-height: 40px;
-    padding: var(--app-space-2) var(--app-space-3);
-    border: 1px solid var(--app-color-neutral-300);
-    border-radius: var(--app-radius-md);
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: var(--app-radius-pill);
+    background: rgba(255, 255, 255, 0.92);
     color: var(--app-color-brand-700);
-    font-size: var(--app-font-size-sm);
-    font-weight: var(--app-font-weight-medium);
-    text-decoration: none;
+    font-size: var(--app-font-size-xs);
+    font-weight: var(--app-font-weight-bold);
+    line-height: 1.4;
 }
 
-.myweek-cta:hover {
-    background: var(--app-color-primary-soft);
+.pending-bell .bi {
+    font-size: 0.8rem;
 }
 
-.myweek-cta:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 2px var(--app-color-bg-surface), 0 0 0 4px var(--app-color-brand-700);
-}
-
-/* ── Marco oscuro también en el listado de promociones (Fase 6) ── */
-
-body {
-    background-color: var(--app-color-bg-page);
-    border-right: 0;
-}
-
-.navbar {
-    background-image: none !important;
-    background-color: var(--app-color-neutral-900) !important;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-}
-
-/* Título y contadores de la cabecera: iban en blanco sobre el salmón */
-main h1,
-main .text-white,
-main .text-white\/90 {
-    color: var(--app-color-text) !important;
-    text-shadow: none !important;
-}
-
-/* La tarjeta de promoción se queda naranja —es el acento de la marca— pero con
-   el tono que cumple contraste con texto blanco pequeño (#d63900, 4,72:1). */
-.promotion-card,
-main .bg-crok {
-    background-color: var(--app-color-brand-700) !important;
+.pending-bell-count {
+    font-variant-numeric: tabular-nums;
 }
 
 /* Barra superior del listado (reemplaza la textura naranja) */
@@ -544,4 +441,47 @@ main .bg-crok {
 .app-topbar a,
 .app-topbar button {
     color: #ffffff;
+}
+
+/* ── Marco claro en el listado de promociones (Fase 6) ── */
+
+body {
+    background-color: var(--app-color-bg-page);
+    border-right: 0;
+}
+
+/* Título y contadores: iban en blanco sobre el fondo salmón */
+main h1,
+main .text-white,
+main .text-white\/90 {
+    color: var(--app-color-text) !important;
+    text-shadow: none !important;
+}
+
+/* La tarjeta de promoción se queda naranja —es el acento de la marca— pero en el
+   tono que cumple contraste con el texto blanco pequeño (#d63900, 4,72:1). */
+.promotion-card,
+main .bg-crok {
+    background-color: var(--app-color-brand-700) !important;
+}
+
+/* Dentro de la tarjeta el texto sí va en blanco */
+main .bg-crok h5,
+main .bg-crok p,
+main .bg-crok span,
+main .bg-crok .text-white,
+main .bg-crok .text-white\/90 {
+    color: #ffffff !important;
+}
+
+/* Fondo de página del listado: gris muy claro, como en la maqueta */
+.app-page-bg {
+    background-color: var(--app-color-bg-page);
+}
+
+/* La campana va en naranja sobre su pastilla blanca, no en blanco como el resto
+   del texto de la tarjeta */
+main .bg-crok .pending-bell,
+main .bg-crok .pending-bell * {
+    color: var(--app-color-brand-700) !important;
 }

@@ -50,7 +50,7 @@ import Spinner from '@/components/Spinner';
 
 import { useAuth } from '@/hooks/useAuth';
 import { apiFetch } from '@/lib/api';
-import { MyWeek } from './_components/MyWeek';
+import { usePendingCounts, PendingBell } from './_components/PendingBell';
 import { showToast } from '@/lib/toast';
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -100,6 +100,9 @@ export default function DashboardPage() {
   // ── Promotions ──
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [loadingPromotions, setLoadingPromotions] = useState(true);
+  // Fase 5 de la navegación: avisos por promoción para la campana de cada tarjeta;
+  // el detalle vive en el Inicio de la promoción ("Pendiente de ti").
+  const pendingByPromotion = usePendingCounts(promotions, withBasePath);
 
   // ── Templates ──
   const [templates, setTemplates] = useState<Template[]>([]);
@@ -352,7 +355,7 @@ export default function DashboardPage() {
   // ── Render ──
 
   return (
-    <div className="flex-1 w-full min-h-screen bg-[#f19976]">
+    <div className="flex-1 w-full min-h-screen app-page-bg">
       {/* ── Navbar siempre expandido (resuelve el bug de < 992px del v0.x) ── */}
       {/* Fase 6: barra superior oscura, como en la maqueta. El naranja se reserva
           para los acentos (botón principal, tarjetas de promoción). */}
@@ -439,11 +442,6 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Fase 5 de la navegación: lo pendiente de todas las promociones, antes de la rejilla */}
-        {!loadingPromotions && promotions.length > 0 && (
-          <MyWeek promotions={promotions} basePath={withBasePath} />
-        )}
-
         {/* Lista de promociones */}
         {loadingPromotions ? (
           <div className="flex justify-center py-12">
@@ -472,11 +470,14 @@ export default function DashboardPage() {
                       <h5 className="font-bold text-xl drop-shadow leading-tight m-0">
                         {p.name}
                       </h5>
-                      {!isOwner && (
-                        <Badge className="bg-cyan-500 hover:bg-cyan-500 text-white shrink-0">
-                          Collaborator
-                        </Badge>
-                      )}
+                      <span className="flex items-center gap-2 shrink-0">
+                        {!isOwner && (
+                          <Badge className="bg-cyan-500 hover:bg-cyan-500 text-white shrink-0">
+                            Collaborator
+                          </Badge>
+                        )}
+                        <PendingBell pending={pendingByPromotion[p.id]} />
+                      </span>
                     </div>
                     <p className="text-white/90 text-sm mb-3">
                       {p.description || 'Sin descripción'}

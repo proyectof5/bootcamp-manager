@@ -45,7 +45,7 @@ Fases 1 a 6 en la rama `feat/navegacion-por-secciones` (frontend), [PR #84](http
 | 3 | Estudiantes › Lista: tabla en React con cinco columnas por defecto y cuatro más en el selector, vistas (activos / en riesgo / bajas), orden por columna, cabecera fija y buscador | ✅ verificado en la P1 de Barcelona |
 | 4 | Ajustes › Datos de la promoción como página: campos agrupados, obligatorios marcados, error debajo del campo, aviso `aria-live` al guardar y Eliminar promoción al pie | 🟡 verificado el prefill y la validación; falta probar un guardado real |
 | 6 | Marco oscuro del prototipo: barra superior y menú en gris muy oscuro, contenido sobre gris claro y el naranja de marca reservado a acentos (botón principal, pestaña activa, icono de la sección, tarjetas de promoción) | ✅ verificado |
-| 5 | "Mi semana" en el listado de promociones (lo pendiente de todas, con enlace directo) y buscador Ctrl+K en la promoción (páginas, estudiantes, módulos, proyectos y acciones) | ✅ verificado con 8 promociones |
+| 5 | Campana de avisos en la tarjeta de cada promoción (el detalle vive en el Inicio de esa promoción) y buscador Ctrl+K en la promoción (páginas, estudiantes, módulos, proyectos y acciones) | ✅ verificado con 8 promociones |
 
 ## Mapa de destinos (Fase 1)
 
@@ -68,6 +68,8 @@ Fases 1 a 6 en la rama `feat/navegacion-por-secciones` (frontend), [PR #84](http
 - La Fase 2 saca los avisos de datos ya existentes; si un día hay que añadir
   "estudiantes sin acceso al portal" hará falta un dato por estudiante que hoy
   no existe (la contraseña de acceso es de la promoción, no de cada persona).
+- El bloque "Mi semana" encima de la rejilla se descartó tras probarlo: competía con
+  las tarjetas. En su lugar, cada tarjeta lleva una campana con el número de avisos.
 - Las seis fases están hechas. Queda decidir si se borra el markup legacy que hoy
   solo se oculta por CSS y si "Mi semana" debe mostrar también promociones que
   aún no han empezado.
@@ -94,7 +96,8 @@ Fases 1 a 6 en la rama `feat/navegacion-por-secciones` (frontend), [PR #84](http
 - `css/promotion-detail.css` — estilos de la cabecera y ocultado del markup viejo.
 - `css/design-system.css` — contraste del botón principal y "Saltar al contenido".
 - `app/promotion/_components/CommandPalette.tsx` — buscador Ctrl+K (Fase 5).
-- `app/dashboard/_components/MyWeek.tsx` — "Mi semana" en el listado (Fase 5).
+- `app/dashboard/_components/PendingBell.tsx` — cuenta de avisos por promoción y
+  campana en la tarjeta (Fase 5).
 - `app/promotion/_components/PromotionSettingsPanel.tsx` — Ajustes como página (Fase 4),
   montado en `#ajustes-tab` de `body.ts`.
 - `app/promotion/_components/StudentsTable.tsx` — tabla de estudiantes (Fase 3);
