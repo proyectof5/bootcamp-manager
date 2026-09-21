@@ -36,12 +36,12 @@ Prototipo clicable de las pantallas nuevas:
 
 ## Estado
 
-Fase 1 en la rama `feat/navegacion-por-secciones` (frontend), sin PR.
+Fases 1 y 2 en la rama `feat/navegacion-por-secciones` (frontend), [PR #84](https://github.com/proyectof5/bootcamp-manager/pull/84).
 
 | Fase | Qué | Estado |
 |---|---|---|
-| 1 | Marco: barra lateral por secciones, cabecera de página (migas + título + acciones + pestañas), destino en el hash, enlace "Saltar al contenido", foco visible, contraste del botón principal | ✅ código, sin verificar en la app |
-| 2 | Inicio "Pendiente de ti" (avisos accionables + 4 cifras enlazadas) | ⬜ |
+| 1 | Marco: barra lateral por secciones, cabecera de página (migas + título + acciones + pestañas), destino en el hash, enlace "Saltar al contenido", foco visible, contraste del botón principal | ✅ verificado en la P8 |
+| 2 | Inicio "Pendiente de ti": avisos accionables (pasar lista de hoy, proyectos sin evaluar, horas que faltan, festivos a mano sin nombre) + 4 cifras enlazadas, encima del Inicio de siempre | ✅ verificado en la P8 |
 | 3 | Estudiantes › Lista: 7 columnas, selector de columnas, vistas guardadas, filtros plegados | ⬜ |
 | 4 | Ajustes › Datos de la promoción como página, no ventana modal | ⬜ |
 | 5 | "Mi semana" (varias promociones) y buscador con Ctrl+K | ⬜ |
@@ -64,10 +64,10 @@ Fase 1 en la rama `feat/navegacion-por-secciones` (frontend), sin PR.
 
 ## Pendiente / Próximos pasos
 
-- **Verificar la Fase 1 en la app** con sesión iniciada: recorrer las siete
-  secciones, comprobar el hash, el botón atrás y que Preview Roadmap y Syllabus
-  se mueven a la cabecera solo en Planificación.
-- Fases 2-5 de la tabla de estado.
+- La Fase 2 saca los avisos de datos ya existentes; si un día hay que añadir
+  "estudiantes sin acceso al portal" hará falta un dato por estudiante que hoy
+  no existe (la contraseña de acceso es de la promoción, no de cada persona).
+- Fases 3-5 de la tabla de estado.
 - Revisar los avisos que quedan del markup legacy: `#teacher-area-header`,
   `#program-details-group-nav`, `#program-details-tabs` y `#teacher-area-subtabs`
   se ocultan por CSS; cuando las fases 2-5 estén hechas conviene borrarlos.
@@ -83,3 +83,5 @@ Fase 1 en la rama `feat/navegacion-por-secciones` (frontend), sin PR.
 - `app/promotion/body.ts` — `#promotion-page-head` y `#program-details-actions`.
 - `css/promotion-detail.css` — estilos de la cabecera y ocultado del markup viejo.
 - `css/design-system.css` — contraste del botón principal y "Saltar al contenido".
+- `app/promotion/_components/PendingPanel.tsx` — avisos y cifras del Inicio (Fase 2);
+  se monta al principio de `OverviewPanel.tsx`, sin quitar nada de lo que ya había.
