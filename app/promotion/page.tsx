@@ -27,6 +27,7 @@ import { AccessSettingsPanelHost } from './_components/AccessSettingsPanel';
 import { OverviewPanelHost } from './_components/OverviewPanel';
 import { SectionNavItems, PromotionPageHeadHost } from './_components/PromotionNav';
 import { PromotionSettingsPanelHost } from './_components/PromotionSettingsPanel';
+import { CommandPalette, CommandPaletteButton } from './_components/CommandPalette';
 import { EvaluationGridPanelHost } from './_components/EvaluationGridPanel';
 import { initReports } from './_lib/reports';
 import { initSyllabusPdf } from './_lib/syllabus-pdf';
@@ -401,6 +402,9 @@ export default function PromotionPage() {
             </h5>
           </div>
 
+          {/* Buscador de la promoción (Ctrl/Cmd + K), Fase 5 de la navegación */}
+          <CommandPaletteButton />
+
           {/* User menu — DropdownMenu shadcn (reemplaza Bootstrap dropdown) */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -585,6 +589,7 @@ export default function PromotionPage() {
       <OverviewPanelHost />
       <PromotionPageHeadHost />
       <PromotionSettingsPanelHost />
+      <CommandPalette />
       {/* Sub-tab "Evaluación" de la Teacher-Area (spec 0014 Fase C, 18º y ÚLTIMO bloque): React vía
           portal a #teacher-area-evaluation. Renderiza #evaluation-tab con sus 4 sub-vistas
           (lista #evaluation-content, #team-history-panel, split-view #eval-project-view, #student-eval-panel)

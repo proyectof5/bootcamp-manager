@@ -50,6 +50,7 @@ import Spinner from '@/components/Spinner';
 
 import { useAuth } from '@/hooks/useAuth';
 import { apiFetch } from '@/lib/api';
+import { MyWeek } from './_components/MyWeek';
 import { showToast } from '@/lib/toast';
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -441,6 +442,11 @@ export default function DashboardPage() {
             </Button>
           </div>
         </div>
+
+        {/* Fase 5 de la navegación: lo pendiente de todas las promociones, antes de la rejilla */}
+        {!loadingPromotions && promotions.length > 0 && (
+          <MyWeek promotions={promotions} basePath={withBasePath} />
+        )}
 
         {/* Lista de promociones */}
         {loadingPromotions ? (
