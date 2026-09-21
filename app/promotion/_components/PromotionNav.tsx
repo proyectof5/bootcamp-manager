@@ -67,6 +67,7 @@ export function SectionNavItems({ placement = 'main' }: { placement?: 'main' | '
         <li className="nav-item teacher-only" key={s.id}>
           <a
             className={`nav-link${dest.section === s.id ? ' active' : ''}`}
+            data-section={s.id}
             href={`#/${s.id}`}
             aria-current={dest.section === s.id ? 'page' : undefined}
             onClick={(e) => { e.preventDefault(); go(s.id); }}

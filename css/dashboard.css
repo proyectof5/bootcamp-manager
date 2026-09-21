@@ -505,3 +505,43 @@ main {
     outline: none;
     box-shadow: 0 0 0 2px var(--app-color-bg-surface), 0 0 0 4px var(--app-color-brand-700);
 }
+
+/* ── Marco oscuro también en el listado de promociones (Fase 6) ── */
+
+body {
+    background-color: var(--app-color-bg-page);
+    border-right: 0;
+}
+
+.navbar {
+    background-image: none !important;
+    background-color: var(--app-color-neutral-900) !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Título y contadores de la cabecera: iban en blanco sobre el salmón */
+main h1,
+main .text-white,
+main .text-white\/90 {
+    color: var(--app-color-text) !important;
+    text-shadow: none !important;
+}
+
+/* La tarjeta de promoción se queda naranja —es el acento de la marca— pero con
+   el tono que cumple contraste con texto blanco pequeño (#d63900, 4,72:1). */
+.promotion-card,
+main .bg-crok {
+    background-color: var(--app-color-brand-700) !important;
+}
+
+/* Barra superior del listado (reemplaza la textura naranja) */
+.app-topbar {
+    background-color: var(--app-color-neutral-900);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    color: #ffffff;
+}
+
+.app-topbar a,
+.app-topbar button {
+    color: #ffffff;
+}

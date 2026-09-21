@@ -36,7 +36,7 @@ Prototipo clicable de las pantallas nuevas:
 
 ## Estado
 
-Fases 1 a 5 en la rama `feat/navegacion-por-secciones` (frontend), [PR #84](https://github.com/proyectof5/bootcamp-manager/pull/84).
+Fases 1 a 6 en la rama `feat/navegacion-por-secciones` (frontend), [PR #84](https://github.com/proyectof5/bootcamp-manager/pull/84).
 
 | Fase | Qué | Estado |
 |---|---|---|
@@ -44,6 +44,7 @@ Fases 1 a 5 en la rama `feat/navegacion-por-secciones` (frontend), [PR #84](http
 | 2 | Inicio "Pendiente de ti": avisos accionables (pasar lista de hoy, proyectos sin evaluar, horas que faltan, festivos a mano sin nombre) + 4 cifras enlazadas, encima del Inicio de siempre | ✅ verificado en la P8 |
 | 3 | Estudiantes › Lista: tabla en React con cinco columnas por defecto y cuatro más en el selector, vistas (activos / en riesgo / bajas), orden por columna, cabecera fija y buscador | ✅ verificado en la P1 de Barcelona |
 | 4 | Ajustes › Datos de la promoción como página: campos agrupados, obligatorios marcados, error debajo del campo, aviso `aria-live` al guardar y Eliminar promoción al pie | 🟡 verificado el prefill y la validación; falta probar un guardado real |
+| 6 | Marco oscuro del prototipo: barra superior y menú en gris muy oscuro, contenido sobre gris claro y el naranja de marca reservado a acentos (botón principal, pestaña activa, icono de la sección, tarjetas de promoción) | ✅ verificado |
 | 5 | "Mi semana" en el listado de promociones (lo pendiente de todas, con enlace directo) y buscador Ctrl+K en la promoción (páginas, estudiantes, módulos, proyectos y acciones) | ✅ verificado con 8 promociones |
 
 ## Mapa de destinos (Fase 1)
@@ -67,7 +68,7 @@ Fases 1 a 5 en la rama `feat/navegacion-por-secciones` (frontend), [PR #84](http
 - La Fase 2 saca los avisos de datos ya existentes; si un día hay que añadir
   "estudiantes sin acceso al portal" hará falta un dato por estudiante que hoy
   no existe (la contraseña de acceso es de la promoción, no de cada persona).
-- Las cinco fases están hechas. Queda decidir si se borra el markup legacy que hoy
+- Las seis fases están hechas. Queda decidir si se borra el markup legacy que hoy
   solo se oculta por CSS y si "Mi semana" debe mostrar también promociones que
   aún no han empezado.
 - Probar un guardado real desde Ajustes (escribe en la base de datos de producción).

@@ -2705,6 +2705,9 @@ function switchTab(tabId) {
 
     // Update active state in sidebar
     document.querySelectorAll('.nav-link').forEach(link => {
+        // Los enlaces de sección los pinta React (PromotionNav.tsx) y marcan la
+        // sección activa con aria-current: no se les toca la clase desde aquí.
+        if (link.dataset.section) return;
         link.classList.remove('active');
         if (link.getAttribute('onclick') && link.getAttribute('onclick').includes(tabId)) {
             link.classList.add('active');

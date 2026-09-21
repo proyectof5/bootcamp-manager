@@ -354,13 +354,9 @@ export default function DashboardPage() {
   return (
     <div className="flex-1 w-full min-h-screen bg-[#f19976]">
       {/* ── Navbar siempre expandido (resuelve el bug de < 992px del v0.x) ── */}
-      <nav
-        className="bg-crok bg-repeat shadow-md flex items-center justify-between px-6 py-3"
-        style={{
-          backgroundImage: "url('/img/Fondo-factoria-f5-color.png')",
-          backgroundSize: '150px 150px',
-        }}
-      >
+      {/* Fase 6: barra superior oscura, como en la maqueta. El naranja se reserva
+          para los acentos (botón principal, tarjetas de promoción). */}
+      <nav className="app-topbar shadow-md flex items-center justify-between px-6 py-3">
         <a href="#" className="flex items-center gap-3 no-underline">
           <Image
             src={withBasePath('/img/logo-factoria-b.svg')}

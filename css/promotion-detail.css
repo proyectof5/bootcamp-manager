@@ -3882,14 +3882,16 @@ html {
     flex-direction: column;
 }
 
+/* Gana al `!important` de .student-name-link (regla antigua, naranja): en la tabla
+   nueva el nombre va en tinta y el naranja se reserva para los acentos. */
 .students-name .student-name-link {
-    color: var(--app-color-text);
+    color: var(--app-color-text) !important;
     font-weight: var(--app-font-weight-semi);
     text-decoration: none;
 }
 
 .students-name .student-name-link:hover {
-    color: var(--app-color-brand-700);
+    color: var(--app-color-brand-700) !important;
     text-decoration: underline;
 }
 
@@ -4184,4 +4186,97 @@ html {
 @media (max-width: 767.98px) {
     .cmdk-trigger-text, .cmdk-trigger kbd { display: none; }
     .cmdk-trigger { min-width: 40px; justify-content: center; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Marco oscuro (spec navegacion-promocion, Fase 6)
+   La maqueta reserva el naranja de marca para acentos —botón principal, pestaña
+   activa, icono de la sección activa— y pinta la barra superior y el menú en
+   gris muy oscuro. Así el contenido manda y el naranja significa algo.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+    --app-chrome-bg: var(--app-color-neutral-900);
+    --app-chrome-bg-2: #1f2937;
+    --app-chrome-text: var(--app-color-neutral-300);
+    --app-chrome-line: rgba(255, 255, 255, 0.08);
+}
+
+.navbar,
+.navbar.bg-light,
+nav.sidebar.bg-light {
+    background-image: none !important;
+    background-color: var(--app-chrome-bg) !important;
+    border-bottom: 1px solid var(--app-chrome-line);
+}
+
+@media (min-width: 768px) {
+    .sidebar {
+        background-image: none;
+        background-color: var(--app-chrome-bg);
+        border-right: 1px solid var(--app-chrome-line);
+    }
+}
+
+.sidebar {
+    background-image: none;
+    background-color: var(--app-chrome-bg);
+}
+
+.sidebar-footer {
+    border-top: 1px solid var(--app-chrome-line);
+}
+
+.sidebar .nav-link,
+.sidebar .sidebar-edit-btn,
+.sidebar .sidebar-delete-btn {
+    background-color: transparent !important;
+    color: var(--app-chrome-text) !important;
+    border-left: 0 !important;
+    border-radius: var(--app-radius-md);
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+}
+
+.sidebar .nav-link:hover,
+.sidebar .sidebar-edit-btn:hover,
+.sidebar .sidebar-delete-btn:hover {
+    background-color: rgba(255, 255, 255, 0.07) !important;
+    color: #ffffff !important;
+    border-left: 0 !important;
+}
+
+.sidebar .sidebar-delete-btn:hover {
+    color: #ffb4bc !important;
+}
+
+.sidebar .nav-link.active,
+.sidebar .nav-link[aria-current="page"] {
+    background-color: rgba(255, 255, 255, 0.13) !important;
+    color: #ffffff !important;
+    font-weight: var(--app-font-weight-semi);
+}
+
+/* El único naranja del menú: el icono de la sección donde estás */
+.sidebar .nav-link.active .bi,
+.sidebar .nav-link[aria-current="page"] .bi {
+    color: var(--app-color-brand-300);
+}
+
+.sidebar .nav-link-promotions {
+    color: var(--app-color-neutral-500) !important;
+}
+
+.sidebar-logo-container .sidebar-f5-logo {
+    opacity: 0.85;
+}
+
+/* El contenido va sobre gris muy claro; las tarjetas y la cabecera, en blanco */
+body {
+    background-color: var(--app-color-bg-page);
+}
+
+#main-content {
+    background-color: var(--app-color-bg-page);
 }
