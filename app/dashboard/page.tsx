@@ -50,7 +50,8 @@ import Spinner from '@/components/Spinner';
 
 import { useAuth } from '@/hooks/useAuth';
 import { apiFetch } from '@/lib/api';
-import { usePendingCounts, PendingBell } from './_components/PendingBell';
+import { usePendingCounts } from './_components/PendingBell';
+import { PromotionsBoard } from './_components/PromotionsBoard';
 import { showToast } from '@/lib/toast';
 
 // ── Types ────────────────────────────────────────────────────────────────────
@@ -414,95 +415,28 @@ export default function DashboardPage() {
 
       {/* ── Main ── */}
       <main className="container mx-auto px-4 py-6">
-        <div className="flex flex-wrap items-end justify-between mb-6 gap-3">
-          <div className="flex items-end gap-3">
-            <h1 className="text-3xl font-bold m-0 text-white drop-shadow">Mis Promociones</h1>
-            <Image
-              src={withBasePath('/img/logo-factoria-b.svg')}
-              alt="Factoría F5"
-              width={50}
-              height={50}
-              className="hidden lg:block w-auto mb-1"
-              style={{ height: 'auto', maxHeight: 48 }}
-            />
-          </div>
-          <div className="flex flex-wrap items-center gap-3">
-            <span className="text-white/90 text-sm">
-              Promociones: <strong>{promotions.length}</strong>
-            </span>
-            <span className="text-white/90 text-sm">
-              Módulos totales: <strong>{totalModules}</strong>
-            </span>
-            <Button
-              className="bg-crok hover:bg-crok-hover text-crok-on"
-              onClick={openNewPromotion}
-            >
-              <PlusCircle className="mr-2 h-4 w-4" /> Añadir Promoción
-            </Button>
+        <div className="promos-header">
+          <div>
+            <h1 className="promos-title">Mis promociones</h1>
+            <p className="promos-sub">
+              {promotions.length} {promotions.length === 1 ? 'promoción' : 'promociones'} · {totalModules} módulos en total
+            </p>
           </div>
         </div>
 
-        {/* Lista de promociones */}
         {loadingPromotions ? (
           <div className="flex justify-center py-12">
             <Spinner />
           </div>
-        ) : promotions.length === 0 ? (
-          <p className="text-white/90 text-center py-12">
-            Aún no tienes promociones. ¡Crea una para empezar!
-          </p>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {promotions.map(p => {
-              const isOwner = p.teacherId === user?.id;
-              return (
-                <div
-                  key={p.id}
-                  onClick={() => router.push(`/promotion?id=${p.id}`)}
-                  className="rounded-lg shadow-md cursor-pointer overflow-hidden bg-crok bg-repeat hover:shadow-lg hover:-translate-y-1 transition-all"
-                  style={{
-                    backgroundImage: "url('/img/Fondo-factoria-f5-color.png')",
-                    backgroundSize: '150px 150px',
-                  }}
-                >
-                  <div className="p-6 text-white">
-                    <div className="flex justify-between items-start mb-2 gap-2">
-                      <h5 className="font-bold text-xl drop-shadow leading-tight m-0">
-                        {p.name}
-                      </h5>
-                      <span className="flex items-center gap-2 shrink-0">
-                        {!isOwner && (
-                          <Badge className="bg-cyan-500 hover:bg-cyan-500 text-white shrink-0">
-                            Collaborator
-                          </Badge>
-                        )}
-                        <PendingBell pending={pendingByPromotion[p.id]} />
-                      </span>
-                    </div>
-                    <p className="text-white/90 text-sm mb-3">
-                      {p.description || 'Sin descripción'}
-                    </p>
-                    <div className="flex justify-between items-center mt-3">
-                      <span className="bg-white/25 border border-white/50 px-3 py-1 rounded-full text-sm">
-                        {p.weeks} weeks
-                      </span>
-                      {isOwner && (
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          className="bg-white/20 border-white/50 text-white hover:bg-white/30 hover:text-white h-8 w-8"
-                          onClick={(e) => deletePromotion(p.id, e)}
-                          aria-label="Eliminar promoción"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
+          <PromotionsBoard
+            promotions={promotions}
+            userId={user?.id}
+            pending={pendingByPromotion}
+            onOpen={(id) => router.push(`/promotion?id=${id}`)}
+            onDelete={(id, e) => deletePromotion(id, e)}
+            onCreate={openNewPromotion}
+          />
         )}
       </main>
 

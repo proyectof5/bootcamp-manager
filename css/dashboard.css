@@ -485,3 +485,333 @@ main .bg-crok .pending-bell,
 main .bg-crok .pending-bell * {
     color: var(--app-color-brand-700) !important;
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   "Mis promociones" — rediseño: buscador, filtros, grupos por estado
+   y tarjetas con progreso (PromotionsBoard.tsx)
+   ═══════════════════════════════════════════════════════════════════ */
+
+.promos-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: var(--app-space-3);
+    margin-bottom: var(--app-space-4);
+}
+
+.promos-title {
+    margin: 0;
+    font-size: var(--app-font-size-3xl);
+    font-weight: var(--app-font-weight-bold);
+    color: var(--app-color-text);
+}
+
+.promos-sub {
+    margin: 2px 0 0;
+    color: var(--app-color-text-muted);
+    font-size: var(--app-font-size-sm);
+    font-variant-numeric: tabular-nums;
+}
+
+.promos-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--app-space-2);
+    margin-bottom: var(--app-space-5);
+}
+
+.promos-search {
+    position: relative;
+    flex: 1 1 260px;
+    max-width: 360px;
+}
+
+.promos-search-icon {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 16px;
+    height: 16px;
+    color: var(--app-color-text-muted);
+    pointer-events: none;
+}
+
+.promos-search input {
+    width: 100%;
+    min-height: 44px;
+    padding: var(--app-space-2) var(--app-space-3) var(--app-space-2) 34px;
+    border: 1px solid var(--app-color-neutral-300);
+    border-radius: var(--app-radius-md);
+    background: var(--app-color-bg-surface);
+    font-size: var(--app-font-size-sm);
+}
+
+.promos-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--app-space-2);
+}
+
+.promos-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 44px;
+    padding: var(--app-space-2) var(--app-space-3);
+    border: 1px solid var(--app-color-neutral-300);
+    border-radius: var(--app-radius-pill);
+    background: var(--app-color-bg-surface);
+    color: var(--app-color-text-muted);
+    font-size: var(--app-font-size-sm);
+    cursor: pointer;
+}
+
+.promos-chip:hover {
+    border-color: var(--app-color-primary);
+    color: var(--app-color-text);
+}
+
+.promos-chip.is-on {
+    background: var(--app-color-primary-soft);
+    border-color: var(--app-color-primary);
+    color: var(--app-color-brand-700);
+    font-weight: var(--app-font-weight-semi);
+}
+
+.promos-chip-n {
+    font-variant-numeric: tabular-nums;
+    opacity: 0.75;
+}
+
+.promos-new {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 44px;
+    margin-left: auto;
+    padding: var(--app-space-2) var(--app-space-4);
+    border: 0;
+    border-radius: var(--app-radius-md);
+    background: var(--app-color-brand-700);
+    color: #ffffff;
+    font-weight: var(--app-font-weight-semi);
+    cursor: pointer;
+}
+
+.promos-new:hover {
+    background: var(--app-color-brand-900);
+}
+
+.promos-empty {
+    padding: var(--app-space-6);
+    background: var(--app-color-bg-surface);
+    border: 1px dashed var(--app-color-neutral-300);
+    border-radius: var(--app-radius-lg);
+    color: var(--app-color-text-muted);
+    text-align: center;
+}
+
+.promos-group + .promos-group {
+    margin-top: var(--app-space-6);
+}
+
+.promos-group-title {
+    display: flex;
+    align-items: center;
+    gap: var(--app-space-2);
+    margin: 0 0 var(--app-space-3);
+    font-size: var(--app-font-size-md);
+    font-weight: var(--app-font-weight-semi);
+    color: var(--app-color-text);
+}
+
+.promos-group-n {
+    padding: 1px 8px;
+    border-radius: var(--app-radius-pill);
+    background: var(--app-color-neutral-100);
+    color: var(--app-color-text-muted);
+    font-size: var(--app-font-size-xs);
+    font-variant-numeric: tabular-nums;
+}
+
+.promos-grid {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: var(--app-space-3);
+}
+
+.promo-card {
+    position: relative;
+    background: var(--app-color-bg-surface);
+    border: 1px solid var(--app-color-border);
+    border-radius: var(--app-radius-lg);
+    box-shadow: var(--app-shadow-sm);
+    transition: box-shadow var(--app-transition-fast), transform var(--app-transition-fast);
+}
+
+.promo-card:hover {
+    box-shadow: var(--app-shadow-md);
+    transform: translateY(-2px);
+}
+
+/* El acento naranja solo marca lo que está en marcha */
+.promo-card.is-marcha {
+    border-top: 3px solid var(--app-color-primary);
+}
+
+.promo-card.is-terminada {
+    background: var(--app-color-neutral-50);
+}
+
+.promo-card-link {
+    display: flex;
+    flex-direction: column;
+    gap: var(--app-space-2);
+    padding: var(--app-space-4);
+    color: inherit;
+    text-decoration: none;
+}
+
+.promo-card-link:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--app-color-bg-surface), 0 0 0 4px var(--app-color-brand-700);
+    border-radius: var(--app-radius-lg);
+}
+
+.promo-card-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--app-space-2);
+    padding-right: 32px; /* hueco del botón de menú */
+}
+
+/* Estado: icono + palabra, nunca solo color */
+.promo-state {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 2px 9px;
+    border: 1px solid transparent;
+    border-radius: var(--app-radius-pill);
+    font-size: var(--app-font-size-xs);
+    font-weight: var(--app-font-weight-semi);
+}
+
+.promo-state.is-marcha { background: #e7f4ec; border-color: #157347; color: #157347; }
+.promo-state.is-proxima { background: var(--app-color-primary-soft); border-color: var(--app-color-brand-700); color: var(--app-color-brand-700); }
+.promo-state.is-terminada { background: var(--app-color-neutral-100); border-color: var(--app-color-neutral-500); color: var(--app-color-neutral-700); }
+
+.promo-role {
+    padding: 2px 9px;
+    border-radius: var(--app-radius-pill);
+    background: #e6f3fa;
+    color: #0b5c7a;
+    font-size: var(--app-font-size-xs);
+    font-weight: var(--app-font-weight-semi);
+}
+
+.promo-name {
+    font-size: var(--app-font-size-lg);
+    font-weight: var(--app-font-weight-semi);
+    line-height: var(--app-line-height-tight);
+    color: var(--app-color-text);
+    text-wrap: balance;
+}
+
+.promo-desc {
+    color: var(--app-color-text-muted);
+    font-size: var(--app-font-size-sm);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.promo-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px var(--app-space-3);
+    color: var(--app-color-text-muted);
+    font-size: var(--app-font-size-xs);
+    font-variant-numeric: tabular-nums;
+}
+
+.promo-progress {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 2px;
+}
+
+.promo-progress-track {
+    height: 6px;
+    border-radius: var(--app-radius-pill);
+    background: var(--app-color-neutral-100);
+    overflow: hidden;
+}
+
+.promo-progress-fill {
+    display: block;
+    height: 100%;
+    border-radius: var(--app-radius-pill);
+    background: var(--app-color-primary);
+}
+
+.promo-card.is-terminada .promo-progress-fill {
+    background: var(--app-color-neutral-300);
+}
+
+.promo-progress-text {
+    color: var(--app-color-text-muted);
+    font-size: var(--app-font-size-xs);
+    font-variant-numeric: tabular-nums;
+}
+
+.promo-more {
+    position: absolute;
+    top: var(--app-space-3);
+    right: var(--app-space-2);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: 0;
+    border-radius: var(--app-radius-md);
+    background: transparent;
+    color: var(--app-color-text-muted);
+    cursor: pointer;
+}
+
+.promo-more:hover {
+    background: var(--app-color-neutral-100);
+    color: var(--app-color-text);
+}
+
+.promo-more:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--app-color-bg-surface), 0 0 0 4px var(--app-color-brand-700);
+}
+
+/* La campana vuelve a su color propio dentro de la tarjeta blanca */
+.promo-card .pending-bell {
+    background: var(--app-color-primary-soft);
+    color: var(--app-color-brand-700);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .promo-card { transition: none; }
+    .promo-card:hover { transform: none; }
+}
+
+@media (max-width: 767.98px) {
+    .promos-new { margin-left: 0; width: 100%; justify-content: center; }
+    .promos-search { max-width: none; }
+}
