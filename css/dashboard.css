@@ -815,3 +815,272 @@ main .bg-crok .pending-bell * {
     .promos-new { margin-left: 0; width: 100%; justify-content: center; }
     .promos-search { max-width: none; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   Panel de administración — rediseño
+   Marco oscuro como el resto de la app, contenido en tablas (es una
+   herramienta de gestión: se escanea, no se hojea).
+   ═══════════════════════════════════════════════════════════════════ */
+
+.admin-side {
+    background: var(--app-color-neutral-900);
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.admin-nav-back,
+.admin-nav-item {
+    display: flex;
+    align-items: center;
+    gap: var(--app-space-2);
+    width: 100%;
+    min-height: 44px;
+    padding: var(--app-space-2) var(--app-space-3);
+    border: 0;
+    border-radius: var(--app-radius-md);
+    background: transparent;
+    color: var(--app-color-neutral-300);
+    font-size: var(--app-font-size-sm);
+    text-align: left;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.admin-nav-back {
+    color: var(--app-color-neutral-500);
+    margin-bottom: var(--app-space-2);
+}
+
+.admin-nav-back:hover,
+.admin-nav-item:hover {
+    background: rgba(255, 255, 255, 0.07);
+    color: #ffffff;
+}
+
+.admin-nav-item.is-on {
+    background: rgba(255, 255, 255, 0.13);
+    color: #ffffff;
+    font-weight: var(--app-font-weight-semi);
+}
+
+.admin-nav-item.is-on svg {
+    color: var(--app-color-brand-300);
+}
+
+.admin-nav-back:focus-visible,
+.admin-nav-item:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--app-color-neutral-900), 0 0 0 4px var(--app-color-brand-300);
+}
+
+.admin-panel {
+    display: flex;
+    flex-direction: column;
+    gap: var(--app-space-4);
+}
+
+.admin-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: var(--app-space-3);
+}
+
+.admin-title {
+    margin: 0;
+    font-size: var(--app-font-size-2xl);
+    font-weight: var(--app-font-weight-bold);
+    color: var(--app-color-text);
+}
+
+.admin-subtitle {
+    margin: var(--app-space-2) 0 0;
+    font-size: var(--app-font-size-md);
+    font-weight: var(--app-font-weight-semi);
+    color: var(--app-color-text);
+}
+
+.admin-sub {
+    margin: 2px 0 0;
+    color: var(--app-color-text-muted);
+    font-size: var(--app-font-size-sm);
+    font-variant-numeric: tabular-nums;
+}
+
+.admin-primary {
+    background: var(--app-color-brand-700);
+    color: #ffffff;
+    min-height: 44px;
+}
+
+.admin-primary:hover {
+    background: var(--app-color-brand-900);
+}
+
+.admin-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--app-space-2);
+}
+
+.admin-card {
+    padding: var(--app-space-4);
+    background: var(--app-color-bg-surface);
+    border: 1px solid var(--app-color-border);
+    border-radius: var(--app-radius-lg);
+    box-shadow: var(--app-shadow-sm);
+}
+
+.admin-card-title {
+    display: flex;
+    align-items: center;
+    gap: var(--app-space-2);
+    margin: 0 0 4px;
+    font-size: var(--app-font-size-md);
+    font-weight: var(--app-font-weight-semi);
+    color: var(--app-color-text);
+}
+
+.admin-card-title svg {
+    color: var(--app-color-brand-700);
+}
+
+.admin-table-wrap {
+    overflow-x: auto;
+    background: var(--app-color-bg-surface);
+    border: 1px solid var(--app-color-border);
+    border-radius: var(--app-radius-lg);
+}
+
+.admin-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--app-font-size-sm);
+}
+
+.admin-table th,
+.admin-table td {
+    padding: var(--app-space-3) var(--app-space-4);
+    text-align: left;
+    border-bottom: 1px solid var(--app-color-border);
+    white-space: nowrap;
+}
+
+.admin-table thead th {
+    position: sticky;
+    top: 0;
+    background: var(--app-color-bg-surface);
+    font-size: var(--app-font-size-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--app-color-text-muted);
+}
+
+.admin-table tbody tr:hover {
+    background: var(--app-color-bg-page);
+}
+
+.admin-table tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+.admin-num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.admin-user {
+    display: flex;
+    align-items: center;
+    gap: var(--app-space-3);
+}
+
+.admin-avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 34px;
+    width: 34px;
+    height: 34px;
+    border-radius: var(--app-radius-pill);
+    background: var(--app-color-primary-soft);
+    color: var(--app-color-brand-700);
+    font-weight: var(--app-font-weight-bold);
+}
+
+.admin-user-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.admin-user-name {
+    font-weight: var(--app-font-weight-semi);
+    color: var(--app-color-text);
+}
+
+.admin-user-mail {
+    color: var(--app-color-text-muted);
+    font-size: var(--app-font-size-xs);
+}
+
+/* Rol: color + palabra, nunca solo color */
+.admin-role {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 9px;
+    border: 1px solid transparent;
+    border-radius: var(--app-radius-pill);
+    font-size: var(--app-font-size-xs);
+    font-weight: var(--app-font-weight-semi);
+}
+
+.admin-role.is-formador { background: #e8effb; border-color: #1c4b9c; color: #1c4b9c; }
+.admin-role.is-coformador { background: #e7f4ec; border-color: #157347; color: #157347; }
+.admin-role.is-coordinador { background: var(--app-color-primary-soft); border-color: var(--app-color-brand-700); color: var(--app-color-brand-700); }
+.admin-role.is-otro,
+.admin-role.is-sistema { background: var(--app-color-neutral-100); border-color: var(--app-color-neutral-500); color: var(--app-color-neutral-700); }
+.admin-role.is-propia { background: #e7f4ec; border-color: #157347; color: #157347; }
+
+.admin-actions {
+    display: flex;
+    gap: var(--app-space-2);
+    justify-content: flex-end;
+}
+
+.admin-actions .btn,
+.admin-actions button {
+    min-height: 36px;
+}
+
+.admin-danger {
+    border-color: var(--app-color-danger-500) !important;
+    color: var(--app-color-danger-500) !important;
+}
+
+.admin-danger:hover {
+    background: var(--app-color-danger-500) !important;
+    color: #ffffff !important;
+}
+
+@media (max-width: 767.98px) {
+    .admin-primary { width: 100%; }
+    .admin-table th,
+    .admin-table td { padding: var(--app-space-2) var(--app-space-3); }
+}
+
+/* Cerrar sesión: separado del resto y legible sobre el menú oscuro
+   (#ffb4bc sobre #111827 = 8,4:1; el rojo de marca daba 3,4:1) */
+.admin-nav-danger {
+    margin-top: var(--app-space-3);
+    padding-top: var(--app-space-3);
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    color: #ffb4bc;
+    font-weight: var(--app-font-weight-semi);
+}
+
+.admin-nav-danger:hover {
+    background: rgba(255, 180, 188, 0.12);
+    color: #ffd4d9;
+}

@@ -36,7 +36,7 @@ Prototipo clicable de las pantallas nuevas:
 
 ## Estado
 
-Fases 1 a 7 en la rama `feat/navegacion-por-secciones` (frontend), [PR #84](https://github.com/proyectof5/bootcamp-manager/pull/84).
+Fases 1 a 8 en la rama `feat/navegacion-por-secciones` (frontend), [PR #84](https://github.com/proyectof5/bootcamp-manager/pull/84).
 
 | Fase | Qué | Estado |
 |---|---|---|
@@ -44,6 +44,7 @@ Fases 1 a 7 en la rama `feat/navegacion-por-secciones` (frontend), [PR #84](http
 | 2 | Inicio "Pendiente de ti": avisos accionables (pasar lista de hoy, proyectos sin evaluar, horas que faltan, festivos a mano sin nombre) + 4 cifras enlazadas, encima del Inicio de siempre | ✅ verificado en la P8 |
 | 3 | Estudiantes › Lista: tabla en React con cinco columnas por defecto y cuatro más en el selector, vistas (activos / en riesgo / bajas), orden por columna, cabecera fija y buscador | ✅ verificado en la P1 de Barcelona |
 | 4 | Ajustes › Datos de la promoción como página: campos agrupados, obligatorios marcados, error debajo del campo, aviso `aria-live` al guardar y Eliminar promoción al pie | 🟡 verificado el prefill y la validación; falta probar un guardado real |
+| 8 | Panel de admin rediseñado: marco oscuro, cuentas y plantillas en tablas, buscador y filtro por rol | ✅ verificado con 15 cuentas y 9 plantillas |
 | 7 | "Mis promociones" rediseñada: buscador, filtros por estado, agrupación (en marcha / próximas / terminadas) y tarjetas con fechas, semanas, módulos, progreso y campana | ✅ verificado con 8 promociones |
 | 6 | Marco oscuro del prototipo: barra superior y menú en gris muy oscuro, contenido sobre gris claro y el naranja de marca reservado a acentos (botón principal, pestaña activa, icono de la sección, tarjetas de promoción) | ✅ verificado |
 | 5 | Campana de avisos en la tarjeta de cada promoción (el detalle vive en el Inicio de esa promoción) y buscador Ctrl+K en la promoción (páginas, estudiantes, módulos, proyectos y acciones) | ✅ verificado con 8 promociones |
@@ -71,7 +72,7 @@ Fases 1 a 7 en la rama `feat/navegacion-por-secciones` (frontend), [PR #84](http
   no existe (la contraseña de acceso es de la promoción, no de cada persona).
 - El bloque "Mi semana" encima de la rejilla se descartó tras probarlo: competía con
   las tarjetas. En su lugar, cada tarjeta lleva una campana con el número de avisos.
-- Las siete fases están hechas. Queda decidir si se borra el markup legacy que hoy
+- Las ocho fases están hechas. Queda decidir si se borra el markup legacy que hoy
   solo se oculta por CSS y si "Mi semana" debe mostrar también promociones que
   aún no han empezado.
 - Probar un guardado real desde Ajustes (escribe en la base de datos de producción).
@@ -98,6 +99,7 @@ Fases 1 a 7 en la rama `feat/navegacion-por-secciones` (frontend), [PR #84](http
 - `css/design-system.css` — contraste del botón principal y "Saltar al contenido".
 - `app/promotion/_components/CommandPalette.tsx` — buscador Ctrl+K (Fase 5).
 - `app/dashboard/_components/PromotionsBoard.tsx` — vista "Mis promociones" (Fase 7).
+- `app/admin/page.tsx` — panel de admin: cuentas y plantillas en tabla (Fase 8).
 - `app/dashboard/_components/PendingBell.tsx` — cuenta de avisos por promoción y
   campana en la tarjeta (Fase 5).
 - `app/promotion/_components/PromotionSettingsPanel.tsx` — Ajustes como página (Fase 4),

@@ -12,6 +12,7 @@ import {
   Users,
   LayoutPanelLeft,
   UserPlus,
+  Search,
   Pencil,
   PencilLine,
   Trash2,
@@ -108,6 +109,13 @@ type AlertState = { msg: string; type: string } | null;
 const USER_ROLES = ['Formador/a', 'CoFormador/a', 'Coordinador/a'] as const;
 
 // Mapping de rol a clases de color (Tailwind)
+// Pastillas de rol de la tabla de cuentas: color + palabra (nunca solo color)
+const ROLE_PILL_CLASS: Record<string, string> = {
+  'Formador/a': 'is-formador',
+  'CoFormador/a': 'is-coformador',
+  'Coordinador/a': 'is-coordinador',
+};
+
 const ROLE_BADGE_CLASS: Record<string, string> = {
   'Formador/a': 'bg-blue-500 text-white hover:bg-blue-500',
   'CoFormador/a': 'bg-green-500 text-white hover:bg-green-500',
@@ -135,22 +143,15 @@ function AdminSidebarContent({
   return (
     <div className="flex flex-col h-full">
       <nav className="flex flex-col gap-1">
-        <a
-          href={withBasePath('/dashboard')}
-          className="flex items-center gap-2 px-3 py-2 rounded-md text-white bg-crok hover:bg-crok-hover transition-colors no-underline shadow-sm"
-        >
-          <ArrowLeft className="h-4 w-4" /> Dashboard
+        <a href={withBasePath('/dashboard')} className="admin-nav-back">
+          <ArrowLeft className="h-4 w-4" aria-hidden="true" /> Volver a promociones
         </a>
 
         <button
           type="button"
           onClick={() => handleClick('users')}
-          className={cn(
-            'flex items-center gap-2 px-3 py-2 rounded-md text-left transition-colors',
-            section === 'users'
-              ? 'bg-white text-crok font-semibold border-l-4 border-crok'
-              : 'bg-white/70 text-text hover:bg-white hover:text-crok'
-          )}
+          className={cn('admin-nav-item', section === 'users' && 'is-on')}
+          aria-current={section === 'users' ? 'page' : undefined}
         >
           <Users className="h-4 w-4" /> Gestión de Usuarios
         </button>
@@ -158,12 +159,8 @@ function AdminSidebarContent({
         <button
           type="button"
           onClick={() => handleClick('templates')}
-          className={cn(
-            'flex items-center gap-2 px-3 py-2 rounded-md text-left transition-colors',
-            section === 'templates'
-              ? 'bg-white text-crok font-semibold border-l-4 border-crok'
-              : 'bg-white/70 text-text hover:bg-white hover:text-crok'
-          )}
+          className={cn('admin-nav-item', section === 'templates' && 'is-on')}
+          aria-current={section === 'templates' ? 'page' : undefined}
         >
           <LayoutPanelLeft className="h-4 w-4" /> Plantillas Bootcamp
         </button>
@@ -171,7 +168,7 @@ function AdminSidebarContent({
         <button
           type="button"
           onClick={onLogout}
-          className="flex items-center gap-2 px-3 py-2 rounded-md text-left text-red-600 hover:bg-red-50 hover:text-red-700 font-semibold mt-3"
+          className="admin-nav-item admin-nav-danger mt-3"
         >
           <LogOut className="h-4 w-4" /> Cerrar sesión
         </button>
@@ -200,6 +197,8 @@ export default function AdminPage() {
 
   // ── Users state ──
   const [teachers, setTeachers] = useState<Teacher[]>([]);
+  const [userQuery, setUserQuery] = useState('');
+  const [roleFilter, setRoleFilter] = useState<'Todos' | 'Formador/a' | 'CoFormador/a' | 'Coordinador/a'>('Todos');
   const [loadingTeachers, setLoadingTeachers] = useState(true);
 
   // Create user modal (controlled)
@@ -432,6 +431,19 @@ export default function AdminPage() {
     router.replace('/login');
   }
 
+  // Cuentas por rol y lista filtrada (buscador + chips de rol)
+  const countByRole = teachers.reduce<Record<string, number>>((acc, t) => {
+    const r = t.userRole || 'Formador/a';
+    acc[r] = (acc[r] || 0) + 1;
+    return acc;
+  }, {});
+  const visibleTeachers = teachers.filter(t => {
+    const role = t.userRole || 'Formador/a';
+    if (roleFilter !== 'Todos' && role !== roleFilter) return false;
+    const q = userQuery.trim().toLowerCase();
+    return !q || `${t.name} ${t.email}`.toLowerCase().includes(q);
+  });
+
   // ── Loading guard ──
   if (isLoading) {
     return (
@@ -443,15 +455,9 @@ export default function AdminPage() {
 
   // ── Render ──
   return (
-    <div className="min-h-screen flex-1 w-full bg-[#f19976]">
+    <div className="min-h-screen flex-1 w-full app-page-bg">
       {/* ── Navbar (idéntico al dashboard) ── */}
-      <nav
-        className="bg-crok bg-repeat shadow-md flex items-center justify-between px-4 md:px-6 py-3"
-        style={{
-          backgroundImage: "url('/img/Fondo-factoria-f5-color.png')",
-          backgroundSize: '150px 150px',
-        }}
-      >
+      <nav className="app-topbar shadow-md flex items-center justify-between px-4 md:px-6 py-3">
         <div className="flex items-center gap-2">
           {/* Hamburger mobile */}
           <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
@@ -465,7 +471,7 @@ export default function AdminPage() {
                 <Menu className="h-5 w-5" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="w-72 p-4 bg-[#f19976]">
+            <SheetContent side="left" className="w-72 p-4 admin-side">
               <AdminSidebarContent
                 section={section}
                 setSection={setSection}
@@ -512,13 +518,7 @@ export default function AdminPage() {
       {/* ── Layout: sidebar desktop + main ── */}
       <div className="flex">
         {/* Sidebar desktop (hidden < md) */}
-        <aside
-          className="hidden md:block w-64 shrink-0 p-4 bg-repeat min-h-[calc(100vh-72px)] border-r-2 border-crok"
-          style={{
-            backgroundImage: "url('/img/Fondo-factoria-f5-color.png')",
-            backgroundSize: '150px 150px',
-          }}
-        >
+        <aside className="hidden md:block w-64 shrink-0 p-4 min-h-[calc(100vh-72px)] admin-side">
           <AdminSidebarContent
             section={section}
             setSection={setSection}
@@ -530,70 +530,111 @@ export default function AdminPage() {
         <main className="flex-1 p-4 md:p-6">
           {/* ── Users section ── */}
           {section === 'users' && (
-            <div>
-              <div className="flex flex-wrap justify-between items-center gap-3 pb-3 mb-4 border-b border-white/40">
-                <h1 className="text-3xl font-bold text-white drop-shadow m-0">Cuentas de Usuario</h1>
-                <Button
-                  onClick={() => setCreateOpen(true)}
-                  className="bg-crok hover:bg-crok-hover text-crok-on"
-                >
-                  <UserPlus className="mr-2 h-4 w-4" /> Crear Usuario
+            <div className="admin-panel">
+              <div className="admin-head">
+                <div>
+                  <h1 className="admin-title">Cuentas de usuario</h1>
+                  <p className="admin-sub">
+                    {teachers.length} {teachers.length === 1 ? 'cuenta' : 'cuentas'} · {countByRole['Coordinador/a'] || 0} de coordinación · {countByRole['Formador/a'] || 0} de formación
+                  </p>
+                </div>
+                <Button onClick={() => setCreateOpen(true)} className="admin-primary">
+                  <UserPlus className="mr-2 h-4 w-4" aria-hidden="true" /> Crear usuario
                 </Button>
+              </div>
+
+              <div className="admin-bar">
+                <div className="promos-search">
+                  <Search className="promos-search-icon" aria-hidden="true" />
+                  <label className="visually-hidden-label" htmlFor="admin-q">Buscar por nombre o correo</label>
+                  <input
+                    id="admin-q"
+                    type="search"
+                    value={userQuery}
+                    onChange={(e) => setUserQuery(e.target.value)}
+                    placeholder="Buscar por nombre o correo…"
+                  />
+                </div>
+                <div className="promos-chips" role="group" aria-label="Filtrar por rol">
+                  {(['Todos', 'Formador/a', 'CoFormador/a', 'Coordinador/a'] as const).map(r => (
+                    <button
+                      key={r}
+                      type="button"
+                      className={cn('promos-chip', roleFilter === r && 'is-on')}
+                      aria-pressed={roleFilter === r}
+                      onClick={() => setRoleFilter(r)}
+                    >
+                      {r} <span className="promos-chip-n">{r === 'Todos' ? teachers.length : (countByRole[r] || 0)}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
 
               {loadingTeachers ? (
                 <div className="flex justify-center py-12"><Spinner /></div>
-              ) : teachers.length === 0 ? (
-                <div className="text-white/90 text-center py-12">No hay usuarios.</div>
+              ) : visibleTeachers.length === 0 ? (
+                <p className="promos-empty">
+                  {teachers.length === 0
+                    ? 'Todavía no hay cuentas. Crea la primera con «Crear usuario».'
+                    : 'Ninguna cuenta coincide con la búsqueda o el filtro.'}
+                </p>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {teachers.map(t => {
-                    const role = t.userRole || 'Formador/a';
-                    const badgeClass = ROLE_BADGE_CLASS[role] || 'bg-gray-500 text-white';
-                    return (
-                      <div
-                        key={t.id}
-                        className="bg-white rounded-xl shadow-md border-2 border-crok p-4 hover:-translate-y-1 hover:shadow-lg transition-all flex flex-col"
-                      >
-                        <div className="flex items-center mb-3 gap-3">
-                          <div className="bg-crok-soft text-crok rounded-full p-3 shrink-0">
-                            <BadgeCheck className="h-6 w-6" />
-                          </div>
-                          <div className="min-w-0">
-                            <h5 className="font-bold text-lg m-0 truncate">{t.name}</h5>
-                            <Badge className={cn('mt-1', badgeClass)}>{role}</Badge>
-                          </div>
-                        </div>
-                        <p className="flex items-center gap-2 text-sm text-text-muted mb-4 truncate">
-                          <Mail className="h-4 w-4 text-crok shrink-0" />{t.email}
-                        </p>
-                        <div className="flex gap-2 mt-auto">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="flex-1 border-yellow-500 text-yellow-600 hover:bg-yellow-500 hover:text-white"
-                            onClick={() => {
-                              setEditForm({ id: t.id, name: t.name, email: t.email, userRole: role });
-                              setEditOpen(true);
-                            }}
-                          >
-                            <Pencil className="mr-1 h-3 w-3" /> Editar
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="flex-1 border-red-500 text-red-600 hover:bg-red-500 hover:text-white"
-                            onClick={() => deleteTeacher(t.id)}
-                          >
-                            <Trash2 className="mr-1 h-3 w-3" /> Eliminar
-                          </Button>
-                        </div>
-                        <div className="text-xs text-text-muted mt-3 pt-2 border-t">
-                          Creado: {new Date(t.createdAt).toLocaleDateString('es-ES')}
-                        </div>
-                      </div>
-                    );
-                  })}
+                <div className="admin-table-wrap">
+                  <table className="admin-table">
+                    <caption className="visually-hidden-label">Cuentas de usuario del sistema</caption>
+                    <thead>
+                      <tr>
+                        <th scope="col">Usuario</th>
+                        <th scope="col">Rol</th>
+                        <th scope="col">Alta</th>
+                        <th scope="col"><span className="visually-hidden-label">Acciones</span></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {visibleTeachers.map(t => {
+                        const role = t.userRole || 'Formador/a';
+                        return (
+                          <tr key={t.id}>
+                            <td>
+                              <span className="admin-user">
+                                <span className="admin-avatar" aria-hidden="true">
+                                  {(t.name || '?').trim().charAt(0).toUpperCase()}
+                                </span>
+                                <span className="admin-user-text">
+                                  <span className="admin-user-name">{t.name}</span>
+                                  <span className="admin-user-mail">{t.email}</span>
+                                </span>
+                              </span>
+                            </td>
+                            <td><span className={cn('admin-role', ROLE_PILL_CLASS[role] || 'is-otro')}>{role}</span></td>
+                            <td className="admin-num">{new Date(t.createdAt).toLocaleDateString('es-ES')}</td>
+                            <td className="admin-actions">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setEditForm({ id: t.id, name: t.name, email: t.email, userRole: role });
+                                  setEditOpen(true);
+                                }}
+                              >
+                                <Pencil className="mr-1 h-3 w-3" aria-hidden="true" /> Editar
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="admin-danger"
+                                onClick={() => deleteTeacher(t.id)}
+                              >
+                                <Trash2 className="mr-1 h-3 w-3" aria-hidden="true" />
+                                <span className="visually-hidden-label">Eliminar a {t.name}</span>
+                                <span aria-hidden="true">Eliminar</span>
+                              </Button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               )}
             </div>
@@ -601,19 +642,22 @@ export default function AdminPage() {
 
           {/* ── Templates section ── */}
           {section === 'templates' && (
-            <div>
-              <div className="flex flex-wrap justify-between items-center gap-3 pb-3 mb-4 border-b border-white/40">
-                <h1 className="text-3xl font-bold text-white drop-shadow m-0 flex items-center gap-2">
-                  <LayoutPanelLeft className="h-7 w-7" /> Plantillas de bootcamp
-                </h1>
+            <div className="admin-panel">
+              <div className="admin-head">
+                <div>
+                  <h1 className="admin-title">Plantillas de bootcamp</h1>
+                  <p className="admin-sub">
+                    {templates.length} {templates.length === 1 ? 'plantilla' : 'plantillas'} para crear promociones nuevas
+                  </p>
+                </div>
               </div>
 
               {/* Crear plantilla desde promoción */}
-              <div className="bg-white rounded-xl shadow-md border-l-4 border-crok p-5 mb-5">
-                <h5 className="font-bold flex items-center gap-2 m-0 mb-1">
-                  <Wand2 className="h-4 w-4 text-crok" />
-                  Crea una plantilla de una promoción
-                </h5>
+              <div className="admin-card">
+                <h2 className="admin-card-title">
+                  <Wand2 className="h-4 w-4" aria-hidden="true" />
+                  Crear una plantilla a partir de una promoción
+                </h2>
                 <p className="text-sm text-text-muted mb-3">
                   Elige una promoción existente y guarda todo su contenido para que sea reusable como plantilla.
                 </p>
@@ -680,79 +724,74 @@ export default function AdminPage() {
               </div>
 
               {/* Lista de plantillas */}
-              <h5 className="font-bold text-white drop-shadow mb-3">Plantillas existentes</h5>
+              <h2 className="admin-subtitle">Plantillas existentes</h2>
               {loadingTemplates ? (
                 <div className="flex justify-center py-8"><Spinner /></div>
               ) : templates.length === 0 ? (
-                <div className="text-white/90 text-center py-8">No hay plantillas.</div>
+                <p className="promos-empty">
+                  Todavía no hay plantillas. Crea una a partir de una promoción con el formulario de arriba.
+                </p>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {templates.map(t => {
-                    const modulesCount = (t.modules || []).length;
-                    const competencesCount = (t.competences || []).length;
-                    const pildorasCount = (t.modulesPildoras || []).reduce(
-                      (acc, mp) => acc + (mp.pildoras?.length ?? 0), 0
-                    );
-                    return (
-                      <div
-                        key={t.id}
-                        className={cn(
-                          'bg-white rounded-xl shadow-md p-4 flex flex-col border-l-4',
-                          t.isCustom ? 'border-green-500' : 'border-crok'
-                        )}
-                      >
-                        <div className="flex justify-between items-start gap-2 mb-2">
-                          <h6 className="font-bold m-0">{t.name}</h6>
-                          <Badge
-                            className={cn(
-                              'shrink-0',
-                              t.isCustom
-                                ? 'bg-green-500 text-white hover:bg-green-500'
-                                : 'bg-crok text-crok-on hover:bg-crok'
-                            )}
-                          >
-                            {t.isCustom ? 'Personalizada' : 'Sistema'}
-                          </Badge>
-                        </div>
-                        <p className="text-sm text-text-muted mb-2 min-h-[1.25rem]">{t.description || '—'}</p>
-                        <div className="flex flex-wrap gap-2 mb-3">
-                          <span className="inline-flex items-center gap-1 text-xs bg-gray-100 border border-gray-300 rounded px-2 py-0.5">
-                            <Calendar className="h-3 w-3" />{t.weeks || '?'}w
-                          </span>
-                          <span className="inline-flex items-center gap-1 text-xs bg-gray-100 border border-gray-300 rounded px-2 py-0.5">
-                            <Clock className="h-3 w-3" />{t.hours || '?'}h
-                          </span>
-                          <span className="inline-flex items-center gap-1 text-xs bg-gray-100 border border-gray-300 rounded px-2 py-0.5">
-                            <Grid3x3 className="h-3 w-3" />{modulesCount} módulos
-                          </span>
-                          <span className="inline-flex items-center gap-1 text-xs bg-gray-100 border border-gray-300 rounded px-2 py-0.5">
-                            <Sparkles className="h-3 w-3" />{competencesCount} competencias
-                          </span>
-                          <span className="inline-flex items-center gap-1 text-xs bg-gray-100 border border-gray-300 rounded px-2 py-0.5">
-                            <Lightbulb className="h-3 w-3" />{pildorasCount} píldoras
-                          </span>
-                        </div>
-                        <div className="flex gap-2 flex-wrap mt-auto">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="flex-1 border-yellow-500 text-yellow-600 hover:bg-yellow-500 hover:text-white"
-                            onClick={() => openEditTemplateModal(t)}
-                          >
-                            <Pencil className="mr-1 h-3 w-3" /> Editar
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="flex-1 border-red-500 text-red-600 hover:bg-red-500 hover:text-white"
-                            onClick={() => deleteTemplate(t.id, t.name)}
-                          >
-                            <Trash2 className="mr-1 h-3 w-3" /> Eliminar
-                          </Button>
-                        </div>
-                      </div>
-                    );
-                  })}
+                <div className="admin-table-wrap">
+                  <table className="admin-table">
+                    <caption className="visually-hidden-label">Plantillas de bootcamp</caption>
+                    <thead>
+                      <tr>
+                        <th scope="col">Plantilla</th>
+                        <th scope="col">Origen</th>
+                        <th scope="col" className="admin-num">Semanas</th>
+                        <th scope="col" className="admin-num">Horas</th>
+                        <th scope="col" className="admin-num">Módulos</th>
+                        <th scope="col" className="admin-num">Competencias</th>
+                        <th scope="col" className="admin-num">Píldoras</th>
+                        <th scope="col"><span className="visually-hidden-label">Acciones</span></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {templates.map(t => {
+                        const modulesCount = (t.modules || []).length;
+                        const competencesCount = (t.competences || []).length;
+                        const pildorasCount = (t.modulesPildoras || []).reduce(
+                          (acc, mp) => acc + (mp.pildoras?.length ?? 0), 0
+                        );
+                        return (
+                          <tr key={t.id}>
+                            <td>
+                              <span className="admin-user-text">
+                                <span className="admin-user-name">{t.name}</span>
+                                {t.description && <span className="admin-user-mail">{t.description}</span>}
+                              </span>
+                            </td>
+                            <td>
+                              <span className={cn('admin-role', t.isCustom ? 'is-propia' : 'is-sistema')}>
+                                {t.isCustom ? 'De una promoción' : 'Del sistema'}
+                              </span>
+                            </td>
+                            <td className="admin-num">{t.weeks || '—'}</td>
+                            <td className="admin-num">{t.hours || '—'}</td>
+                            <td className="admin-num">{modulesCount}</td>
+                            <td className="admin-num">{competencesCount}</td>
+                            <td className="admin-num">{pildorasCount}</td>
+                            <td className="admin-actions">
+                              <Button variant="outline" size="sm" onClick={() => openEditTemplateModal(t)}>
+                                <Pencil className="mr-1 h-3 w-3" aria-hidden="true" /> Editar
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="admin-danger"
+                                onClick={() => deleteTemplate(t.id, t.name)}
+                              >
+                                <Trash2 className="mr-1 h-3 w-3" aria-hidden="true" />
+                                <span className="visually-hidden-label">Eliminar la plantilla {t.name}</span>
+                                <span aria-hidden="true">Eliminar</span>
+                              </Button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               )}
             </div>
