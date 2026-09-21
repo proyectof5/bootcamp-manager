@@ -73,9 +73,11 @@ import { cn } from '@/lib/utils';
 interface Teacher {
   id: string;
   name: string;
+  /** El endpoint /api/admin/teachers devuelve apellido y sede, no fecha de alta. */
+  lastName?: string;
+  location?: string;
   email: string;
   userRole?: string;
-  createdAt: string;
 }
 
 interface Template {
@@ -441,7 +443,7 @@ export default function AdminPage() {
     const role = t.userRole || 'Formador/a';
     if (roleFilter !== 'Todos' && role !== roleFilter) return false;
     const q = userQuery.trim().toLowerCase();
-    return !q || `${t.name} ${t.email}`.toLowerCase().includes(q);
+    return !q || `${t.name} ${t.lastName || ''} ${t.email}`.toLowerCase().includes(q);
   });
 
   // ── Loading guard ──
@@ -586,7 +588,7 @@ export default function AdminPage() {
                       <tr>
                         <th scope="col">Usuario</th>
                         <th scope="col">Rol</th>
-                        <th scope="col">Alta</th>
+                        <th scope="col">Sede</th>
                         <th scope="col"><span className="visually-hidden-label">Acciones</span></th>
                       </tr>
                     </thead>
@@ -601,13 +603,13 @@ export default function AdminPage() {
                                   {(t.name || '?').trim().charAt(0).toUpperCase()}
                                 </span>
                                 <span className="admin-user-text">
-                                  <span className="admin-user-name">{t.name}</span>
+                                  <span className="admin-user-name">{[t.name, t.lastName].filter(Boolean).join(' ')}</span>
                                   <span className="admin-user-mail">{t.email}</span>
                                 </span>
                               </span>
                             </td>
                             <td><span className={cn('admin-role', ROLE_PILL_CLASS[role] || 'is-otro')}>{role}</span></td>
-                            <td className="admin-num">{new Date(t.createdAt).toLocaleDateString('es-ES')}</td>
+                            <td>{t.location?.trim() || <span className="text-muted">Sin sede</span>}</td>
                             <td className="admin-actions">
                               <Button
                                 variant="outline"

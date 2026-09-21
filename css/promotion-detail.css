@@ -1036,7 +1036,9 @@ th, td {
         background-color: rgba(255, 71, 0, 0.45);
     }
 
-    main {
+    /* Acotado a la vista de promoción: este archivo es global y, sin el id, el
+       mismo margen empujaba el contenido del panel de admin y del listado. */
+    #main-content {
         margin-left: 280px;
         margin-top: 0px; /* Offset for fixed navbar */
         padding: 0 2rem 2rem 2rem;
@@ -1127,7 +1129,7 @@ th, td {
         background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='%23ffffff' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
     }
 
-    main {
+    #main-content {
         margin-top: 80px; /* Still need offset for fixed navbar on mobile */
         padding: 20px;
         width: 100%;
@@ -1815,7 +1817,7 @@ th, td {
         margin-inline-start: 0.5rem;
     }
 
-    main {
+    #main-content {
         padding: 10px;
     }
 
