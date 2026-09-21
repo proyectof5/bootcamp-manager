@@ -69,7 +69,7 @@
         {
             id: 'ajustes', label: 'Ajustes de la promoción', icon: 'bi-gear', foot: true,
             tabs: [
-                { id: 'datos', label: 'Datos de la promoción', go: S('openEditPromotionModal'), keepsCurrent: true },
+                { id: 'datos', label: 'Datos de la promoción', go: S('switchTab', 'ajustes') },
             ],
         },
     ];
@@ -109,7 +109,7 @@
 
         if (typeof tab.go === 'function') tab.go();
 
-        // "Datos de la promoción" abre una ventana: la sección activa no cambia.
+        // `keepsCurrent` es para destinos que abren una ventana encima (no cambian de sección).
         if (!tab.keepsCurrent) current = { section: section.id, tab: tab.id };
 
         if (!opts.silent && !tab.keepsCurrent) {

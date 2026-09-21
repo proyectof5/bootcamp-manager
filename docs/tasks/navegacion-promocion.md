@@ -43,7 +43,7 @@ Fases 1 y 2 en la rama `feat/navegacion-por-secciones` (frontend), [PR #84](http
 | 1 | Marco: barra lateral por secciones, cabecera de página (migas + título + acciones + pestañas), destino en el hash, enlace "Saltar al contenido", foco visible, contraste del botón principal | ✅ verificado en la P8 |
 | 2 | Inicio "Pendiente de ti": avisos accionables (pasar lista de hoy, proyectos sin evaluar, horas que faltan, festivos a mano sin nombre) + 4 cifras enlazadas, encima del Inicio de siempre | ✅ verificado en la P8 |
 | 3 | Estudiantes › Lista: tabla en React con cinco columnas por defecto y cuatro más en el selector, vistas (activos / en riesgo / bajas), orden por columna, cabecera fija y buscador | ✅ verificado en la P1 de Barcelona |
-| 4 | Ajustes › Datos de la promoción como página, no ventana modal | ⬜ |
+| 4 | Ajustes › Datos de la promoción como página: campos agrupados, obligatorios marcados, error debajo del campo, aviso `aria-live` al guardar y Eliminar promoción al pie | 🟡 verificado el prefill y la validación; falta probar un guardado real |
 | 5 | "Mi semana" (varias promociones) y buscador con Ctrl+K | ⬜ |
 
 ## Mapa de destinos (Fase 1)
@@ -60,14 +60,17 @@ Fases 1 y 2 en la rama `feat/navegacion-por-secciones` (frontend), [PR #84](http
 | Portal › Recursos / Enlaces rápidos / Secciones | `switchProgramDetailsTab('resources'/'quicklinks'/'sections')` |
 | Equipo › Equipo formativo | `switchProgramDetailsTab('team')` |
 | Equipo › Colaboradores | `switchTab('collaborators')` |
-| Ajustes › Datos de la promoción | `openEditPromotionModal()` (Fase 4: pasa a página) |
+| Ajustes › Datos de la promoción | `switchTab('ajustes')` → `PromotionSettingsPanel.tsx` (la ventana "Modificar promoción" sigue existiendo para otros accesos) |
 
 ## Pendiente / Próximos pasos
 
 - La Fase 2 saca los avisos de datos ya existentes; si un día hay que añadir
   "estudiantes sin acceso al portal" hará falta un dato por estudiante que hoy
   no existe (la contraseña de acceso es de la promoción, no de cada persona).
-- Fases 4-5 de la tabla de estado.
+- Fase 5 de la tabla de estado.
+- Probar un guardado real desde Ajustes (escribe en la base de datos de producción).
+- Ajustes › Integraciones todavía no existe: Planificador, Asana, Zoom y el ID de
+  Google Calendar siguen en Portal del estudiante › Acceso.
 - "En riesgo" usa hoy < 80 % de asistencia del mes en curso: confirmar el umbral
   con el equipo docente.
 - Las columnas elegidas se guardan en `localStorage` (comodidad por navegador),
@@ -87,6 +90,8 @@ Fases 1 y 2 en la rama `feat/navegacion-por-secciones` (frontend), [PR #84](http
 - `app/promotion/body.ts` — `#promotion-page-head` y `#program-details-actions`.
 - `css/promotion-detail.css` — estilos de la cabecera y ocultado del markup viejo.
 - `css/design-system.css` — contraste del botón principal y "Saltar al contenido".
+- `app/promotion/_components/PromotionSettingsPanel.tsx` — Ajustes como página (Fase 4),
+  montado en `#ajustes-tab` de `body.ts`.
 - `app/promotion/_components/StudentsTable.tsx` — tabla de estudiantes (Fase 3);
   `displayStudents` le pasa la lista por el evento `students-updated`.
 - `app/promotion/_components/PendingPanel.tsx` — avisos y cifras del Inicio (Fase 2);

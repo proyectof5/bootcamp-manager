@@ -281,6 +281,11 @@ const promotionDetailBody = `
                          segundo #collaborators-tab duplicado —tabla muerta y oculta— más abajo.) -->
                 </div>
 
+                <!-- Ajustes de la promoción (spec navegacion-promocion, Fase 4): lo que antes
+                     era la ventana "Modificar promoción". Lo monta por portal
+                     _components/PromotionSettingsPanel.tsx. -->
+                <div id="ajustes-tab" class="section-content legacy-hidden"></div>
+
                 <!-- Program Info Tab (New) -->
                 <div id="info-tab" class="section-content legacy-hidden">
                     <div class="d-flex justify-content-between align-items-center my-4 pb-3 border-bottom legacy-page-title">
