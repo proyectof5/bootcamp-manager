@@ -60,7 +60,7 @@ import {
   SelectContent,
   SelectItem,
 } from '@/components/ui/select';
-import { Sheet, SheetTrigger, SheetContent } from '@/components/ui/sheet';
+import { Sheet, SheetTrigger, SheetContent, SheetTitle } from '@/components/ui/sheet';
 import Spinner from '@/components/Spinner';
 
 import { useAuth } from '@/hooks/useAuth';
@@ -73,11 +73,12 @@ import { cn } from '@/lib/utils';
 interface Teacher {
   id: string;
   name: string;
-  /** El endpoint /api/admin/teachers devuelve apellido y sede, no fecha de alta. */
   lastName?: string;
   location?: string;
   email: string;
   userRole?: string;
+  /** Las cuentas creadas antes de que existiera la columna vienen sin fecha. */
+  createdAt?: string | null;
 }
 
 interface Template {
@@ -123,6 +124,17 @@ const ROLE_BADGE_CLASS: Record<string, string> = {
   'CoFormador/a': 'bg-green-500 text-white hover:bg-green-500',
   'Coordinador/a': 'bg-yellow-500 text-white hover:bg-yellow-500',
 };
+
+/** Fecha de alta legible. Las cuentas antiguas no tienen fecha: se dice, no se inventa. */
+function fechaAlta(valor?: string | null): { texto: string; titulo?: string } {
+  if (!valor) return { texto: '—', titulo: 'Cuenta anterior al registro de fechas' };
+  const d = new Date(valor);
+  if (Number.isNaN(d.getTime())) return { texto: '—' };
+  return {
+    texto: d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' }),
+    titulo: d.toLocaleString('es-ES', { dateStyle: 'long', timeStyle: 'short' }),
+  };
+}
 
 // ── Sidebar content (reusable: Sheet mobile + aside desktop) ─────────────────
 
@@ -473,7 +485,10 @@ export default function AdminPage() {
                 <Menu className="h-5 w-5" />
               </Button>
             </SheetTrigger>
-            <SheetContent side="left" className="w-72 p-4 admin-side">
+            {/* aria-describedby={undefined}: el menú no necesita texto de apoyo,
+                solo el título, que va oculto porque los enlaces ya se explican. */}
+            <SheetContent side="left" className="w-72 p-4 admin-side" aria-describedby={undefined}>
+              <SheetTitle className="visually-hidden-label">Menú de administración</SheetTitle>
               <AdminSidebarContent
                 section={section}
                 setSection={setSection}
@@ -503,10 +518,10 @@ export default function AdminPage() {
           <DropdownMenuTrigger asChild>
             <Button
               variant="ghost"
-              className="bg-transparent text-white border border-white/30 hover:bg-white hover:text-crok hover:border-white gap-2"
+              className="bg-transparent text-white border border-white/30 hover:bg-white hover:text-crok hover:border-white gap-2 max-w-[45vw] md:max-w-none"
             >
-              <CircleUser className="h-4 w-4" />
-              <span>{user?.name || 'Admin'}</span>
+              <CircleUser className="h-4 w-4 shrink-0" />
+              <span className="truncate">{user?.name || 'Admin'}</span>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
@@ -528,8 +543,9 @@ export default function AdminPage() {
           />
         </aside>
 
-        {/* Main */}
-        <main className="flex-1 p-4 md:p-6">
+        {/* Main: min-w-0 evita que la tabla ancha estire el flex y haga
+            que TODA la página se desplace de lado en pantallas pequeñas. */}
+        <main className="flex-1 min-w-0 p-4 md:p-6">
           {/* ── Users section ── */}
           {section === 'users' && (
             <div className="admin-panel">
@@ -589,6 +605,7 @@ export default function AdminPage() {
                         <th scope="col">Usuario</th>
                         <th scope="col">Rol</th>
                         <th scope="col">Sede</th>
+                        <th scope="col">Alta</th>
                         <th scope="col"><span className="visually-hidden-label">Acciones</span></th>
                       </tr>
                     </thead>
@@ -610,6 +627,12 @@ export default function AdminPage() {
                             </td>
                             <td><span className={cn('admin-role', ROLE_PILL_CLASS[role] || 'is-otro')}>{role}</span></td>
                             <td>{t.location?.trim() || <span className="text-muted">Sin sede</span>}</td>
+                            <td>
+                              {(() => {
+                                const alta = fechaAlta(t.createdAt);
+                                return <span className="admin-date" title={alta.titulo}>{alta.texto}</span>;
+                              })()}
+                            </td>
                             <td className="admin-actions">
                               <Button
                                 variant="outline"

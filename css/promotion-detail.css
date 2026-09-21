@@ -3841,6 +3841,9 @@ html {
 }
 
 .students-table-wrap {
+    /* Igual que en la tabla del panel de administración: sin position aquí, las
+       etiquetas ocultas de las celdas se escapan del scroll y ensanchan la página. */
+    position: relative;
     max-height: 62vh;
     overflow: auto;
     border: 1px solid var(--app-color-border);

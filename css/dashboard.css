@@ -822,9 +822,45 @@ main .bg-crok .pending-bell * {
    herramienta de gestión: se escanea, no se hojea).
    ═══════════════════════════════════════════════════════════════════ */
 
-.admin-side {
+/* El menú de administración: barra fija en escritorio y panel deslizante en
+   pantallas pequeñas. El panel lo pinta un Sheet de Radix, que llega con la
+   clase bg-background de Tailwind; como Tailwind se carga después de esta hoja,
+   la clase repetida es lo que hace que el panel también salga oscuro. Sin esto
+   el menú se veía blanco y la opción activa (texto blanco) desaparecía. */
+.admin-side,
+.admin-side.admin-side {
     background: var(--app-color-neutral-900);
     border-right: 1px solid rgba(255, 255, 255, 0.08);
+    color: var(--app-color-neutral-300);
+}
+
+/* Cerrar el panel: el aspa de Radix es hija directa, hereda el color del
+   contenido (invisible sobre el fondo oscuro) y conserva el fondo gris que el
+   navegador da a los <button>. Aquí se limpia y se agranda a 44 px. */
+.admin-side > button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    top: 8px;
+    right: 8px;
+    padding: 0;
+    border: 0;
+    border-radius: var(--app-radius-md);
+    background: transparent;
+    color: #ffffff;
+    opacity: 0.85;
+}
+
+.admin-side > button:hover {
+    background: rgba(255, 255, 255, 0.1);
+    opacity: 1;
+}
+
+.admin-side > button:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--app-color-neutral-900), 0 0 0 4px var(--app-color-brand-300);
 }
 
 .admin-nav-back,
@@ -947,6 +983,11 @@ main .bg-crok .pending-bell * {
 }
 
 .admin-table-wrap {
+    /* position: relative recorta dentro de este marco las etiquetas ocultas
+       (.visually-hidden-label) de las celdas: si no, al estar posicionadas en
+       absoluto se salen del scroll de la tabla y arrastran la página entera
+       de lado en el móvil. */
+    position: relative;
     overflow-x: auto;
     background: var(--app-color-bg-surface);
     border: 1px solid var(--app-color-border);
@@ -988,6 +1029,12 @@ main .bg-crok .pending-bell * {
 .admin-num {
     text-align: right;
     font-variant-numeric: tabular-nums;
+}
+
+/* Fechas de la tabla: cifras de ancho fijo para que las columnas no bailen. */
+.admin-date {
+    font-variant-numeric: tabular-nums;
+    color: var(--app-color-text-muted);
 }
 
 .admin-user {
