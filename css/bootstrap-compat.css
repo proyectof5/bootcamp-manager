@@ -162,7 +162,10 @@ a:hover { color: var(--bs-link-hover-color, #0a58ca); }
 .btn-sm { --bs-btn-padding-y: 0.25rem; --bs-btn-padding-x: 0.5rem; --bs-btn-font-size: 0.875rem; --bs-btn-border-radius: var(--bs-border-radius-sm, 0.25rem); }
 .btn-lg { --bs-btn-padding-y: 0.5rem; --bs-btn-padding-x: 1rem; --bs-btn-font-size: 1.25rem; --bs-btn-border-radius: var(--bs-border-radius-lg, 0.5rem); }
 /* variantes (design-system ya define --bs-btn-* primary = crok) */
-.btn-primary { --bs-btn-color: var(--app-color-primary-on, #fff); --bs-btn-bg: var(--app-color-primary, #ff4700); --bs-btn-border-color: var(--app-color-primary, #ff4700); --bs-btn-hover-color: #fff; --bs-btn-hover-bg: var(--app-color-primary-hover, #d63900); --bs-btn-hover-border-color: var(--app-color-primary-hover, #d63900); }
+/* Contraste WCAG AA (spec navegacion-promocion): texto blanco sobre #ff4700 da 3,41:1;
+   el fondo del botón usa brand-700 (#d63900 → 4,72:1) y el naranja de marca se reserva
+   para bordes, subrayados y estados activos. */
+.btn-primary { --bs-btn-color: var(--app-color-primary-on, #fff); --bs-btn-bg: var(--app-color-brand-700, #d63900); --bs-btn-border-color: var(--app-color-brand-700, #d63900); --bs-btn-hover-color: #fff; --bs-btn-hover-bg: var(--app-color-brand-900, #8a2400); --bs-btn-hover-border-color: var(--app-color-brand-900, #8a2400); }
 .btn-secondary { --bs-btn-color: #fff; --bs-btn-bg: #6c757d; --bs-btn-border-color: #6c757d; --bs-btn-hover-bg: #5c636a; --bs-btn-hover-border-color: #565e64; --bs-btn-hover-color: #fff; }
 .btn-success { --bs-btn-color: #fff; --bs-btn-bg: #198754; --bs-btn-border-color: #198754; --bs-btn-hover-bg: #157347; --bs-btn-hover-border-color: #146c43; --bs-btn-hover-color: #fff; }
 .btn-danger { --bs-btn-color: #fff; --bs-btn-bg: #dc3545; --bs-btn-border-color: #dc3545; --bs-btn-hover-bg: #bb2d3b; --bs-btn-hover-border-color: #b02a37; --bs-btn-hover-color: #fff; }

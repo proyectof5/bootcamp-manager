@@ -480,12 +480,19 @@ __onDomReady( () => {
             window.StudentTracking.init(promotionId);
         }
 
-        // 5. Restore last active tab (Safe now because loadPromotion/loadCollaborators finished)
-        const validTabs = ['overview', 'info', 'students', 'attendance', 'collaborators', 'access-settings', 'evaluation', 'teacher-area'];
-        let savedTab = sessionStorage.getItem(`activeTab_${promotionId}`) || 'overview';
-        if (!validTabs.includes(savedTab)) savedTab = 'overview';
-        window.location.hash = savedTab;
-        switchTab(savedTab);
+        // 5. Restaurar el destino (seguro aquí: loadPromotion/loadCollaborators ya terminaron).
+        // Con la navegación por secciones (public/js/promotion-nav.js) el destino vive en el
+        // hash de la URL — manda ella; si no está cargada, se usa el camino de siempre.
+        window.__promotionInitDone = true;
+        if (typeof window.startPromotionNav === 'function') {
+            window.startPromotionNav();
+        } else {
+            const validTabs = ['overview', 'info', 'students', 'attendance', 'collaborators', 'access-settings', 'evaluation', 'teacher-area'];
+            let savedTab = sessionStorage.getItem(`activeTab_${promotionId}`) || 'overview';
+            if (!validTabs.includes(savedTab)) savedTab = 'overview';
+            window.location.hash = savedTab;
+            switchTab(savedTab);
+        }
     }
 
     init().catch(err => console.error('[Init] Initialization failed:', err));

@@ -7,6 +7,12 @@ esa área — no hace falta escribirlos todos de una vez ni por adelantado.
 
 Leyenda: ✅ spec completo · 🟡 spec con pendientes · ⬜ sin spec todavía.
 
+## Promoción — Navegación
+
+| Área | Spec | Componentes/archivos principales |
+|---|---|---|
+| Navegación de la promoción (siete secciones, cabecera de página, destino en la URL) | 🟡 [navegacion-promocion.md](navegacion-promocion.md) | `public/js/promotion-nav.js`, `PromotionNav.tsx`, `page.tsx`, `body.ts` |
+
 ## Promoción — Planificación
 
 | Área | Spec | Componentes/archivos principales |

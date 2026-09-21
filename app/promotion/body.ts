@@ -5,6 +5,10 @@
 const promotionDetailBody = `
     <!-- Main Content -->
     <main id="main-content" class="px-md-4">
+                <!-- Cabecera de página (migas + título + acciones + pestañas de la sección).
+                     La pinta _components/PromotionNav.tsx por portal; el destino activo lo
+                     lleva public/js/promotion-nav.js. -->
+                <div id="promotion-page-head"></div>
                 <!-- Overview Tab -->
                 <!-- spec 0014 Fase C: el contenido del Overview (título + Acciones Rápidas + Progreso +
                      Agenda + Avisos + bloc de notas) se migró a React: _components/OverviewPanel.tsx
@@ -279,9 +283,9 @@ const promotionDetailBody = `
 
                 <!-- Program Info Tab (New) -->
                 <div id="info-tab" class="section-content legacy-hidden">
-                    <div class="d-flex justify-content-between align-items-center my-4 pb-3 border-bottom">
+                    <div class="d-flex justify-content-between align-items-center my-4 pb-3 border-bottom legacy-page-title">
                         <h2 class="mb-0">Detalles del Programa</h2>
-                        <div class="d-flex gap-2 justify-content-end">
+                        <div class="d-flex gap-2 justify-content-end" id="program-details-actions">
                             <button id="preview-roadmap-btn" class="btn btn-outline-primary"
                                 onclick="previewPromotion()" title="Vista previa del roadmap">
                                 <i class="bi bi-eye me-2"></i>Preview Roadmap

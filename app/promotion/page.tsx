@@ -25,6 +25,7 @@ import { TeacherOverviewPanelHost } from './_components/TeacherOverviewPanel';
 import { AttendancePanelHost } from './_components/AttendancePanel';
 import { AccessSettingsPanelHost } from './_components/AccessSettingsPanel';
 import { OverviewPanelHost } from './_components/OverviewPanel';
+import { SectionNavItems, PromotionPageHeadHost } from './_components/PromotionNav';
 import { EvaluationGridPanelHost } from './_components/EvaluationGridPanel';
 import { initReports } from './_lib/reports';
 import { initSyllabusPdf } from './_lib/syllabus-pdf';
@@ -114,6 +115,10 @@ declare global {
     // Registro genérico para los modales shadcn (spec 0013-b en adelante)
     _openShadcnModal?: (id: string) => void;
     _closeShadcnModal?: (id: string) => void;
+    // Navegación por secciones (public/js/promotion-nav.js)
+    startPromotionNav?: () => void;
+    goToPromotionDestination?: (section: string, tab?: string) => void;
+    __promotionInitDone?: boolean;
   }
 }
 
@@ -340,6 +345,12 @@ export default function PromotionPage() {
         // promotion-detail.js consume para pintar el Gantt DHTMLX del roadmap.
         await loadScript(withBasePath('/js/gantt-adapter.js'));
         await loadScript(withBasePath('/js/promotion-detail.js'));
+        // Navegación por secciones (spec navegacion-promocion): necesita las funciones
+        // legacy (switchTab/switchProgramDetailsTab/switchTeacherAreaSubTab) ya definidas.
+        await loadScript(withBasePath('/js/promotion-nav.js'));
+        // Si el init de promotion-detail.js ya terminó (cargó antes que esto), arranca
+        // la navegación aquí; si no, la arranca él al final de su init.
+        if (window.__promotionInitDone) window.startPromotionNav?.();
       } catch (e) {
         console.error('Script load error:', e);
       }
@@ -439,26 +450,10 @@ export default function PromotionPage() {
                 <ArrowLeft className="inline-block mr-2 h-4 w-4" />Promociones
               </a>
             </li>
-            <li className="nav-item">
-              <a className="nav-link nav" href="#overview" onClick={() => window.switchTab?.('overview')}>
-                <Eye className="inline-block mr-2 h-4 w-4" />Dashboard
-              </a>
-            </li>
-            <li className="nav-item teacher-only">
-              <a className="nav-link" href="#teacher-area" onClick={() => window.switchTab?.('teacher-area')}>
-                <BookOpen className="inline-block mr-2 h-4 w-4" />Área de administración
-              </a>
-            </li>
-            <li className="nav-item teacher-only">
-              <a className="nav-link" href="#info" onClick={() => window.switchTab?.('info')}>
-                <Info className="inline-block mr-2 h-4 w-4" />Contenido del Programa
-              </a>
-            </li>
-            <li className="nav-item teacher-only">
-              <a className="nav-link" href="#collaborators" onClick={() => window.switchTab?.('collaborators')}>
-                <UserPlus className="inline-block mr-2 h-4 w-4" />Collaboradores
-              </a>
-            </li>
+            {/* Navegación por secciones (spec navegacion-promocion, Fase 1): siete secciones
+                en vez de Dashboard / Área de administración / Contenido del Programa /
+                Colaboradores. Los destinos los resuelve public/js/promotion-nav.js. */}
+            <SectionNavItems />
           </ul>
 
           {/* Sidebar Footer */}
@@ -469,7 +464,7 @@ export default function PromotionPage() {
                 className="nav-link sidebar-edit-btn"
                 onClick={() => window.openEditPromotionModal?.()}
               >
-                <PencilLine className="inline-block mr-2 h-4 w-4" />Modificar promoción
+                <PencilLine className="inline-block mr-2 h-4 w-4" />Ajustes de la promoción
               </a>
             </div>
             <div className="nav-item teacher-only w-100">
@@ -587,6 +582,7 @@ export default function PromotionPage() {
           NotesPanel) con ids legacy; loadPromotion/loadQuickActions/updateCourseProgressBar/
           loadOverview* los pueblan por id. Es la vista por defecto del programa. */}
       <OverviewPanelHost />
+      <PromotionPageHeadHost />
       {/* Sub-tab "Evaluación" de la Teacher-Area (spec 0014 Fase C, 18º y ÚLTIMO bloque): React vía
           portal a #teacher-area-evaluation. Renderiza #evaluation-tab con sus 4 sub-vistas
           (lista #evaluation-content, #team-history-panel, split-view #eval-project-view, #student-eval-panel)
