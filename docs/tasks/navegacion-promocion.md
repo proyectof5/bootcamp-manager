@@ -42,7 +42,7 @@ Fases 1 y 2 en la rama `feat/navegacion-por-secciones` (frontend), [PR #84](http
 |---|---|---|
 | 1 | Marco: barra lateral por secciones, cabecera de página (migas + título + acciones + pestañas), destino en el hash, enlace "Saltar al contenido", foco visible, contraste del botón principal | ✅ verificado en la P8 |
 | 2 | Inicio "Pendiente de ti": avisos accionables (pasar lista de hoy, proyectos sin evaluar, horas que faltan, festivos a mano sin nombre) + 4 cifras enlazadas, encima del Inicio de siempre | ✅ verificado en la P8 |
-| 3 | Estudiantes › Lista: 7 columnas, selector de columnas, vistas guardadas, filtros plegados | ⬜ |
+| 3 | Estudiantes › Lista: tabla en React con cinco columnas por defecto y cuatro más en el selector, vistas (activos / en riesgo / bajas), orden por columna, cabecera fija y buscador | ✅ verificado en la P1 de Barcelona |
 | 4 | Ajustes › Datos de la promoción como página, no ventana modal | ⬜ |
 | 5 | "Mi semana" (varias promociones) y buscador con Ctrl+K | ⬜ |
 
@@ -67,7 +67,11 @@ Fases 1 y 2 en la rama `feat/navegacion-por-secciones` (frontend), [PR #84](http
 - La Fase 2 saca los avisos de datos ya existentes; si un día hay que añadir
   "estudiantes sin acceso al portal" hará falta un dato por estudiante que hoy
   no existe (la contraseña de acceso es de la promoción, no de cada persona).
-- Fases 3-5 de la tabla de estado.
+- Fases 4-5 de la tabla de estado.
+- "En riesgo" usa hoy < 80 % de asistencia del mes en curso: confirmar el umbral
+  con el equipo docente.
+- Las columnas elegidas se guardan en `localStorage` (comodidad por navegador),
+  no son vistas compartidas entre personas.
 - Revisar los avisos que quedan del markup legacy: `#teacher-area-header`,
   `#program-details-group-nav`, `#program-details-tabs` y `#teacher-area-subtabs`
   se ocultan por CSS; cuando las fases 2-5 estén hechas conviene borrarlos.
@@ -83,5 +87,7 @@ Fases 1 y 2 en la rama `feat/navegacion-por-secciones` (frontend), [PR #84](http
 - `app/promotion/body.ts` — `#promotion-page-head` y `#program-details-actions`.
 - `css/promotion-detail.css` — estilos de la cabecera y ocultado del markup viejo.
 - `css/design-system.css` — contraste del botón principal y "Saltar al contenido".
+- `app/promotion/_components/StudentsTable.tsx` — tabla de estudiantes (Fase 3);
+  `displayStudents` le pasa la lista por el evento `students-updated`.
 - `app/promotion/_components/PendingPanel.tsx` — avisos y cifras del Inicio (Fase 2);
   se monta al principio de `OverviewPanel.tsx`, sin quitar nada de lo que ya había.

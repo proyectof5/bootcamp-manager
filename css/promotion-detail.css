@@ -3755,3 +3755,192 @@ html {
     white-space: nowrap;
     border: 0;
 }
+
+/* ── Estudiantes › Lista: tabla con columnas, vistas y orden (Fase 3) ── */
+
+.students-table-block {
+    display: flex;
+    flex-direction: column;
+    gap: var(--app-space-3);
+}
+
+.students-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--app-space-3);
+}
+
+.students-views {
+    display: inline-flex;
+    border: 1px solid var(--app-color-neutral-300);
+    border-radius: var(--app-radius-md);
+    overflow: hidden;
+}
+
+.students-view {
+    min-height: 40px;
+    padding: var(--app-space-2) var(--app-space-3);
+    border: 0;
+    background: var(--app-color-bg-surface);
+    color: var(--app-color-text-muted);
+    font-size: var(--app-font-size-sm);
+    cursor: pointer;
+}
+
+.students-view + .students-view {
+    border-left: 1px solid var(--app-color-border);
+}
+
+.students-view.active {
+    background: var(--app-color-primary-soft);
+    color: var(--app-color-brand-700);
+    font-weight: var(--app-font-weight-semi);
+}
+
+.students-toolbar-right {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--app-space-2);
+}
+
+.students-search {
+    width: min(320px, 70vw);
+}
+
+.students-picker-wrap {
+    position: relative;
+}
+
+.students-picker {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 6px);
+    z-index: var(--app-z-overlay);
+    width: 260px;
+    padding: var(--app-space-2);
+    background: var(--app-color-bg-surface);
+    border: 1px solid var(--app-color-border);
+    border-radius: var(--app-radius-md);
+    box-shadow: var(--app-shadow-lg);
+}
+
+.students-picker label {
+    display: flex;
+    align-items: center;
+    gap: var(--app-space-2);
+    min-height: 40px;
+    padding: 2px var(--app-space-1);
+    margin: 0;
+    font-size: var(--app-font-size-sm);
+    cursor: pointer;
+}
+
+.students-table-wrap {
+    max-height: 62vh;
+    overflow: auto;
+    border: 1px solid var(--app-color-border);
+    border-radius: var(--app-radius-lg);
+    background: var(--app-color-bg-surface);
+}
+
+.students-table {
+    margin: 0;
+}
+
+.students-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--app-color-bg-surface);
+    border-bottom: 1px solid var(--app-color-border);
+    font-size: var(--app-font-size-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--app-color-text-muted);
+    white-space: nowrap;
+}
+
+.students-sort {
+    min-height: 36px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+}
+
+.students-sort:hover {
+    color: var(--app-color-text);
+}
+
+.students-name {
+    display: flex;
+    flex-direction: column;
+}
+
+.students-name .student-name-link {
+    color: var(--app-color-text);
+    font-weight: var(--app-font-weight-semi);
+    text-decoration: none;
+}
+
+.students-name .student-name-link:hover {
+    color: var(--app-color-brand-700);
+    text-decoration: underline;
+}
+
+.students-mail {
+    color: var(--app-color-text-muted);
+    font-size: var(--app-font-size-xs);
+}
+
+/* Estado: icono + palabra, nunca solo color (WCAG 1.4.1) */
+.students-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 9px;
+    border: 1px solid transparent;
+    border-radius: var(--app-radius-pill);
+    font-size: var(--app-font-size-xs);
+    font-weight: var(--app-font-weight-semi);
+    white-space: nowrap;
+}
+
+.students-pill.is-activa { background: #e7f4ec; border-color: #157347; color: #157347; }
+.students-pill.is-riesgo { background: #fdf2d8; border-color: #8a5a00; color: #8a5a00; }
+.students-pill.is-baja   { background: #fdecee; border-color: #c02a37; color: #c02a37; }
+
+.students-sort:focus-visible,
+.students-view:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--app-color-bg-surface), 0 0 0 4px var(--app-color-brand-700);
+}
+
+/* Etiqueta solo para lectores de pantalla (sustituye a .visually-hidden de Bootstrap) */
+.visually-hidden-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+@media (max-width: 767.98px) {
+    .students-search { width: 100%; }
+    .students-table-wrap { max-height: none; }
+}
+
+/* El título de cada panel lo dice ya la cabecera de página (Fase 1): no repetirlo dentro */
+#teacher-area-students > #students-tab > .d-flex > h2.subtitle-page,
+#teacher-area-attendance h2.subtitle-page,
+#teacher-area-evaluation #evaluation-tab-view > .d-flex > div > h2.subtitle-page {
+    display: none;
+}

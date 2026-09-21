@@ -9002,6 +9002,15 @@ async function loadStudents(retryCount = 0) {
 
 // Display students in a table format for better readability
 function displayStudents(students) {
+    // Fase 3 de la navegación (docs/tasks/navegacion-promocion.md): cuando la tabla la
+    // pinta React (_components/StudentsTable.tsx) se le pasa la lista por evento y no se
+    // toca el DOM aquí. Sin React montado, sigue el camino de siempre.
+    if (window.__studentsTableReact) {
+        window.currentStudents = students || [];
+        window.dispatchEvent(new CustomEvent('students-updated', { detail: students || [] }));
+        return;
+    }
+
     const studentsContainer = document.getElementById('students-list');
     if (!studentsContainer) {
         console.warn('Students container not found');
