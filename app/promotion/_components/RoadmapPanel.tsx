@@ -32,7 +32,9 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { apiFetch } from '@/lib/api';
 import {
-  DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuTrigger,
+  DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuItem,
+  DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem,
+  DropdownMenuSeparator, DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -151,78 +153,6 @@ export function RoadmapPanelHost() {
 // los bloqueadores de anuncios (Brave Shields, uBlock...) traen filtros cosméticos genéricos que
 // ocultan botones así por parecerse al patrón de "botón de descarga falso" tan común en publicidad
 // maliciosa — no era la causa real de este bug, pero es una defensa razonable de todos modos.
-function ExportDropdown() {
-  const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const onDocClick = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
-    };
-    const onEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
-    document.addEventListener('mousedown', onDocClick);
-    document.addEventListener('keydown', onEsc);
-    return () => {
-      document.removeEventListener('mousedown', onDocClick);
-      document.removeEventListener('keydown', onEsc);
-    };
-  }, [open]);
-
-  const pick = (e: React.MouseEvent, format: 'png' | 'pdf' | 'xlsx' | 'ics') => {
-    e.stopPropagation(); // ver comentario arriba: evita que shared.js cierre/reabra por su cuenta
-    setOpen(false);
-    w().exportRoadmap?.(format);
-  };
-
-  return (
-    <div className="roadmap-export-menu" ref={ref} style={{ position: 'relative' }}>
-      <button
-        type="button"
-        className="btn btn-outline-primary btn-sm"
-        aria-expanded={open}
-        onClick={(e) => { e.stopPropagation(); setOpen((o) => !o); }}
-      >
-        <i className="bi bi-box-arrow-up-right me-1" />Exportar
-      </button>
-      <ul className={`dropdown-menu dropdown-menu-end${open ? ' show' : ''}`} style={{ position: 'absolute', right: 0 }}>
-        <li><button type="button" className="dropdown-item" onClick={(e) => pick(e, 'png')}><i className="bi bi-file-earmark-image me-2" />Imagen (PNG)</button></li>
-        <li><button type="button" className="dropdown-item" onClick={(e) => pick(e, 'pdf')}><i className="bi bi-file-earmark-pdf me-2" />PDF</button></li>
-        <li><button type="button" className="dropdown-item" onClick={(e) => pick(e, 'xlsx')}><i className="bi bi-file-earmark-excel me-2" />Excel (XLSX)</button></li>
-        <li><button type="button" className="dropdown-item" onClick={(e) => pick(e, 'ics')}><i className="bi bi-calendar-event me-2" />Calendario (.ics, para Google Calendar)</button></li>
-      </ul>
-    </div>
-  );
-}
-
-// Botón de sincronización directa con Google Calendar (opción "A2": la app
-// crea y comparte el calendario vía cuenta de servicio en el backend — ver
-// backend/services/googleCalendar.service.js en roadmap-manager-service).
-// Estado propio de "sincronizando" para desactivar el botón y mostrar
-// feedback inmediato mientras dura la llamada (puede tardar unos segundos:
-// hace un insert/update por evento contra la API de Google, uno a uno).
-function GoogleCalendarSyncButton() {
-  const [syncing, setSyncing] = useState(false);
-
-  const onClick = async () => {
-    if (syncing) return;
-    setSyncing(true);
-    try {
-      await w().syncRoadmapGoogleCalendar?.();
-    } finally {
-      setSyncing(false);
-    }
-  };
-
-  return (
-    <button type="button" className="btn btn-outline-primary btn-sm" onClick={onClick} disabled={syncing}>
-      {syncing
-        ? <><span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true" />Sincronizando…</>
-        : <><i className="bi bi-google me-1" />Google Calendar</>}
-    </button>
-  );
-}
-
 // Leyenda de colores por tipo de elemento — en la vista a pantalla completa la
 // fila suelta de antes ocupaba espacio vertical valioso, así que pasa a un
 // popover pequeño en la barra de herramientas. Mismos tokens
@@ -249,11 +179,13 @@ function LegendPopover() {
     <div ref={ref} style={{ position: 'relative' }}>
       <button
         type="button"
-        className="btn btn-outline-secondary btn-sm"
+        className="btn btn-outline-secondary btn-sm roadmap-tool"
         aria-expanded={open}
+        aria-label="Leyenda de colores"
+        title="Leyenda de colores"
         onClick={(e) => { e.stopPropagation(); setOpen((o) => !o); }}
       >
-        <i className="bi bi-palette me-1" />Leyenda
+        <i className="bi bi-palette" aria-hidden="true" />
       </button>
       {open && (
         <div
@@ -434,11 +366,13 @@ function HolidaysPopover() {
     <div ref={ref} style={{ position: 'relative' }}>
       <button
         type="button"
-        className="btn btn-outline-secondary btn-sm"
+        className="btn btn-outline-secondary btn-sm roadmap-tool"
         aria-expanded={open}
+        aria-label="Festivos del calendario"
+        title="Festivos"
         onClick={(e) => { e.stopPropagation(); setOpen((o) => !o); }}
       >
-        <i className="bi bi-calendar-x me-1" />Festivos
+        <i className="bi bi-calendar-x" aria-hidden="true" />
       </button>
       {open && (
         <div
@@ -603,7 +537,12 @@ function HolidaysPopover() {
 // Accesos. Al pulsar se comprueba el estado; si está conectado se pide la URL de
 // la tarea padre y se exporta. IDEMPOTENTE (Fase 3): re-exportar actualiza las
 // tareas ya creadas en vez de duplicar; prefija la última URL usada.
-function AsanaExportButton() {
+/**
+ * Flujo de exportación a Asana. Antes traía su propio botón en la barra; ahora
+ * lo lanza el menú "Más", que se cierra al elegir la opción, así que el
+ * componente se monta fuera del menú y se le pide abrir con `requestOpen`.
+ */
+function AsanaExportFlow({ requestOpen, onHandled }: { requestOpen: boolean; onHandled: () => void }) {
   const [open, setOpen] = useState(false);
   const [url, setUrl] = useState('');
   const [lastAt, setLastAt] = useState<string | null>(null);
@@ -671,14 +610,16 @@ function AsanaExportButton() {
 
   const close = () => { setOpen(false); setResult(null); setPhase('idle'); };
 
+  useEffect(() => {
+    if (!requestOpen) return;
+    let vivo = true;
+    (async () => { await start(); if (vivo) onHandled(); })();
+    return () => { vivo = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [requestOpen]);
+
   return (
     <>
-      <button type="button" className="btn btn-outline-secondary btn-sm" disabled={phase === 'checking'} onClick={start}>
-        {phase === 'checking'
-          ? <><span className="spinner-border spinner-border-sm me-1" role="status" />Asana…</>
-          : <><i className="bi bi-kanban me-1" />Asana</>}
-      </button>
-
       {open && createPortal(
         <div
           role="dialog"
@@ -741,8 +682,159 @@ function AsanaExportButton() {
   );
 }
 
+
+// ── Barra de periodo: "Hoy · ‹ › · título" ──────────────────────────────────
+// El mismo orden que un calendario: primero cómo moverte, luego dónde estás. El
+// título es una región viva para que un lector de pantalla cante el periodo al
+// cambiarlo, sin robar el foco de las flechas.
+const VIEW_LABELS: Record<string, string> = {
+  day: 'Día',
+  week: 'Semana',
+  month: 'Mes',
+  all: 'Todo el bootcamp',
+};
+
+interface PeriodState { view: string; label: string; canStep: boolean; isEmpty?: boolean }
+
+function useGanttPeriod(): PeriodState {
+  const [state, setState] = useState<PeriodState>({ view: 'all', label: '', canStep: false, isEmpty: false });
+  useEffect(() => {
+    const onChange = (e: Event) => setState((e as CustomEvent<PeriodState>).detail);
+    window.addEventListener('gantt-period-changed', onChange);
+    // El Gantt puede haberse montado antes que esta barra: le pedimos su estado.
+    const t = setInterval(() => { if (w().emitGanttPeriod) { w().emitGanttPeriod(); clearInterval(t); } }, 120);
+    const stop = setTimeout(() => clearInterval(t), 8000);
+    return () => { window.removeEventListener('gantt-period-changed', onChange); clearInterval(t); clearTimeout(stop); };
+  }, []);
+  return state;
+}
+
+function RoadmapPeriodNav() {
+  const { label, canStep } = useGanttPeriod();
+  return (
+    <div className="roadmap-period">
+      <button type="button" className="btn btn-outline-secondary btn-sm roadmap-today" onClick={() => w().ganttGoToToday?.()}>
+        Hoy
+      </button>
+      <span className="roadmap-steps">
+        <button
+          type="button"
+          className="roadmap-step"
+          onClick={() => w().ganttStepPeriod?.(-1)}
+          disabled={!canStep}
+          aria-label="Periodo anterior"
+          title="Periodo anterior"
+        >
+          <i className="bi bi-chevron-left" aria-hidden="true" />
+        </button>
+        <button
+          type="button"
+          className="roadmap-step"
+          onClick={() => w().ganttStepPeriod?.(1)}
+          disabled={!canStep}
+          aria-label="Periodo siguiente"
+          title="Periodo siguiente"
+        >
+          <i className="bi bi-chevron-right" aria-hidden="true" />
+        </button>
+      </span>
+      <h3 className="roadmap-period-label" aria-live="polite">{label}</h3>
+    </div>
+  );
+}
+
+// ── Selector de vista: un desplegable, no tres botones sueltos ──────────────
+function ViewPicker() {
+  const { view } = useGanttPeriod();
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button type="button" className="btn btn-outline-secondary btn-sm" aria-label={`Vista: ${VIEW_LABELS[view] || 'Semana'}`}>
+          {VIEW_LABELS[view] || 'Semana'}
+          <i className="bi bi-chevron-down roadmap-caret" aria-hidden="true" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuRadioGroup value={view} onValueChange={(v) => w().setGanttView?.(v)}>
+          <DropdownMenuRadioItem value="day">Día</DropdownMenuRadioItem>
+          <DropdownMenuRadioItem value="week">Semana</DropdownMenuRadioItem>
+          <DropdownMenuRadioItem value="month">Mes</DropdownMenuRadioItem>
+          <DropdownMenuSeparator />
+          <DropdownMenuRadioItem value="all">Todo el bootcamp</DropdownMenuRadioItem>
+        </DropdownMenuRadioGroup>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+// ── Menú "Más": lo que se usa de vez en cuando ──────────────────────────────
+// Sustituye a los botones sueltos de Empleabilidad, Google Calendar, Exportar y
+// Asana. Se agrupan por lo que hacen: preparar el roadmap, llevárselo a otra
+// herramienta o descargarlo.
+function RoadmapMoreMenu({ onAsana }: { onAsana: () => void }) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button type="button" className="btn btn-outline-secondary btn-sm roadmap-more" aria-label="Más opciones del roadmap" title="Más opciones">
+          <i className="bi bi-three-dots" aria-hidden="true" />
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-64">
+        <DropdownMenuLabel>Contenido</DropdownMenuLabel>
+        <DropdownMenuItem onClick={() => w().openEmployabilityModal?.()}>
+          <i className="bi bi-briefcase me-2" aria-hidden="true" />Sesiones de empleabilidad
+        </DropdownMenuItem>
+
+        <DropdownMenuSeparator />
+        <DropdownMenuLabel>Llevarlo a otra herramienta</DropdownMenuLabel>
+        <DropdownMenuItem onClick={() => w().syncRoadmapGoogleCalendar?.()}>
+          <i className="bi bi-google me-2" aria-hidden="true" />Sincronizar con Google Calendar
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={onAsana}>
+          <i className="bi bi-kanban me-2" aria-hidden="true" />Exportar a Asana
+        </DropdownMenuItem>
+
+        <DropdownMenuSeparator />
+        <DropdownMenuLabel>Descargar</DropdownMenuLabel>
+        <DropdownMenuItem onClick={() => w().exportRoadmap?.('png')}>
+          <i className="bi bi-file-earmark-image me-2" aria-hidden="true" />Imagen (PNG)
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => w().exportRoadmap?.('pdf')}>
+          <i className="bi bi-file-earmark-pdf me-2" aria-hidden="true" />PDF
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => w().exportRoadmap?.('xlsx')}>
+          <i className="bi bi-file-earmark-excel me-2" aria-hidden="true" />Excel (XLSX)
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => w().exportRoadmap?.('ics')}>
+          <i className="bi bi-calendar-event me-2" aria-hidden="true" />Calendario (.ics)
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+/**
+ * Un periodo sin nada deja el Gantt en blanco y parece que se ha roto. En vez
+ * de un hueco mudo, se dice qué pasa y se ofrece la salida.
+ */
+function RoadmapEmptyPeriod() {
+  const { view, label, isEmpty } = useGanttPeriod();
+  if (!isEmpty) return null;
+  const cuando = view === 'day' ? 'Ese día' : view === 'week' ? 'Esa semana' : 'Ese mes';
+  return (
+    <p className="roadmap-empty" role="status">
+      <i className="bi bi-calendar2-x" aria-hidden="true" />
+      <span>{cuando} no hay nada en el roadmap.<br /><span className="roadmap-empty-when">{label}</span></span>
+      <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => w().setGanttView?.('all')}>
+        Ver todo el bootcamp
+      </button>
+    </p>
+  );
+}
+
 function RoadmapPanel() {
   const wrapRef = useRef<HTMLDivElement>(null);
+  const [asanaRequested, setAsanaRequested] = useState(false);
 
   // Tras montar, dispara el render legacy del roadmap. loadModules() puede no estar definido aún
   // (carga de promotion-detail.js) → poll corto hasta que exista y se llama una vez.
@@ -801,34 +893,28 @@ function RoadmapPanel() {
 
   return (
     <div className="roadmap-fullbleed" ref={wrapRef}>
-      {/* Barra compacta — una sola fila, reemplaza la cabecera "Roadmap & Módulos"
-          + el subtítulo "Diagrama Gantt" + la fila de leyenda. */}
+      {/* Barra del roadmap con el orden de un calendario: a la izquierda cómo
+          moverte y dónde estás; a la derecha la acción principal, el selector de
+          vista y un menú con lo que se usa de vez en cuando. Antes eran doce
+          botones al mismo nivel repartidos en tres filas. */}
       <div className="roadmap-toolbar">
-        <div className="roadmap-toolbar-group">
-          <span className="roadmap-toolbar-title">Roadmap</span>
-          <div className="btn-group btn-group-sm gantt-zoom-group" role="group" aria-label="Zoom del Gantt">
-            <button type="button" className="btn btn-outline-secondary gantt-zoom-btn" data-zoom-level="day" onClick={() => w().setGanttZoomLevel?.('day')}>Día</button>
-            <button type="button" className="btn btn-outline-secondary gantt-zoom-btn active" data-zoom-level="week" onClick={() => w().setGanttZoomLevel?.('week')}>Semana</button>
-            <button type="button" className="btn btn-outline-secondary gantt-zoom-btn" data-zoom-level="month" onClick={() => w().setGanttZoomLevel?.('month')}>Mes</button>
-          </div>
-          <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => w().ganttScrollToToday?.()}>
-            <i className="bi bi-calendar-event me-1" />Hoy
-          </button>
-        </div>
+        <RoadmapPeriodNav />
         <div className="roadmap-toolbar-group roadmap-toolbar-group--end">
-          <button type="button" className="btn btn-primary btn-sm" onClick={() => w().openModuleModal?.()}>
-            <i className="bi bi-plus-circle me-1" />Módulo
-          </button>
-          <button type="button" className="btn btn-brand-soft btn-sm" onClick={() => w().openEmployabilityModal?.()}>
-            <i className="bi bi-briefcase me-1" />Empleabilidad
-          </button>
           <LegendPopover />
           <HolidaysPopover />
-          <GoogleCalendarSyncButton />
-          <ExportDropdown />
-          <AsanaExportButton />
+          <button type="button" className="btn btn-primary btn-sm" onClick={() => w().openModuleModal?.()}>
+            <i className="bi bi-plus-lg" aria-hidden="true" />Módulo
+          </button>
+          <ViewPicker />
+          <RoadmapMoreMenu onAsana={() => setAsanaRequested(true)} />
         </div>
       </div>
+
+      {/* Fuera del menú a propósito: el menú se cierra al elegir y se llevaría
+          por delante el diálogo. */}
+      <AsanaExportFlow requestOpen={asanaRequested} onHandled={() => setAsanaRequested(false)} />
+
+      <RoadmapEmptyPeriod />
 
       {/* Lista de tarjetas de módulo: su render está comentado en el legacy
           (displayModules) → casi siempre vacía. Se mantiene en el DOM oculta para

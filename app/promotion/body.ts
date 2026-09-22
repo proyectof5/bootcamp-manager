@@ -5,6 +5,10 @@
 const promotionDetailBody = `
     <!-- Main Content -->
     <main id="main-content" class="px-md-4">
+                <!-- Cabecera de página (migas + título + acciones + pestañas de la sección).
+                     La pinta _components/PromotionNav.tsx por portal; el destino activo lo
+                     lleva public/js/promotion-nav.js. -->
+                <div id="promotion-page-head"></div>
                 <!-- Overview Tab -->
                 <!-- spec 0014 Fase C: el contenido del Overview (título + Acciones Rápidas + Progreso +
                      Agenda + Avisos + bloc de notas) se migró a React: _components/OverviewPanel.tsx
@@ -277,11 +281,16 @@ const promotionDetailBody = `
                          segundo #collaborators-tab duplicado —tabla muerta y oculta— más abajo.) -->
                 </div>
 
+                <!-- Ajustes de la promoción (spec navegacion-promocion, Fase 4): lo que antes
+                     era la ventana "Modificar promoción". Lo monta por portal
+                     _components/PromotionSettingsPanel.tsx. -->
+                <div id="ajustes-tab" class="section-content legacy-hidden"></div>
+
                 <!-- Program Info Tab (New) -->
                 <div id="info-tab" class="section-content legacy-hidden">
-                    <div class="d-flex justify-content-between align-items-center my-4 pb-3 border-bottom">
+                    <div class="d-flex justify-content-between align-items-center my-4 pb-3 border-bottom legacy-page-title">
                         <h2 class="mb-0">Detalles del Programa</h2>
-                        <div class="d-flex gap-2 justify-content-end">
+                        <div class="d-flex gap-2 justify-content-end" id="program-details-actions">
                             <button id="preview-roadmap-btn" class="btn btn-outline-primary"
                                 onclick="previewPromotion()" title="Vista previa del roadmap">
                                 <i class="bi bi-eye me-2"></i>Preview Roadmap
@@ -362,10 +371,6 @@ const promotionDetailBody = `
                         <button class="nav-link" id="program-details-team-tab" type="button" role="tab"
                             aria-selected="false" data-group="team" style="display:none" onclick="switchProgramDetailsTab('team')">
                             <i class="bi bi-people me-2"></i>Equipo
-                        </button>
-                        <button class="nav-link" id="program-details-virtual-classroom-tab" type="button" role="tab"
-                            aria-selected="false" data-group="team" style="display:none" onclick="switchProgramDetailsTab('virtual-classroom')">
-                            <i class="bi bi-laptop me-2"></i>Aula Virtual
                         </button>
                     </nav>
 
@@ -464,18 +469,6 @@ const promotionDetailBody = `
                                  por portal (toolbar + editor contenteditable #evaluation-text). Conserva
                                  el id legacy evaluation-text (saveExtendedInfo lo lee). El HTML inicial
                                  lo expone el orquestador en window.__evaluationHtml + __refreshEvaluation. -->
-                        </div>
-
-                        <!-- Virtual Classroom Tab -->
-                        <div class="tab-pane fade" id="program-details-virtual-classroom" role="tabpanel"
-                            aria-labelledby="program-details-virtual-classroom-tab">
-                            <!-- spec 0014 Fase C: contenido portado a React. El componente
-                                 VirtualClassroomPanelHost (_components/VirtualClassroomPanel.tsx) monta
-                                 aquí por portal el panel #virtual-classroom-panel conservando todos los
-                                 ids legacy (vc-*). La lógica sigue en el orquestador:
-                                 initVirtualClassroomPanel (lo llama switchProgramDetailsTab/loadEvaluation)
-                                 puebla/lee por id; los controles llaman a window.onVirtualClassroomProjectChange/
-                                 saveVirtualClassroom/deactivateVirtualClassroom. -->
                         </div>
 
                         <div class="tab-pane fade" id="program-details-quicklinks" role="tabpanel"

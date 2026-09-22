@@ -15,7 +15,6 @@ import { TeamManagerHost } from './_components/TeamManager';
 import { ResourcesManagerHost } from './_components/ResourcesManager';
 import { PromoResourcesManagerHost } from './_components/PromoResourcesManager';
 import { EvaluationCriteriaHost } from './_components/EvaluationCriteria';
-import { VirtualClassroomPanelHost } from './_components/VirtualClassroomPanel';
 import { RoadmapPanelHost } from './_components/RoadmapPanel';
 import { RoadmapDetailDrawerHost } from './_components/RoadmapDetailDrawer';
 import { PildorasPanelHost } from './_components/PildorasPanel';
@@ -25,6 +24,9 @@ import { TeacherOverviewPanelHost } from './_components/TeacherOverviewPanel';
 import { AttendancePanelHost } from './_components/AttendancePanel';
 import { AccessSettingsPanelHost } from './_components/AccessSettingsPanel';
 import { OverviewPanelHost } from './_components/OverviewPanel';
+import { SectionNavItems, PromotionPageHeadHost } from './_components/PromotionNav';
+import { PromotionSettingsPanelHost } from './_components/PromotionSettingsPanel';
+import { CommandPalette, CommandPaletteButton } from './_components/CommandPalette';
 import { EvaluationGridPanelHost } from './_components/EvaluationGridPanel';
 import { initReports } from './_lib/reports';
 import { initSyllabusPdf } from './_lib/syllabus-pdf';
@@ -114,6 +116,10 @@ declare global {
     // Registro genérico para los modales shadcn (spec 0013-b en adelante)
     _openShadcnModal?: (id: string) => void;
     _closeShadcnModal?: (id: string) => void;
+    // Navegación por secciones (public/js/promotion-nav.js)
+    startPromotionNav?: () => void;
+    goToPromotionDestination?: (section: string, tab?: string) => void;
+    __promotionInitDone?: boolean;
   }
 }
 
@@ -340,6 +346,12 @@ export default function PromotionPage() {
         // promotion-detail.js consume para pintar el Gantt DHTMLX del roadmap.
         await loadScript(withBasePath('/js/gantt-adapter.js'));
         await loadScript(withBasePath('/js/promotion-detail.js'));
+        // Navegación por secciones (spec navegacion-promocion): necesita las funciones
+        // legacy (switchTab/switchProgramDetailsTab/switchTeacherAreaSubTab) ya definidas.
+        await loadScript(withBasePath('/js/promotion-nav.js'));
+        // Si el init de promotion-detail.js ya terminó (cargó antes que esto), arranca
+        // la navegación aquí; si no, la arranca él al final de su init.
+        if (window.__promotionInitDone) window.startPromotionNav?.();
       } catch (e) {
         console.error('Script load error:', e);
       }
@@ -389,15 +401,18 @@ export default function PromotionPage() {
             </h5>
           </div>
 
+          {/* Buscador de la promoción (Ctrl/Cmd + K), Fase 5 de la navegación */}
+          <CommandPaletteButton />
+
           {/* User menu — DropdownMenu shadcn (reemplaza Bootstrap dropdown) */}
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
-                className="bg-transparent text-white border border-white/30 hover:bg-white hover:text-crok hover:border-white gap-2"
+                className="bg-transparent text-white border border-white/30 hover:bg-white hover:text-crok hover:border-white gap-2 min-w-0 max-w-[45vw] md:max-w-none"
               >
-                <CircleUser className="h-4 w-4" />
-                <span id="teacher-name">{teacherName}</span>
+                <CircleUser className="h-4 w-4 shrink-0" />
+                <span id="teacher-name" className="truncate">{teacherName}</span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
@@ -439,26 +454,10 @@ export default function PromotionPage() {
                 <ArrowLeft className="inline-block mr-2 h-4 w-4" />Promociones
               </a>
             </li>
-            <li className="nav-item">
-              <a className="nav-link nav" href="#overview" onClick={() => window.switchTab?.('overview')}>
-                <Eye className="inline-block mr-2 h-4 w-4" />Dashboard
-              </a>
-            </li>
-            <li className="nav-item teacher-only">
-              <a className="nav-link" href="#teacher-area" onClick={() => window.switchTab?.('teacher-area')}>
-                <BookOpen className="inline-block mr-2 h-4 w-4" />Área de administración
-              </a>
-            </li>
-            <li className="nav-item teacher-only">
-              <a className="nav-link" href="#info" onClick={() => window.switchTab?.('info')}>
-                <Info className="inline-block mr-2 h-4 w-4" />Contenido del Programa
-              </a>
-            </li>
-            <li className="nav-item teacher-only">
-              <a className="nav-link" href="#collaborators" onClick={() => window.switchTab?.('collaborators')}>
-                <UserPlus className="inline-block mr-2 h-4 w-4" />Collaboradores
-              </a>
-            </li>
+            {/* Navegación por secciones (spec navegacion-promocion, Fase 1): siete secciones
+                en vez de Dashboard / Área de administración / Contenido del Programa /
+                Colaboradores. Los destinos los resuelve public/js/promotion-nav.js. */}
+            <SectionNavItems />
           </ul>
 
           {/* Sidebar Footer */}
@@ -467,9 +466,9 @@ export default function PromotionPage() {
               <a
                 type="button"
                 className="nav-link sidebar-edit-btn"
-                onClick={() => window.openEditPromotionModal?.()}
+                onClick={() => window.goToPromotionDestination?.('ajustes', 'datos')}
               >
-                <PencilLine className="inline-block mr-2 h-4 w-4" />Modificar promoción
+                <PencilLine className="inline-block mr-2 h-4 w-4" />Ajustes de la promoción
               </a>
             </div>
             <div className="nav-item teacher-only w-100">
@@ -543,11 +542,6 @@ export default function PromotionPage() {
           inicial lo expone el orquestador en window.__evaluationHtml/__refreshEvaluation; las
           acciones (insertEvalLink/insertEvalImage/saveEvaluationFeedback) siguen legacy. */}
       <EvaluationCriteriaHost />
-      {/* Sub-tab "Aula Virtual" de Contenido del Programa (spec 0014 Fase C): React vía portal a
-          #program-details-virtual-classroom. Renderiza el panel #virtual-classroom-panel con los ids
-          legacy vc-*; la lógica (initVirtualClassroomPanel/saveVirtualClassroom/…) sigue en el
-          orquestador y los pobla/lee por id. */}
-      <VirtualClassroomPanelHost />
       {/* Sub-tab "Roadmap" de Contenido del Programa (spec 0014 Fase C): React vía portal a
           #program-details-roadmap. Renderiza cabecera + #modules-list + #gantt-table con ids legacy;
           la lógica (loadModules/generateGanttChart) sigue en el orquestador y los pobla por id. */}
@@ -587,6 +581,9 @@ export default function PromotionPage() {
           NotesPanel) con ids legacy; loadPromotion/loadQuickActions/updateCourseProgressBar/
           loadOverview* los pueblan por id. Es la vista por defecto del programa. */}
       <OverviewPanelHost />
+      <PromotionPageHeadHost />
+      <PromotionSettingsPanelHost />
+      <CommandPalette />
       {/* Sub-tab "Evaluación" de la Teacher-Area (spec 0014 Fase C, 18º y ÚLTIMO bloque): React vía
           portal a #teacher-area-evaluation. Renderiza #evaluation-tab con sus 4 sub-vistas
           (lista #evaluation-content, #team-history-panel, split-view #eval-project-view, #student-eval-panel)

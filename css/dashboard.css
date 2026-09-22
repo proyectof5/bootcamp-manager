@@ -408,3 +408,726 @@ main {
         position: relative;
     }
 }
+/* ── Campana de avisos en la tarjeta de promoción (Fase 5) ── */
+
+.pending-bell {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: var(--app-radius-pill);
+    background: rgba(255, 255, 255, 0.92);
+    color: var(--app-color-brand-700);
+    font-size: var(--app-font-size-xs);
+    font-weight: var(--app-font-weight-bold);
+    line-height: 1.4;
+}
+
+.pending-bell .bi {
+    font-size: 0.8rem;
+}
+
+.pending-bell-count {
+    font-variant-numeric: tabular-nums;
+}
+
+/* Barra superior del listado (reemplaza la textura naranja) */
+.app-topbar {
+    background-color: var(--app-color-neutral-900);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    color: #ffffff;
+}
+
+.app-topbar a,
+.app-topbar button {
+    color: #ffffff;
+}
+
+/* ── Marco claro en el listado de promociones (Fase 6) ── */
+
+body {
+    background-color: var(--app-color-bg-page);
+    border-right: 0;
+}
+
+/* Título y contadores: iban en blanco sobre el fondo salmón */
+main h1,
+main .text-white,
+main .text-white\/90 {
+    color: var(--app-color-text) !important;
+    text-shadow: none !important;
+}
+
+/* La tarjeta de promoción se queda naranja —es el acento de la marca— pero en el
+   tono que cumple contraste con el texto blanco pequeño (#d63900, 4,72:1). */
+.promotion-card,
+main .bg-crok {
+    background-color: var(--app-color-brand-700) !important;
+}
+
+/* Dentro de la tarjeta el texto sí va en blanco */
+main .bg-crok h5,
+main .bg-crok p,
+main .bg-crok span,
+main .bg-crok .text-white,
+main .bg-crok .text-white\/90 {
+    color: #ffffff !important;
+}
+
+/* Fondo de página del listado: gris muy claro, como en la maqueta */
+.app-page-bg {
+    background-color: var(--app-color-bg-page);
+}
+
+/* La campana va en naranja sobre su pastilla blanca, no en blanco como el resto
+   del texto de la tarjeta */
+main .bg-crok .pending-bell,
+main .bg-crok .pending-bell * {
+    color: var(--app-color-brand-700) !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   "Mis promociones" — rediseño: buscador, filtros, grupos por estado
+   y tarjetas con progreso (PromotionsBoard.tsx)
+   ═══════════════════════════════════════════════════════════════════ */
+
+.promos-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: var(--app-space-3);
+    margin-bottom: var(--app-space-4);
+}
+
+.promos-title {
+    margin: 0;
+    font-size: var(--app-font-size-3xl);
+    font-weight: var(--app-font-weight-bold);
+    color: var(--app-color-text);
+}
+
+.promos-sub {
+    margin: 2px 0 0;
+    color: var(--app-color-text-muted);
+    font-size: var(--app-font-size-sm);
+    font-variant-numeric: tabular-nums;
+}
+
+.promos-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--app-space-2);
+    margin-bottom: var(--app-space-5);
+}
+
+.promos-search {
+    position: relative;
+    flex: 1 1 260px;
+    max-width: 360px;
+}
+
+.promos-search-icon {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 16px;
+    height: 16px;
+    color: var(--app-color-text-muted);
+    pointer-events: none;
+}
+
+.promos-search input {
+    width: 100%;
+    min-height: 44px;
+    padding: var(--app-space-2) var(--app-space-3) var(--app-space-2) 34px;
+    border: 1px solid var(--app-color-neutral-300);
+    border-radius: var(--app-radius-md);
+    background: var(--app-color-bg-surface);
+    font-size: var(--app-font-size-sm);
+}
+
+.promos-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--app-space-2);
+}
+
+.promos-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 44px;
+    padding: var(--app-space-2) var(--app-space-3);
+    border: 1px solid var(--app-color-neutral-300);
+    border-radius: var(--app-radius-pill);
+    background: var(--app-color-bg-surface);
+    color: var(--app-color-text-muted);
+    font-size: var(--app-font-size-sm);
+    cursor: pointer;
+}
+
+.promos-chip:hover {
+    border-color: var(--app-color-primary);
+    color: var(--app-color-text);
+}
+
+.promos-chip.is-on {
+    background: var(--app-color-primary-soft);
+    border-color: var(--app-color-primary);
+    color: var(--app-color-brand-700);
+    font-weight: var(--app-font-weight-semi);
+}
+
+.promos-chip-n {
+    font-variant-numeric: tabular-nums;
+    opacity: 0.75;
+}
+
+.promos-new {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    min-height: 44px;
+    margin-left: auto;
+    padding: var(--app-space-2) var(--app-space-4);
+    border: 0;
+    border-radius: var(--app-radius-md);
+    background: var(--app-color-brand-700);
+    color: #ffffff;
+    font-weight: var(--app-font-weight-semi);
+    cursor: pointer;
+}
+
+.promos-new:hover {
+    background: var(--app-color-brand-900);
+}
+
+.promos-empty {
+    padding: var(--app-space-6);
+    background: var(--app-color-bg-surface);
+    border: 1px dashed var(--app-color-neutral-300);
+    border-radius: var(--app-radius-lg);
+    color: var(--app-color-text-muted);
+    text-align: center;
+}
+
+.promos-group + .promos-group {
+    margin-top: var(--app-space-6);
+}
+
+.promos-group-title {
+    display: flex;
+    align-items: center;
+    gap: var(--app-space-2);
+    margin: 0 0 var(--app-space-3);
+    font-size: var(--app-font-size-md);
+    font-weight: var(--app-font-weight-semi);
+    color: var(--app-color-text);
+}
+
+.promos-group-n {
+    padding: 1px 8px;
+    border-radius: var(--app-radius-pill);
+    background: var(--app-color-neutral-100);
+    color: var(--app-color-text-muted);
+    font-size: var(--app-font-size-xs);
+    font-variant-numeric: tabular-nums;
+}
+
+.promos-grid {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: var(--app-space-3);
+}
+
+.promo-card {
+    position: relative;
+    background: var(--app-color-bg-surface);
+    border: 1px solid var(--app-color-border);
+    border-radius: var(--app-radius-lg);
+    box-shadow: var(--app-shadow-sm);
+    transition: box-shadow var(--app-transition-fast), transform var(--app-transition-fast);
+}
+
+.promo-card:hover {
+    box-shadow: var(--app-shadow-md);
+    transform: translateY(-2px);
+}
+
+/* El acento naranja solo marca lo que está en marcha */
+.promo-card.is-marcha {
+    border-top: 3px solid var(--app-color-primary);
+}
+
+.promo-card.is-terminada {
+    background: var(--app-color-neutral-50);
+}
+
+.promo-card-link {
+    display: flex;
+    flex-direction: column;
+    gap: var(--app-space-2);
+    padding: var(--app-space-4);
+    color: inherit;
+    text-decoration: none;
+}
+
+.promo-card-link:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--app-color-bg-surface), 0 0 0 4px var(--app-color-brand-700);
+    border-radius: var(--app-radius-lg);
+}
+
+.promo-card-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--app-space-2);
+    padding-right: 32px; /* hueco del botón de menú */
+}
+
+/* Estado: icono + palabra, nunca solo color */
+.promo-state {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 2px 9px;
+    border: 1px solid transparent;
+    border-radius: var(--app-radius-pill);
+    font-size: var(--app-font-size-xs);
+    font-weight: var(--app-font-weight-semi);
+}
+
+.promo-state.is-marcha { background: #e7f4ec; border-color: #157347; color: #157347; }
+.promo-state.is-proxima { background: var(--app-color-primary-soft); border-color: var(--app-color-brand-700); color: var(--app-color-brand-700); }
+.promo-state.is-terminada { background: var(--app-color-neutral-100); border-color: var(--app-color-neutral-500); color: var(--app-color-neutral-700); }
+
+.promo-role {
+    padding: 2px 9px;
+    border-radius: var(--app-radius-pill);
+    background: #e6f3fa;
+    color: #0b5c7a;
+    font-size: var(--app-font-size-xs);
+    font-weight: var(--app-font-weight-semi);
+}
+
+.promo-name {
+    font-size: var(--app-font-size-lg);
+    font-weight: var(--app-font-weight-semi);
+    line-height: var(--app-line-height-tight);
+    color: var(--app-color-text);
+    text-wrap: balance;
+}
+
+.promo-desc {
+    color: var(--app-color-text-muted);
+    font-size: var(--app-font-size-sm);
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+}
+
+.promo-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px var(--app-space-3);
+    color: var(--app-color-text-muted);
+    font-size: var(--app-font-size-xs);
+    font-variant-numeric: tabular-nums;
+}
+
+.promo-progress {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    margin-top: 2px;
+}
+
+.promo-progress-track {
+    height: 6px;
+    border-radius: var(--app-radius-pill);
+    background: var(--app-color-neutral-100);
+    overflow: hidden;
+}
+
+.promo-progress-fill {
+    display: block;
+    height: 100%;
+    border-radius: var(--app-radius-pill);
+    background: var(--app-color-primary);
+}
+
+.promo-card.is-terminada .promo-progress-fill {
+    background: var(--app-color-neutral-300);
+}
+
+.promo-progress-text {
+    color: var(--app-color-text-muted);
+    font-size: var(--app-font-size-xs);
+    font-variant-numeric: tabular-nums;
+}
+
+.promo-more {
+    position: absolute;
+    top: var(--app-space-3);
+    right: var(--app-space-2);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: 0;
+    border-radius: var(--app-radius-md);
+    background: transparent;
+    color: var(--app-color-text-muted);
+    cursor: pointer;
+}
+
+.promo-more:hover {
+    background: var(--app-color-neutral-100);
+    color: var(--app-color-text);
+}
+
+.promo-more:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--app-color-bg-surface), 0 0 0 4px var(--app-color-brand-700);
+}
+
+/* La campana vuelve a su color propio dentro de la tarjeta blanca */
+.promo-card .pending-bell {
+    background: var(--app-color-primary-soft);
+    color: var(--app-color-brand-700);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .promo-card { transition: none; }
+    .promo-card:hover { transform: none; }
+}
+
+@media (max-width: 767.98px) {
+    .promos-new { margin-left: 0; width: 100%; justify-content: center; }
+    .promos-search { max-width: none; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   Panel de administración — rediseño
+   Marco oscuro como el resto de la app, contenido en tablas (es una
+   herramienta de gestión: se escanea, no se hojea).
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* El menú de administración: barra fija en escritorio y panel deslizante en
+   pantallas pequeñas. El panel lo pinta un Sheet de Radix, que llega con la
+   clase bg-background de Tailwind; como Tailwind se carga después de esta hoja,
+   la clase repetida es lo que hace que el panel también salga oscuro. Sin esto
+   el menú se veía blanco y la opción activa (texto blanco) desaparecía. */
+.admin-side,
+.admin-side.admin-side {
+    background: var(--app-color-neutral-900);
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
+    color: var(--app-color-neutral-300);
+}
+
+/* Cerrar el panel: el aspa de Radix es hija directa, hereda el color del
+   contenido (invisible sobre el fondo oscuro) y conserva el fondo gris que el
+   navegador da a los <button>. Aquí se limpia y se agranda a 44 px. */
+.admin-side > button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    height: 44px;
+    top: 8px;
+    right: 8px;
+    padding: 0;
+    border: 0;
+    border-radius: var(--app-radius-md);
+    background: transparent;
+    color: #ffffff;
+    opacity: 0.85;
+}
+
+.admin-side > button:hover {
+    background: rgba(255, 255, 255, 0.1);
+    opacity: 1;
+}
+
+.admin-side > button:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--app-color-neutral-900), 0 0 0 4px var(--app-color-brand-300);
+}
+
+.admin-nav-back,
+.admin-nav-item {
+    display: flex;
+    align-items: center;
+    gap: var(--app-space-2);
+    width: 100%;
+    min-height: 44px;
+    padding: var(--app-space-2) var(--app-space-3);
+    border: 0;
+    border-radius: var(--app-radius-md);
+    background: transparent;
+    color: var(--app-color-neutral-300);
+    font-size: var(--app-font-size-sm);
+    text-align: left;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.admin-nav-back {
+    color: var(--app-color-neutral-500);
+    margin-bottom: var(--app-space-2);
+}
+
+.admin-nav-back:hover,
+.admin-nav-item:hover {
+    background: rgba(255, 255, 255, 0.07);
+    color: #ffffff;
+}
+
+.admin-nav-item.is-on {
+    background: rgba(255, 255, 255, 0.13);
+    color: #ffffff;
+    font-weight: var(--app-font-weight-semi);
+}
+
+.admin-nav-item.is-on svg {
+    color: var(--app-color-brand-300);
+}
+
+.admin-nav-back:focus-visible,
+.admin-nav-item:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--app-color-neutral-900), 0 0 0 4px var(--app-color-brand-300);
+}
+
+.admin-panel {
+    display: flex;
+    flex-direction: column;
+    gap: var(--app-space-4);
+}
+
+.admin-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: var(--app-space-3);
+}
+
+.admin-title {
+    margin: 0;
+    font-size: var(--app-font-size-2xl);
+    font-weight: var(--app-font-weight-bold);
+    color: var(--app-color-text);
+}
+
+.admin-subtitle {
+    margin: var(--app-space-2) 0 0;
+    font-size: var(--app-font-size-md);
+    font-weight: var(--app-font-weight-semi);
+    color: var(--app-color-text);
+}
+
+.admin-sub {
+    margin: 2px 0 0;
+    color: var(--app-color-text-muted);
+    font-size: var(--app-font-size-sm);
+    font-variant-numeric: tabular-nums;
+}
+
+.admin-primary {
+    background: var(--app-color-brand-700);
+    color: #ffffff;
+    min-height: 44px;
+}
+
+.admin-primary:hover {
+    background: var(--app-color-brand-900);
+}
+
+.admin-bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--app-space-2);
+}
+
+.admin-card {
+    padding: var(--app-space-4);
+    background: var(--app-color-bg-surface);
+    border: 1px solid var(--app-color-border);
+    border-radius: var(--app-radius-lg);
+    box-shadow: var(--app-shadow-sm);
+}
+
+.admin-card-title {
+    display: flex;
+    align-items: center;
+    gap: var(--app-space-2);
+    margin: 0 0 4px;
+    font-size: var(--app-font-size-md);
+    font-weight: var(--app-font-weight-semi);
+    color: var(--app-color-text);
+}
+
+.admin-card-title svg {
+    color: var(--app-color-brand-700);
+}
+
+.admin-table-wrap {
+    /* position: relative recorta dentro de este marco las etiquetas ocultas
+       (.visually-hidden-label) de las celdas: si no, al estar posicionadas en
+       absoluto se salen del scroll de la tabla y arrastran la página entera
+       de lado en el móvil. */
+    position: relative;
+    overflow-x: auto;
+    background: var(--app-color-bg-surface);
+    border: 1px solid var(--app-color-border);
+    border-radius: var(--app-radius-lg);
+}
+
+.admin-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--app-font-size-sm);
+}
+
+.admin-table th,
+.admin-table td {
+    padding: var(--app-space-3) var(--app-space-4);
+    text-align: left;
+    border-bottom: 1px solid var(--app-color-border);
+    white-space: nowrap;
+}
+
+.admin-table thead th {
+    position: sticky;
+    top: 0;
+    background: var(--app-color-bg-surface);
+    font-size: var(--app-font-size-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--app-color-text-muted);
+}
+
+.admin-table tbody tr:hover {
+    background: var(--app-color-bg-page);
+}
+
+.admin-table tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+.admin-num {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+/* Fechas de la tabla: cifras de ancho fijo para que las columnas no bailen. */
+.admin-date {
+    font-variant-numeric: tabular-nums;
+    color: var(--app-color-text-muted);
+}
+
+.admin-user {
+    display: flex;
+    align-items: center;
+    gap: var(--app-space-3);
+}
+
+.admin-avatar {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 34px;
+    width: 34px;
+    height: 34px;
+    border-radius: var(--app-radius-pill);
+    background: var(--app-color-primary-soft);
+    color: var(--app-color-brand-700);
+    font-weight: var(--app-font-weight-bold);
+}
+
+.admin-user-text {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.admin-user-name {
+    font-weight: var(--app-font-weight-semi);
+    color: var(--app-color-text);
+}
+
+.admin-user-mail {
+    color: var(--app-color-text-muted);
+    font-size: var(--app-font-size-xs);
+}
+
+/* Rol: color + palabra, nunca solo color */
+.admin-role {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 9px;
+    border: 1px solid transparent;
+    border-radius: var(--app-radius-pill);
+    font-size: var(--app-font-size-xs);
+    font-weight: var(--app-font-weight-semi);
+}
+
+.admin-role.is-formador { background: #e8effb; border-color: #1c4b9c; color: #1c4b9c; }
+.admin-role.is-coformador { background: #e7f4ec; border-color: #157347; color: #157347; }
+.admin-role.is-coordinador { background: var(--app-color-primary-soft); border-color: var(--app-color-brand-700); color: var(--app-color-brand-700); }
+.admin-role.is-otro,
+.admin-role.is-sistema { background: var(--app-color-neutral-100); border-color: var(--app-color-neutral-500); color: var(--app-color-neutral-700); }
+.admin-role.is-propia { background: #e7f4ec; border-color: #157347; color: #157347; }
+
+.admin-actions {
+    display: flex;
+    gap: var(--app-space-2);
+    justify-content: flex-end;
+}
+
+.admin-actions .btn,
+.admin-actions button {
+    min-height: 36px;
+}
+
+.admin-danger {
+    border-color: var(--app-color-danger-500) !important;
+    color: var(--app-color-danger-500) !important;
+}
+
+.admin-danger:hover {
+    background: var(--app-color-danger-500) !important;
+    color: #ffffff !important;
+}
+
+@media (max-width: 767.98px) {
+    .admin-primary { width: 100%; }
+    .admin-table th,
+    .admin-table td { padding: var(--app-space-2) var(--app-space-3); }
+}
+
+/* Cerrar sesión: separado del resto y legible sobre el menú oscuro
+   (#ffb4bc sobre #111827 = 8,4:1; el rojo de marca daba 3,4:1) */
+.admin-nav-danger {
+    margin-top: var(--app-space-3);
+    padding-top: var(--app-space-3);
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    color: #ffb4bc;
+    font-weight: var(--app-font-weight-semi);
+}
+
+.admin-nav-danger:hover {
+    background: rgba(255, 180, 188, 0.12);
+    color: #ffd4d9;
+}

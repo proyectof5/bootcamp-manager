@@ -7,17 +7,25 @@ esa área — no hace falta escribirlos todos de una vez ni por adelantado.
 
 Leyenda: ✅ spec completo · 🟡 spec con pendientes · ⬜ sin spec todavía.
 
+## Promoción — Navegación
+
+| Área | Spec | Componentes/archivos principales |
+|---|---|---|
+| Navegación de la promoción (siete secciones, cabecera de página, destino en la URL) | 🟡 [navegacion-promocion.md](navegacion-promocion.md) | `public/js/promotion-nav.js`, `PromotionNav.tsx`, `page.tsx`, `body.ts` |
+
 ## Promoción — Planificación
 
 | Área | Spec | Componentes/archivos principales |
 |---|---|---|
 | Roadmap y Gantt (fechas, módulos, cursos/proyectos/lecciones, tiempo flexible) | 🟡 [roadmap-por-fechas.md](roadmap-por-fechas.md) | `RoadmapPanel.tsx`, `public/js/gantt-adapter.js`, `public/js/promotion-detail.js` |
 | Gantt a pantalla completa + panel lateral (estilo Asana) | 🟡 [gantt-pantalla-completa-drawer.md](gantt-pantalla-completa-drawer.md) | `RoadmapPanel.tsx`, `RoadmapDetailDrawer.tsx`, `promotion-detail.js` (`persistRoadmapItemEdit`/`onTaskClick`), `promotion-detail.css` |
+| Barra y vistas del roadmap al estilo de un calendario (Hoy/flechas/periodo, Día-Semana-Mes acotados, menú «Más») | 🟡 [roadmap-vistas-calendario.md](roadmap-vistas-calendario.md) | `promotion-detail.js` (`setGanttView`, `ganttStepPeriod`, `emitGanttPeriod`), `RoadmapPanel.tsx`, `promotion-detail.css` |
 | Horas lectivas (total formación, por módulo/proyecto, jornada por promoción) | 🟡 [horas-lectivas.md](horas-lectivas.md) | `public/js/gantt-adapter.js`, `app/promotion/page.tsx`, `Promotion.js` (backend) |
 | Horas objetivo por módulo (recolocar fechas al cambiar festivos o tiempo flexible) | 🟡 [horas-objetivo-modulo.md](horas-objetivo-modulo.md) | `gantt-adapter.js` (`reflowModulesToTargetHours`), `promotion-detail.js` (`reflowRoadmapToTargetHours`), `HoursPanel.tsx` |
 | Selector de fecha al editar (mes actual) | 🟡 [fecha-picker-mes-actual.md](fecha-picker-mes-actual.md) | `app/promotion/page.tsx` (inputs de fecha), `promotion-detail.js` |
 | Exportar roadmap a Asana (OAuth por docente + subtareas) | ⬜ [exportar-roadmap-asana.md](exportar-roadmap-asana.md) | `server.js` (`/api/integrations/asana/*`, `/export-asana`), `AsanaConnection.js` / `AsanaRoadmapExport.js` (backend), `AccessSettingsPanel.tsx`, `RoadmapPanel.tsx` |
 | Evaluación de competencias / rúbricas | 🟡 [evaluacion-competencias.md](evaluacion-competencias.md) | `EvaluationGridPanel.tsx`, `EvaluationCriteria.tsx`, `ProgramCompetences.tsx`, `_lib/reports.ts` |
+| Proyectos y Aula Virtual en una sola vista (filas a todo el ancho, publicar desde la propia fila, dirección de entrega única) | 🟡 [proyectos-y-aula-virtual.md](proyectos-y-aula-virtual.md) | `promotion-detail.js` (`renderEvaluationTab`, `_projSaveAula`), `promotion-detail.css`, `promotion-nav.js`, `EvaluationGridPanel.tsx` |
 | Asistencia y festivos | ✅ [asistencia-festivos.md](asistencia-festivos.md) | `AttendancePanel.tsx`, `renderAttendanceTable` (promotion-detail.js) |
 | Festivos por ciudad (nacionales, autonómicos y locales; panel lateral; tooltip en el Gantt) | 🟡 [festivos-por-ciudad.md](festivos-por-ciudad.md) | `RoadmapPanel.tsx` (`HolidaysPopover`), `promotion-detail.js` (`setupGanttHolidayTooltip`), `server.js` (`/holiday-regions`) + `backend/data/localHolidays.js` (backend) |
 | Plantillas de bootcamp | ⬜ | `BootcampTemplate` (backend), `templates-from-promotion` (server.js) |

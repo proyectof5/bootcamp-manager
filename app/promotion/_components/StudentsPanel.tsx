@@ -22,6 +22,7 @@
 
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { StudentsTable } from './StudentsTable';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function w(): any { return (typeof window !== 'undefined' ? window : {}) as unknown as any; }
@@ -98,30 +99,10 @@ function StudentsPanel() {
         </div>
       </div>
 
-      <div className="mb-4">
-        <div className="input-group">
-          <span className="input-group-text bg-white"><i className="bi bi-search" /></span>
-          <input type="text" id="student-search-input" className="form-control" placeholder="Buscar por nombre, email, nacionalidad o profesión..." onKeyUp={(e) => w().filterStudents?.((e.target as HTMLInputElement).value)} />
-        </div>
-      </div>
+      {/* Fase 3 de la navegación: la tabla (columnas, vistas, orden y buscador)
+          la pinta StudentsTable; el buscador de antes vive dentro de ella. */}
+      <StudentsTable />
 
-      <div className="table-responsive">
-        <table className="table table-hover align-middle">
-          <thead className="table-light">
-            <tr>
-              <th style={{ width: 40 }}>
-                <input type="checkbox" className="form-check-input" id="select-all-students" onClick={(e) => w().toggleAllStudents?.(e.currentTarget)} />
-              </th>
-              <th>Nombre</th>
-              <th>Email</th>
-              <th className="text-end">Acciones</th>
-            </tr>
-          </thead>
-          <tbody id="students-list">
-            {/* Lo puebla el legacy (displayStudents) por innerHTML. */}
-          </tbody>
-        </table>
-      </div>
     </div>
   );
 }

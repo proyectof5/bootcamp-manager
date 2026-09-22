@@ -30,6 +30,7 @@
 
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { PendingPanel } from './PendingPanel';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function w(): any { return (typeof window !== 'undefined' ? window : {}) as unknown as any; }
@@ -79,6 +80,10 @@ function OverviewPanel() {
 
   return (
     <>
+      {/* Fase 2 de la navegación: lo pendiente y las cifras van primero; debajo
+          queda el resto del Inicio de siempre (acciones rápidas, progreso, agenda). */}
+      <PendingPanel />
+
       <div className="my-4">
         <p id="promo-subtitle" className="promo-subtitle mb-2" />
         <h1 id="promotion-title" className="promotion-title-styled">Loading...</h1>

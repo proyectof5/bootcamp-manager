@@ -248,20 +248,18 @@ body {
 }
 
 /* Promotions button - orange style */
+/* "Volver a promociones": es un enlace de salida, no una sección. El recuadro
+   blanco con sombra venía de cuando el menú era claro; sobre el menú oscuro
+   parecía que estuviera seleccionado y competía con la sección activa. */
 .nav-link-promotions {
-    color: white !important;
-    border: white 1px solid !important;
     background-color: transparent !important;
-    box-shadow: #3e19014a 2px 2px 6px;
+    border: 0 !important;
+    box-shadow: none !important;
 }
 
-
-
 .nav-link-promotions:hover {
-    background-color: white !important;
-    color: white !important;
-    border-left: none !important;
-    color: var(--principal-1) !important;
+    background-color: rgba(255, 255, 255, 0.07) !important;
+    color: #ffffff !important;
 }
 
 .card {
@@ -1036,7 +1034,9 @@ th, td {
         background-color: rgba(255, 71, 0, 0.45);
     }
 
-    main {
+    /* Acotado a la vista de promoción: este archivo es global y, sin el id, el
+       mismo margen empujaba el contenido del panel de admin y del listado. */
+    #main-content {
         margin-left: 280px;
         margin-top: 0px; /* Offset for fixed navbar */
         padding: 0 2rem 2rem 2rem;
@@ -1049,7 +1049,9 @@ th, td {
         transform: translateX(-100%);
     }
 
-    body.sidebar-collapsed main {
+    /* Mismo id que la regla de arriba: sin él ganaba #main-content y el
+       contenido se quedaba con el margen de la barra ya plegada. */
+    body.sidebar-collapsed #main-content {
         margin-left: 0;
     }
 
@@ -1096,6 +1098,13 @@ th, td {
         overflow-y: auto;
     }
 
+    /* El cajón no ocupa toda la pantalla: se ve el velo detrás, que es lo que
+       dice «esto se cierra tocando fuera». Repetida la clase para ganar a la
+       regla de ancho completo que viene más abajo (max-width: 576px). */
+    .sidebar.sidebar {
+        width: min(280px, 82vw);
+    }
+
     /* Show sidebar when toggled */
     .sidebar.show {
         left: 0;
@@ -1127,8 +1136,10 @@ th, td {
         background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='%23ffffff' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
     }
 
-    main {
-        margin-top: 80px; /* Still need offset for fixed navbar on mobile */
+    /* La barra superior es sticky, o sea que ya ocupa su sitio en el flujo:
+       el margen de 80px de más dejaba un hueco en blanco bajo la cabecera. */
+    #main-content {
+        margin-top: 0;
         padding: 20px;
         width: 100%;
         margin-left: 0;
@@ -1170,6 +1181,8 @@ th, td {
    --roadmap-h; el ancho lo recupera rompiendo el padding de <main class="px-md-4">.
    ═══════════════════════════════════════════════════════════════════════════ */
 #program-details-roadmap .roadmap-fullbleed {
+    /* relative: el aviso de "periodo vacío" se coloca encima del Gantt. */
+    position: relative;
     display: flex;
     flex-direction: column;
     height: var(--roadmap-h, 72vh);
@@ -1815,7 +1828,7 @@ th, td {
         margin-inline-start: 0.5rem;
     }
 
-    main {
+    #main-content {
         padding: 10px;
     }
 
@@ -3475,3 +3488,1529 @@ html {
     white-space: nowrap;
 }
 
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Navegación por secciones (spec docs/tasks/navegacion-promocion.md, Fase 1)
+   Cabecera de página con migas + título + acciones + pestañas de la sección.
+   La pinta _components/PromotionNav.tsx dentro de #promotion-page-head.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.promo-head {
+    position: sticky;
+    top: 0;
+    z-index: var(--app-z-sticky, 100);
+    margin: 0 calc(var(--app-space-4) * -1) var(--app-space-5);
+    padding: var(--app-space-4) var(--app-space-4) 0;
+    background: var(--app-color-bg-surface, #fff);
+    border-bottom: 1px solid var(--app-color-border);
+}
+
+.promo-crumbs {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    font-size: var(--app-font-size-xs);
+    color: var(--app-color-text-muted);
+}
+
+.promo-crumbs a {
+    color: var(--app-color-text-muted);
+    text-decoration: none;
+}
+
+.promo-crumbs a:hover {
+    color: var(--app-color-brand-700);
+    text-decoration: underline;
+}
+
+.promo-crumb-current {
+    color: var(--app-color-text);
+    font-weight: var(--app-font-weight-medium);
+}
+
+.promo-title-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--app-space-3);
+    margin: var(--app-space-1) 0 var(--app-space-3);
+}
+
+.promo-title {
+    margin: 0;
+    font-size: var(--app-font-size-xl);
+    font-weight: var(--app-font-weight-semi);
+    line-height: var(--app-line-height-tight);
+}
+
+.promo-head-actions {
+    margin-left: auto;
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--app-space-2);
+}
+
+.promo-tabs {
+    display: flex;
+    gap: var(--app-space-5);
+    overflow-x: auto;
+    scrollbar-width: none;
+    margin-bottom: -1px;
+}
+
+.promo-tabs::-webkit-scrollbar {
+    display: none;
+}
+
+.promo-tab {
+    flex: 0 0 auto;
+    min-height: 44px;
+    padding: var(--app-space-2) 0 10px;
+    border: 0;
+    border-bottom: 2px solid transparent;
+    background: transparent;
+    color: var(--app-color-text-muted);
+    font-size: var(--app-font-size-sm);
+    font-weight: var(--app-font-weight-medium);
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.promo-tab:hover {
+    color: var(--app-color-text);
+}
+
+.promo-tab.active {
+    color: var(--app-color-text);
+    border-bottom-color: var(--app-color-primary);
+}
+
+/* Las dos filas de pestañas antiguas y los títulos que ahora repite la cabecera */
+#program-details-group-nav,
+#program-details-tabs,
+#teacher-area-subtabs,
+#teacher-area-header h1,
+#teacher-area-header p,
+.legacy-page-title h2 {
+    display: none !important;
+}
+
+.legacy-page-title {
+    margin: 0 !important;
+    padding: 0 !important;
+    border: 0 !important;
+}
+
+/* Foco visible en toda la vista: doble anillo, legible sobre claro y sobre el menú */
+.promo-tab:focus-visible,
+.sidebar-nav .nav-link:focus-visible,
+.promo-crumbs a:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--app-color-bg-surface, #fff), 0 0 0 4px var(--app-color-brand-700);
+    border-radius: var(--app-radius-sm);
+}
+
+@media (max-width: 767.98px) {
+    /* En escritorio la cabecera se sale del contenedor para que su línea inferior
+       llegue de lado a lado. En el móvil el margen negativo era mayor que el hueco
+       disponible y empujaba la página entera hacia los lados: aquí se alinea con
+       el contenido y ya está. */
+    .promo-head {
+        margin-inline: 0;
+        padding-inline: 0;
+    }
+
+    .promo-head-actions {
+        margin-left: 0;
+        width: 100%;
+    }
+}
+
+/* ── Inicio: "Pendiente de ti" + cifras (spec navegacion-promocion, Fase 2) ── */
+
+.pending-block {
+    display: flex;
+    flex-direction: column;
+    gap: var(--app-space-3);
+    margin-bottom: var(--app-space-6);
+}
+
+.pending-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--app-space-3);
+}
+
+.pending-title {
+    margin: 0;
+    font-size: var(--app-font-size-lg);
+    font-weight: var(--app-font-weight-semi);
+}
+
+.pending-title-figures {
+    margin-top: var(--app-space-4);
+}
+
+.pending-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    background: var(--app-color-bg-surface);
+    border: 1px solid var(--app-color-border);
+    border-radius: var(--app-radius-lg);
+    box-shadow: var(--app-shadow-sm);
+}
+
+.pending-item {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--app-space-3);
+    padding: var(--app-space-3) var(--app-space-4);
+    border-bottom: 1px solid var(--app-color-border);
+}
+
+.pending-item:last-child {
+    border-bottom: 0;
+}
+
+/* El nivel se distingue por icono + texto, no solo por color (WCAG 1.4.1) */
+.pending-level {
+    flex: 0 0 auto;
+    display: inline-flex;
+    align-items: center;
+    font-size: var(--app-font-size-md);
+    color: var(--app-color-text-muted);
+}
+
+.pending-item.is-late .pending-level { color: var(--app-color-danger-500); }
+.pending-item.is-soon .pending-level { color: #8a5a00; }
+
+.pending-what {
+    flex: 1 1 260px;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.pending-where {
+    color: var(--app-color-text-muted);
+    font-size: var(--app-font-size-sm);
+}
+
+.pending-cta {
+    flex: 0 0 auto;
+    min-height: 40px;
+}
+
+.pending-empty {
+    margin: 0;
+    padding: var(--app-space-4);
+    background: var(--app-color-bg-surface);
+    border: 1px solid var(--app-color-border);
+    border-radius: var(--app-radius-lg);
+    color: var(--app-color-text-muted);
+}
+
+.pending-figures {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+    gap: var(--app-space-3);
+}
+
+.pending-figure {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    padding: var(--app-space-3) var(--app-space-4);
+    min-height: 44px;
+    text-align: left;
+    background: var(--app-color-bg-surface);
+    border: 1px solid var(--app-color-border);
+    border-radius: var(--app-radius-lg);
+    cursor: pointer;
+}
+
+.pending-figure:hover {
+    border-color: var(--app-color-primary);
+}
+
+.pending-figure-q {
+    font-size: var(--app-font-size-xs);
+    color: var(--app-color-text-muted);
+}
+
+.pending-figure-v {
+    font-size: var(--app-font-size-2xl);
+    font-weight: var(--app-font-weight-semi);
+    font-variant-numeric: tabular-nums;
+}
+
+.pending-figure-n {
+    font-size: var(--app-font-size-xs);
+    color: var(--app-color-text-muted);
+}
+
+.pending-figure:focus-visible,
+.pending-cta:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--app-color-bg-surface), 0 0 0 4px var(--app-color-brand-700);
+}
+
+/* Texto solo para lectores de pantalla ("Urgente:", "Para esta semana:") */
+.sr-only-text {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+/* ── Estudiantes › Lista: tabla con columnas, vistas y orden (Fase 3) ── */
+
+.students-table-block {
+    display: flex;
+    flex-direction: column;
+    gap: var(--app-space-3);
+}
+
+.students-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--app-space-3);
+}
+
+.students-views {
+    display: inline-flex;
+    border: 1px solid var(--app-color-neutral-300);
+    border-radius: var(--app-radius-md);
+    overflow: hidden;
+}
+
+.students-view {
+    min-height: 40px;
+    padding: var(--app-space-2) var(--app-space-3);
+    border: 0;
+    background: var(--app-color-bg-surface);
+    color: var(--app-color-text-muted);
+    font-size: var(--app-font-size-sm);
+    cursor: pointer;
+}
+
+.students-view + .students-view {
+    border-left: 1px solid var(--app-color-border);
+}
+
+.students-view.active {
+    background: var(--app-color-primary-soft);
+    color: var(--app-color-brand-700);
+    font-weight: var(--app-font-weight-semi);
+}
+
+.students-toolbar-right {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--app-space-2);
+}
+
+.students-search {
+    width: min(320px, 70vw);
+}
+
+.students-picker-wrap {
+    position: relative;
+}
+
+.students-picker {
+    position: absolute;
+    right: 0;
+    top: calc(100% + 6px);
+    z-index: var(--app-z-overlay);
+    width: 260px;
+    padding: var(--app-space-2);
+    background: var(--app-color-bg-surface);
+    border: 1px solid var(--app-color-border);
+    border-radius: var(--app-radius-md);
+    box-shadow: var(--app-shadow-lg);
+}
+
+.students-picker label {
+    display: flex;
+    align-items: center;
+    gap: var(--app-space-2);
+    min-height: 40px;
+    padding: 2px var(--app-space-1);
+    margin: 0;
+    font-size: var(--app-font-size-sm);
+    cursor: pointer;
+}
+
+.students-table-wrap {
+    /* Igual que en la tabla del panel de administración: sin position aquí, las
+       etiquetas ocultas de las celdas se escapan del scroll y ensanchan la página. */
+    position: relative;
+    max-height: 62vh;
+    overflow: auto;
+    border: 1px solid var(--app-color-border);
+    border-radius: var(--app-radius-lg);
+    background: var(--app-color-bg-surface);
+}
+
+.students-table {
+    margin: 0;
+}
+
+.students-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--app-color-bg-surface);
+    border-bottom: 1px solid var(--app-color-border);
+    font-size: var(--app-font-size-xs);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--app-color-text-muted);
+    white-space: nowrap;
+}
+
+.students-sort {
+    min-height: 36px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    cursor: pointer;
+}
+
+.students-sort:hover {
+    color: var(--app-color-text);
+}
+
+.students-name {
+    display: flex;
+    flex-direction: column;
+}
+
+/* Gana al `!important` de .student-name-link (regla antigua, naranja): en la tabla
+   nueva el nombre va en tinta y el naranja se reserva para los acentos. */
+.students-name .student-name-link {
+    color: var(--app-color-text) !important;
+    font-weight: var(--app-font-weight-semi);
+    text-decoration: none;
+}
+
+.students-name .student-name-link:hover {
+    color: var(--app-color-brand-700) !important;
+    text-decoration: underline;
+}
+
+.students-mail {
+    color: var(--app-color-text-muted);
+    font-size: var(--app-font-size-xs);
+}
+
+/* Estado: icono + palabra, nunca solo color (WCAG 1.4.1) */
+.students-pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 9px;
+    border: 1px solid transparent;
+    border-radius: var(--app-radius-pill);
+    font-size: var(--app-font-size-xs);
+    font-weight: var(--app-font-weight-semi);
+    white-space: nowrap;
+}
+
+.students-pill.is-activa { background: #e7f4ec; border-color: #157347; color: #157347; }
+.students-pill.is-riesgo { background: #fdf2d8; border-color: #8a5a00; color: #8a5a00; }
+.students-pill.is-baja   { background: #fdecee; border-color: #c02a37; color: #c02a37; }
+
+.students-sort:focus-visible,
+.students-view:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--app-color-bg-surface), 0 0 0 4px var(--app-color-brand-700);
+}
+
+/* Etiqueta solo para lectores de pantalla (sustituye a .visually-hidden de Bootstrap) */
+.visually-hidden-label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    white-space: nowrap;
+    border: 0;
+}
+
+@media (max-width: 767.98px) {
+    .students-search { width: 100%; }
+    .students-table-wrap { max-height: none; }
+}
+
+/* El título de cada panel lo dice ya la cabecera de página (Fase 1): no repetirlo dentro */
+#teacher-area-students > #students-tab > .d-flex > h2.subtitle-page,
+#teacher-area-attendance h2.subtitle-page,
+#teacher-area-evaluation #evaluation-tab-view > .d-flex > div > h2.subtitle-page {
+    display: none;
+}
+
+/* ── Ajustes › Datos de la promoción: formulario por grupos (Fase 4) ── */
+
+.settings-form {
+    display: flex;
+    flex-direction: column;
+    gap: var(--app-space-4);
+    max-width: 900px;
+}
+
+.settings-group {
+    margin: 0;
+    padding: var(--app-space-4);
+    border: 1px solid var(--app-color-border);
+    border-radius: var(--app-radius-lg);
+    background: var(--app-color-bg-surface);
+}
+
+.settings-group legend {
+    float: none;
+    width: auto;
+    padding: 0 var(--app-space-2);
+    margin-bottom: var(--app-space-2);
+    font-size: var(--app-font-size-md);
+    font-weight: var(--app-font-weight-semi);
+}
+
+.settings-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: var(--app-space-3);
+}
+
+.settings-field {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+
+.settings-field-wide {
+    grid-column: 1 / -1;
+}
+
+.settings-field label,
+.settings-label {
+    font-size: var(--app-font-size-sm);
+    font-weight: var(--app-font-weight-medium);
+}
+
+.settings-field .form-control {
+    min-height: 44px;
+}
+
+.settings-field textarea.form-control {
+    min-height: 88px;
+}
+
+.settings-hint {
+    font-size: var(--app-font-size-xs);
+    color: var(--app-color-text-muted);
+}
+
+.settings-error {
+    font-size: var(--app-font-size-xs);
+    font-weight: var(--app-font-weight-medium);
+    color: var(--app-color-danger-500);
+}
+
+.settings-field.is-invalid .form-control {
+    border-color: var(--app-color-danger-500);
+}
+
+.settings-days {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--app-space-2);
+}
+
+.settings-days label {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--app-space-2);
+    min-height: 44px;
+    padding: var(--app-space-1) var(--app-space-3);
+    margin: 0;
+    border: 1px solid var(--app-color-neutral-300);
+    border-radius: var(--app-radius-pill);
+    cursor: pointer;
+}
+
+.settings-days label.is-on {
+    border-color: var(--app-color-primary);
+    background: var(--app-color-primary-soft);
+    font-weight: var(--app-font-weight-semi);
+}
+
+.settings-foot {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--app-space-2);
+}
+
+.settings-delete {
+    margin-left: auto;
+}
+
+.settings-status {
+    margin: 0;
+    min-height: 1.25rem;
+    font-size: var(--app-font-size-sm);
+    color: var(--app-color-text-muted);
+}
+
+@media (max-width: 767.98px) {
+    .settings-delete { margin-left: 0; width: 100%; }
+}
+
+/* ── Buscador Ctrl+K (spec navegacion-promocion, Fase 5) ── */
+
+.cmdk-trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 38px;
+    padding: 0 10px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    border-radius: var(--app-radius-md);
+    background: transparent;
+    color: #fff;
+    font-size: var(--app-font-size-sm);
+}
+
+.cmdk-trigger:hover {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.cmdk-trigger kbd,
+.cmdk-foot kbd {
+    padding: 1px 5px;
+    border: 1px solid currentColor;
+    border-radius: var(--app-radius-sm);
+    font-family: inherit;
+    font-size: var(--app-font-size-xs);
+    opacity: 0.8;
+}
+
+.cmdk-scrim {
+    position: fixed;
+    inset: 0;
+    z-index: var(--app-z-modal);
+    background: rgba(17, 24, 39, 0.45);
+}
+
+.cmdk {
+    position: fixed;
+    z-index: calc(var(--app-z-modal) + 1);
+    left: 50%;
+    top: 12vh;
+    transform: translateX(-50%);
+    width: min(560px, calc(100vw - 32px));
+    background: var(--app-color-bg-surface);
+    border: 1px solid var(--app-color-border);
+    border-radius: var(--app-radius-lg);
+    box-shadow: var(--app-shadow-lg);
+    overflow: hidden;
+}
+
+.cmdk-input {
+    width: 100%;
+    min-height: 52px;
+    padding: var(--app-space-3) var(--app-space-4);
+    border: 0;
+    border-bottom: 1px solid var(--app-color-border);
+    background: transparent;
+    font-size: var(--app-font-size-md);
+}
+
+.cmdk-input:focus {
+    outline: none;
+}
+
+.cmdk-list {
+    list-style: none;
+    margin: 0;
+    padding: var(--app-space-1);
+    max-height: 320px;
+    overflow-y: auto;
+}
+
+.cmdk-item {
+    display: flex;
+    align-items: center;
+    gap: var(--app-space-2);
+    width: 100%;
+    min-height: 44px;
+    padding: var(--app-space-2);
+    border: 0;
+    border-radius: var(--app-radius-md);
+    background: transparent;
+    text-align: left;
+    cursor: pointer;
+}
+
+.cmdk-item.is-active {
+    background: var(--app-color-primary-soft);
+}
+
+.cmdk-label {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.cmdk-kind {
+    flex: 0 0 auto;
+    font-size: var(--app-font-size-xs);
+    color: var(--app-color-text-muted);
+}
+
+.cmdk-empty {
+    padding: var(--app-space-4);
+    color: var(--app-color-text-muted);
+    font-size: var(--app-font-size-sm);
+}
+
+.cmdk-foot {
+    margin: 0;
+    padding: var(--app-space-2) var(--app-space-4);
+    border-top: 1px solid var(--app-color-border);
+    color: var(--app-color-text-muted);
+    font-size: var(--app-font-size-xs);
+}
+
+@media (max-width: 767.98px) {
+    .cmdk-trigger-text, .cmdk-trigger kbd { display: none; }
+    .cmdk-trigger { min-width: 40px; justify-content: center; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Marco oscuro (spec navegacion-promocion, Fase 6)
+   La maqueta reserva el naranja de marca para acentos —botón principal, pestaña
+   activa, icono de la sección activa— y pinta la barra superior y el menú en
+   gris muy oscuro. Así el contenido manda y el naranja significa algo.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+    --app-chrome-bg: var(--app-color-neutral-900);
+    --app-chrome-bg-2: #1f2937;
+    --app-chrome-text: var(--app-color-neutral-300);
+    --app-chrome-line: rgba(255, 255, 255, 0.08);
+}
+
+.navbar,
+.navbar.bg-light,
+nav.sidebar.bg-light {
+    background-image: none !important;
+    background-color: var(--app-chrome-bg) !important;
+    border-bottom: 1px solid var(--app-chrome-line);
+}
+
+@media (min-width: 768px) {
+    .sidebar {
+        background-image: none;
+        background-color: var(--app-chrome-bg);
+        border-right: 1px solid var(--app-chrome-line);
+    }
+}
+
+.sidebar {
+    background-image: none;
+    background-color: var(--app-chrome-bg);
+}
+
+.sidebar-footer {
+    border-top: 1px solid var(--app-chrome-line);
+}
+
+/* El botón de menú vive sobre la barra oscura en todos los tamaños. La regla
+   que lo ponía en blanco estaba dentro de @media (min-width: 768px), así que en
+   el móvil quedaba gris oscuro sobre gris oscuro: invisible. */
+#sidebar-desktop-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    min-height: 44px;
+    border: 0;
+    border-radius: var(--app-radius-md);
+    background: transparent;
+    color: #ffffff;
+    position: relative;
+    z-index: 1060;
+}
+
+#sidebar-desktop-toggle:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+#sidebar-desktop-toggle:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--app-chrome-bg), 0 0 0 4px var(--app-color-brand-300);
+}
+
+.sidebar .nav-link,
+.sidebar .sidebar-edit-btn,
+.sidebar .sidebar-delete-btn {
+    background-color: transparent !important;
+    color: var(--app-chrome-text) !important;
+    border-left: 0 !important;
+    border-radius: var(--app-radius-md);
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+}
+
+.sidebar .nav-link:hover,
+.sidebar .sidebar-edit-btn:hover,
+.sidebar .sidebar-delete-btn:hover {
+    background-color: rgba(255, 255, 255, 0.07) !important;
+    color: #ffffff !important;
+    border-left: 0 !important;
+}
+
+.sidebar .sidebar-delete-btn:hover {
+    color: #ffb4bc !important;
+}
+
+.sidebar .nav-link.active,
+.sidebar .nav-link[aria-current="page"] {
+    background-color: rgba(255, 255, 255, 0.13) !important;
+    color: #ffffff !important;
+    font-weight: var(--app-font-weight-semi);
+}
+
+/* El único naranja del menú: el icono de la sección donde estás */
+.sidebar .nav-link.active .bi,
+.sidebar .nav-link[aria-current="page"] .bi {
+    color: var(--app-color-brand-300);
+}
+
+.sidebar .nav-link-promotions {
+    color: var(--app-color-neutral-500) !important;
+}
+
+.sidebar-logo-container .sidebar-f5-logo {
+    opacity: 0.85;
+}
+
+/* El contenido va sobre gris muy claro; las tarjetas y la cabecera, en blanco */
+body {
+    background-color: var(--app-color-bg-page);
+}
+
+#main-content {
+    background-color: var(--app-color-bg-page);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Proyectos — filas a todo el ancho con el Aula Virtual dentro
+   Antes cada proyecto era una tarjeta de una rejilla de tres columnas, y
+   publicarlo en el Aula Virtual vivía en otra pestaña con su propia lista. Ahora
+   cada proyecto es una franja: a la izquierda quién es y cómo va, a la derecha
+   lo que se puede hacer con él, y debajo su publicación (interruptor, fecha de
+   entrega y briefing). La dirección donde se entregan los repositorios es la
+   misma para toda la promoción, así que está una sola vez en la cabecera.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* La cabecera de cada módulo lleva nombre y varias pastillas: en pantallas
+   estrechas tienen que poder pasar a la línea siguiente en vez de salirse. */
+#evalAccordion .accordion-button {
+    flex-wrap: wrap;
+    gap: var(--app-space-1);
+    white-space: normal;
+}
+
+.proj-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--app-space-4);
+    margin-bottom: var(--app-space-3);
+    padding: var(--app-space-4);
+    background: var(--app-color-bg-surface);
+    border: 1px solid var(--app-color-border);
+    border-radius: var(--app-radius-lg);
+}
+
+.proj-repo {
+    display: flex;
+    flex-direction: column;
+    gap: var(--app-space-1);
+    flex: 1 1 24rem;
+    min-width: 0;
+}
+
+.proj-repo-label {
+    margin: 0;
+    font-size: var(--app-font-size-xs);
+    font-weight: var(--app-font-weight-semi);
+    color: var(--app-color-text-muted);
+}
+
+.proj-repo-input {
+    width: 100%;
+    min-height: 44px;
+    padding: var(--app-space-2) var(--app-space-3);
+    border: 1px solid var(--app-color-neutral-300);
+    border-radius: var(--app-radius-md);
+    background: var(--app-color-bg-surface);
+    color: var(--app-color-text);
+    font-size: var(--app-font-size-sm);
+}
+
+.proj-repo-hint {
+    margin: 0;
+    font-size: var(--app-font-size-xs);
+    color: var(--app-color-text-muted);
+}
+
+.proj-toolbar-side {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--app-space-2);
+}
+
+/* Cuántos proyectos ve ahora mismo el estudiantado. */
+.proj-count {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--app-space-1);
+    padding: var(--app-space-1) var(--app-space-3);
+    border: 1px solid var(--app-color-border);
+    border-radius: var(--app-radius-pill);
+    background: var(--app-color-neutral-50);
+    color: var(--app-color-text-muted);
+    font-size: var(--app-font-size-xs);
+    font-weight: var(--app-font-weight-medium);
+}
+
+.proj-count.is-on {
+    border-color: var(--app-color-brand-300);
+    background: var(--app-color-brand-50);
+    color: var(--app-color-brand-900);
+}
+
+.proj-status {
+    min-height: 1.25rem;
+    margin: 0 0 var(--app-space-3);
+    font-size: var(--app-font-size-xs);
+    color: var(--app-color-text-muted);
+}
+
+/* ── La lista de proyectos de un módulo ──────────────────────────────────── */
+.proj-rows {
+    display: flex;
+    flex-direction: column;
+    gap: var(--app-space-3);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.proj-row {
+    display: flex;
+    flex-direction: column;
+    gap: var(--app-space-3);
+    padding: var(--app-space-3) var(--app-space-4);
+    border: 1px solid var(--app-color-border);
+    border-left: 4px solid var(--app-color-neutral-300);
+    border-radius: var(--app-radius-lg);
+    background: var(--app-color-bg-surface);
+}
+
+/* Publicado: la franja de la izquierda es lo único que cambia de color, para
+   que se lea de un vistazo cuáles ve el estudiantado. */
+.proj-row.is-live {
+    border-left-color: var(--app-color-brand-500);
+}
+
+.proj-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--app-space-3);
+}
+
+.proj-id {
+    min-width: 0;
+    flex: 1 1 16rem;
+}
+
+/* #main-content delante porque .proj-name es un <h3> y la escala de encabezados
+   de la sección le gana por especificidad. */
+#main-content .proj-name {
+    margin: 0 0 var(--app-space-1);
+    /* El nombre del proyecto es el título de una fila de lista, no de la
+       página: mismo cuerpo que el texto de alrededor y más peso. Antes iba a
+       16 px sobre una sección de 14 y pesaba más que el nombre del módulo. */
+    font-size: var(--app-font-size-sm);
+    font-weight: var(--app-font-weight-semi);
+    color: var(--app-color-text);
+    overflow-wrap: anywhere;
+}
+
+.proj-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--app-space-2);
+    margin: 0;
+}
+
+/* Estado del proyecto: siempre icono + palabra, nunca solo color. */
+.proj-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--app-space-1);
+    padding: 2px var(--app-space-2);
+    border: 1px solid var(--app-color-border);
+    border-radius: var(--app-radius-pill);
+    background: var(--app-color-neutral-50);
+    color: var(--app-color-neutral-700);
+    font-size: var(--app-font-size-xs);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+/* Una fila solo se colorea por dos cosas: lo que ya está evaluado y lo que el
+   estudiantado ve. Todo lo demás es descriptivo y va en gris: el icono y la
+   palabra ya dicen qué es. */
+.proj-chip.is-empty { color: var(--app-color-text-muted); }
+.proj-chip.is-ok    { border-color: #a7d7bd; background: #e8f5ee; color: #0f5132; }
+.proj-chip.is-live  { border-color: var(--app-color-brand-300); background: var(--app-color-brand-50); color: var(--app-color-brand-900); }
+.proj-chip.is-type  { border-color: var(--app-color-neutral-300); }
+
+.proj-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--app-space-2);
+}
+
+/* Todos los botones de la fila miden lo mismo: el grupo Individual/Grupal
+   llevaba el tamaño normal y el resto el pequeño, y se notaba el escalón.
+   El #main-content es para ganarle a la regla general de botones. */
+#main-content .proj-actions .btn {
+    white-space: nowrap;
+    min-height: 30px;
+    padding: 4px 10px;
+    font-size: 0.8125rem;
+}
+
+.proj-evaluate {
+    background: var(--app-color-brand-700);
+    border-color: var(--app-color-brand-700);
+}
+
+/* ── Publicación en el Aula Virtual ──────────────────────────────────────── */
+.proj-aula {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: var(--app-space-3) var(--app-space-4);
+    padding-top: var(--app-space-3);
+    border-top: 1px dashed var(--app-color-border);
+}
+
+.proj-field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--app-space-1);
+    min-width: 0;
+}
+
+.proj-field-grow { flex: 1 1 18rem; }
+
+.proj-field label {
+    margin: 0;
+    font-size: var(--app-font-size-xs);
+    font-weight: var(--app-font-weight-semi);
+    color: var(--app-color-text-muted);
+}
+
+.proj-field input {
+    min-height: 44px;
+    padding: var(--app-space-2) var(--app-space-3);
+    border: 1px solid var(--app-color-neutral-300);
+    border-radius: var(--app-radius-md);
+    background: var(--app-color-bg-surface);
+    color: var(--app-color-text);
+    font-size: var(--app-font-size-sm);
+}
+
+.proj-repo-input:focus-visible,
+.proj-field input:focus-visible {
+    outline: none;
+    border-color: var(--app-color-brand-700);
+    box-shadow: 0 0 0 3px var(--app-color-brand-50);
+}
+
+/* De dónde salió un valor que nadie ha escrito a mano. */
+.proj-tag {
+    display: inline-block;
+    margin-top: 2px;
+    font-size: var(--app-font-size-xs);
+    color: var(--app-color-text-muted);
+}
+
+.proj-warn {
+    flex: 1 1 100%;
+    display: flex;
+    align-items: center;
+    gap: var(--app-space-2);
+    margin: 0;
+    font-size: var(--app-font-size-xs);
+    color: #8a5300;
+}
+
+/* Interruptor: es un checkbox de verdad, así que el teclado y los lectores de
+   pantalla lo entienden; lo que se pinta es la pista y el botón. */
+.proj-switch {
+    display: flex;
+    align-items: center;
+    gap: var(--app-space-2);
+    min-height: 44px;
+    margin: 0;
+    cursor: pointer;
+}
+
+.proj-switch input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+}
+
+.proj-switch-track {
+    position: relative;
+    flex: 0 0 auto;
+    width: 42px;
+    height: 24px;
+    border-radius: var(--app-radius-pill);
+    background: var(--app-color-neutral-300);
+    transition: background 0.15s ease;
+}
+
+.proj-switch-knob {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--app-color-neutral-0);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    transition: transform 0.15s ease;
+}
+
+.proj-switch input:checked + .proj-switch-track {
+    background: var(--app-color-brand-700);
+}
+
+.proj-switch input:checked + .proj-switch-track .proj-switch-knob {
+    transform: translateX(18px);
+}
+
+.proj-switch input:focus-visible + .proj-switch-track {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--app-color-bg-surface), 0 0 0 4px var(--app-color-brand-700);
+}
+
+.proj-switch-text {
+    display: flex;
+    flex-direction: column;
+    font-size: 0.8125rem;
+    font-weight: var(--app-font-weight-semi);
+    color: var(--app-color-text);
+    line-height: var(--app-line-height-tight);
+}
+
+.proj-aula-state {
+    font-size: var(--app-font-size-xs);
+    font-weight: var(--app-font-weight-regular);
+    color: var(--app-color-text-muted);
+}
+
+@media (max-width: 767.98px) {
+    .proj-head { flex-direction: column; }
+    /* En columna, el flex-grow de la cabecera estiraba el bloque del nombre y
+       dejaba un hueco enorme antes de los botones. */
+    .proj-id { flex: 0 0 auto; }
+    .proj-actions { width: 100%; }
+    .proj-evaluate { margin-left: auto; }
+    .proj-field-grow { flex-basis: 100%; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Armonía dentro de la promoción: una escala de texto, una familia de botones
+   y un solo naranja.
+
+   Antes convivían seis tamaños de título (28, 24, 19,2, 18, 16…) fijos en px,
+   así que en una pantalla pequeña el texto se comía el espacio; nueve variantes
+   de botón (naranja, verde, amarillo, gris, rojo…) que competían entre sí sin
+   que el color significara nada; y dos naranjas distintos, uno de los cuales
+   (#ff4700 con texto blanco, 3,41:1) no cumplía contraste.
+
+   Reglas de aquí en adelante:
+   - Texto: escala 12 / 13 / 14 / 15 / 17 / 20, y los tres tamaños grandes son
+     fluidos (clamp), así que se encogen solos en pantallas estrechas.
+   - Botones: tres papeles. Naranja relleno = la acción principal (una por
+     pantalla). Contorno gris = todo lo demás, con su icono llevando el
+     significado. Rojo = destructivo.
+   - Naranja: uno solo, brand-700, que cumple contraste con texto blanco.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+#main-content {
+    /* Un solo naranja en toda la vista: brand-700 (#d63900) da 4,72:1 con texto
+       blanco; el de marca (#ff4700) se queda en 3,41:1 y se reservaba para
+       adornos, pero estaba usándose de fondo con texto blanco en las pestañas
+       del Gantt, en los badges y en la fila fija de la tabla de asistencia. */
+    --app-color-primary: var(--app-color-brand-700);
+
+    font-size: var(--app-font-size-sm);
+    line-height: var(--app-line-height-base);
+}
+
+/* ── Escala de títulos ──────────────────────────────────────────────────── */
+
+#main-content h1,
+#main-content .promo-title {
+    font-size: clamp(1.0625rem, 1rem + 0.35vw, 1.25rem);   /* 17 → 20 */
+    font-weight: var(--app-font-weight-semi);
+    line-height: var(--app-line-height-tight);
+}
+
+#main-content h2,
+#main-content .subtitle-page,
+#main-content .pending-title {
+    font-size: clamp(0.9375rem, 0.9rem + 0.25vw, 1.0625rem);  /* 15 → 17 */
+    font-weight: var(--app-font-weight-semi);
+    line-height: var(--app-line-height-tight);
+}
+
+#main-content h3 {
+    font-size: clamp(0.9375rem, 0.9rem + 0.2vw, 1rem);     /* 15 → 16 */
+    font-weight: var(--app-font-weight-semi);
+}
+
+#main-content h4,
+#main-content h5 {
+    font-size: 0.9375rem;   /* 15 */
+    font-weight: var(--app-font-weight-semi);
+}
+
+#main-content h6 {
+    font-size: var(--app-font-size-sm);
+    font-weight: var(--app-font-weight-semi);
+}
+
+/* Cifras sueltas de las tarjetas de estadística (h3 con un número solo): son
+   dato, no título, así que mandan un poco más que el texto de alrededor. */
+#main-content .stat-value,
+#main-content .pending-figure-v,
+#main-content .card-body h3.mb-0 {
+    font-size: clamp(1.125rem, 1.05rem + 0.35vw, 1.375rem);  /* 18 → 22 */
+    font-weight: var(--app-font-weight-semi);
+    font-variant-numeric: tabular-nums;
+}
+
+/* En el móvil los campos se quedan en 16px: por debajo, iOS hace zoom al
+   enfocarlos y descoloca la página. */
+@media (max-width: 767.98px) {
+    #main-content input,
+    #main-content select,
+    #main-content textarea {
+        font-size: 1rem;
+    }
+}
+
+/* ── Una sola familia de botones ────────────────────────────────────────── */
+
+#main-content .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 34px;
+    padding: 6px 12px;
+    border-radius: var(--app-radius-md);
+    font-size: var(--app-font-size-sm);
+    font-weight: var(--app-font-weight-medium);
+    line-height: 1.3;
+}
+
+#main-content .btn-sm {
+    min-height: 30px;
+    padding: 4px 10px;
+    font-size: 0.8125rem;   /* 13 */
+}
+
+/* Con el dedo hacen falta 44 px; con el ratón, esa altura solo hincha la
+   interfaz. Se decide por el tipo de puntero, no por el ancho de pantalla. */
+@media (pointer: coarse) {
+    #main-content .btn { min-height: 44px; }
+    #main-content .btn-sm { min-height: 40px; }
+}
+
+/* Los iconos siguen al texto del botón en tamaño y no lo desalinean. */
+#main-content .btn .bi {
+    font-size: 1em;
+    line-height: 1;
+}
+
+#main-content .btn > svg {
+    width: 1em;
+    height: 1em;
+}
+
+/* Secundarios: todos el mismo contorno gris. El verde de Google Calendar, el
+   naranja de Exportar o el amarillo de Empleabilidad no significaban nada
+   distinto entre sí; lo que distingue a cada botón es su icono y su palabra. */
+#main-content .btn-outline-secondary,
+#main-content .btn-outline-primary,
+#main-content .btn-outline-success,
+#main-content .btn-outline-warning,
+#main-content .btn-outline-info,
+#main-content .btn-brand-soft {
+    --bs-btn-color: var(--app-color-neutral-700);
+    --bs-btn-border-color: var(--app-color-neutral-300);
+    --bs-btn-bg: var(--app-color-bg-surface);
+    --bs-btn-hover-color: var(--app-color-text);
+    --bs-btn-hover-bg: var(--app-color-neutral-50);
+    --bs-btn-hover-border-color: var(--app-color-neutral-500);
+    color: var(--app-color-neutral-700);
+    background-color: var(--app-color-bg-surface);
+    border-color: var(--app-color-neutral-300);
+}
+
+#main-content .btn-outline-secondary:hover,
+#main-content .btn-outline-primary:hover,
+#main-content .btn-outline-success:hover,
+#main-content .btn-outline-warning:hover,
+#main-content .btn-outline-info:hover,
+#main-content .btn-brand-soft:hover {
+    color: var(--app-color-text);
+    background-color: var(--app-color-neutral-50);
+    border-color: var(--app-color-neutral-500);
+}
+
+/* Foco visible en cualquier botón de la vista. */
+#main-content .btn:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--app-color-bg-surface), 0 0 0 4px var(--app-color-brand-700);
+}
+
+/* El grupo Día/Semana/Mes es un selector de un solo valor: la pastilla activa
+   se pinta con el naranja que sí contrasta. */
+#main-content .gantt-zoom-btn.active {
+    background-color: var(--app-color-brand-700);
+    border-color: var(--app-color-brand-700);
+    color: #ffffff;
+}
+
+/* El icono y la palabra de un botón se separan con gap, no con márgenes
+   sueltos: al pasar los botones a inline-flex el espacio en blanco del HTML
+   dejaba de contar y quedaban pegados ("⌂Individual"). */
+#main-content .btn {
+    gap: 6px;
+}
+
+#main-content .btn > .bi,
+#main-content .btn > svg {
+    margin-right: 0 !important;
+    margin-left: 0 !important;
+}
+
+/* Cabecera de módulo abierta. Antes se pintaba entera de naranja claro
+   (#ff8a5c) con el texto en naranja oscuro encima —2,2:1, ilegible— y además
+   la primera del grupo salía naranja aunque estuviera cerrada. Ahora abierta se
+   distingue por un tinte suave y por su línea inferior de marca. */
+#main-content .accordion-item:first-of-type .accordion-button,
+#main-content .accordion-button {
+    padding: var(--app-space-3) var(--app-space-4);
+    background-color: var(--app-color-bg-surface);
+    color: var(--app-color-text);
+    font-size: var(--app-font-size-sm);
+}
+
+#main-content #evalAccordion .accordion-button {
+    font-size: 0.9375rem;   /* 15: el módulo manda sobre sus proyectos */
+}
+
+#main-content .accordion-button:not(.collapsed) {
+    background-color: var(--app-color-brand-50);
+    color: var(--app-color-brand-900);
+    box-shadow: inset 0 -2px 0 var(--app-color-brand-700);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Barra del roadmap con el patrón de un calendario
+   Izquierda: Hoy, flechas y el título del periodo — cómo moverte y dónde estás.
+   Derecha: la acción principal, el selector de vista y un menú con el resto.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.roadmap-fullbleed .roadmap-period {
+    display: flex;
+    align-items: center;
+    gap: var(--app-space-2);
+    min-width: 0;
+}
+
+/* Las flechas van pegadas entre sí, como en un calendario: son un solo mando. */
+.roadmap-fullbleed .roadmap-steps {
+    display: inline-flex;
+}
+
+.roadmap-fullbleed .roadmap-step {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: 0;
+    border-radius: var(--app-radius-pill);
+    background: transparent;
+    color: var(--app-color-neutral-700);
+    cursor: pointer;
+}
+
+.roadmap-fullbleed .roadmap-step:hover:not(:disabled) {
+    background: var(--app-color-neutral-100);
+    color: var(--app-color-text);
+}
+
+.roadmap-fullbleed .roadmap-step:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--app-color-bg-surface), 0 0 0 4px var(--app-color-brand-700);
+}
+
+/* En "Todo el bootcamp" no hay periodo anterior ni siguiente. */
+.roadmap-fullbleed .roadmap-step:disabled {
+    opacity: 0.4;
+    cursor: default;
+}
+
+/* El título sustituye a la etiqueta fija "Roadmap", que no decía nada. */
+.roadmap-fullbleed .roadmap-period-label {
+    margin: 0;
+    font-size: clamp(0.9375rem, 0.9rem + 0.25vw, 1.0625rem);
+    font-weight: var(--app-font-weight-semi);
+    color: var(--app-color-text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* En español solo va en mayúscula la primera letra: `capitalize` ponía
+   "19 – 25 De Enero De 2026". */
+.roadmap-fullbleed .roadmap-period-label::first-letter {
+    text-transform: uppercase;
+}
+
+@media (pointer: coarse) {
+    .roadmap-fullbleed .roadmap-step { width: 44px; height: 44px; }
+}
+
+/* Leyenda y Festivos: herramientas de consulta, solo icono con su etiqueta
+   accesible — el mismo sitio y el mismo peso que la lupa o los ajustes en un
+   calendario. */
+.roadmap-fullbleed .roadmap-tool {
+    width: 34px;
+    padding-inline: 0;
+}
+
+.roadmap-fullbleed .roadmap-more {
+    width: 34px;
+    padding-inline: 0;
+}
+
+@media (pointer: coarse) {
+    .roadmap-fullbleed .roadmap-tool,
+    .roadmap-fullbleed .roadmap-more { width: 44px; }
+}
+
+.roadmap-caret {
+    margin-left: 2px;
+    font-size: 0.75em;
+    opacity: 0.7;
+}
+
+/* Hoy, marcado en el calendario: columna teñida y su número en naranja. */
+.gantt_scale_cell.gantt-today-cell,
+.gantt_task_cell.gantt-today-cell {
+    background-color: var(--app-color-brand-50);
+}
+
+.gantt_scale_cell.gantt-today-cell {
+    color: var(--app-color-brand-700);
+    font-weight: var(--app-font-weight-semi);
+}
+
+/* Un día no lectivo sigue siendo no lectivo aunque sea hoy. */
+.gantt_scale_cell.gantt-nonworking-cell.gantt-today-cell,
+.gantt_task_cell.gantt-nonworking-cell.gantt-today-cell {
+    background-color: #ecdcd4;
+}
+
+@media (max-width: 767.98px) {
+    .roadmap-fullbleed .roadmap-period-label { font-size: var(--app-font-size-sm); }
+}
+
+/* Periodo sin nada: el Gantt se queda en blanco y parece roto, así que se dice
+   con palabras y se ofrece la salida. Va por encima del área vacía, sin tapar
+   la cabecera de días. */
+.roadmap-fullbleed .roadmap-empty {
+    position: absolute;
+    left: 50%;
+    top: 40%;
+    transform: translate(-50%, -50%);
+    z-index: 5;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--app-space-2);
+    margin: 0;
+    padding: var(--app-space-5) var(--app-space-6);
+    border: 1px dashed var(--app-color-neutral-300);
+    border-radius: var(--app-radius-lg);
+    background: var(--app-color-bg-surface);
+    color: var(--app-color-text-muted);
+    text-align: center;
+    max-width: min(28rem, 90%);
+}
+
+.roadmap-fullbleed .roadmap-empty .bi {
+    font-size: 1.5rem;
+    color: var(--app-color-neutral-300);
+}
+
+.roadmap-empty-when {
+    color: var(--app-color-text);
+    font-weight: var(--app-font-weight-semi);
+}

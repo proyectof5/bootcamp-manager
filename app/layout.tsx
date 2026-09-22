@@ -48,7 +48,12 @@ export default function RootLayout({
           href={withBasePath('/img/favicon_bootcamp_manager.png')}
         />
       </head>
-      <body>{children}</body>
+      <body>
+        {/* WCAG 2.2 AA (spec navegacion-promocion): primer elemento enfocable de
+            cada página, para saltarse el menú con el teclado. */}
+        <a className="skip-to-main" href="#main-content">Saltar al contenido</a>
+        {children}
+      </body>
     </html>
   );
 }
