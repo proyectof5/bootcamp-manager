@@ -248,20 +248,18 @@ body {
 }
 
 /* Promotions button - orange style */
+/* "Volver a promociones": es un enlace de salida, no una sección. El recuadro
+   blanco con sombra venía de cuando el menú era claro; sobre el menú oscuro
+   parecía que estuviera seleccionado y competía con la sección activa. */
 .nav-link-promotions {
-    color: white !important;
-    border: white 1px solid !important;
     background-color: transparent !important;
-    box-shadow: #3e19014a 2px 2px 6px;
+    border: 0 !important;
+    box-shadow: none !important;
 }
 
-
-
 .nav-link-promotions:hover {
-    background-color: white !important;
-    color: white !important;
-    border-left: none !important;
-    color: var(--principal-1) !important;
+    background-color: rgba(255, 255, 255, 0.07) !important;
+    color: #ffffff !important;
 }
 
 .card {
@@ -4370,9 +4368,9 @@ body {
 
 .proj-repo-label {
     margin: 0;
-    font-size: var(--app-font-size-sm);
+    font-size: var(--app-font-size-xs);
     font-weight: var(--app-font-weight-semi);
-    color: var(--app-color-text);
+    color: var(--app-color-text-muted);
 }
 
 .proj-repo-input {
@@ -4466,9 +4464,14 @@ body {
     flex: 1 1 16rem;
 }
 
-.proj-name {
+/* #main-content delante porque .proj-name es un <h3> y la escala de encabezados
+   de la sección le gana por especificidad. */
+#main-content .proj-name {
     margin: 0 0 var(--app-space-1);
-    font-size: var(--app-font-size-md);
+    /* El nombre del proyecto es el título de una fila de lista, no de la
+       página: mismo cuerpo que el texto de alrededor y más peso. Antes iba a
+       16 px sobre una sección de 14 y pesaba más que el nombre del módulo. */
+    font-size: var(--app-font-size-sm);
     font-weight: var(--app-font-weight-semi);
     color: var(--app-color-text);
     overflow-wrap: anywhere;
@@ -4496,9 +4499,12 @@ body {
     white-space: nowrap;
 }
 
+/* Una fila solo se colorea por dos cosas: lo que ya está evaluado y lo que el
+   estudiantado ve. Todo lo demás es descriptivo y va en gris: el icono y la
+   palabra ya dicen qué es. */
 .proj-chip.is-empty { color: var(--app-color-text-muted); }
 .proj-chip.is-ok    { border-color: #a7d7bd; background: #e8f5ee; color: #0f5132; }
-.proj-chip.is-info  { border-color: #b6d4fe; background: #eef5ff; color: #084298; }
+.proj-chip.is-live  { border-color: var(--app-color-brand-300); background: var(--app-color-brand-50); color: var(--app-color-brand-900); }
 .proj-chip.is-type  { border-color: var(--app-color-neutral-300); }
 
 .proj-actions {
@@ -4508,7 +4514,15 @@ body {
     gap: var(--app-space-2);
 }
 
-.proj-actions .btn { white-space: nowrap; }
+/* Todos los botones de la fila miden lo mismo: el grupo Individual/Grupal
+   llevaba el tamaño normal y el resto el pequeño, y se notaba el escalón.
+   El #main-content es para ganarle a la regla general de botones. */
+#main-content .proj-actions .btn {
+    white-space: nowrap;
+    min-height: 30px;
+    padding: 4px 10px;
+    font-size: 0.8125rem;
+}
 
 .proj-evaluate {
     background: var(--app-color-brand-700);
@@ -4632,7 +4646,7 @@ body {
 .proj-switch-text {
     display: flex;
     flex-direction: column;
-    font-size: var(--app-font-size-sm);
+    font-size: 0.8125rem;
     font-weight: var(--app-font-weight-semi);
     color: var(--app-color-text);
     line-height: var(--app-line-height-tight);
@@ -4843,6 +4857,10 @@ body {
     background-color: var(--app-color-bg-surface);
     color: var(--app-color-text);
     font-size: var(--app-font-size-sm);
+}
+
+#main-content #evalAccordion .accordion-button {
+    font-size: 0.9375rem;   /* 15: el módulo manda sobre sus proyectos */
 }
 
 #main-content .accordion-button:not(.collapsed) {

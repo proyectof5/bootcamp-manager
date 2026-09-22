@@ -13191,9 +13191,9 @@ function renderEvaluationTab() {
                     aria-expanded="false" aria-controls="collapse-${modKey}">
                     <i class="bi bi-folder2-open me-2 text-primary"></i>
                     ${escapeHtml(mod.name || `Módulo ${mIdx + 1}`)}
-                    <span class="badge bg-secondary ms-2">${projectCount} proyecto${projectCount !== 1 ? 's' : ''}</span>
-                    ${evaluatedCount > 0 ? `<span class="badge bg-success ms-1">${evaluatedCount} evaluado${evaluatedCount !== 1 ? 's' : ''}</span>` : ''}
-                    ${enAula > 0 ? `<span class="badge bg-primary ms-1"><i class="bi bi-broadcast me-1"></i>${enAula} en el aula</span>` : ''}
+                    <span class="proj-chip">${projectCount} ${projectCount === 1 ? 'proyecto' : 'proyectos'}</span>
+                    ${evaluatedCount > 0 ? `<span class="proj-chip is-ok"><i class="bi bi-check-circle" aria-hidden="true"></i>${evaluatedCount} evaluado${evaluatedCount !== 1 ? 's' : ''}</span>` : ''}
+                    ${enAula > 0 ? `<span class="proj-chip is-live"><i class="bi bi-broadcast" aria-hidden="true"></i>${enAula} en el aula</span>` : ''}
                 </button>
             </h2>
             <div id="collapse-${modKey}" class="accordion-collapse collapse"
@@ -13235,7 +13235,7 @@ function renderEvaluationTab() {
                                 <i class="bi bi-${projType === 'grupal' ? 'people' : 'person'}" aria-hidden="true"></i>${projType === 'grupal' ? 'Grupal' : 'Individual'}
                             </span>
                             ${projType === 'grupal' ? `<span class="proj-chip${groupCount > 0 ? '' : ' is-empty'}"><i class="bi bi-diagram-3" aria-hidden="true"></i>${groupCount} ${groupCount === 1 ? 'grupo' : 'grupos'}</span>` : ''}
-                            <span class="proj-chip${submissionCount > 0 ? ' is-info' : ' is-empty'}">
+                            <span class="proj-chip${submissionCount > 0 ? '' : ' is-empty'}">
                                 <i class="bi bi-cloud-arrow-up" aria-hidden="true"></i>${submissionCount}/${totalTargets} ${submissionCount === 1 ? 'entrega' : 'entregas'}
                             </span>
                             <span class="proj-chip${evalCount > 0 ? ' is-ok' : ' is-empty'}">
