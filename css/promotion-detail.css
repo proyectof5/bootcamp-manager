@@ -5245,3 +5245,12 @@ body {
     .access-field--action { width: 100%; }
     .access-field--action .btn { width: 100%; }
 }
+
+/* La línea de estado de la cuenta de Asana dentro del menú "⋯": informa, no se
+   pulsa, así que va en el tono apagado de las etiquetas del menú. */
+[role="menu"] .roadmap-menu-note {
+    font-size: var(--app-font-size-xs);
+    font-weight: var(--app-font-weight-regular);
+    color: var(--app-color-text-muted);
+    overflow-wrap: anywhere;
+}

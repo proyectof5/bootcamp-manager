@@ -1,11 +1,12 @@
 'use client';
 
 /**
- * AccessSettingsPanel.tsx — sub-tab "Accesos" de la Teacher-Area (spec 0014 Fase C).
+ * AccessSettingsPanel.tsx — sub-tab "Acceso" de Portal del estudiante.
  *
- * 16º bloque. Reemplaza el contenido del pane #teacher-area-accesos (#teacher-area-accesos-content:
- * tarjetas Contraseña/link público + Planificador + Asana + Zoom) por un componente React montado por
- * portal.
+ * Reemplaza el contenido del pane #teacher-area-accesos: contraseña y enlace del portal,
+ * más los enlaces de la promoción (Planificador, espacio de Asana, Zoom). La conexión de la
+ * CUENTA de Asana de cada docente ya no está aquí — se movió al menú "⋯" del roadmap, que es
+ * donde se usa (ver AsanaAccount.tsx).
  *
  * Patrón "markup en React, lógica legacy por id": React renderiza el MARKUP conservando TODOS los ids
  * legacy (teacher-area-*); el orquestador puebla/lee por id: loadAccessSettingsInTeacherArea() (null-safe,
@@ -227,132 +228,6 @@ function AccessSettingsPanel() {
           </article>
         </div>
       </section>
-
-      {/* ── 3. Mi cuenta ─────────────────────────────────────────────────── */}
-      <section className="access-group" aria-labelledby="access-g-mine">
-        <h2 className="access-group-title" id="access-g-mine">Mi cuenta</h2>
-        <p className="access-group-note">
-          Esto es tuyo, no de la promoción: cada docente lo conecta una vez.
-        </p>
-        <AsanaAccountCard />
-      </section>
     </div>
-  );
-}
-
-// ── Asana: conexión OAuth de la cuenta del docente ──────────────────────────
-// Fase 1 de docs/tasks/exportar-roadmap-asana.md. Cada docente conecta su
-// cuenta de Asana una vez (OAuth); esa conexión luego permitirá exportar el
-// roadmap como subtareas. Popup + poll de estado + postMessage del callback.
-interface AsanaStatus {
-  configured: boolean;
-  connected: boolean;
-  asanaName?: string | null;
-  asanaEmail?: string | null;
-}
-
-function AsanaAccountCard() {
-  const [status, setStatus] = useState<AsanaStatus | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const refresh = async () => {
-    try {
-      const s = (await w().asanaGetStatus?.()) as AsanaStatus | undefined;
-      setStatus(s || { configured: false, connected: false });
-    } catch {
-      setStatus({ configured: false, connected: false });
-    }
-  };
-
-  useEffect(() => {
-    refresh();
-    const onFocus = () => refresh();
-    window.addEventListener('focus', onFocus);
-    return () => window.removeEventListener('focus', onFocus);
-  }, []);
-
-  const connect = async () => {
-    setError(null);
-    setBusy(true);
-    try {
-      const url = await w().asanaGetAuthorizeUrl?.();
-      if (!url) throw new Error('sin_url');
-      window.open(url, 'asana-oauth', 'width=620,height=780,noopener=no');
-
-      // Espera a que el callback avise (postMessage) o a que el estado cambie.
-      const started = Date.now();
-      const onMsg = (e: MessageEvent) => {
-        if (e?.data?.source === 'asana-oauth') { cleanup(); refresh().finally(() => setBusy(false)); }
-      };
-      const poll = setInterval(async () => {
-        const s = (await w().asanaGetStatus?.()) as AsanaStatus | undefined;
-        if (s?.connected || Date.now() - started > 120000) {
-          cleanup();
-          setStatus(s || null);
-          setBusy(false);
-        }
-      }, 2500);
-      const cleanup = () => { clearInterval(poll); window.removeEventListener('message', onMsg); };
-      window.addEventListener('message', onMsg);
-    } catch (e) {
-      setBusy(false);
-      setError((e as Error)?.message === 'asana_not_configured'
-        ? 'La integración con Asana no está configurada en el servidor.'
-        : 'No se pudo iniciar la conexión con Asana.');
-    }
-  };
-
-  const disconnect = async () => {
-    setBusy(true);
-    setError(null);
-    try {
-      await w().asanaDisconnect?.();
-    } catch {
-      setError('No se pudo desconectar.');
-    }
-    await refresh();
-    setBusy(false);
-  };
-
-  return (
-    <article className="access-card access-card--wide">
-      <div className="access-card-head">
-        <span className="access-icon" aria-hidden="true"><i className="bi bi-person-badge" /></span>
-        <h3 className="access-card-title">Asana</h3>
-      </div>
-      <div className="access-card-body">
-        <p className="access-hint access-hint--block">
-          Conecta tu cuenta para poder <strong>exportar el roadmap</strong> como subtareas.
-        </p>
-
-        {status == null ? (
-          <p className="access-state" role="status"><span className="spinner-border spinner-border-sm me-2" aria-hidden="true" />Comprobando…</p>
-        ) : !status.configured ? (
-          <p className="access-state">La integración con Asana no está activada en el servidor todavía.</p>
-        ) : status.connected ? (
-          <div className="access-row access-row--middle">
-            <span className="access-state is-on">
-              <i className="bi bi-check-circle" aria-hidden="true" />Conectada
-              {(status.asanaEmail || status.asanaName) ? ` · ${status.asanaEmail || status.asanaName}` : ''}
-            </span>
-            <button type="button" className="btn btn-outline-danger btn-sm" disabled={busy} onClick={disconnect}>
-              <i className="bi bi-x-circle" aria-hidden="true" />Desconectar
-            </button>
-          </div>
-        ) : (
-          <div className="access-row access-row--middle">
-            <span className="access-state">Sin conectar</span>
-            <button type="button" className="btn btn-primary btn-sm" disabled={busy} onClick={connect}>
-              {busy
-                ? <><span className="spinner-border spinner-border-sm" aria-hidden="true" />Esperando a Asana…</>
-                : <><i className="bi bi-box-arrow-up-right" aria-hidden="true" />Conectar mi cuenta</>}
-            </button>
-          </div>
-        )}
-
-        {error && <p className="access-error" role="alert"><i className="bi bi-exclamation-triangle" aria-hidden="true" />{error}</p>}
-      </div>
-    </article>
   );
 }

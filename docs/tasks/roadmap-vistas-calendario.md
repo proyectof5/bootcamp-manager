@@ -33,6 +33,14 @@ mes, y las flechas saltan al periodo anterior o siguiente.
 - **`⋯`** guarda lo que se usa de vez en cuando, agrupado por lo que hace:
   *Contenido* (sesiones de empleabilidad), *Llevarlo a otra herramienta* (Google
   Calendar, Asana) y *Descargar* (PNG, PDF, Excel, .ics).
+- Dentro de *Llevarlo a otra herramienta* vive también la **conexión de la
+  cuenta de Asana de cada docente**, que antes estaba en Portal del estudiante ›
+  Acceso. Es de la persona, no de la promoción, y lo único para lo que sirve
+  —exportar el roadmap— está justo encima. El estado se lee siempre («Mi cuenta
+  de Asana: …») y debajo aparece Conectar o Desconectar según toque; si el
+  servidor no tiene la integración activada se dice y no se ofrece nada.
+  El hook vive en `AsanaAccount.tsx` y se monta en el panel, no en el menú: el
+  menú se cierra al elegir y se llevaría por delante la espera del popup.
 
 De doce controles a cinco, en una sola fila.
 
