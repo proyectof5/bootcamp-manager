@@ -2728,14 +2728,6 @@ function switchTab(tabId) {
     }
 }
 
-function switchToVirtualClassroom() {
-    switchTab('info');
-    setTimeout(() => {
-        switchProgramDetailsTab('virtual-classroom');
-    }, 100);
-}
-
-
 // ==================== TEACHER AREA SECTION ====================
 // Consolidated handler for switching between sub-sections in Área del Docente
 function switchTeacherAreaSubTab(tabName) {
@@ -12488,12 +12480,12 @@ function updateProgramDetailsSubtitle(sectionName) {
 // sincronizadas automáticamente desde dentro de switchProgramDetailsTab, así
 // que da igual desde dónde se dispare un cambio de tab (clic en una sub-tab,
 // restaurar el tab guardado en sessionStorage al cargar, o un salto directo
-// como el de Evaluación → 'virtual-classroom').
+// desde otra sección).
 const PROGRAM_DETAILS_TAB_GROUPS = {
     roadmap: 'planning', calendar: 'planning', schedule: 'planning', hours: 'planning',
     pildoras: 'content', evaluation: 'content', sections: 'content',
     resources: 'resources', quicklinks: 'resources',
-    team: 'team', 'virtual-classroom': 'team',
+    team: 'team',
 };
 
 // Recuerda, por grupo, cuál fue la última sub-tab activa dentro de él — así
@@ -12552,7 +12544,6 @@ function switchProgramDetailsTab(tabName) {
         'resources': { tabId: 'program-details-resources', buttonId: 'program-details-resources-tab', label: 'Resources' },
         'pildoras': { tabId: 'program-details-pildoras', buttonId: 'program-details-pildoras-tab', label: 'Píldoras' },
         'evaluation': { tabId: 'program-details-evaluation', buttonId: 'program-details-evaluation-tab', label: 'Criterios' },
-        'virtual-classroom': { tabId: 'program-details-virtual-classroom', buttonId: 'program-details-virtual-classroom-tab', label: 'Aula Virtual' },
         'quicklinks': { tabId: 'program-details-quicklinks', buttonId: 'program-details-quicklinks-tab', label: 'Quick Links' },
         'sections': { tabId: 'program-details-sections', buttonId: 'program-details-sections-tab', label: 'Sections' }
     };
@@ -12603,17 +12594,6 @@ function switchProgramDetailsTab(tabName) {
     }
     if (tabName === 'calendar') loadCalendar();
     if (tabName === 'hours' && window.__refreshHoursPanel) window.__refreshHoursPanel();
-    if (tabName === 'virtual-classroom') {
-        // Aseguramos que el estado de evaluación (proyectos + competences) esté cargado
-        if (!window._evalState || !(window._evalState.modules || []).length) {
-            loadEvaluation();
-        } else {
-            const extInfo = (typeof extendedInfoData !== 'undefined') ? extendedInfoData : (window.publicPromotionExtendedInfo || {});
-            const promoData = (window.currentPromotion || window.publicPromotionData || {});
-            initVirtualClassroomPanel(extInfo, promoData);
-        }
-    }
-
     // Update subtitle
     updateProgramDetailsSubtitle(tab.label);
 
@@ -12797,17 +12777,13 @@ function _initEvalFeedbackRteKeyHandler() {
     }, false);
 }
 
-// ==================== AULA VIRTUAL – PANEL PROFESOR ====================
-
-// ==================== AULA VIRTUAL — varios proyectos activos a la vez ====================
-// Cada proyecto definido en Evaluación (projectCompetences) tiene su propia fila con su propio
-// estado activo/inactivo, repoBaseUrl/briefingUrl/dueDate — ya no hay un único "proyecto vinculado"
-// global. window._evalState.virtualClassrooms es el array persistido (uno por moduleId+projectName).
+// ==================== AULA VIRTUAL — estado ====================
+// El Aula Virtual ya no es una pestaña aparte: cada proyecto se publica desde su
+// propia fila en Proyectos. Aquí solo se prepara el estado que esa vista lee.
+// window._evalState.virtualClassrooms es el array persistido (uno por
+// moduleId+projectName) con isActive/repoBaseUrl/briefingUrl/dueDate.
 
 function initVirtualClassroomPanel(ext, promo) {
-    const panel = document.getElementById('virtual-classroom-panel');
-    if (!panel) return;
-
     const modules = promo.modules || [];
 
     // Build a quick lookup: "moduleId__projectName" → url (from roadmap)
@@ -12832,262 +12808,93 @@ function initVirtualClassroomPanel(ext, promo) {
         window._evalState.virtualClassrooms = window._evalState.virtualClassrooms || [];
     }
 
-    _renderVirtualClassroomList();
+    // La dirección donde entregan los proyectos es UNA para toda la promoción. Se
+    // sigue guardando repetida en cada fila porque es lo que lee el portal público
+    // (GET /virtual-classroom), pero se edita en un solo sitio. Al cargar se toma
+    // la primera que haya guardada.
+    const conRepo = window._evalState.virtualClassrooms.find(v => v && v.repoBaseUrl);
+    window._evalState.repoBaseUrl = conRepo ? conRepo.repoBaseUrl : '';
 }
 
-function _moduleNameById(modId) {
-    const modules = window._evalState.modules || [];
-    const mod = modules.find((m, idx) => (m.id || String(idx)) === modId);
-    return mod ? (mod.name || '') : `Módulo ${modId}`;
-}
+// ── Publicar un proyecto en el Aula Virtual ─────────────────────────────────
+// Antes esto vivía en una pestaña aparte con su propia lista de proyectos. Ahora
+// cada fila de Proyectos lleva sus tres campos (interruptor, fecha de entrega y
+// enlace al briefing) y los guarda desde aquí.
 
-function _renderVirtualClassroomList() {
-    const listEl = document.getElementById('vc-projects-list');
-    const statusBadge = document.getElementById('vc-status-badge');
-    if (!listEl) return;
-
-    const projectCompetences = window._evalState.projectCompetences || [];
-    const vcList = window._evalState.virtualClassrooms || [];
-    const activeCount = vcList.filter(vc => vc && vc.isActive).length;
-
-    if (statusBadge) {
-        if (activeCount > 0) {
-            statusBadge.textContent = `${activeCount} proyecto${activeCount !== 1 ? 's' : ''} activo${activeCount !== 1 ? 's' : ''}`;
-            statusBadge.className = 'badge bg-success';
-        } else {
-            statusBadge.textContent = 'Sin proyectos activos';
-            statusBadge.className = 'badge bg-secondary';
-        }
-    }
-
-    if (!projectCompetences.length) {
-        listEl.innerHTML = `<div class="alert alert-info small mb-0">
-            <i class="bi bi-info-circle me-2"></i>
-            Todavía no hay proyectos con competencias definidas. Ve a la pestaña <strong>Evaluación</strong>
-            y usa <strong>Definir competencias</strong> en cada proyecto que quieras poder activar aquí.
-        </div>`;
-        return;
-    }
-
-    const _githubUrl = window._githubQuickLinkUrl || '';
-
-    listEl.innerHTML = projectCompetences.map((pc, i) => {
-        const modId = pc.moduleId;
-        const projectName = pc.projectName;
-        const key = `${modId}__${projectName}`;
-        const vc = vcList.find(v => v && String(v.moduleId) === String(modId) && v.projectName === projectName) || {};
-        const isActive = !!vc.isActive;
-
-        const roadmapUrl = window._projectUrlMap[key] || '';
-        const briefingUrl = vc.briefingUrl || roadmapUrl || '';
-        const briefingFromRoadmap = !vc.briefingUrl && !!roadmapUrl;
-        const repoBaseUrl = vc.repoBaseUrl || _githubUrl || '';
-        const repoFromGithub = !vc.repoBaseUrl && !!_githubUrl;
-
-        const compIds = pc.competenceIds || [];
-        const compAccordionId = `vc-comp-${i}`;
-
-        return `
-        <div class="border rounded p-3 mb-3 vc-project-card" data-mod-id="${escapeHtml(String(modId))}" data-project-name="${escapeHtml(projectName)}">
-            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
-                <div>
-                    <span class="fw-semibold">${escapeHtml(_moduleNameById(modId))} — ${escapeHtml(projectName)}</span>
-                    <span class="badge ${isActive ? 'bg-success' : 'bg-secondary'} ms-2">${isActive ? 'Activo' : 'Inactivo'}</span>
-                </div>
-            </div>
-            <div class="row g-3 align-items-end">
-                <div class="col-md-4">
-                    <label class="form-label small fw-semibold text-muted">
-                        URL base del repositorio
-                        ${repoFromGithub ? '<span class="badge bg-success text-white ms-1 small"><i class="bi bi-github me-1"></i>desde GitHub</span>' : ''}
-                    </label>
-                    <input type="text" class="form-control form-control-sm vc-repo-base-input" value="${escapeHtml(repoBaseUrl)}" placeholder="https://github.com/proyectof5/">
-                </div>
-                <div class="col-md-4">
-                    <label class="form-label small fw-semibold text-muted">
-                        Link al briefing
-                        ${briefingFromRoadmap ? '<span class="badge bg-info text-dark ms-1 small"><i class="bi bi-link-45deg me-1"></i>desde roadmap</span>' : ''}
-                    </label>
-                    <input type="text" class="form-control form-control-sm vc-briefing-input" value="${escapeHtml(briefingUrl)}" placeholder="https://...">
-                </div>
-                <div class="col-md-2">
-                    <label class="form-label small fw-semibold text-muted"><i class="bi bi-calendar-event me-1"></i>Fecha de entrega</label>
-                    <input type="date" class="form-control form-control-sm vc-due-date-input" value="${vc.dueDate || ''}">
-                </div>
-                <div class="col-md-2 d-flex gap-2 justify-content-end">
-                    <button type="button" class="btn btn-sm btn-outline-secondary" ${!isActive ? 'disabled' : ''} onclick="window._vcToggleProject(this, false)" title="Desactivar">
-                        <i class="bi bi-x-circle"></i>
-                    </button>
-                    <button type="button" class="btn btn-sm btn-primary" onclick="window._vcToggleProject(this, true)">
-                        <i class="bi bi-${isActive ? 'arrow-repeat' : 'play-circle'} me-1"></i>${isActive ? 'Actualizar' : 'Activar'}
-                    </button>
-                </div>
-            </div>
-            <div class="mt-2">
-                <button class="btn btn-link btn-sm p-0" type="button" data-bs-toggle="collapse" data-bs-target="#${compAccordionId}">
-                    <i class="bi bi-award me-1"></i>${compIds.length} competencia${compIds.length !== 1 ? 's' : ''} — ver detalle
-                </button>
-                <div class="collapse" id="${compAccordionId}">
-                    <div class="mt-2">${compIds.length ? _buildVcCompetencesAccordionHtml(pc, i) : '<span class="fst-italic small text-muted">Este proyecto no tiene competencias definidas todavía en Evaluación.</span>'}</div>
-                </div>
-            </div>
-        </div>`;
-    }).join('');
-}
-
-function _buildVcCompetencesAccordionHtml(pcEntry, rowIdx) {
-    const compIds = pcEntry.competenceIds || [];
-    const catalog = window._evalState.catalog || window._evalState.competences || [];
-    const pcTools = pcEntry.competenceTools || {};
-
-    const mainAccordionId = `vc-preview-acc-${rowIdx}`;
-    const items = compIds.map((cid, idx) => {
-        const cidStr = String(cid);
-        const c = catalog.find(ec => String(ec.id) === cidStr);
-        if (!c) return `<div class="accordion-item"><div class="accordion-header px-3 py-2 small text-muted">Competencia ${cid}</div></div>`;
-
-        const levelDescs = (c.levels || []).reduce((acc, l) => { acc[l.level] = l.description; return acc; }, {});
-        const compInds = c.competenceIndicators || { initial: [], medio: [], advance: [] };
-        const selectedToolNames = pcTools[cidStr] || [];
-        const allToolObjs = c.toolsWithIndicators || [];
-        const tools = allToolObjs.filter(t => selectedToolNames.includes(t.name));
-
-        const LEVEL_COLORS = { 1: '#ffc107', 2: '#0d6efd', 3: '#198754' };
-        const LEVEL_BG = { 1: '#fff3cd', 2: '#cfe2ff', 3: '#d1e7dd' };
-        const LEVEL_NAMES = { 1: 'Básico', 2: 'Medio', 3: 'Avanzado' };
-
-        // Competence levels side-by-side
-        const compLevelCols = [1, 2, 3].map(lvl => {
-            const catInds = lvl === 1 ? compInds.initial : (lvl === 2 ? compInds.medio : compInds.advance);
-            const levelObj = (c.levels || []).find(l => l.level === lvl);
-            const finalIndNames = (catInds && catInds.length > 0)
-                ? catInds.map(i => i.name || i)
-                : (levelObj && levelObj.indicators ? levelObj.indicators : []);
-
-            const desc = levelDescs[lvl] || LEVEL_NAMES[lvl];
-            return `
-                <div class="col-md-4">
-                    <div class="p-2 h-100 rounded border" style="background:${LEVEL_BG[lvl]}; border-color:${LEVEL_COLORS[lvl]} !important;">
-                        <div class="extra-small fw-bold mb-1 text-uppercase" style="color:${LEVEL_COLORS[lvl]}; font-size: 0.6rem; letter-spacing: 0.05em;">
-                            <i class="bi bi-award-fill me-1"></i>Nivel ${lvl}
-                        </div>
-                        <div class="small fw-semibold mb-1" style="font-size: 0.75rem; line-height: 1.2;">${escapeHtml(desc)}</div>
-                        ${(finalIndNames && finalIndNames.length > 0) ? `
-                        <ul class="mb-0 ps-3 extra-small text-muted" style="font-size: 0.7rem; line-height: 1.2;">
-                            ${finalIndNames.map(name => `<li>${escapeHtml(name)}</li>`).join('')}
-                        </ul>` : '<div class="text-muted extra-small fst-italic">Sin indicadores definidos.</div>'}
-                    </div>
-                </div>
-            `;
-        }).join('');
-
-        // Tool accordion
-        const toolAccordionId = `vc-tool-acc-${rowIdx}-${idx}`;
-        const toolAccordionHtml = tools.length > 0 ? `
-            <div class="accordion accordion-flush mt-3 border rounded shadow-sm" id="${toolAccordionId}">
-                <div class="bg-light px-3 py-2 border-bottom extra-small fw-bold text-uppercase text-muted" style="font-size: 0.6rem; letter-spacing: 0.05em;">
-                    <i class="bi bi-tools me-1"></i>Herramientas y Tecnologías
-                </div>
-                ${tools.map((tool, tIdx) => {
-                    const toolByLevel = { 1: [], 2: [], 3: [] };
-                    (tool.indicators || []).forEach(ind => { if (toolByLevel[ind.levelId]) toolByLevel[ind.levelId].push(ind); });
-
-                    const toolLevelCols = [1, 2, 3].filter(l => toolByLevel[l].length > 0).map(lvl => `
-                        <div class="col-md-4">
-                            <div class="extra-small fw-bold mb-1 text-uppercase" style="color:${LEVEL_COLORS[lvl]}; font-size: 0.55rem;">
-                                Nivel ${lvl} ${LEVEL_NAMES[lvl]}
-                            </div>
-                            <ul class="mb-0 ps-3 extra-small text-muted" style="font-size: 0.65rem; line-height: 1.2;">
-                                ${toolByLevel[lvl].map(ind => `<li>${escapeHtml(ind.name)}</li>`).join('')}
-                            </ul>
-                        </div>
-                    `).join('');
-
-                    return `
-                        <div class="accordion-item">
-                            <h2 class="accordion-header">
-                                <button class="accordion-button collapsed py-2 px-3 small fw-bold" type="button"
-                                    data-bs-toggle="collapse" data-bs-target="#${toolAccordionId}-${tIdx}">
-                                    ${escapeHtml(tool.name)}
-                                </button>
-                            </h2>
-                            <div id="${toolAccordionId}-${tIdx}" class="accordion-collapse collapse" data-bs-parent="#${toolAccordionId}">
-                                <div class="accordion-body p-3">
-                                    ${tool.description ? `<p class="text-muted extra-small mb-3 italic">${escapeHtml(tool.description)}</p>` : ''}
-                                    <div class="row g-2">${toolLevelCols || '<div class="col text-muted extra-small fst-italic">Sin indicadores definidos para esta herramienta.</div>'}</div>
-                                </div>
-                            </div>
-                        </div>
-                    `;
-                }).join('')}
-            </div>
-        ` : '';
-
-        const collapseId = `vc-prev-collapse-${rowIdx}-${idx}`;
-        return `
-            <div class="accordion-item shadow-sm mb-2 border rounded overflow-hidden">
-                <h2 class="accordion-header">
-                    <button class="accordion-button ${idx === 0 ? '' : 'collapsed'} py-2 px-3" type="button"
-                        data-bs-toggle="collapse" data-bs-target="#${collapseId}">
-                        <div class="d-flex align-items-center gap-2">
-                            <span class="badge bg-primary px-2" style="font-size: 0.65rem;">${escapeHtml(c.area || 'General')}</span>
-                            <strong class="small">${escapeHtml(c.name)}</strong>
-                        </div>
-                    </button>
-                </h2>
-                <div id="${collapseId}" class="accordion-collapse collapse ${idx === 0 ? 'show' : ''}" data-bs-parent="#${mainAccordionId}">
-                    <div class="accordion-body p-3">
-                        ${c.description ? `<p class="text-muted extra-small mb-3" style="line-height: 1.3;">${escapeHtml(c.description)}</p>` : ''}
-                        <div class="row g-2">
-                            ${compLevelCols}
-                        </div>
-                        ${toolAccordionHtml}
-                    </div>
-                </div>
-            </div>
-        `;
-    }).join('');
-
-    return `<div class="accordion accordion-flush" id="${mainAccordionId}">${items}</div>`;
-}
-
-// Activa/actualiza o desactiva UN proyecto concreto (no afecta a los demás activos).
-window._vcToggleProject = async function (btnEl, isActive) {
-    const card = btnEl.closest('.vc-project-card');
-    if (!card) return;
-    const modId = card.dataset.modId;
-    const projectName = card.dataset.projectName;
-
-    const repoBaseUrl = card.querySelector('.vc-repo-base-input')?.value || '';
-    const briefingUrl = card.querySelector('.vc-briefing-input')?.value || '';
-    const dueDate = card.querySelector('.vc-due-date-input')?.value || null;
-
-    // Derive project type from saved evaluations if exists (fallback: individual)
+function _projRowData(row) {
+    const modId = row.dataset.modId;
+    const projectName = row.dataset.projectName;
     const savedEvaluations = window._evalState.savedEvaluations || [];
-    // FIXED: Search by projectName ONLY to match backend storage of Aula Virtual submissions
+    // El tipo lo manda la evaluación guardada (el portal público lo necesita para
+    // saber si entrega cada persona o cada equipo).
     const existingEval = savedEvaluations.find(e => e.projectName === projectName);
-    const projectType = existingEval ? (existingEval.type || 'individual') : 'individual';
+    return {
+        modId,
+        projectName,
+        projectType: existingEval ? (existingEval.type || 'individual') : 'individual',
+        isActive: !!row.querySelector('.proj-aula-switch')?.checked,
+        briefingUrl: (row.querySelector('.proj-briefing')?.value || '').trim(),
+        dueDate: row.querySelector('.proj-due')?.value || null,
+    };
+}
 
-    const entry = { isActive: !!isActive, moduleId: modId, projectName, projectType, repoBaseUrl, briefingUrl, dueDate };
+/** Guarda el estado de Aula Virtual de una fila (interruptor, fecha o briefing). */
+window._projSaveAula = async function (el) {
+    const row = el.closest('.proj-row');
+    if (!row) return;
+    const d = _projRowData(row);
+
+    const entry = {
+        isActive: d.isActive,
+        moduleId: d.modId,
+        projectName: d.projectName,
+        projectType: d.projectType,
+        repoBaseUrl: window._evalState.repoBaseUrl || window._githubQuickLinkUrl || '',
+        briefingUrl: d.briefingUrl,
+        dueDate: d.dueDate,
+    };
 
     if (!window._evalState.virtualClassrooms) window._evalState.virtualClassrooms = [];
     const idx = window._evalState.virtualClassrooms.findIndex(
-        v => v && String(v.moduleId) === String(modId) && v.projectName === projectName
+        v => v && String(v.moduleId) === String(d.modId) && v.projectName === d.projectName
     );
     if (idx >= 0) window._evalState.virtualClassrooms[idx] = entry;
     else window._evalState.virtualClassrooms.push(entry);
 
-    card.querySelectorAll('button').forEach(b => { b.disabled = true; });
+    row.classList.toggle('is-live', d.isActive);
+    const estado = row.querySelector('.proj-aula-state');
+    if (estado) estado.textContent = d.isActive ? 'Visible para el estudiantado' : 'No visible';
 
-    const ok = await _persistVirtualClassrooms();
-
-    if (ok) {
-        showToast(isActive ? 'Aula Virtual activada/actualizada correctamente' : 'Aula Virtual desactivada para este proyecto', 'success');
-    } else {
-        showToast('Error al guardar la configuración del Aula Virtual', 'danger');
-    }
-    _renderVirtualClassroomList();
+    await _projPersistAula(d.isActive ? `${d.projectName} ya se ve en el Aula Virtual` : `${d.projectName} deja de verse en el Aula Virtual`);
+    _projRefreshAulaCount();
 };
+
+/** La dirección de entrega es una sola: se copia a todos los proyectos. */
+window._projSaveRepoBase = async function (input) {
+    const valor = (input.value || '').trim();
+    window._evalState.repoBaseUrl = valor;
+    (window._evalState.virtualClassrooms || []).forEach(v => { if (v) v.repoBaseUrl = valor; });
+    await _projPersistAula(valor ? 'Dirección de entrega guardada' : 'Dirección de entrega vacía: el estudiantado tendrá que escribir la URL completa');
+};
+
+async function _projPersistAula(mensaje) {
+    const status = document.getElementById('proj-save-status');
+    if (status) status.textContent = 'Guardando…';
+    const ok = await _persistVirtualClassrooms();
+    if (status) status.textContent = ok ? mensaje : 'No se pudo guardar. Revisa la conexión e inténtalo otra vez.';
+    if (!ok) showToast('No se pudo guardar la configuración del Aula Virtual', 'danger');
+    return ok;
+}
+
+function _projRefreshAulaCount() {
+    const chip = document.getElementById('proj-aula-count');
+    if (!chip) return;
+    const n = (window._evalState.virtualClassrooms || []).filter(v => v && v.isActive).length;
+    chip.textContent = n === 0
+        ? 'Ningún proyecto en el Aula Virtual'
+        : `${n} ${n === 1 ? 'proyecto' : 'proyectos'} en el Aula Virtual`;
+    chip.classList.toggle('is-on', n > 0);
+}
 
 async function _persistVirtualClassrooms() {
     // Prepare current enriched competences from _evalState to sync with DB alongside the change —
@@ -13126,6 +12933,16 @@ async function _persistVirtualClassrooms() {
     }
 }
 
+/**
+ * Pinta la pestaña Proyectos: un acordeón por módulo y, dentro, una fila a todo
+ * el ancho por proyecto.
+ *
+ * Cada fila reúne lo que antes estaba repartido entre dos pestañas: los datos y
+ * las acciones de evaluación, y la publicación en el Aula Virtual (interruptor,
+ * fecha de entrega y enlace al briefing). La dirección donde se entregan los
+ * repositorios es la misma para toda la promoción, así que vive una sola vez
+ * arriba y no se repite en cada proyecto.
+ */
 function renderEvaluationTab() {
     const container = document.getElementById('evaluation-content');
     if (!container) return;
@@ -13149,28 +12966,52 @@ function renderEvaluationTab() {
         return;
     }
 
-    // ── Toolbar: Histórico de equipos button ────────────────────────────────
+    const vcList = window._evalState.virtualClassrooms || [];
+    const activos = vcList.filter(v => v && v.isActive).length;
+    const repoBase = window._evalState.repoBaseUrl || window._githubQuickLinkUrl || '';
+    const repoDeGithub = !window._evalState.repoBaseUrl && !!window._githubQuickLinkUrl;
     const grupalCount = savedEvaluations.filter(e => e.type === 'grupal' && e.groups && e.groups.length > 0).length;
-    let html = `<div class="d-flex justify-content-end mb-3 gap-2">
-        <button class="btn btn-outline-info btn-sm" onclick="switchToVirtualClassroom()" title="Ir al Aula Virtual en Contenido del Programa">
-            <i class="bi bi-laptop me-2"></i>Aula Virtual (Activar Proyectos)
-        </button>
-        <button class="btn btn-outline-secondary btn-sm" onclick="openTeamHistoryModal()" title="Ver histórico de equipos entre proyectos grupales">
-            <i class="bi bi-people-fill me-2"></i>Histórico de equipos
-            ${grupalCount > 0 ? `<span class="badge bg-secondary ms-1">${grupalCount} grupal${grupalCount !== 1 ? 'es' : ''}</span>` : ''}
-        </button>
-    </div>`;
+
+    // ── Cabecera: la dirección de entrega (una para toda la promoción) ──────
+    let html = `
+    <div class="proj-toolbar">
+        <div class="proj-repo">
+            <label class="proj-repo-label" for="proj-repo-base">Dónde se entregan los proyectos</label>
+            <input type="url" id="proj-repo-base" class="proj-repo-input"
+                value="${escapeHtml(repoBase)}" placeholder="https://github.com/mi-organizacion/"
+                aria-describedby="proj-repo-hint"
+                onchange="window._projSaveRepoBase(this)">
+            <p class="proj-repo-hint" id="proj-repo-hint">
+                Vale para todos los proyectos: en el Aula Virtual el estudiantado solo escribe el nombre de su repositorio.
+                ${repoDeGithub ? '<span class="proj-tag">Tomada del enlace rápido de GitHub</span>' : ''}
+            </p>
+        </div>
+        <div class="proj-toolbar-side">
+            <span class="proj-count${activos > 0 ? ' is-on' : ''}" id="proj-aula-count">
+                ${activos === 0 ? 'Ningún proyecto en el Aula Virtual' : `${activos} ${activos === 1 ? 'proyecto' : 'proyectos'} en el Aula Virtual`}
+            </span>
+            <button class="btn btn-outline-secondary btn-sm" onclick="openTeamHistoryModal()" title="Ver histórico de equipos entre proyectos grupales">
+                <i class="bi bi-people-fill me-2"></i>Histórico de equipos
+                ${grupalCount > 0 ? `<span class="badge bg-secondary ms-1">${grupalCount} grupal${grupalCount !== 1 ? 'es' : ''}</span>` : ''}
+            </button>
+        </div>
+    </div>
+    <p class="proj-status" id="proj-save-status" role="status" aria-live="polite"></p>`;
 
     html += `<div class="accordion" id="evalAccordion">`;
 
     modules.forEach((mod, mIdx) => {
         if (!mod.projects || mod.projects.length === 0) return;
 
+        const modId = mod.id || String(mIdx);
         const modKey = `eval-mod-${mIdx}`;
         const projectCount = mod.projects.length;
-        const savedForModule = savedEvaluations.filter(e => e.moduleId === (mod.id || String(mIdx)));
+        const savedForModule = savedEvaluations.filter(e => e.moduleId === modId);
         // A project is considered 'evaluated' if it has at least one entry with evaluatedAt
         const evaluatedCount = savedForModule.filter(e => (e.evaluations || []).some(ev => ev.evaluatedAt)).length;
+        const enAula = mod.projects.filter(p => vcList.some(
+            v => v && v.isActive && String(v.moduleId) === String(modId) && v.projectName === p.name
+        )).length;
 
         html += `
         <div class="accordion-item mb-3 border rounded shadow-sm">
@@ -13182,104 +13023,128 @@ function renderEvaluationTab() {
                     ${escapeHtml(mod.name || `Módulo ${mIdx + 1}`)}
                     <span class="badge bg-secondary ms-2">${projectCount} proyecto${projectCount !== 1 ? 's' : ''}</span>
                     ${evaluatedCount > 0 ? `<span class="badge bg-success ms-1">${evaluatedCount} evaluado${evaluatedCount !== 1 ? 's' : ''}</span>` : ''}
+                    ${enAula > 0 ? `<span class="badge bg-primary ms-1"><i class="bi bi-broadcast me-1"></i>${enAula} en el aula</span>` : ''}
                 </button>
             </h2>
             <div id="collapse-${modKey}" class="accordion-collapse collapse"
                 aria-labelledby="heading-${modKey}" data-bs-parent="#evalAccordion">
                 <div class="accordion-body p-3">
-                    <div class="row g-3">`;
+                    <ul class="proj-rows">`;
 
         mod.projects.forEach((proj, pIdx) => {
-            const projKey = _evalProjectKey(mod.id || String(mIdx), proj.name);
             // FIXED: Search by projectName ONLY to match backend storage of Aula Virtual submissions
             const saved = savedEvaluations.find(e => e.projectName === proj.name);
             const projType = saved ? saved.type : 'individual';
-            const compCount = (proj.competenceIds || []).length;
             const evals = saved ? (saved.evaluations || []) : [];
-            const evalCount = evals.filter(e => e.evaluatedAt).length; // Only counts those with a date (graded)
-            const submissionCount = evals.filter(e => e.submissionLink).length; // Counts those with a link
-            //console.log(`[DEBUG] Project "${proj.name}": evalCount=${evalCount}, submissionCount=${submissionCount}`, evals);
-            const hasEval = evalCount > 0;
-            const hasSubmission = submissionCount > 0;
+            const evalCount = evals.filter(e => e.evaluatedAt).length;       // evaluados (con fecha)
+            const submissionCount = evals.filter(e => e.submissionLink).length; // entregados
             const groupCount = (saved && saved.groups) ? saved.groups.length : 0;
-            const totalTargets = projType === 'grupal'
-                ? groupCount
-                : window._evalState.students.length;
+            const totalTargets = projType === 'grupal' ? groupCount : window._evalState.students.length;
 
-            const submissionBadge = hasSubmission
-                ? `<span class="badge bg-info text-dark me-1" title="Proyectos entregados"><i class="bi bi-cloud-arrow-up-fill me-1"></i>${submissionCount}/${totalTargets}</span>`
-                : '';
-            const evalBadge = hasEval
-                ? `<span class="badge bg-success"><i class="bi bi-check-circle me-1"></i>${evalCount}/${totalTargets} evaluado${evalCount !== 1 ? 's' : ''}</span>`
-                : `<span class="badge bg-light text-muted border">Sin evaluar</span>`;
-
-            // Per-project competence count (from projectCompetences, not proj.competenceIds)
+            // Competencias definidas para este proyecto (picker de Evaluación)
             const projCompDef = (window._evalState.projectCompetences || []).find(
-                pc => pc.moduleId === (mod.id || String(mIdx)) && pc.projectName === proj.name
+                pc => pc.moduleId === modId && pc.projectName === proj.name
             );
             const projCompCount = projCompDef ? (projCompDef.competenceIds || []).length : 0;
-            const compBadgeStyle = projCompCount > 0 ? 'background:#E85D26;color:#fff;' : '';
-            const compBadgeClass = projCompCount > 0 ? '' : 'bg-light text-muted border';
+
+            // Aula Virtual de este proyecto
+            const vc = vcList.find(v => v && String(v.moduleId) === String(modId) && v.projectName === proj.name) || {};
+            const isLive = !!vc.isActive;
+            const roadmapUrl = (window._projectUrlMap || {})[`${modId}__${proj.name}`] || '';
+            const briefingUrl = vc.briefingUrl || roadmapUrl || '';
+            const briefingDelRoadmap = !vc.briefingUrl && !!roadmapUrl;
+            const idBase = `proj-${mIdx}-${pIdx}`;
 
             html += `
-            <div class="col-md-6 col-lg-4">
-                <div class="card h-100 ${hasEval ? 'border-success' : ''}">
-                    <div class="card-body d-flex flex-column">
-                        <div class="d-flex align-items-start justify-content-between mb-2">
-                            <h6 class="card-title mb-0 fw-semibold">${escapeHtml(proj.name || 'Proyecto')}</h6>
-                            <div class="d-flex align-items-center">
-                                ${submissionBadge}
-                                ${evalBadge}
-                            </div>
-                        </div>
-                        ${proj.url ? `<a href="${escapeHtml(proj.url)}" target="_blank" class="text-muted small mb-2 text-truncate d-block"><i class="bi bi-link-45deg me-1"></i>${escapeHtml(proj.url)}</a>` : ''}
-                        <div class="d-flex gap-2 flex-wrap mb-2">
-                            <button class="badge border-0 ${compBadgeClass}" style="${compBadgeStyle}cursor:pointer;"
-                                onclick="openEvalProjectCompetencePicker(${mIdx}, ${pIdx})" title="Definir competencias de este proyecto">
-                                <i class="bi bi-award me-1"></i>${projCompCount} competencia${projCompCount !== 1 ? 's' : ''}
-                                <i class="bi bi-pencil-square ms-1 opacity-75" style="font-size:.7rem;"></i>
-                            </button>
-                            <span class="badge ${projType === 'grupal' ? 'bg-info text-dark' : 'bg-warning text-dark'}">
-                                <i class="bi bi-${projType === 'grupal' ? 'people' : 'person'} me-1"></i>${projType}
+            <li class="proj-row${isLive ? ' is-live' : ''}" data-mod-id="${escapeHtml(modId)}" data-project-name="${escapeHtml(proj.name || '')}">
+                <div class="proj-head">
+                    <div class="proj-id">
+                        <h3 class="proj-name">${escapeHtml(proj.name || 'Proyecto')}</h3>
+                        <p class="proj-meta">
+                            <span class="proj-chip is-type">
+                                <i class="bi bi-${projType === 'grupal' ? 'people' : 'person'}" aria-hidden="true"></i>${projType === 'grupal' ? 'Grupal' : 'Individual'}
                             </span>
-                            ${projType === 'grupal' ? `<span class="badge ${groupCount > 0 ? 'bg-primary' : 'bg-light text-muted border'}"><i class="bi bi-diagram-3 me-1"></i>${groupCount} grupo${groupCount !== 1 ? 's' : ''}</span>` : ''}
-                        </div>
-                        <div class="d-flex gap-2 mt-auto flex-wrap align-items-center">
-                            <div class="btn-group btn-group-sm" role="group">
-                                <button type="button" class="btn btn-outline-secondary ${projType === 'individual' ? 'active' : ''}"
-                                    onclick="setEvalProjectType(${mIdx}, ${pIdx}, 'individual')" title="Individual">
-                                    <i class="bi bi-person"></i> Individual
-                                </button>
-                                <button type="button" class="btn btn-outline-secondary ${projType === 'grupal' ? 'active' : ''}"
-                                    onclick="setEvalProjectType(${mIdx}, ${pIdx}, 'grupal')" title="Grupal">
-                                    <i class="bi bi-people"></i> Grupal
-                                </button>
-                            </div>
-                            ${projType === 'grupal' ? `
-                            <button class="btn btn-sm btn-outline-info" onclick="openGroupsModal(${mIdx}, ${pIdx})" title="Definir grupos">
-                                <i class="bi bi-diagram-3 me-1"></i>Grupos
-                            </button>` : ''}
-                            ${projCompCount > 0 ? `
-                            <div class="btn-group btn-group-sm" role="group" title="Descargar rúbrica (competencias, indicadores, niveles y herramientas)">
-                                <button type="button" class="btn btn-outline-secondary" onclick="downloadProjectRubric(${mIdx}, ${pIdx}, 'pdf')" title="Descargar rúbrica en PDF">
-                                    <i class="bi bi-file-earmark-pdf"></i>
-                                </button>
-                                <button type="button" class="btn btn-outline-secondary" onclick="downloadProjectRubric(${mIdx}, ${pIdx}, 'xlsx')" title="Descargar rúbrica en Excel">
-                                    <i class="bi bi-file-earmark-excel"></i>
-                                </button>
-                            </div>` : ''}
-                            <button class="btn btn-sm btn-primary ms-auto" onclick="openEvaluationView(${mIdx}, ${pIdx})"
-                                style="background:#E85D26;border-color:#E85D26;">
-                                <i class="bi bi-clipboard-check me-1"></i>Evaluar
+                            ${projType === 'grupal' ? `<span class="proj-chip${groupCount > 0 ? '' : ' is-empty'}"><i class="bi bi-diagram-3" aria-hidden="true"></i>${groupCount} ${groupCount === 1 ? 'grupo' : 'grupos'}</span>` : ''}
+                            <span class="proj-chip${submissionCount > 0 ? ' is-info' : ' is-empty'}">
+                                <i class="bi bi-cloud-arrow-up" aria-hidden="true"></i>${submissionCount}/${totalTargets} ${submissionCount === 1 ? 'entrega' : 'entregas'}
+                            </span>
+                            <span class="proj-chip${evalCount > 0 ? ' is-ok' : ' is-empty'}">
+                                <i class="bi bi-${evalCount > 0 ? 'check-circle' : 'circle'}" aria-hidden="true"></i>${evalCount > 0 ? `${evalCount}/${totalTargets} evaluados` : 'Sin evaluar'}
+                            </span>
+                        </p>
+                    </div>
+
+                    <div class="proj-actions">
+                        <div class="btn-group btn-group-sm" role="group" aria-label="Tipo de proyecto">
+                            <button type="button" class="btn btn-outline-secondary ${projType === 'individual' ? 'active' : ''}"
+                                aria-pressed="${projType === 'individual'}"
+                                onclick="setEvalProjectType(${mIdx}, ${pIdx}, 'individual')">
+                                <i class="bi bi-person" aria-hidden="true"></i> Individual
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary ${projType === 'grupal' ? 'active' : ''}"
+                                aria-pressed="${projType === 'grupal'}"
+                                onclick="setEvalProjectType(${mIdx}, ${pIdx}, 'grupal')">
+                                <i class="bi bi-people" aria-hidden="true"></i> Grupal
                             </button>
                         </div>
+                        ${projType === 'grupal' ? `
+                        <button class="btn btn-sm btn-outline-secondary" onclick="openGroupsModal(${mIdx}, ${pIdx})">
+                            <i class="bi bi-diagram-3 me-1" aria-hidden="true"></i>Grupos
+                        </button>` : ''}
+                        <button class="btn btn-sm btn-outline-secondary" onclick="openEvalProjectCompetencePicker(${mIdx}, ${pIdx})"
+                            title="Definir las competencias que se evalúan en este proyecto">
+                            <i class="bi bi-award me-1" aria-hidden="true"></i>${projCompCount} ${projCompCount === 1 ? 'competencia' : 'competencias'}
+                        </button>
+                        ${projCompCount > 0 ? `
+                        <div class="btn-group btn-group-sm" role="group" aria-label="Descargar la rúbrica de ${escapeHtml(proj.name || '')}">
+                            <button type="button" class="btn btn-outline-secondary" onclick="downloadProjectRubric(${mIdx}, ${pIdx}, 'pdf')" title="Descargar la rúbrica en PDF">
+                                <i class="bi bi-file-earmark-pdf" aria-hidden="true"></i><span class="visually-hidden-label">Rúbrica en PDF</span>
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary" onclick="downloadProjectRubric(${mIdx}, ${pIdx}, 'xlsx')" title="Descargar la rúbrica en Excel">
+                                <i class="bi bi-file-earmark-excel" aria-hidden="true"></i><span class="visually-hidden-label">Rúbrica en Excel</span>
+                            </button>
+                        </div>` : ''}
+                        <button class="btn btn-sm btn-primary proj-evaluate" onclick="openEvaluationView(${mIdx}, ${pIdx})">
+                            <i class="bi bi-clipboard-check me-1" aria-hidden="true"></i>Evaluar
+                        </button>
                     </div>
                 </div>
-            </div>`;
+
+                <div class="proj-aula">
+                    <label class="proj-switch" for="${idBase}-live">
+                        <input type="checkbox" id="${idBase}-live" class="proj-aula-switch"
+                            ${isLive ? 'checked' : ''} onchange="window._projSaveAula(this)">
+                        <span class="proj-switch-track" aria-hidden="true"><span class="proj-switch-knob"></span></span>
+                        <span class="proj-switch-text">
+                            En el Aula Virtual
+                            <span class="proj-aula-state">${isLive ? 'Visible para el estudiantado' : 'No visible'}</span>
+                        </span>
+                    </label>
+
+                    <div class="proj-field">
+                        <label for="${idBase}-due">Fecha de entrega</label>
+                        <input type="date" id="${idBase}-due" class="proj-due" value="${escapeHtml(vc.dueDate || '')}"
+                            onchange="window._projSaveAula(this)">
+                    </div>
+
+                    <div class="proj-field proj-field-grow">
+                        <label for="${idBase}-brief">Enlace al briefing</label>
+                        <input type="url" id="${idBase}-brief" class="proj-briefing" value="${escapeHtml(briefingUrl)}"
+                            placeholder="https://…" onchange="window._projSaveAula(this)">
+                        ${briefingDelRoadmap ? '<span class="proj-tag">Tomado del roadmap</span>' : ''}
+                    </div>
+
+                    ${isLive && projCompCount === 0 ? `
+                    <p class="proj-warn">
+                        <i class="bi bi-exclamation-triangle" aria-hidden="true"></i>
+                        Está visible sin competencias definidas: el estudiantado no verá la rúbrica.
+                    </p>` : ''}
+                </div>
+            </li>`;
         });
 
         html += `
-                    </div>
+                    </ul>
                 </div>
             </div>
         </div>`;

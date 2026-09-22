@@ -3612,9 +3612,13 @@ html {
 }
 
 @media (max-width: 767.98px) {
+    /* En escritorio la cabecera se sale del contenedor para que su línea inferior
+       llegue de lado a lado. En el móvil el margen negativo era mayor que el hueco
+       disponible y empujaba la página entera hacia los lados: aquí se alinea con
+       el contenido y ya está. */
     .promo-head {
-        margin-inline: calc(var(--app-space-3) * -1);
-        padding-inline: var(--app-space-3);
+        margin-inline: 0;
+        padding-inline: 0;
     }
 
     .promo-head-actions {
@@ -4321,4 +4325,329 @@ body {
 
 #main-content {
     background-color: var(--app-color-bg-page);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Proyectos — filas a todo el ancho con el Aula Virtual dentro
+   Antes cada proyecto era una tarjeta de una rejilla de tres columnas, y
+   publicarlo en el Aula Virtual vivía en otra pestaña con su propia lista. Ahora
+   cada proyecto es una franja: a la izquierda quién es y cómo va, a la derecha
+   lo que se puede hacer con él, y debajo su publicación (interruptor, fecha de
+   entrega y briefing). La dirección donde se entregan los repositorios es la
+   misma para toda la promoción, así que está una sola vez en la cabecera.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* La cabecera de cada módulo lleva nombre y varias pastillas: en pantallas
+   estrechas tienen que poder pasar a la línea siguiente en vez de salirse. */
+#evalAccordion .accordion-button {
+    flex-wrap: wrap;
+    gap: var(--app-space-1);
+    white-space: normal;
+}
+
+.proj-toolbar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--app-space-4);
+    margin-bottom: var(--app-space-3);
+    padding: var(--app-space-4);
+    background: var(--app-color-bg-surface);
+    border: 1px solid var(--app-color-border);
+    border-radius: var(--app-radius-lg);
+}
+
+.proj-repo {
+    display: flex;
+    flex-direction: column;
+    gap: var(--app-space-1);
+    flex: 1 1 24rem;
+    min-width: 0;
+}
+
+.proj-repo-label {
+    margin: 0;
+    font-size: var(--app-font-size-sm);
+    font-weight: var(--app-font-weight-semi);
+    color: var(--app-color-text);
+}
+
+.proj-repo-input {
+    width: 100%;
+    min-height: 44px;
+    padding: var(--app-space-2) var(--app-space-3);
+    border: 1px solid var(--app-color-neutral-300);
+    border-radius: var(--app-radius-md);
+    background: var(--app-color-bg-surface);
+    color: var(--app-color-text);
+    font-size: var(--app-font-size-sm);
+}
+
+.proj-repo-hint {
+    margin: 0;
+    font-size: var(--app-font-size-xs);
+    color: var(--app-color-text-muted);
+}
+
+.proj-toolbar-side {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--app-space-2);
+}
+
+/* Cuántos proyectos ve ahora mismo el estudiantado. */
+.proj-count {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--app-space-1);
+    padding: var(--app-space-1) var(--app-space-3);
+    border: 1px solid var(--app-color-border);
+    border-radius: var(--app-radius-pill);
+    background: var(--app-color-neutral-50);
+    color: var(--app-color-text-muted);
+    font-size: var(--app-font-size-xs);
+    font-weight: var(--app-font-weight-medium);
+}
+
+.proj-count.is-on {
+    border-color: var(--app-color-brand-300);
+    background: var(--app-color-brand-50);
+    color: var(--app-color-brand-900);
+}
+
+.proj-status {
+    min-height: 1.25rem;
+    margin: 0 0 var(--app-space-3);
+    font-size: var(--app-font-size-xs);
+    color: var(--app-color-text-muted);
+}
+
+/* ── La lista de proyectos de un módulo ──────────────────────────────────── */
+.proj-rows {
+    display: flex;
+    flex-direction: column;
+    gap: var(--app-space-3);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.proj-row {
+    display: flex;
+    flex-direction: column;
+    gap: var(--app-space-3);
+    padding: var(--app-space-3) var(--app-space-4);
+    border: 1px solid var(--app-color-border);
+    border-left: 4px solid var(--app-color-neutral-300);
+    border-radius: var(--app-radius-lg);
+    background: var(--app-color-bg-surface);
+}
+
+/* Publicado: la franja de la izquierda es lo único que cambia de color, para
+   que se lea de un vistazo cuáles ve el estudiantado. */
+.proj-row.is-live {
+    border-left-color: var(--app-color-brand-500);
+}
+
+.proj-head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--app-space-3);
+}
+
+.proj-id {
+    min-width: 0;
+    flex: 1 1 16rem;
+}
+
+.proj-name {
+    margin: 0 0 var(--app-space-1);
+    font-size: var(--app-font-size-md);
+    font-weight: var(--app-font-weight-semi);
+    color: var(--app-color-text);
+    overflow-wrap: anywhere;
+}
+
+.proj-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--app-space-2);
+    margin: 0;
+}
+
+/* Estado del proyecto: siempre icono + palabra, nunca solo color. */
+.proj-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--app-space-1);
+    padding: 2px var(--app-space-2);
+    border: 1px solid var(--app-color-border);
+    border-radius: var(--app-radius-pill);
+    background: var(--app-color-neutral-50);
+    color: var(--app-color-neutral-700);
+    font-size: var(--app-font-size-xs);
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+.proj-chip.is-empty { color: var(--app-color-text-muted); }
+.proj-chip.is-ok    { border-color: #a7d7bd; background: #e8f5ee; color: #0f5132; }
+.proj-chip.is-info  { border-color: #b6d4fe; background: #eef5ff; color: #084298; }
+.proj-chip.is-type  { border-color: var(--app-color-neutral-300); }
+
+.proj-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--app-space-2);
+}
+
+.proj-actions .btn { white-space: nowrap; }
+
+.proj-evaluate {
+    background: var(--app-color-brand-700);
+    border-color: var(--app-color-brand-700);
+}
+
+/* ── Publicación en el Aula Virtual ──────────────────────────────────────── */
+.proj-aula {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    gap: var(--app-space-3) var(--app-space-4);
+    padding-top: var(--app-space-3);
+    border-top: 1px dashed var(--app-color-border);
+}
+
+.proj-field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--app-space-1);
+    min-width: 0;
+}
+
+.proj-field-grow { flex: 1 1 18rem; }
+
+.proj-field label {
+    margin: 0;
+    font-size: var(--app-font-size-xs);
+    font-weight: var(--app-font-weight-semi);
+    color: var(--app-color-text-muted);
+}
+
+.proj-field input {
+    min-height: 44px;
+    padding: var(--app-space-2) var(--app-space-3);
+    border: 1px solid var(--app-color-neutral-300);
+    border-radius: var(--app-radius-md);
+    background: var(--app-color-bg-surface);
+    color: var(--app-color-text);
+    font-size: var(--app-font-size-sm);
+}
+
+.proj-repo-input:focus-visible,
+.proj-field input:focus-visible {
+    outline: none;
+    border-color: var(--app-color-brand-700);
+    box-shadow: 0 0 0 3px var(--app-color-brand-50);
+}
+
+/* De dónde salió un valor que nadie ha escrito a mano. */
+.proj-tag {
+    display: inline-block;
+    margin-top: 2px;
+    font-size: var(--app-font-size-xs);
+    color: var(--app-color-text-muted);
+}
+
+.proj-warn {
+    flex: 1 1 100%;
+    display: flex;
+    align-items: center;
+    gap: var(--app-space-2);
+    margin: 0;
+    font-size: var(--app-font-size-xs);
+    color: #8a5300;
+}
+
+/* Interruptor: es un checkbox de verdad, así que el teclado y los lectores de
+   pantalla lo entienden; lo que se pinta es la pista y el botón. */
+.proj-switch {
+    display: flex;
+    align-items: center;
+    gap: var(--app-space-2);
+    min-height: 44px;
+    margin: 0;
+    cursor: pointer;
+}
+
+.proj-switch input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+}
+
+.proj-switch-track {
+    position: relative;
+    flex: 0 0 auto;
+    width: 42px;
+    height: 24px;
+    border-radius: var(--app-radius-pill);
+    background: var(--app-color-neutral-300);
+    transition: background 0.15s ease;
+}
+
+.proj-switch-knob {
+    position: absolute;
+    top: 3px;
+    left: 3px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: var(--app-color-neutral-0);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+    transition: transform 0.15s ease;
+}
+
+.proj-switch input:checked + .proj-switch-track {
+    background: var(--app-color-brand-700);
+}
+
+.proj-switch input:checked + .proj-switch-track .proj-switch-knob {
+    transform: translateX(18px);
+}
+
+.proj-switch input:focus-visible + .proj-switch-track {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--app-color-bg-surface), 0 0 0 4px var(--app-color-brand-700);
+}
+
+.proj-switch-text {
+    display: flex;
+    flex-direction: column;
+    font-size: var(--app-font-size-sm);
+    font-weight: var(--app-font-weight-semi);
+    color: var(--app-color-text);
+    line-height: var(--app-line-height-tight);
+}
+
+.proj-aula-state {
+    font-size: var(--app-font-size-xs);
+    font-weight: var(--app-font-weight-regular);
+    color: var(--app-color-text-muted);
+}
+
+@media (max-width: 767.98px) {
+    .proj-head { flex-direction: column; }
+    /* En columna, el flex-grow de la cabecera estiraba el bloque del nombre y
+       dejaba un hueco enorme antes de los botones. */
+    .proj-id { flex: 0 0 auto; }
+    .proj-actions { width: 100%; }
+    .proj-evaluate { margin-left: auto; }
+    .proj-field-grow { flex-basis: 100%; }
 }

@@ -372,10 +372,6 @@ const promotionDetailBody = `
                             aria-selected="false" data-group="team" style="display:none" onclick="switchProgramDetailsTab('team')">
                             <i class="bi bi-people me-2"></i>Equipo
                         </button>
-                        <button class="nav-link" id="program-details-virtual-classroom-tab" type="button" role="tab"
-                            aria-selected="false" data-group="team" style="display:none" onclick="switchProgramDetailsTab('virtual-classroom')">
-                            <i class="bi bi-laptop me-2"></i>Aula Virtual
-                        </button>
                     </nav>
 
                     <!-- Tab Content -->
@@ -473,18 +469,6 @@ const promotionDetailBody = `
                                  por portal (toolbar + editor contenteditable #evaluation-text). Conserva
                                  el id legacy evaluation-text (saveExtendedInfo lo lee). El HTML inicial
                                  lo expone el orquestador en window.__evaluationHtml + __refreshEvaluation. -->
-                        </div>
-
-                        <!-- Virtual Classroom Tab -->
-                        <div class="tab-pane fade" id="program-details-virtual-classroom" role="tabpanel"
-                            aria-labelledby="program-details-virtual-classroom-tab">
-                            <!-- spec 0014 Fase C: contenido portado a React. El componente
-                                 VirtualClassroomPanelHost (_components/VirtualClassroomPanel.tsx) monta
-                                 aquí por portal el panel #virtual-classroom-panel conservando todos los
-                                 ids legacy (vc-*). La lógica sigue en el orquestador:
-                                 initVirtualClassroomPanel (lo llama switchProgramDetailsTab/loadEvaluation)
-                                 puebla/lee por id; los controles llaman a window.onVirtualClassroomProjectChange/
-                                 saveVirtualClassroom/deactivateVirtualClassroom. -->
                         </div>
 
                         <div class="tab-pane fade" id="program-details-quicklinks" role="tabpanel"

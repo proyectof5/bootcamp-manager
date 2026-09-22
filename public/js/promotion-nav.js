@@ -37,9 +37,10 @@
         },
         {
             id: 'proyectos', label: 'Proyectos', icon: 'bi-folder2-open',
+            // El Aula Virtual ya no es una pestaña: cada proyecto se publica desde
+            // su propia fila en "Proyectos", con su fecha de entrega y su briefing.
             tabs: [
                 { id: 'lista', label: 'Proyectos', go: teacherTab('evaluation') },
-                { id: 'aula', label: 'Aula Virtual', go: programTab('virtual-classroom') },
                 { id: 'competencias', label: 'Competencias y criterios', go: programTab('evaluation') },
             ],
         },

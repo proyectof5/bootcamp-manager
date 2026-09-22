@@ -15,7 +15,6 @@ import { TeamManagerHost } from './_components/TeamManager';
 import { ResourcesManagerHost } from './_components/ResourcesManager';
 import { PromoResourcesManagerHost } from './_components/PromoResourcesManager';
 import { EvaluationCriteriaHost } from './_components/EvaluationCriteria';
-import { VirtualClassroomPanelHost } from './_components/VirtualClassroomPanel';
 import { RoadmapPanelHost } from './_components/RoadmapPanel';
 import { RoadmapDetailDrawerHost } from './_components/RoadmapDetailDrawer';
 import { PildorasPanelHost } from './_components/PildorasPanel';
@@ -410,10 +409,10 @@ export default function PromotionPage() {
             <DropdownMenuTrigger asChild>
               <Button
                 variant="ghost"
-                className="bg-transparent text-white border border-white/30 hover:bg-white hover:text-crok hover:border-white gap-2"
+                className="bg-transparent text-white border border-white/30 hover:bg-white hover:text-crok hover:border-white gap-2 min-w-0 max-w-[45vw] md:max-w-none"
               >
-                <CircleUser className="h-4 w-4" />
-                <span id="teacher-name">{teacherName}</span>
+                <CircleUser className="h-4 w-4 shrink-0" />
+                <span id="teacher-name" className="truncate">{teacherName}</span>
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
@@ -543,11 +542,6 @@ export default function PromotionPage() {
           inicial lo expone el orquestador en window.__evaluationHtml/__refreshEvaluation; las
           acciones (insertEvalLink/insertEvalImage/saveEvaluationFeedback) siguen legacy. */}
       <EvaluationCriteriaHost />
-      {/* Sub-tab "Aula Virtual" de Contenido del Programa (spec 0014 Fase C): React vía portal a
-          #program-details-virtual-classroom. Renderiza el panel #virtual-classroom-panel con los ids
-          legacy vc-*; la lógica (initVirtualClassroomPanel/saveVirtualClassroom/…) sigue en el
-          orquestador y los pobla/lee por id. */}
-      <VirtualClassroomPanelHost />
       {/* Sub-tab "Roadmap" de Contenido del Programa (spec 0014 Fase C): React vía portal a
           #program-details-roadmap. Renderiza cabecera + #modules-list + #gantt-table con ids legacy;
           la lógica (loadModules/generateGanttChart) sigue en el orquestador y los pobla por id. */}
