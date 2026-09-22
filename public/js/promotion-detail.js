@@ -3657,14 +3657,20 @@ function initGanttInstance() {
     // dan el mismo aspecto de calendario que ya se usa en la Lista de
     // Asistencia (clases .attendance-weekend/.attendance-holiday, mismo gris).
     gantt.templates.scale_cell_class = function (date) {
-        return (_ganttZoomLevel === 'day' && _ganttIsNonWorkingDay(date)) ? 'gantt-nonworking-cell' : '';
+        return _ganttCalendarCellClass(date);
     };
     gantt.templates.task_cell_class = function (task, date) {
-        return (_ganttZoomLevel === 'day' && _ganttIsNonWorkingDay(date)) ? 'gantt-nonworking-cell' : '';
+        return _ganttCalendarCellClass(date);
     };
 
+    // DHTMLX no trae traducción en este build: sin esto los meses de los
+    // tooltips y del lightbox salen en inglés.
+    try { gantt.i18n && gantt.i18n.setLocale && gantt.i18n.setLocale('es'); } catch (e) { /* sin locale es */ }
+
     gantt.init('gantt-container');
-    setGanttZoomLevel('week');
+    let _vistaGuardada = null;
+    try { _vistaGuardada = sessionStorage.getItem(_GANTT_VIEW_KEY); } catch (e) { /* modo privado */ }
+    setGanttView(_GANTT_VIEWS.includes(_vistaGuardada) ? _vistaGuardada : 'all');
     setupGanttWheelZoom();
     setupGanttHolidayTooltip();
 
@@ -3724,53 +3730,203 @@ function _renderTodayMarker() {
     dataArea.appendChild(marker);
 }
 
-/**
- * Centra la línea de tiempo del Gantt en la fecha de hoy (botón "Hoy" de la
- * barra compacta del rediseño a pantalla completa, ver RoadmapPanel.tsx).
- */
-function ganttScrollToToday() {
-    if (typeof gantt === 'undefined' || !_ganttInitialized) return;
-    try { gantt.showDate(new Date()); } catch (e) { /* rango sin cubrir hoy — no bloquea */ }
-}
-window.ganttScrollToToday = ganttScrollToToday;
+/* ═══════════════════════════════════════════════════════════════════════════
+   Vistas del roadmap: Día, Semana, Mes y Todo el bootcamp.
 
-/**
- * Cambia la escala de tiempo visible del Gantt (día/semana/mes).
- * Implementación propia y ligera (sin depender de la extensión ext/zoom
- * de DHTMLX) para no añadir otro recurso CDN.
- * @param {'day'|'week'|'month'} level
- */
-function setGanttZoomLevel(level) {
-    const scaleConfigs = {
-        day: {
-            scales: [{ unit: 'day', step: 1, format: '%d %M' }],
-            min_column_width: 40
-        },
-        week: {
-            scales: [
-                { unit: 'month', step: 1, format: '%F %Y' },
-                { unit: 'day', step: 7, format: _ganttWeekLabel }
-            ],
-            min_column_width: 60
-        },
-        month: {
-            scales: [{ unit: 'month', step: 1, format: '%F %Y' }],
-            min_column_width: 100
-        }
+   Antes, Día/Semana/Mes solo cambiaban el zoom del eje de tiempo: siempre se
+   veía el roadmap entero y había que buscar con scroll horizontal. Ahora cada
+   vista ACOTA la línea de tiempo a un periodo —ese día, esa semana, ese mes— y
+   las flechas saltan al anterior o al siguiente, como en un calendario.
+   "Todo el bootcamp" conserva el comportamiento de siempre.
+
+   Los formatos de la cabecera se escriben con toLocaleDateString('es-ES') en
+   vez de los `%F`/`%l` de DHTMLX porque su build no trae la traducción y salían
+   los meses en inglés ("November", "December 2025").
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+const _GANTT_VIEWS = ['day', 'week', 'month', 'all'];
+const _GANTT_VIEW_KEY = 'roadmapGanttView';
+let _ganttView = 'all';
+let _ganttAnchor = new Date();
+let _ganttFullRange = null;   // lo rellena generateGanttChart con el rango real
+
+const _startOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+const _addDays = (d, n) => new Date(d.getFullYear(), d.getMonth(), d.getDate() + n);
+const _sameDay = (a, b) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+
+/** Lunes de la semana de `d`: aquí la semana empieza en lunes, no en domingo. */
+function _startOfWeek(d) {
+    const dow = d.getDay();                       // 0 domingo … 6 sábado
+    return _addDays(_startOfDay(d), dow === 0 ? -6 : 1 - dow);
+}
+
+/** Qué trozo de la línea de tiempo enseña cada vista. `null` = no hay datos aún. */
+function _ganttPeriodRange(view, anchor) {
+    if (view === 'day') return { start: _startOfDay(anchor), end: _addDays(anchor, 1) };
+    if (view === 'week') { const s = _startOfWeek(anchor); return { start: s, end: _addDays(s, 7) }; }
+    if (view === 'month') return {
+        start: new Date(anchor.getFullYear(), anchor.getMonth(), 1),
+        end: new Date(anchor.getFullYear(), anchor.getMonth() + 1, 1),
     };
-    const config = scaleConfigs[level] || scaleConfigs.week;
-    _ganttZoomLevel = scaleConfigs[level] ? level : 'week';
-
-    if (typeof gantt === 'undefined' || !_ganttInitialized) return;
-
-    gantt.config.scales = config.scales;
-    gantt.config.min_column_width = config.min_column_width;
-    gantt.render();
-
-    document.querySelectorAll('.gantt-zoom-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.zoomLevel === _ganttZoomLevel);
-    });
+    return _ganttFullRange ? { start: _ganttFullRange.start, end: _ganttFullRange.end } : null;
 }
+
+const _es = (d, opts) => d.toLocaleDateString('es-ES', opts);
+
+/** El título de la barra: dice siempre qué periodo se está mirando. */
+function _ganttPeriodLabel(view, anchor) {
+    if (view === 'day') return _es(anchor, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+    if (view === 'week') {
+        const ini = _startOfWeek(anchor);
+        const fin = _addDays(ini, 6);
+        const desde = ini.getMonth() === fin.getMonth()
+            ? String(ini.getDate())
+            : _es(ini, { day: 'numeric', month: 'short' });
+        return `${desde} – ${_es(fin, { day: 'numeric', month: 'long', year: 'numeric' })}`;
+    }
+    if (view === 'month') return _es(anchor, { month: 'long', year: 'numeric' });
+    if (!_ganttFullRange) return 'Todo el bootcamp';
+    return `${_es(_ganttFullRange.start, { day: 'numeric', month: 'short', year: 'numeric' })} – ${_es(_addDays(_ganttFullRange.end, -1), { day: 'numeric', month: 'short', year: 'numeric' })}`;
+}
+
+/** Cabecera de una columna de día en la vista Semana: "LUN 21". */
+function _ganttDayHeader(date) {
+    const dia = _es(date, { weekday: 'short' }).replace('.', '').toUpperCase();
+    return `${dia} ${date.getDate()}`;
+}
+
+const _GANTT_SCALES = {
+    day: {
+        scales: [{ unit: 'day', step: 1, format: (d) => _es(d, { weekday: 'long', day: 'numeric', month: 'long' }) }],
+        min_column_width: 320,
+    },
+    week: {
+        scales: [{ unit: 'day', step: 1, format: _ganttDayHeader }],
+        min_column_width: 96,
+    },
+    month: {
+        scales: [
+            { unit: 'week', format: _ganttWeekLabel },
+            { unit: 'day', step: 1, format: (d) => String(d.getDate()) },
+        ],
+        min_column_width: 34,
+    },
+    all: {
+        scales: [
+            { unit: 'month', step: 1, format: (d) => _es(d, { month: 'long', year: 'numeric' }) },
+            { unit: 'day', step: 7, format: _ganttWeekLabel },
+        ],
+        min_column_width: 60,
+    },
+};
+
+/** Las vistas acotadas pintan una columna por día; "Todo" no. */
+const _ganttHasDayColumns = () => _ganttView !== 'all';
+
+/**
+ * Clase de cada celda del calendario: gris los días no lectivos (fines de
+ * semana y festivos) y marca del día de hoy. Con una columna por día esto es
+ * lo que hace que el Gantt se lea como un calendario.
+ */
+function _ganttCalendarCellClass(date) {
+    if (!_ganttHasDayColumns()) return '';
+    const cls = [];
+    if (_ganttIsNonWorkingDay(date)) cls.push('gantt-nonworking-cell');
+    if (_sameDay(date, new Date())) cls.push('gantt-today-cell');
+    return cls.join(' ');
+}
+
+/**
+ * ¿No hay nada del roadmap en el periodo que se está mirando? Al acotar la
+ * vista, un Gantt vacío parece roto: la barra lo dice con palabras.
+ */
+function _ganttPeriodIsEmpty() {
+    if (_ganttView === 'all') return false;
+    const rango = _ganttPeriodRange(_ganttView, _ganttAnchor);
+    if (!rango || typeof gantt === 'undefined' || !_ganttInitialized) return false;
+    let hay = false;
+    try {
+        gantt.eachTask(function (t) {
+            if (hay || !t.start_date || !t.end_date) return;
+            if (t.start_date < rango.end && t.end_date > rango.start) hay = true;
+        });
+    } catch (e) {
+        return false;   // sin datos todavía: no afirmamos que esté vacío
+    }
+    return !hay;
+}
+
+/** Avisa a la barra de herramientas (RoadmapPanel.tsx) de dónde estamos. */
+function emitGanttPeriod() {
+    window.dispatchEvent(new CustomEvent('gantt-period-changed', {
+        detail: {
+            view: _ganttView,
+            label: _ganttPeriodLabel(_ganttView, _ganttAnchor),
+            canStep: _ganttView !== 'all',
+            isEmpty: _ganttPeriodIsEmpty(),
+        },
+    }));
+}
+window.emitGanttPeriod = emitGanttPeriod;
+
+function _applyGanttView() {
+    if (typeof gantt === 'undefined' || !_ganttInitialized) { emitGanttPeriod(); return; }
+    const cfg = _GANTT_SCALES[_ganttView] || _GANTT_SCALES.all;
+    gantt.config.scales = cfg.scales;
+    gantt.config.min_column_width = cfg.min_column_width;
+    const rango = _ganttPeriodRange(_ganttView, _ganttAnchor);
+    if (rango) {
+        gantt.config.start_date = rango.start;
+        gantt.config.end_date = rango.end;
+    }
+    gantt.render();
+    emitGanttPeriod();
+}
+
+/**
+ * Cambia la vista del roadmap.
+ * @param {'day'|'week'|'month'|'all'} view
+ * @param {Date} [anchor] - fecha dentro del periodo que se quiere ver
+ */
+function setGanttView(view, anchor) {
+    _ganttView = _GANTT_VIEWS.includes(view) ? view : 'all';
+    if (anchor instanceof Date && !isNaN(anchor.getTime())) _ganttAnchor = anchor;
+    // El nivel que leen la exportación a Excel y el sombreado de días no lectivos.
+    _ganttZoomLevel = _ganttView === 'all' ? 'week' : _ganttView;
+    try { sessionStorage.setItem(_GANTT_VIEW_KEY, _ganttView); } catch (e) { /* modo privado */ }
+    _applyGanttView();
+}
+window.setGanttView = setGanttView;
+
+/** Compatibilidad: el zoom con Ctrl+rueda y el código antiguo siguen llamando aquí. */
+function setGanttZoomLevel(level) { setGanttView(level); }
+window.setGanttZoomLevel = setGanttZoomLevel;
+
+/** Periodo anterior (-1) o siguiente (+1). En "Todo el bootcamp" no hace nada. */
+function ganttStepPeriod(dir) {
+    if (_ganttView === 'all') return;
+    const n = dir < 0 ? -1 : 1;
+    if (_ganttView === 'day') _ganttAnchor = _addDays(_ganttAnchor, n);
+    else if (_ganttView === 'week') _ganttAnchor = _addDays(_ganttAnchor, 7 * n);
+    else _ganttAnchor = new Date(_ganttAnchor.getFullYear(), _ganttAnchor.getMonth() + n, 1);
+    _applyGanttView();
+}
+window.ganttStepPeriod = ganttStepPeriod;
+
+/** "Hoy": vuelve al periodo de hoy; en "Todo el bootcamp" centra la fecha. */
+function ganttGoToToday() {
+    _ganttAnchor = new Date();
+    if (_ganttView === 'all') {
+        if (typeof gantt !== 'undefined' && _ganttInitialized) {
+            try { gantt.showDate(new Date()); } catch (e) { /* rango sin cubrir hoy */ }
+        }
+        emitGanttPeriod();
+        return;
+    }
+    _applyGanttView();
+}
+window.ganttGoToToday = ganttGoToToday;
+window.ganttScrollToToday = ganttGoToToday;   // nombre anterior del botón "Hoy"
 
 // Orden de zoom, de más lejos a más cerca. Ctrl/⌘ + rueda del ratón (o pellizco
 // en trackpad, que el navegador entrega como wheel+ctrlKey) recorre esta lista.
@@ -5854,8 +6010,18 @@ function generateGanttChart(promotion) {
     });
     // Una semana extra de margen al final para que la última tarea no quede
     // pegada al borde derecho (mismo margen que DHTMLX ya daba por defecto).
-    gantt.config.start_date = rangeStart;
-    gantt.config.end_date = new Date(rangeEnd.getTime() + 7 * 86400000);
+    // Rango completo del bootcamp: es lo que enseña la vista "Todo el bootcamp"
+    // y el punto de partida de las acotadas cuando hoy cae fuera de la promoción.
+    _ganttFullRange = { start: rangeStart, end: new Date(rangeEnd.getTime() + 7 * 86400000) };
+    const _hoy = new Date();
+    if (_hoy < _ganttFullRange.start || _hoy >= _ganttFullRange.end) _ganttAnchor = new Date(rangeStart);
+
+    // El rango se fija YA al del periodo activo, antes del clearAll/parse de
+    // abajo: dejar el rango completo con la escala de la vista Día (una columna
+    // de 320 px por día) pedía 250 columnas y DHTMLX se caía al renderizar.
+    const _rangoActivo = _ganttPeriodRange(_ganttView, _ganttAnchor) || _ganttFullRange;
+    gantt.config.start_date = _rangoActivo.start;
+    gantt.config.end_date = _rangoActivo.end;
 
     // El guard evita que los onTaskClosed/onTaskOpened disparados por
     // clearAll()+parse()+close() re-escriban sessionStorage mientras somos
@@ -5891,6 +6057,10 @@ function generateGanttChart(promotion) {
             );
         } catch (e) { /* el rango de fechas pudo cambiar — no bloquea el render */ }
     }
+
+    // El rango ya se fijó arriba; aquí solo se refresca la barra (el título y el
+    // aviso de "periodo vacío" dependen de los datos recién cargados).
+    emitGanttPeriod();
 }
 
 /**

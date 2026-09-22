@@ -19,6 +19,7 @@ Leyenda: ✅ spec completo · 🟡 spec con pendientes · ⬜ sin spec todavía.
 |---|---|---|
 | Roadmap y Gantt (fechas, módulos, cursos/proyectos/lecciones, tiempo flexible) | 🟡 [roadmap-por-fechas.md](roadmap-por-fechas.md) | `RoadmapPanel.tsx`, `public/js/gantt-adapter.js`, `public/js/promotion-detail.js` |
 | Gantt a pantalla completa + panel lateral (estilo Asana) | 🟡 [gantt-pantalla-completa-drawer.md](gantt-pantalla-completa-drawer.md) | `RoadmapPanel.tsx`, `RoadmapDetailDrawer.tsx`, `promotion-detail.js` (`persistRoadmapItemEdit`/`onTaskClick`), `promotion-detail.css` |
+| Barra y vistas del roadmap al estilo de un calendario (Hoy/flechas/periodo, Día-Semana-Mes acotados, menú «Más») | 🟡 [roadmap-vistas-calendario.md](roadmap-vistas-calendario.md) | `promotion-detail.js` (`setGanttView`, `ganttStepPeriod`, `emitGanttPeriod`), `RoadmapPanel.tsx`, `promotion-detail.css` |
 | Horas lectivas (total formación, por módulo/proyecto, jornada por promoción) | 🟡 [horas-lectivas.md](horas-lectivas.md) | `public/js/gantt-adapter.js`, `app/promotion/page.tsx`, `Promotion.js` (backend) |
 | Horas objetivo por módulo (recolocar fechas al cambiar festivos o tiempo flexible) | 🟡 [horas-objetivo-modulo.md](horas-objetivo-modulo.md) | `gantt-adapter.js` (`reflowModulesToTargetHours`), `promotion-detail.js` (`reflowRoadmapToTargetHours`), `HoursPanel.tsx` |
 | Selector de fecha al editar (mes actual) | 🟡 [fecha-picker-mes-actual.md](fecha-picker-mes-actual.md) | `app/promotion/page.tsx` (inputs de fecha), `promotion-detail.js` |
