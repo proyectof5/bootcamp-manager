@@ -5112,10 +5112,14 @@ body {
     flex: 1 1 auto;
 }
 
+/* Alineada por ARRIBA, no por abajo: los campos de una fila comparten la línea
+   de la etiqueta y la del input. Con `flex-end`, el texto de ayuda de
+   "Contraseña" alargaba su campo por debajo y empujaba a "Enlace del portal"
+   medio renglón hacia abajo, que es justo el desajuste que se veía. */
 .access-row {
     display: flex;
     flex-wrap: wrap;
-    align-items: flex-end;
+    align-items: flex-start;
     gap: var(--app-space-3);
     width: 100%;
 }
@@ -5131,7 +5135,14 @@ body {
 }
 
 .access-field--grow { flex: 2 1 20rem; }
-.access-field--action { flex: 0 0 auto; }
+
+/* Un botón no tiene etiqueta, así que no puede compartir renglón con campos
+   que sí la tienen sin quedar descolgado: ocupa su propia línea de la fila,
+   con su ancho natural y debajo del campo al que pertenece. */
+.access-field--action {
+    flex: 1 0 100%;
+    align-items: flex-start;
+}
 
 /* Un campo suelto (sin fila) ocupa el ancho de la tarjeta. Hay que resetear su
    flex: el cuerpo es una columna, así que el `flex-basis: 13rem` pensado para

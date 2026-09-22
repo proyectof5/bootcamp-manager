@@ -5669,10 +5669,11 @@ async function persistGanttRowOrder(task) {
  * Crea un nuevo bloque de "Tiempo flexible" (vacaciones/festivos) en la
  * semana correspondiente a `clickDate` y lo persiste como un item más de
  * `promotion.flexibleBlocks[]`.
- * @param {Date} clickDate - Fecha del hueco vacío donde el docente hizo clic
- * @param {{name?: string, duration?: number}} [overrides] - Fase 7 (TASK-33):
- *   nombre/duración elegidos en createItemModal. Por defecto "Tiempo flexible"
- *   y 4 semanas (comportamiento original, Fase 4).
+ * @param {Date} clickDate - Día de inicio (el del hueco del Gantt, o el que el
+ *   docente haya puesto en createItemModal)
+ * @param {{name?: string, endDate?: Date}} [overrides] - nombre y fecha de fin
+ *   elegidos en createItemModal. Sin fecha de fin son 4 semanas
+ *   (comportamiento original, Fase 4).
  */
 async function createFlexibleBlockAt(clickDate, overrides = {}) {
     const token = localStorage.getItem('token');
@@ -5688,14 +5689,13 @@ async function createFlexibleBlockAt(clickDate, overrides = {}) {
 
         const promotion = await response.json();
         // Roadmap por fechas (Fase 2): se escribe startDate/endDate literal
-        // directamente al crear — clickDate ya es el día exacto donde se hizo
-        // clic en el Gantt (precisión de día, sin pasar por startOffset en
-        // semanas). "duration" del formulario sigue siendo semanas (se pide
-        // así al crear, igual que antes) — se convierte a días de calendario
-        // una sola vez, aquí, al construir endDate.
+        // directamente al crear, con precisión de día y sin pasar por
+        // startOffset en semanas.
         const clickStartDate = new Date(clickDate.getFullYear(), clickDate.getMonth(), clickDate.getDate());
-        const durationWeeks = Math.max(1, Number(overrides.duration) || 4);
-        const endDate = addDays(clickStartDate, durationWeeks * 7 - 1);
+        const chosenEnd = overrides.endDate instanceof Date ? overrides.endDate : null;
+        const endDate = (chosenEnd && chosenEnd >= clickStartDate)
+            ? new Date(chosenEnd.getFullYear(), chosenEnd.getMonth(), chosenEnd.getDate())
+            : addDays(clickStartDate, 4 * 7 - 1);
 
         const previousCalendar = _roadmapCalendarOf(promotion);
         if (!Array.isArray(promotion.flexibleBlocks)) promotion.flexibleBlocks = [];
@@ -5813,18 +5813,48 @@ async function deleteFlexibleBlock(task) {
     }
 }
 
-// Fase 7 (TASK-33): fecha/semana del hueco vacío donde se hizo clic para
-// abrir createItemModal — se usa al guardar para posicionar el nuevo elemento.
-let currentCreateItemClickDate = null;
+// Fase 7 (TASK-33): semana del hueco vacío donde se hizo clic para abrir
+// createItemModal — solo para la nota "Semana N del roadmap". La posición del
+// elemento sale de las fechas del propio formulario, no de aquí.
 let currentCreateItemWeekOffset = 0;
 
 /**
  * Alterna la visibilidad de los campos de createItemModal según el tipo
  * seleccionado (módulo/curso/proyecto/lección/tiempo flexible).
  */
+/**
+ * Cuántos días ocupa por defecto un elemento nuevo segun su tipo. Una lección
+ * es UNA sesión (mismo día); lo demás —módulo, curso, proyecto, tiempo
+ * flexible— nace ocupando una semana natural, que es lo que hacía el antiguo
+ * campo "Duración (semanas)" con su valor por defecto de 1.
+ * @param {string} type
+ * @returns {number} días, ambos extremos inclusive
+ */
+function _createItemDefaultDays(type) {
+    return type === 'leccion' ? 1 : 7;
+}
+
+/**
+ * Recalcula la fecha de fin por defecto a partir de la de inicio y del tipo
+ * elegido. No toca nada si el docente ya escribió una fecha de fin a mano
+ * (marca `dataset.touched`, ver openCreateItemModal): cambiar de tipo no debe
+ * pisar una decisión suya.
+ */
+function _syncCreateItemDefaultEnd() {
+    const startInput = document.getElementById('create-item-start');
+    const endInput = document.getElementById('create-item-end');
+    if (!startInput || !endInput || endInput.dataset.touched === '1') return;
+    const start = parseISODate(startInput.value);
+    if (!start) return;
+    const type = document.getElementById('create-item-type')?.value || 'modulo';
+    endInput.value = formatISODate(addDays(start, _createItemDefaultDays(type) - 1));
+}
+
 function _updateCreateItemFieldsVisibility() {
     const type = document.getElementById('create-item-type').value;
     const show = (id, visible) => { const el = document.getElementById(id); if (el) el.style.display = visible ? '' : 'none'; };
+
+    _syncCreateItemDefaultEnd();
 
     show('create-item-module-wrapper', type !== 'modulo' && type !== 'flexible');
     show('create-item-name-wrapper', type !== 'leccion');
@@ -5867,7 +5897,6 @@ async function openCreateItemModal(clickDate) {
         }
         const promotion = await response.json();
         const baseDate = promotion.startDate ? new Date(promotion.startDate) : new Date();
-        currentCreateItemClickDate = clickDate;
         currentCreateItemWeekOffset = Math.max(0, Math.round((clickDate - baseDate) / (7 * 86400000)));
 
         window._openShadcnModal?.('createItemModal');
@@ -5881,7 +5910,22 @@ async function openCreateItemModal(clickDate) {
             if (_linksWrap) { _linksWrap.innerHTML = ''; delete _linksWrap.dataset.plannerId; }
 
             const weekInfo = document.getElementById('create-item-week-info');
-            if (weekInfo) weekInfo.textContent = `Empieza en la semana ${currentCreateItemWeekOffset + 1} del roadmap.`;
+            if (weekInfo) weekInfo.textContent = `Semana ${currentCreateItemWeekOffset + 1} del roadmap.`;
+
+            // Fechas reales en vez de duración en semanas: el inicio es el día
+            // exacto donde se hizo clic en el Gantt y el fin sale del tipo
+            // (_syncCreateItemDefaultEnd). En cuanto el docente escribe un fin
+            // a mano dejamos de recalcularlo al cambiar de tipo.
+            const startInput = document.getElementById('create-item-start');
+            const endInput = document.getElementById('create-item-end');
+            if (startInput && endInput) {
+                const clickStart = new Date(clickDate.getFullYear(), clickDate.getMonth(), clickDate.getDate());
+                startInput.value = formatISODate(clickStart);
+                delete endInput.dataset.touched;
+                endInput.value = '';
+                endInput.oninput = () => { endInput.dataset.touched = '1'; };
+                startInput.oninput = _syncCreateItemDefaultEnd;
+            }
 
             const moduleSelect = document.getElementById('create-item-module');
             if (moduleSelect) {
@@ -8617,13 +8661,27 @@ function setupForms() {
         e.preventDefault();
 
         const type = document.getElementById('create-item-type').value;
-        const duration = Math.max(1, parseInt(document.getElementById('create-item-duration').value) || 1);
+
+        // Roadmap por fechas: el formulario pide inicio y fin reales (mismo
+        // criterio y misma validación que #item-edit-form y #flexible-edit-form).
+        const startDateStr = document.getElementById('create-item-start').value;
+        const endDateStr = document.getElementById('create-item-end').value;
+        if (!startDateStr || !endDateStr) {
+            window.showApiToast('Indica fecha de inicio y fin.', 'warning');
+            return;
+        }
+        if (endDateStr < startDateStr) {
+            window.showApiToast('La fecha de fin no puede ser anterior a la de inicio.', 'warning');
+            return;
+        }
+        const startDate = parseISODate(startDateStr);
+        const endDate = parseISODate(endDateStr);
         const token = localStorage.getItem('token');
 
         try {
             if (type === 'flexible') {
                 const name = document.getElementById('create-item-name').value.trim();
-                await createFlexibleBlockAt(currentCreateItemClickDate, { name, duration });
+                await createFlexibleBlockAt(startDate, { name, endDate });
                 window._closeShadcnModal?.('createItemModal');
                 document.getElementById('create-item-form').reset();
                 return;
@@ -8633,10 +8691,15 @@ function setupForms() {
                 const name = document.getElementById('create-item-name').value.trim();
                 if (!name) { window.showApiToast('El nombre es obligatorio', 'warning'); return; }
 
+                // El endpoint de creación de módulos sigue hablando en
+                // semanas; el rango elegido manda, así que se redondea a la
+                // semana más cercana solo para esta llamada — el startDate/
+                // endDate literales se escriben justo después.
+                const durationWeeks = Math.max(1, Math.round(daysSpanInclusive(startDate, endDate) / 7));
                 const postResponse = await fetch(`${API_URL}/api/promotions/${promotionId}/modules`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                    body: JSON.stringify({ name, duration })
+                    body: JSON.stringify({ name, duration: durationWeeks })
                 });
                 if (!postResponse.ok) {
                     window.showApiToast('Error al crear el módulo', 'danger');
@@ -8651,17 +8714,11 @@ function setupForms() {
                 const promotion = await promoResponse.json();
                 const idx = promotion.modules.findIndex(m => m.id === newModule.id);
                 if (idx !== -1) {
-                    // Roadmap por fechas (Fase 2): startDate literal (el día
-                    // exacto donde se hizo clic en el Gantt), no startOffset en
-                    // semanas — mismo criterio que el resto de items creados
-                    // desde este modal.
-                    const clickStartDate = new Date(
-                        currentCreateItemClickDate.getFullYear(),
-                        currentCreateItemClickDate.getMonth(),
-                        currentCreateItemClickDate.getDate()
-                    );
-                    promotion.modules[idx].startDate = formatISODate(clickStartDate);
-                    promotion.modules[idx].endDate = formatISODate(addDays(clickStartDate, duration * 7 - 1));
+                    // Roadmap por fechas (Fase 2): startDate/endDate literales
+                    // —los que eligió el docente en el formulario—, no
+                    // startOffset en semanas.
+                    promotion.modules[idx].startDate = startDateStr;
+                    promotion.modules[idx].endDate = endDateStr;
                     delete promotion.modules[idx].startOffset;
                     await fetch(`${API_URL}/api/promotions/${promotionId}`, {
                         method: 'PUT',
@@ -8705,20 +8762,13 @@ function setupForms() {
                 module.plannerItems = buildInitialPlannerFromLegacy(module);
             }
 
-            // Roadmap por fechas (Fase 2): startDate literal (el día exacto
-            // donde se hizo clic en el Gantt), no absoluteStartOffset en
-            // semanas — "duration" (semanas, tal como se pide en el modal de
-            // creación) solo se usa aquí, una vez, para calcular endDate.
-            const clickStartDate = new Date(
-                currentCreateItemClickDate.getFullYear(),
-                currentCreateItemClickDate.getMonth(),
-                currentCreateItemClickDate.getDate()
-            );
+            // Roadmap por fechas (Fase 2): startDate/endDate literales tal
+            // como se piden en el formulario, no absoluteStartOffset en semanas.
             const newItem = {
                 id: generatePlannerId(),
                 type,
-                startDate: formatISODate(clickStartDate),
-                endDate: formatISODate(addDays(clickStartDate, duration * 7 - 1)),
+                startDate: startDateStr,
+                endDate: endDateStr,
             };
             if (type === 'leccion') {
                 const title = document.getElementById('create-item-title').value.trim();

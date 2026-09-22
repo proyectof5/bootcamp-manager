@@ -85,6 +85,33 @@ de calendario son algo que se elige, no un cambio impuesto.
 - `setGanttZoomLevel` se mantiene como alias de `setGanttView` porque el zoom
   con Ctrl/⌘ + rueda sigue llamándolo.
 
+## Crear un elemento: fechas, no semanas
+
+El modal «Crear elemento» preguntaba **«Duración (semanas)»**. Para un módulo
+pasaba, pero para una lección no tiene sentido: una lección es una sesión, no un
+tramo de semanas, y quien la crea sabe el día, no cuántas semanas ocupa. Encima
+el modal de edición del mismo elemento (`itemEditModal`) ya pedía fecha de
+inicio y fin desde la migración «roadmap por fechas» — se creaba en una unidad y
+se editaba en otra.
+
+Ahora el formulario pide **Fecha inicio** y **Fecha fin**, con la misma forma y
+la misma validación que `itemEditModal` y `flexibleBlockEditModal`:
+
+- El inicio se precarga con el día exacto del hueco donde se hizo clic en el
+  Gantt (antes ese día ya se usaba, pero por detrás y sin poder cambiarlo).
+- El fin se precarga según el tipo: una **lección** ocupa el mismo día, lo demás
+  —módulo, curso, proyecto, tiempo flexible— una semana natural, que es lo que
+  daba el antiguo valor por defecto de «1 semana».
+- Cambiar de tipo recalcula ese fin por defecto **salvo que ya lo hayas escrito
+  a mano** (`dataset.touched` en el input): cambiar de idea sobre el tipo no
+  debe pisar una fecha que tú elegiste.
+- Si falta una fecha o el fin es anterior al inicio, avisa y no guarda nada.
+
+Las semanas solo sobreviven en un sitio: el endpoint `POST /modules` sigue
+aceptando `duration` en semanas, así que al crear un módulo se redondea el rango
+elegido a semanas **solo para esa llamada** — el `startDate`/`endDate` literales
+se escriben acto seguido con el `PUT`, y son los que mandan.
+
 ## Pendientes
 
 - La vista Día es una sola columna. Para un roadmap de módulos es lo honesto

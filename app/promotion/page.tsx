@@ -1099,9 +1099,19 @@ export default function PromotionPage() {
               <Label htmlFor="create-item-url">URL</Label>
               <Input id="create-item-url" type="url" placeholder="https://... (opcional)" />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="create-item-duration">Duración (semanas)</Label>
-              <Input id="create-item-duration" type="number" min={1} defaultValue={1} required />
+            {/* Fechas reales, no duración en semanas: es lo que ya pide
+                itemEditModal al editar el mismo elemento, y una lección dura
+                una sesión, no semanas. El legacy precarga inicio = día del
+                clic en el Gantt y fin = el que corresponda al tipo. */}
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="create-item-start">Fecha inicio</Label>
+                <Input id="create-item-start" type="date" required />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="create-item-end">Fecha fin</Label>
+                <Input id="create-item-end" type="date" required />
+              </div>
             </div>
 
             <DialogFooter className="pt-2">
