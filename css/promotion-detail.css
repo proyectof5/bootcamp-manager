@@ -4651,3 +4651,200 @@ body {
     .proj-evaluate { margin-left: auto; }
     .proj-field-grow { flex-basis: 100%; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Armonía dentro de la promoción: una escala de texto, una familia de botones
+   y un solo naranja.
+
+   Antes convivían seis tamaños de título (28, 24, 19,2, 18, 16…) fijos en px,
+   así que en una pantalla pequeña el texto se comía el espacio; nueve variantes
+   de botón (naranja, verde, amarillo, gris, rojo…) que competían entre sí sin
+   que el color significara nada; y dos naranjas distintos, uno de los cuales
+   (#ff4700 con texto blanco, 3,41:1) no cumplía contraste.
+
+   Reglas de aquí en adelante:
+   - Texto: escala 12 / 13 / 14 / 15 / 17 / 20, y los tres tamaños grandes son
+     fluidos (clamp), así que se encogen solos en pantallas estrechas.
+   - Botones: tres papeles. Naranja relleno = la acción principal (una por
+     pantalla). Contorno gris = todo lo demás, con su icono llevando el
+     significado. Rojo = destructivo.
+   - Naranja: uno solo, brand-700, que cumple contraste con texto blanco.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+#main-content {
+    /* Un solo naranja en toda la vista: brand-700 (#d63900) da 4,72:1 con texto
+       blanco; el de marca (#ff4700) se queda en 3,41:1 y se reservaba para
+       adornos, pero estaba usándose de fondo con texto blanco en las pestañas
+       del Gantt, en los badges y en la fila fija de la tabla de asistencia. */
+    --app-color-primary: var(--app-color-brand-700);
+
+    font-size: var(--app-font-size-sm);
+    line-height: var(--app-line-height-base);
+}
+
+/* ── Escala de títulos ──────────────────────────────────────────────────── */
+
+#main-content h1,
+#main-content .promo-title {
+    font-size: clamp(1.0625rem, 1rem + 0.35vw, 1.25rem);   /* 17 → 20 */
+    font-weight: var(--app-font-weight-semi);
+    line-height: var(--app-line-height-tight);
+}
+
+#main-content h2,
+#main-content .subtitle-page,
+#main-content .pending-title {
+    font-size: clamp(0.9375rem, 0.9rem + 0.25vw, 1.0625rem);  /* 15 → 17 */
+    font-weight: var(--app-font-weight-semi);
+    line-height: var(--app-line-height-tight);
+}
+
+#main-content h3 {
+    font-size: clamp(0.9375rem, 0.9rem + 0.2vw, 1rem);     /* 15 → 16 */
+    font-weight: var(--app-font-weight-semi);
+}
+
+#main-content h4,
+#main-content h5 {
+    font-size: 0.9375rem;   /* 15 */
+    font-weight: var(--app-font-weight-semi);
+}
+
+#main-content h6 {
+    font-size: var(--app-font-size-sm);
+    font-weight: var(--app-font-weight-semi);
+}
+
+/* Cifras sueltas de las tarjetas de estadística (h3 con un número solo): son
+   dato, no título, así que mandan un poco más que el texto de alrededor. */
+#main-content .stat-value,
+#main-content .pending-figure-v,
+#main-content .card-body h3.mb-0 {
+    font-size: clamp(1.125rem, 1.05rem + 0.35vw, 1.375rem);  /* 18 → 22 */
+    font-weight: var(--app-font-weight-semi);
+    font-variant-numeric: tabular-nums;
+}
+
+/* En el móvil los campos se quedan en 16px: por debajo, iOS hace zoom al
+   enfocarlos y descoloca la página. */
+@media (max-width: 767.98px) {
+    #main-content input,
+    #main-content select,
+    #main-content textarea {
+        font-size: 1rem;
+    }
+}
+
+/* ── Una sola familia de botones ────────────────────────────────────────── */
+
+#main-content .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 34px;
+    padding: 6px 12px;
+    border-radius: var(--app-radius-md);
+    font-size: var(--app-font-size-sm);
+    font-weight: var(--app-font-weight-medium);
+    line-height: 1.3;
+}
+
+#main-content .btn-sm {
+    min-height: 30px;
+    padding: 4px 10px;
+    font-size: 0.8125rem;   /* 13 */
+}
+
+/* Con el dedo hacen falta 44 px; con el ratón, esa altura solo hincha la
+   interfaz. Se decide por el tipo de puntero, no por el ancho de pantalla. */
+@media (pointer: coarse) {
+    #main-content .btn { min-height: 44px; }
+    #main-content .btn-sm { min-height: 40px; }
+}
+
+/* Los iconos siguen al texto del botón en tamaño y no lo desalinean. */
+#main-content .btn .bi {
+    font-size: 1em;
+    line-height: 1;
+}
+
+#main-content .btn > svg {
+    width: 1em;
+    height: 1em;
+}
+
+/* Secundarios: todos el mismo contorno gris. El verde de Google Calendar, el
+   naranja de Exportar o el amarillo de Empleabilidad no significaban nada
+   distinto entre sí; lo que distingue a cada botón es su icono y su palabra. */
+#main-content .btn-outline-secondary,
+#main-content .btn-outline-primary,
+#main-content .btn-outline-success,
+#main-content .btn-outline-warning,
+#main-content .btn-outline-info,
+#main-content .btn-brand-soft {
+    --bs-btn-color: var(--app-color-neutral-700);
+    --bs-btn-border-color: var(--app-color-neutral-300);
+    --bs-btn-bg: var(--app-color-bg-surface);
+    --bs-btn-hover-color: var(--app-color-text);
+    --bs-btn-hover-bg: var(--app-color-neutral-50);
+    --bs-btn-hover-border-color: var(--app-color-neutral-500);
+    color: var(--app-color-neutral-700);
+    background-color: var(--app-color-bg-surface);
+    border-color: var(--app-color-neutral-300);
+}
+
+#main-content .btn-outline-secondary:hover,
+#main-content .btn-outline-primary:hover,
+#main-content .btn-outline-success:hover,
+#main-content .btn-outline-warning:hover,
+#main-content .btn-outline-info:hover,
+#main-content .btn-brand-soft:hover {
+    color: var(--app-color-text);
+    background-color: var(--app-color-neutral-50);
+    border-color: var(--app-color-neutral-500);
+}
+
+/* Foco visible en cualquier botón de la vista. */
+#main-content .btn:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--app-color-bg-surface), 0 0 0 4px var(--app-color-brand-700);
+}
+
+/* El grupo Día/Semana/Mes es un selector de un solo valor: la pastilla activa
+   se pinta con el naranja que sí contrasta. */
+#main-content .gantt-zoom-btn.active {
+    background-color: var(--app-color-brand-700);
+    border-color: var(--app-color-brand-700);
+    color: #ffffff;
+}
+
+/* El icono y la palabra de un botón se separan con gap, no con márgenes
+   sueltos: al pasar los botones a inline-flex el espacio en blanco del HTML
+   dejaba de contar y quedaban pegados ("⌂Individual"). */
+#main-content .btn {
+    gap: 6px;
+}
+
+#main-content .btn > .bi,
+#main-content .btn > svg {
+    margin-right: 0 !important;
+    margin-left: 0 !important;
+}
+
+/* Cabecera de módulo abierta. Antes se pintaba entera de naranja claro
+   (#ff8a5c) con el texto en naranja oscuro encima —2,2:1, ilegible— y además
+   la primera del grupo salía naranja aunque estuviera cerrada. Ahora abierta se
+   distingue por un tinte suave y por su línea inferior de marca. */
+#main-content .accordion-item:first-of-type .accordion-button,
+#main-content .accordion-button {
+    padding: var(--app-space-3) var(--app-space-4);
+    background-color: var(--app-color-bg-surface);
+    color: var(--app-color-text);
+    font-size: var(--app-font-size-sm);
+}
+
+#main-content .accordion-button:not(.collapsed) {
+    background-color: var(--app-color-brand-50);
+    color: var(--app-color-brand-900);
+    box-shadow: inset 0 -2px 0 var(--app-color-brand-700);
+}

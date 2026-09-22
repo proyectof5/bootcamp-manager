@@ -108,3 +108,33 @@ Fases 1 a 8 en la rama `feat/navegacion-por-secciones` (frontend), [PR #84](http
   `displayStudents` le pasa la lista por el evento `students-updated`.
 - `app/promotion/_components/PendingPanel.tsx` — avisos y cifras del Inicio (Fase 2);
   se monta al principio de `OverviewPanel.tsx`, sin quitar nada de lo que ya había.
+
+## Fase 9 — Escala de texto y armonía visual dentro de la promoción
+
+Lo que había: seis tamaños de título fijos en px (28, 24, 19,2, 18, 16, 15), así
+que en una pantalla estrecha el texto se comía el espacio; nueve variantes de
+botón (naranja, verde, amarillo, gris, rojo, relleno, contorno, tonal) sin que
+el color significara nada; y dos naranjas distintos.
+
+Reglas de aquí en adelante, todas en el bloque «Armonía dentro de la promoción»
+de `css/promotion-detail.css` y acotadas a `#main-content`:
+
+- **Texto.** Escala 12 / 13 / 14 / 15 / 17 / 20. Los tres tamaños de arriba son
+  `clamp()`, así que se encogen solos en pantallas estrechas. El cuerpo baja de
+  16 a 14 px, que es la densidad normal de una herramienta de trabajo; los
+  campos de formulario vuelven a 16 px en móvil para que iOS no haga zoom.
+- **Botones.** Tres papeles: naranja relleno para la acción principal (una por
+  pantalla), contorno gris para todo lo demás y rojo solo para lo destructivo.
+  `btn-outline-primary/success/warning/info` y `btn-brand-soft` se pintan como
+  el contorno gris: lo que distingue a cada botón es su icono y su palabra.
+  Altura 34 px con ratón y 44 px con dedo (`@media (pointer: coarse)`).
+- **Naranja.** Uno solo: `--app-color-primary` se redefine como `brand-700`
+  (#d63900) dentro de la vista. El de marca (#ff4700) da 3,41:1 con texto blanco
+  y se estaba usando de fondo en las pestañas del Gantt, en los badges y en la
+  columna fija de la tabla de asistencia.
+- **Acordeones.** La cabecera abierta se marcaba con un naranja claro de fondo y
+  texto naranja oscuro encima (2,2:1); ahora lleva un tinte suave y una línea
+  inferior de marca. La primera del grupo ya no sale naranja estando cerrada.
+
+Pendiente: la lista «Mis promociones» (fuera de `#main-content`) sigue con su
+escala propia; si se quiere la misma densidad, hay que llevar allí estos tokens.
