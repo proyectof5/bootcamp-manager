@@ -1051,7 +1051,9 @@ th, td {
         transform: translateX(-100%);
     }
 
-    body.sidebar-collapsed main {
+    /* Mismo id que la regla de arriba: sin él ganaba #main-content y el
+       contenido se quedaba con el margen de la barra ya plegada. */
+    body.sidebar-collapsed #main-content {
         margin-left: 0;
     }
 
@@ -1098,6 +1100,13 @@ th, td {
         overflow-y: auto;
     }
 
+    /* El cajón no ocupa toda la pantalla: se ve el velo detrás, que es lo que
+       dice «esto se cierra tocando fuera». Repetida la clase para ganar a la
+       regla de ancho completo que viene más abajo (max-width: 576px). */
+    .sidebar.sidebar {
+        width: min(280px, 82vw);
+    }
+
     /* Show sidebar when toggled */
     .sidebar.show {
         left: 0;
@@ -1129,8 +1138,10 @@ th, td {
         background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='%23ffffff' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
     }
 
+    /* La barra superior es sticky, o sea que ya ocupa su sitio en el flujo:
+       el margen de 80px de más dejaba un hueco en blanco bajo la cabecera. */
     #main-content {
-        margin-top: 80px; /* Still need offset for fixed navbar on mobile */
+        margin-top: 0;
         padding: 20px;
         width: 100%;
         margin-left: 0;
@@ -4230,6 +4241,32 @@ nav.sidebar.bg-light {
 
 .sidebar-footer {
     border-top: 1px solid var(--app-chrome-line);
+}
+
+/* El botón de menú vive sobre la barra oscura en todos los tamaños. La regla
+   que lo ponía en blanco estaba dentro de @media (min-width: 768px), así que en
+   el móvil quedaba gris oscuro sobre gris oscuro: invisible. */
+#sidebar-desktop-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 44px;
+    min-height: 44px;
+    border: 0;
+    border-radius: var(--app-radius-md);
+    background: transparent;
+    color: #ffffff;
+    position: relative;
+    z-index: 1060;
+}
+
+#sidebar-desktop-toggle:hover {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+#sidebar-desktop-toggle:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px var(--app-chrome-bg), 0 0 0 4px var(--app-color-brand-300);
 }
 
 .sidebar .nav-link,
