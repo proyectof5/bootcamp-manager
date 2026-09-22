@@ -360,17 +360,20 @@ export default function DashboardPage() {
       {/* ── Navbar siempre expandido (resuelve el bug de < 992px del v0.x) ── */}
       {/* Fase 6: barra superior oscura, como en la maqueta. El naranja se reserva
           para los acentos (botón principal, tarjetas de promoción). */}
-      <nav className="app-topbar shadow-md flex items-center justify-between px-6 py-3">
-        <a href="#" className="flex items-center gap-3 no-underline">
+      <nav className="app-topbar shadow-md flex items-center justify-between gap-3 px-4 py-3 md:px-6">
+        <a href="#" className="flex min-w-0 items-center gap-3 no-underline">
           <Image
             src={withBasePath('/img/logo-factoria-b.svg')}
             alt="Factoría F5"
             width={120}
             height={44}
-            className="w-auto"
+            className="hidden w-auto sm:block"
             style={{ height: 'auto', maxHeight: 44 }}
             priority
           />
+          {/* En el móvil se queda solo el nombre de la app, como en la barra de
+              la promoción: los dos logotipos juntos no caben y se montaban
+              encima del botón de usuario. */}
           <span className="text-white font-bold text-xl leading-tight tracking-tight">
             Bootcamp<br />Manager
           </span>
@@ -378,12 +381,15 @@ export default function DashboardPage() {
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
+            {/* min-w-0 + truncate: el nombre es un correo largo y, con
+                whitespace-nowrap, empujaba la barra más allá del ancho de la
+                pantalla — el móvil acababa con scroll horizontal. */}
             <Button
               variant="ghost"
-              className="bg-transparent text-white border border-white/30 hover:bg-white hover:text-crok hover:border-white gap-2"
+              className="bg-transparent text-white border border-white/30 hover:bg-white hover:text-crok hover:border-white gap-2 min-w-0 max-w-[45vw] md:max-w-none"
             >
-              <CircleUser className="h-4 w-4" />
-              <span>{user?.name || 'Teacher'}</span>
+              <CircleUser className="h-4 w-4 shrink-0" />
+              <span className="truncate">{user?.name || 'Teacher'}</span>
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
@@ -414,7 +420,7 @@ export default function DashboardPage() {
       </nav>
 
       {/* ── Main ── */}
-      <main className="container mx-auto px-4 py-6">
+      <main className="promos-page container mx-auto px-4 py-6">
         <div className="promos-header">
           <div>
             <h1 className="promos-title">Mis promociones</h1>

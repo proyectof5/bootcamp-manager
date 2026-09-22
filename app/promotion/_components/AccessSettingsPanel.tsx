@@ -1,11 +1,12 @@
 'use client';
 
 /**
- * AccessSettingsPanel.tsx — sub-tab "Accesos" de la Teacher-Area (spec 0014 Fase C).
+ * AccessSettingsPanel.tsx — sub-tab "Acceso" de Portal del estudiante.
  *
- * 16º bloque. Reemplaza el contenido del pane #teacher-area-accesos (#teacher-area-accesos-content:
- * tarjetas Contraseña/link público + Planificador + Asana + Zoom) por un componente React montado por
- * portal.
+ * Reemplaza el contenido del pane #teacher-area-accesos: contraseña y enlace del portal,
+ * más los enlaces de la promoción (Planificador, espacio de Asana, Zoom). La conexión de la
+ * CUENTA de Asana de cada docente ya no está aquí — se movió al menú "⋯" del roadmap, que es
+ * donde se usa (ver AsanaAccount.tsx).
  *
  * Patrón "markup en React, lógica legacy por id": React renderiza el MARKUP conservando TODOS los ids
  * legacy (teacher-area-*); el orquestador puebla/lee por id: loadAccessSettingsInTeacherArea() (null-safe,
@@ -58,284 +59,175 @@ function AccessSettingsPanel() {
   }, []);
 
   return (
-    <div id="teacher-area-accesos-content">
-      <div className="d-flex justify-content-between align-items-center my-4">
-        <h2 className="subtitle-page">Configuración de los Accesos</h2>
-      </div>
+    <div id="teacher-area-accesos-content" className="access">
+      {/* ── 1. Lo que ve el estudiantado ─────────────────────────────────── */}
+      <section className="access-group" aria-labelledby="access-g-portal">
+        <h2 className="access-group-title" id="access-g-portal">Entrada al portal</h2>
+        <p className="access-group-note">
+          La contraseña y el enlace con los que el estudiantado entra a su portal.
+        </p>
 
-      <div className="row g-4">
-        {/* Student Access Password Card */}
-        <div className="col-lg-6">
-          <div className="card h-100 border-0 shadow-sm">
-            <div className="card-header bg-gradient" style={{ background: 'linear-gradient(135deg, var(--principal-1) 0%, var(--complementario-2) 100%)' }}>
-              <h6 className="mb-0 text-dark"><i className="bi bi-key me-2" />Acceso del estudiante</h6>
-            </div>
-            <div className="card-body">
-              <div className="mb-3">
-                <label htmlFor="teacher-area-access-password-input" className="form-label small fw-bold">Contraseña</label>
+        <article className="access-card access-card--wide">
+          <div className="access-card-head">
+            <span className="access-icon" aria-hidden="true"><i className="bi bi-key" /></span>
+            <h3 className="access-card-title">Acceso del estudiantado</h3>
+          </div>
+
+          <div className="access-card-body">
+            <div className="access-row">
+              <div className="access-field">
+                <label htmlFor="teacher-area-access-password-input">Contraseña</label>
                 <div className="password-input-group">
-                  <input type="password" className="form-control form-control-sm" id="teacher-area-access-password-input" placeholder="Enter password" />
-                  <button type="button" className="password-toggle" onClick={() => w().togglePasswordVisibility?.('teacher-area-access-password-input')}>
-                    <i className="bi bi-eye" />
+                  <input type="password" className="form-control form-control-sm" id="teacher-area-access-password-input" placeholder="Sin contraseña" />
+                  <button type="button" className="password-toggle" aria-label="Ver u ocultar la contraseña" onClick={() => w().togglePasswordVisibility?.('teacher-area-access-password-input')}>
+                    <i className="bi bi-eye" aria-hidden="true" />
+                  </button>
+                </div>
+                <span className="access-hint">Déjala vacía para que el portal quede abierto.</span>
+              </div>
+
+              <div className="access-field access-field--grow">
+                <label htmlFor="teacher-area-student-access-link">Enlace del portal</label>
+                <div className="access-inline">
+                  <input type="text" className="form-control form-control-sm" id="teacher-area-student-access-link" readOnly />
+                  <button type="button" className="btn btn-outline-secondary btn-sm" aria-label="Copiar el enlace del portal" title="Copiar" onClick={() => w().copyAccessLink?.('teacher-area')}>
+                    <i className="bi bi-clipboard" aria-hidden="true" />
                   </button>
                 </div>
               </div>
-              <button type="button" className="btn btn-sm w-100" style={{ backgroundColor: 'var(--green-f5)', color: 'var(--principal-2)', border: 'none', fontWeight: 600 }} onClick={() => w().updateAccessPassword?.('teacher-area')}>
-                <i className="bi bi-save me-1" />Actualizar
-              </button>
-              <div id="teacher-area-password-alert" className="alert alert-sm mt-2 mb-0 hidden p-2" role="alert" style={{ fontSize: '0.85rem' }} />
-            </div>
-            <div className="card-footer bg-light border-top p-2">
-              <small className="text-muted d-block mb-2">Link generado:</small>
-              <div className="input-group input-group-sm">
-                <input type="text" className="form-control form-control-sm" id="teacher-area-student-access-link" readOnly />
-                <button className="btn btn-outline-secondary btn-sm" type="button" onClick={() => w().copyAccessLink?.('teacher-area')}>
-                  <i className="bi bi-clipboard" />
+
+              <div className="access-field access-field--action">
+                <button type="button" className="btn btn-primary btn-sm" onClick={() => w().updateAccessPassword?.('teacher-area')}>
+                  <i className="bi bi-check2" aria-hidden="true" />Actualizar contraseña
                 </button>
               </div>
             </div>
-          </div>
-        </div>
 
-        {/* Teaching Content Card */}
-        <div className="col-lg-6">
-          <div className="card h-100 border-0 shadow-sm">
-            <div className="card-header bg-gradient" style={{ background: 'linear-gradient(135deg, var(--blue-light-f5) 0%, var(--green-f5) 100%)' }}>
-              <h6 className="mb-0 text-dark"><i className="bi bi-book me-2" />Planificador / Refactor</h6>
+            {/* El orquestador reescribe className entero al mostrarlo, así que
+                aquí solo va la clase que lo mantiene oculto hasta entonces. */}
+            <div id="teacher-area-password-alert" className="legacy-hidden" role="alert" />
+          </div>
+        </article>
+      </section>
+
+      {/* ── 2. Enlaces de la promoción ───────────────────────────────────── */}
+      <section className="access-group" aria-labelledby="access-g-links">
+        <h2 className="access-group-title" id="access-g-links">Enlaces de la promoción</h2>
+        <p className="access-group-note">
+          Herramientas que el estudiantado encuentra desde su portal.
+        </p>
+
+        <div className="access-cards">
+          {/* Planificador / Refactor */}
+          <article className="access-card">
+            <div className="access-card-head">
+              <span className="access-icon" aria-hidden="true"><i className="bi bi-journal-text" /></span>
+              <h3 className="access-card-title">Planificador</h3>
             </div>
-            <div className="card-body">
-              <div className="mb-3">
-                <label htmlFor="teacher-area-teaching-content-url" className="form-label small fw-bold">URL del contenido</label>
-                <input type="url" className="form-control form-control-sm" id="teacher-area-teaching-content-url" placeholder="https://example.com" />
+            <div className="access-card-body">
+              <div className="access-field">
+                <label htmlFor="teacher-area-teaching-content-url">Dirección del contenido</label>
+                <input type="url" className="form-control form-control-sm" id="teacher-area-teaching-content-url" placeholder="https://…" />
               </div>
-              <button type="button" className="btn btn-sm w-100" style={{ backgroundColor: 'var(--green-f5)', color: 'var(--principal-2)', border: 'none', fontWeight: 600 }} onClick={() => w().updateTeachingContent?.('teacher-area')}>
-                <i className="bi bi-save me-1" />Guardar
+              <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => w().updateTeachingContent?.('teacher-area')}>
+                <i className="bi bi-check2" aria-hidden="true" />Guardar
               </button>
-              <div id="teacher-area-teaching-content-alert" className="alert alert-sm mt-2 mb-0 hidden p-2" role="alert" style={{ fontSize: '0.85rem' }} />
+              <div id="teacher-area-teaching-content-alert" className="legacy-hidden" role="alert" />
             </div>
-            <div className="card-footer bg-light border-top p-2">
-              <small className="text-muted d-block mb-2">Preview:</small>
-              <div className="d-flex gap-1">
-                <a id="teacher-area-teaching-content-preview-btn" href="#" className="btn btn-sm btn-outline-primary hidden" target="_blank" rel="noopener noreferrer">
-                  <i className="bi bi-book me-1" />Vista
-                </a>
-                <button type="button" className="btn btn-sm btn-outline-danger" id="teacher-area-remove-teaching-btn" style={{ display: 'none' }} onClick={() => w().removeTeachingContent?.('teacher-area')}>
-                  <i className="bi bi-trash" />
-                </button>
-                <small className="text-muted align-self-center ms-1" id="teacher-area-no-content-message">No hay contenido</small>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Asana Workspace Card */}
-        <div className="col-lg-6">
-          <div className="card h-100 border-0 shadow-sm">
-            <div className="card-header bg-gradient" style={{ background: 'linear-gradient(135deg, #FF6B6B 0%, #F06595 100%)' }}>
-              <h6 className="mb-0 text-dark"><i className="bi bi-kanban me-2" />Asana</h6>
-            </div>
-            <div className="card-body">
-              <div className="mb-3">
-                <label htmlFor="teacher-area-asana-workspace-url" className="form-label small fw-bold">URL del espacio de trabajo</label>
-                <input type="url" className="form-control form-control-sm" id="teacher-area-asana-workspace-url" placeholder="https://app.asana.com/0/..." />
-              </div>
-              <button type="button" className="btn btn-sm w-100" style={{ backgroundColor: '#FF6B6B', color: 'white', border: 'none', fontWeight: 600 }} onClick={() => w().updateAsanaWorkspace?.('teacher-area')}>
-                <i className="bi bi-save me-1" />Guardar
+            <footer className="access-card-foot">
+              <span className="access-state" id="teacher-area-no-content-message">Todavía sin enlace</span>
+              <a id="teacher-area-teaching-content-preview-btn" href="#" className="btn btn-outline-secondary btn-sm legacy-hidden" target="_blank" rel="noopener noreferrer">
+                <i className="bi bi-box-arrow-up-right" aria-hidden="true" />Abrir
+              </a>
+              <button type="button" className="btn btn-outline-danger btn-sm" id="teacher-area-remove-teaching-btn" style={{ display: 'none' }} onClick={() => w().removeTeachingContent?.('teacher-area')}>
+                <i className="bi bi-trash" aria-hidden="true" />Quitar
               </button>
-              <div id="teacher-area-asana-workspace-alert" className="alert alert-sm mt-2 mb-0 hidden p-2" role="alert" style={{ fontSize: '0.85rem' }} />
+            </footer>
+          </article>
+
+          {/* Espacio de Asana de la promoción */}
+          <article className="access-card">
+            <div className="access-card-head">
+              <span className="access-icon" aria-hidden="true"><i className="bi bi-kanban" /></span>
+              <h3 className="access-card-title">Espacio de Asana</h3>
             </div>
-            <div className="card-footer bg-light border-top p-2">
-              <small className="text-muted d-block mb-2">Estado:</small>
-              <div className="d-flex gap-1">
-                <a id="teacher-area-asana-workspace-preview-btn" href="#" className="btn btn-sm btn-outline-danger hidden" target="_blank" rel="noopener noreferrer">
-                  <i className="bi bi-kanban me-1" />Abrir
-                </a>
-                <button type="button" className="btn btn-sm btn-outline-danger" id="teacher-area-remove-asana-btn" style={{ display: 'none' }} onClick={() => w().removeAsanaWorkspace?.('teacher-area')}>
-                  <i className="bi bi-trash" />
-                </button>
-                <small className="text-muted align-self-center ms-1" id="teacher-area-no-asana-message">No configurado</small>
+            <div className="access-card-body">
+              <div className="access-field">
+                <label htmlFor="teacher-area-asana-workspace-url">Dirección del espacio</label>
+                <input type="url" className="form-control form-control-sm" id="teacher-area-asana-workspace-url" placeholder="https://app.asana.com/0/…" />
               </div>
+              <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => w().updateAsanaWorkspace?.('teacher-area')}>
+                <i className="bi bi-check2" aria-hidden="true" />Guardar
+              </button>
+              <div id="teacher-area-asana-workspace-alert" className="legacy-hidden" role="alert" />
             </div>
-          </div>
-        </div>
+            <footer className="access-card-foot">
+              <span className="access-state" id="teacher-area-no-asana-message">Todavía sin enlace</span>
+              <a id="teacher-area-asana-workspace-preview-btn" href="#" className="btn btn-outline-secondary btn-sm legacy-hidden" target="_blank" rel="noopener noreferrer">
+                <i className="bi bi-box-arrow-up-right" aria-hidden="true" />Abrir
+              </a>
+              <button type="button" className="btn btn-outline-danger btn-sm" id="teacher-area-remove-asana-btn" style={{ display: 'none' }} onClick={() => w().removeAsanaWorkspace?.('teacher-area')}>
+                <i className="bi bi-trash" aria-hidden="true" />Quitar
+              </button>
+            </footer>
+          </article>
 
-        {/* Asana — conexión OAuth de mi cuenta (para exportar el roadmap a Asana) */}
-        <div className="col-lg-6">
-          <AsanaAccountCard />
-        </div>
-
-        {/* Zoom Credentials Card */}
-        <div className="col-lg-6">
-          <div className="card h-100 border-0 shadow-sm">
-            <div className="card-header" style={{ background: 'linear-gradient(135deg, #2D8CFF 0%, #4FA9FF 100%)' }}>
-              <h6 className="mb-0 text-white"><i className="bi bi-camera-video me-2" />Zoom</h6>
+          {/* Zoom */}
+          <article className="access-card access-card--wide">
+            <div className="access-card-head">
+              <span className="access-icon" aria-hidden="true"><i className="bi bi-camera-video" /></span>
+              <h3 className="access-card-title">Zoom</h3>
             </div>
-            <div className="card-body">
-              <div className="row g-2 mb-3">
-                <div className="col-6">
-                  <label htmlFor="teacher-area-zoom-meeting-id" className="form-label small fw-bold">ID de reunión</label>
+            <div className="access-card-body">
+              <div className="access-row">
+                {/* Este campo faltaba: saveZoomCredentials lo lee y sin él no se
+                    podía guardar la dirección de la sala ni abrirla desde aquí. */}
+                <div className="access-field access-field--grow">
+                  <label htmlFor="teacher-area-zoom-meeting-url">Dirección de la sala</label>
+                  <input type="url" className="form-control form-control-sm" id="teacher-area-zoom-meeting-url" placeholder="https://zoom.us/j/…" />
+                </div>
+                <div className="access-field">
+                  <label htmlFor="teacher-area-zoom-meeting-id">ID de reunión</label>
                   <input type="text" className="form-control form-control-sm" id="teacher-area-zoom-meeting-id" placeholder="123 456 7890" />
                 </div>
-                <div className="col-6">
-                  <label htmlFor="teacher-area-zoom-passcode" className="form-label small fw-bold">Código de acceso</label>
+                <div className="access-field">
+                  <label htmlFor="teacher-area-zoom-passcode">Código de acceso</label>
                   <input type="text" className="form-control form-control-sm" id="teacher-area-zoom-passcode" placeholder="abc123" />
                 </div>
-                <div className="col-12">
-                  <label htmlFor="teacher-area-zoom-host-key" className="form-label small fw-bold">Host Key <span className="text-muted fw-normal">(opcional)</span></label>
+                <div className="access-field">
+                  <label htmlFor="teacher-area-zoom-host-key">Clave de anfitrión <span className="access-optional">(opcional)</span></label>
                   <input type="text" className="form-control form-control-sm" id="teacher-area-zoom-host-key" placeholder="123456" />
                 </div>
-                <div className="col-6">
-                  <label htmlFor="teacher-area-zoom-email" className="form-label small fw-bold">Email de la cuenta <span className="text-muted fw-normal">(opcional)</span></label>
+                <div className="access-field">
+                  <label htmlFor="teacher-area-zoom-email">Correo de la cuenta <span className="access-optional">(opcional)</span></label>
                   <input type="email" className="form-control form-control-sm" id="teacher-area-zoom-email" placeholder="docente@ejemplo.com" autoComplete="off" />
                 </div>
-                <div className="col-6">
-                  <label htmlFor="teacher-area-zoom-password" className="form-label small fw-bold">Contraseña de la cuenta <span className="text-muted fw-normal">(opcional)</span></label>
+                <div className="access-field">
+                  <label htmlFor="teacher-area-zoom-password">Contraseña de la cuenta <span className="access-optional">(opcional)</span></label>
                   <div className="password-input-group">
                     <input type="password" className="form-control form-control-sm" id="teacher-area-zoom-password" placeholder="••••••••" autoComplete="current-password" />
-                    <button type="button" className="password-toggle" onClick={() => w().togglePasswordVisibility?.('teacher-area-zoom-password')}>
-                      <i className="bi bi-eye" />
+                    <button type="button" className="password-toggle" aria-label="Ver u ocultar la contraseña de Zoom" onClick={() => w().togglePasswordVisibility?.('teacher-area-zoom-password')}>
+                      <i className="bi bi-eye" aria-hidden="true" />
                     </button>
                   </div>
                 </div>
               </div>
-              <button type="button" className="btn btn-sm w-100" style={{ backgroundColor: '#2D8CFF', color: 'white', border: 'none', fontWeight: 600 }} onClick={() => w().saveZoomCredentials?.()}>
-                <i className="bi bi-save me-1" />Guardar credenciales
+              <button type="button" className="btn btn-outline-secondary btn-sm" onClick={() => w().saveZoomCredentials?.()}>
+                <i className="bi bi-check2" aria-hidden="true" />Guardar
               </button>
             </div>
-            <div className="card-footer bg-light border-top p-2">
-              <small className="text-muted d-block mb-2">Estado:</small>
-              <div className="d-flex gap-1 align-items-center">
-                <button type="button" className="btn btn-sm btn-outline-danger" id="teacher-area-remove-zoom-btn" style={{ display: 'none' }} onClick={() => w().removeZoomCredentials?.()}>
-                  <i className="bi bi-trash" />
-                </button>
-                <small className="text-muted ms-1" id="teacher-area-no-zoom-message">No configurado</small>
-              </div>
-            </div>
-          </div>
+            <footer className="access-card-foot">
+              <span className="access-state" id="teacher-area-no-zoom-message">Todavía sin sala</span>
+              <a id="teacher-area-zoom-preview-btn" href="#" className="btn btn-outline-secondary btn-sm legacy-hidden" target="_blank" rel="noopener noreferrer">
+                <i className="bi bi-box-arrow-up-right" aria-hidden="true" />Abrir
+              </a>
+              <button type="button" className="btn btn-outline-danger btn-sm" id="teacher-area-remove-zoom-btn" style={{ display: 'none' }} onClick={() => w().removeZoomCredentials?.()}>
+                <i className="bi bi-trash" aria-hidden="true" />Quitar
+              </button>
+            </footer>
+          </article>
         </div>
-      </div>
-    </div>
-  );
-}
-
-// ── Asana: conexión OAuth de la cuenta del docente ──────────────────────────
-// Fase 1 de docs/tasks/exportar-roadmap-asana.md. Cada docente conecta su
-// cuenta de Asana una vez (OAuth); esa conexión luego permitirá exportar el
-// roadmap como subtareas. Popup + poll de estado + postMessage del callback.
-interface AsanaStatus {
-  configured: boolean;
-  connected: boolean;
-  asanaName?: string | null;
-  asanaEmail?: string | null;
-}
-
-function AsanaAccountCard() {
-  const [status, setStatus] = useState<AsanaStatus | null>(null);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  const refresh = async () => {
-    try {
-      const s = (await w().asanaGetStatus?.()) as AsanaStatus | undefined;
-      setStatus(s || { configured: false, connected: false });
-    } catch {
-      setStatus({ configured: false, connected: false });
-    }
-  };
-
-  useEffect(() => {
-    refresh();
-    const onFocus = () => refresh();
-    window.addEventListener('focus', onFocus);
-    return () => window.removeEventListener('focus', onFocus);
-  }, []);
-
-  const connect = async () => {
-    setError(null);
-    setBusy(true);
-    try {
-      const url = await w().asanaGetAuthorizeUrl?.();
-      if (!url) throw new Error('sin_url');
-      window.open(url, 'asana-oauth', 'width=620,height=780,noopener=no');
-
-      // Espera a que el callback avise (postMessage) o a que el estado cambie.
-      const started = Date.now();
-      const onMsg = (e: MessageEvent) => {
-        if (e?.data?.source === 'asana-oauth') { cleanup(); refresh().finally(() => setBusy(false)); }
-      };
-      const poll = setInterval(async () => {
-        const s = (await w().asanaGetStatus?.()) as AsanaStatus | undefined;
-        if (s?.connected || Date.now() - started > 120000) {
-          cleanup();
-          setStatus(s || null);
-          setBusy(false);
-        }
-      }, 2500);
-      const cleanup = () => { clearInterval(poll); window.removeEventListener('message', onMsg); };
-      window.addEventListener('message', onMsg);
-    } catch (e) {
-      setBusy(false);
-      setError((e as Error)?.message === 'asana_not_configured'
-        ? 'La integración con Asana no está configurada en el servidor.'
-        : 'No se pudo iniciar la conexión con Asana.');
-    }
-  };
-
-  const disconnect = async () => {
-    setBusy(true);
-    setError(null);
-    try {
-      await w().asanaDisconnect?.();
-    } catch {
-      setError('No se pudo desconectar.');
-    }
-    await refresh();
-    setBusy(false);
-  };
-
-  return (
-    <div className="card h-100 border-0 shadow-sm">
-      <div className="card-header" style={{ background: 'linear-gradient(135deg, #F06595 0%, #CC5DE8 100%)' }}>
-        <h6 className="mb-0 text-white"><i className="bi bi-person-badge me-2" />Asana — mi cuenta</h6>
-      </div>
-      <div className="card-body">
-        <p className="small text-muted mb-3">
-          Conecta tu cuenta de Asana para poder <strong>exportar el roadmap</strong> como
-          subtareas. Cada docente conecta la suya; solo hace falta una vez.
-        </p>
-
-        {status == null ? (
-          <div className="text-muted small"><span className="spinner-border spinner-border-sm me-2" role="status" />Comprobando…</div>
-        ) : !status.configured ? (
-          <div className="alert alert-secondary small mb-0 p-2">
-            La integración con Asana no está activada en el servidor todavía.
-          </div>
-        ) : status.connected ? (
-          <>
-            <div className="d-flex align-items-center gap-2 mb-3">
-              <span className="badge rounded-pill text-bg-success"><i className="bi bi-check-lg me-1" />Conectado</span>
-              <span className="small text-truncate">{status.asanaEmail || status.asanaName}</span>
-            </div>
-            <button type="button" className="btn btn-sm btn-outline-danger w-100" disabled={busy} onClick={disconnect}>
-              <i className="bi bi-x-circle me-1" />Desconectar mi cuenta de Asana
-            </button>
-          </>
-        ) : (
-          <button
-            type="button"
-            className="btn btn-sm w-100"
-            style={{ backgroundColor: '#F06595', color: 'white', border: 'none', fontWeight: 600 }}
-            disabled={busy}
-            onClick={connect}
-          >
-            {busy
-              ? <><span className="spinner-border spinner-border-sm me-1" role="status" />Esperando a Asana…</>
-              : <><i className="bi bi-box-arrow-up-right me-1" />Conectar mi cuenta de Asana</>}
-          </button>
-        )}
-
-        {error && <div className="alert alert-warning small mt-2 mb-0 p-2">{error}</div>}
-      </div>
+      </section>
     </div>
   );
 }

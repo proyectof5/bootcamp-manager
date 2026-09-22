@@ -5014,3 +5014,254 @@ body {
     color: var(--app-color-text);
     font-weight: var(--app-font-weight-semi);
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Acceso (Portal del estudiante › Acceso)
+
+   Antes eran cinco tarjetas con cinco degradados distintos —naranja, verde,
+   rojo, morado, azul— y cinco botones de guardar del color de su tarjeta. El
+   color no significaba nada: solo decoraba, y encima el texto oscuro sobre
+   esos fondos saturados no llegaba al contraste mínimo.
+
+   Ahora todas las tarjetas son la misma superficie y el color solo aparece
+   cuando dice algo: verde lo conectado, rojo lo que se quita, naranja la
+   acción principal. Y las tarjetas se agrupan por a quién pertenecen: lo que
+   ve el estudiantado, los enlaces de la promoción y la cuenta de cada docente.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.access {
+    display: flex;
+    flex-direction: column;
+    gap: var(--app-space-6);
+    padding-bottom: var(--app-space-6);
+}
+
+.access-group {
+    display: flex;
+    flex-direction: column;
+    gap: var(--app-space-2);
+}
+
+#main-content .access-group-title {
+    margin: 0;
+    font-size: clamp(0.9375rem, 0.9rem + 0.25vw, 1.0625rem);
+    font-weight: var(--app-font-weight-semi);
+    color: var(--app-color-text);
+}
+
+.access-group-note {
+    margin: 0 0 var(--app-space-2);
+    font-size: var(--app-font-size-xs);
+    color: var(--app-color-text-muted);
+}
+
+.access-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(20rem, 1fr));
+    gap: var(--app-space-3);
+}
+
+.access-card {
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--app-color-border);
+    border-radius: var(--app-radius-lg);
+    background: var(--app-color-bg-surface);
+    overflow: hidden;
+}
+
+/* Las tarjetas que piden varios datos ocupan la fila entera. */
+.access-cards > .access-card--wide { grid-column: 1 / -1; }
+
+.access-card-head {
+    display: flex;
+    align-items: center;
+    gap: var(--app-space-2);
+    padding: var(--app-space-3) var(--app-space-4);
+    border-bottom: 1px solid var(--app-color-border);
+}
+
+/* El icono va en una pastilla neutra: misma forma y tamaño en las cinco
+   tarjetas, en vez de un degradado distinto por tarjeta. */
+.access-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+    width: 28px;
+    height: 28px;
+    border-radius: var(--app-radius-md);
+    background: var(--app-color-neutral-100);
+    color: var(--app-color-neutral-700);
+    font-size: 0.9375rem;
+}
+
+#main-content .access-card-title {
+    margin: 0;
+    font-size: var(--app-font-size-sm);
+    font-weight: var(--app-font-weight-semi);
+    color: var(--app-color-text);
+}
+
+.access-card-body {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: var(--app-space-3);
+    padding: var(--app-space-4);
+    flex: 1 1 auto;
+}
+
+/* Alineada por ARRIBA, no por abajo: los campos de una fila comparten la línea
+   de la etiqueta y la del input. Con `flex-end`, el texto de ayuda de
+   "Contraseña" alargaba su campo por debajo y empujaba a "Enlace del portal"
+   medio renglón hacia abajo, que es justo el desajuste que se veía. */
+.access-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: var(--app-space-3);
+    width: 100%;
+}
+
+.access-row--middle { align-items: center; justify-content: space-between; }
+
+.access-field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--app-space-1);
+    min-width: 0;
+    flex: 1 1 13rem;
+}
+
+.access-field--grow { flex: 2 1 20rem; }
+
+/* Un botón no tiene etiqueta, así que no puede compartir renglón con campos
+   que sí la tienen sin quedar descolgado: ocupa su propia línea de la fila,
+   con su ancho natural y debajo del campo al que pertenece. */
+.access-field--action {
+    flex: 1 0 100%;
+    align-items: flex-start;
+}
+
+/* Un campo suelto (sin fila) ocupa el ancho de la tarjeta. Hay que resetear su
+   flex: el cuerpo es una columna, así que el `flex-basis: 13rem` pensado para
+   el ancho dentro de una fila se convertía en 13rem de ALTO y dejaba un hueco
+   enorme entre el campo y su botón. */
+.access-card-body > .access-field {
+    width: 100%;
+    flex: 0 0 auto;
+}
+
+.access-field label {
+    margin: 0;
+    font-size: var(--app-font-size-xs);
+    font-weight: var(--app-font-weight-semi);
+    color: var(--app-color-text-muted);
+}
+
+.access-optional {
+    font-weight: var(--app-font-weight-regular);
+    color: var(--app-color-neutral-500);
+}
+
+#main-content .access-field .form-control,
+#main-content .access-inline .form-control {
+    min-height: 34px;
+    padding: var(--app-space-2) var(--app-space-3);
+    border: 1px solid var(--app-color-neutral-300);
+    border-radius: var(--app-radius-md);
+    font-size: var(--app-font-size-sm);
+}
+
+#main-content .access-field .form-control:focus-visible,
+#main-content .access-inline .form-control:focus-visible {
+    outline: none;
+    border-color: var(--app-color-brand-700);
+    box-shadow: 0 0 0 3px var(--app-color-brand-50);
+}
+
+.access-inline {
+    display: flex;
+    gap: var(--app-space-2);
+    min-width: 0;
+}
+
+.access-inline .form-control { flex: 1 1 auto; min-width: 0; }
+
+.access-hint {
+    font-size: var(--app-font-size-xs);
+    color: var(--app-color-text-muted);
+}
+
+.access-hint--block { margin: 0; }
+
+/* Pie de tarjeta: en qué estado está y qué se puede hacer con ello. */
+.access-card-foot {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--app-space-2);
+    padding: var(--app-space-2) var(--app-space-4);
+    border-top: 1px solid var(--app-color-border);
+    background: var(--app-color-neutral-50);
+}
+
+/* display:inline porque el orquestador lo enseña y lo esconde con
+   style.display = 'inline' / 'none'; el punto va con ::before para que no
+   dependa de un elemento que el legacy no controla. */
+.access-state {
+    margin: 0;
+    font-size: var(--app-font-size-xs);
+    color: var(--app-color-text-muted);
+}
+
+.access-state::before {
+    content: "";
+    display: inline-block;
+    width: 7px;
+    height: 7px;
+    margin-right: 6px;
+    border-radius: 50%;
+    background: var(--app-color-neutral-300);
+    vertical-align: middle;
+}
+
+.access-state.is-on {
+    color: #0f5132;
+}
+
+.access-state.is-on::before { background: var(--app-color-success-500); }
+
+.access-error {
+    display: flex;
+    align-items: center;
+    gap: var(--app-space-2);
+    margin: 0;
+    font-size: var(--app-font-size-xs);
+    color: #8a5300;
+}
+
+/* Los avisos del orquestador reescriben su className entero (alert
+   alert-success / alert-danger), así que se estilan por su clase base. */
+.access-card-body > .alert {
+    width: 100%;
+    margin: 0;
+    padding: var(--app-space-2) var(--app-space-3);
+    border-radius: var(--app-radius-md);
+    font-size: var(--app-font-size-xs);
+}
+
+@media (max-width: 767.98px) {
+    .access-field--action { width: 100%; }
+    .access-field--action .btn { width: 100%; }
+}
+
+/* La línea de estado de la cuenta de Asana dentro del menú "⋯": informa, no se
+   pulsa, así que va en el tono apagado de las etiquetas del menú. */
+[role="menu"] .roadmap-menu-note {
+    font-size: var(--app-font-size-xs);
+    font-weight: var(--app-font-weight-regular);
+    color: var(--app-color-text-muted);
+    overflow-wrap: anywhere;
+}

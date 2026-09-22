@@ -489,7 +489,18 @@ main .bg-crok .pending-bell * {
 /* ═══════════════════════════════════════════════════════════════════
    "Mis promociones" — rediseño: buscador, filtros, grupos por estado
    y tarjetas con progreso (PromotionsBoard.tsx)
+
+   Misma escala de letra que dentro de una promoción (ver "Armonía dentro de la
+   promoción" en promotion-detail.css): texto 12 / 13 / 14 y títulos fluidos
+   15→17 y 17→20, que se encogen solos en pantallas estrechas. Antes esta vista
+   iba por libre —título de 30 px, nombre de tarjeta de 18, cuerpo de 16— y al
+   entrar en una promoción todo se reducía de golpe.
    ═══════════════════════════════════════════════════════════════════ */
+
+.promos-page {
+    font-size: var(--app-font-size-sm);
+    line-height: var(--app-line-height-base);
+}
 
 .promos-header {
     display: flex;
@@ -502,15 +513,17 @@ main .bg-crok .pending-bell * {
 
 .promos-title {
     margin: 0;
-    font-size: var(--app-font-size-3xl);
-    font-weight: var(--app-font-weight-bold);
+    font-size: clamp(1.0625rem, 1rem + 0.35vw, 1.25rem);   /* 17 → 20 */
+    font-weight: var(--app-font-weight-semi);
+    line-height: var(--app-line-height-tight);
     color: var(--app-color-text);
 }
 
+/* Línea de recuento: informa, no titula, así que baja del cuerpo. */
 .promos-sub {
     margin: 2px 0 0;
     color: var(--app-color-text-muted);
-    font-size: var(--app-font-size-sm);
+    font-size: 0.8125rem;   /* 13 */
     font-variant-numeric: tabular-nums;
 }
 
@@ -541,7 +554,7 @@ main .bg-crok .pending-bell * {
 
 .promos-search input {
     width: 100%;
-    min-height: 44px;
+    min-height: 34px;
     padding: var(--app-space-2) var(--app-space-3) var(--app-space-2) 34px;
     border: 1px solid var(--app-color-neutral-300);
     border-radius: var(--app-radius-md);
@@ -559,13 +572,13 @@ main .bg-crok .pending-bell * {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    min-height: 44px;
+    min-height: 34px;
     padding: var(--app-space-2) var(--app-space-3);
     border: 1px solid var(--app-color-neutral-300);
     border-radius: var(--app-radius-pill);
     background: var(--app-color-bg-surface);
     color: var(--app-color-text-muted);
-    font-size: var(--app-font-size-sm);
+    font-size: 0.8125rem;   /* 13 */
     cursor: pointer;
 }
 
@@ -590,15 +603,31 @@ main .bg-crok .pending-bell * {
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    min-height: 44px;
+    min-height: 34px;
     margin-left: auto;
     padding: var(--app-space-2) var(--app-space-4);
     border: 0;
     border-radius: var(--app-radius-md);
     background: var(--app-color-brand-700);
     color: #ffffff;
-    font-weight: var(--app-font-weight-semi);
+    font-size: var(--app-font-size-sm);
+    font-weight: var(--app-font-weight-medium);
     cursor: pointer;
+}
+
+/* Las alturas siguen el mismo criterio que los botones de dentro de una
+   promoción: 34 px con el ratón y 44 con el dedo. Lo decide el tipo de
+   puntero, no el ancho de pantalla. */
+@media (pointer: coarse) {
+    .promos-search input,
+    .promos-chip,
+    .promos-new { min-height: 44px; }
+}
+
+/* En el móvil el buscador se queda en 16 px: por debajo, iOS hace zoom al
+   enfocarlo y descoloca la página. */
+@media (max-width: 767.98px) {
+    .promos-search input { font-size: 1rem; }
 }
 
 .promos-new:hover {
@@ -611,6 +640,7 @@ main .bg-crok .pending-bell * {
     border: 1px dashed var(--app-color-neutral-300);
     border-radius: var(--app-radius-lg);
     color: var(--app-color-text-muted);
+    font-size: var(--app-font-size-sm);
     text-align: center;
 }
 
@@ -623,8 +653,9 @@ main .bg-crok .pending-bell * {
     align-items: center;
     gap: var(--app-space-2);
     margin: 0 0 var(--app-space-3);
-    font-size: var(--app-font-size-md);
+    font-size: clamp(0.9375rem, 0.9rem + 0.25vw, 1.0625rem);   /* 15 → 17 */
     font-weight: var(--app-font-weight-semi);
+    line-height: var(--app-line-height-tight);
     color: var(--app-color-text);
 }
 
@@ -717,8 +748,9 @@ main .bg-crok .pending-bell * {
     font-weight: var(--app-font-weight-semi);
 }
 
+/* El nombre es el título de la tarjeta: misma h3 fluida que dentro. */
 .promo-name {
-    font-size: var(--app-font-size-lg);
+    font-size: clamp(0.9375rem, 0.9rem + 0.2vw, 1rem);   /* 15 → 16 */
     font-weight: var(--app-font-weight-semi);
     line-height: var(--app-line-height-tight);
     color: var(--app-color-text);
@@ -727,7 +759,7 @@ main .bg-crok .pending-bell * {
 
 .promo-desc {
     color: var(--app-color-text-muted);
-    font-size: var(--app-font-size-sm);
+    font-size: 0.8125rem;   /* 13 */
     display: -webkit-box;
     -webkit-line-clamp: 2;
     -webkit-box-orient: vertical;

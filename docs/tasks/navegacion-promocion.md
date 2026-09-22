@@ -136,5 +136,37 @@ de `css/promotion-detail.css` y acotadas a `#main-content`:
   texto naranja oscuro encima (2,2:1); ahora lleva un tinte suave y una línea
   inferior de marca. La primera del grupo ya no sale naranja estando cerrada.
 
-Pendiente: la lista «Mis promociones» (fuera de `#main-content`) sigue con su
-escala propia; si se quiere la misma densidad, hay que llevar allí estos tokens.
+### La misma escala en «Mis promociones»
+
+La lista de promociones vive fuera de `#main-content`, así que iba por libre:
+título de 30 px, nombre de tarjeta de 18 y cuerpo de 16. Al entrar en una
+promoción todo se reducía de golpe, que es justo el salto que la armonía
+pretendía quitar. Ahora la vista usa la misma escala, acotada a `.promos-page`
+(en `css/dashboard.css`):
+
+| Elemento | Antes | Ahora |
+|---|---|---|
+| Cuerpo de la vista | 16 | 14 |
+| «Mis promociones» | 30 / bold | `clamp()` 17 → 20 / semi (la misma h1) |
+| «8 promociones · 29 módulos» | 14 | 13 |
+| «En marcha 4» | 16 | `clamp()` 15 → 17 (la misma h2) |
+| Nombre de la tarjeta | 18 | `clamp()` 15 → 16 (la misma h3) |
+| Descripción | 14 | 13 |
+| Fechas, semanas, módulos | 12 | 12 |
+| Chips de filtro | 14 | 13 |
+| «Añadir promoción» | 16 / semi | 14 / medium |
+
+Las alturas de buscador, chips y botón pasan de 44 px fijos a 34 px con ratón y
+44 con dedo (`@media (pointer: coarse)`), igual que los botones de dentro: con
+el texto ya en 13-14 px, 44 px fijos los dejaba desproporcionados. El buscador
+vuelve a 16 px en móvil para que iOS no haga zoom al enfocarlo.
+
+De paso, dos arreglos que salieron al probarlo a 375 px:
+
+- El botón de usuario de la barra superior tiene `whitespace-nowrap` y muestra
+  un correo largo: se salía 81 px de la pantalla y dejaba la página con scroll
+  horizontal. Lleva `min-w-0 max-w-[45vw]` y `truncate`, el mismo arreglo que ya
+  tenía el panel de admin.
+- Con el logotipo de Factoría **y** el nombre de la app, la marca no cabía y se
+  montaba encima de ese botón. En móvil se queda solo el nombre, como en la
+  barra de la promoción.

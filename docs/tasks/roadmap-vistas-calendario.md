@@ -33,6 +33,14 @@ mes, y las flechas saltan al periodo anterior o siguiente.
 - **`⋯`** guarda lo que se usa de vez en cuando, agrupado por lo que hace:
   *Contenido* (sesiones de empleabilidad), *Llevarlo a otra herramienta* (Google
   Calendar, Asana) y *Descargar* (PNG, PDF, Excel, .ics).
+- Dentro de *Llevarlo a otra herramienta* vive también la **conexión de la
+  cuenta de Asana de cada docente**, que antes estaba en Portal del estudiante ›
+  Acceso. Es de la persona, no de la promoción, y lo único para lo que sirve
+  —exportar el roadmap— está justo encima. El estado se lee siempre («Mi cuenta
+  de Asana: …») y debajo aparece Conectar o Desconectar según toque; si el
+  servidor no tiene la integración activada se dice y no se ofrece nada.
+  El hook vive en `AsanaAccount.tsx` y se monta en el panel, no en el menú: el
+  menú se cierra al elegir y se llevaría por delante la espera del popup.
 
 De doce controles a cinco, en una sola fila.
 
@@ -76,6 +84,33 @@ de calendario son algo que se elige, no un cambio impuesto.
   inglés («November», «December 2025»).
 - `setGanttZoomLevel` se mantiene como alias de `setGanttView` porque el zoom
   con Ctrl/⌘ + rueda sigue llamándolo.
+
+## Crear un elemento: fechas, no semanas
+
+El modal «Crear elemento» preguntaba **«Duración (semanas)»**. Para un módulo
+pasaba, pero para una lección no tiene sentido: una lección es una sesión, no un
+tramo de semanas, y quien la crea sabe el día, no cuántas semanas ocupa. Encima
+el modal de edición del mismo elemento (`itemEditModal`) ya pedía fecha de
+inicio y fin desde la migración «roadmap por fechas» — se creaba en una unidad y
+se editaba en otra.
+
+Ahora el formulario pide **Fecha inicio** y **Fecha fin**, con la misma forma y
+la misma validación que `itemEditModal` y `flexibleBlockEditModal`:
+
+- El inicio se precarga con el día exacto del hueco donde se hizo clic en el
+  Gantt (antes ese día ya se usaba, pero por detrás y sin poder cambiarlo).
+- El fin se precarga según el tipo: una **lección** ocupa el mismo día, lo demás
+  —módulo, curso, proyecto, tiempo flexible— una semana natural, que es lo que
+  daba el antiguo valor por defecto de «1 semana».
+- Cambiar de tipo recalcula ese fin por defecto **salvo que ya lo hayas escrito
+  a mano** (`dataset.touched` en el input): cambiar de idea sobre el tipo no
+  debe pisar una fecha que tú elegiste.
+- Si falta una fecha o el fin es anterior al inicio, avisa y no guarda nada.
+
+Las semanas solo sobreviven en un sitio: el endpoint `POST /modules` sigue
+aceptando `duration` en semanas, así que al crear un módulo se redondea el rango
+elegido a semanas **solo para esa llamada** — el `startDate`/`endDate` literales
+se escriben acto seguido con el `PUT`, y son los que mandan.
 
 ## Pendientes
 

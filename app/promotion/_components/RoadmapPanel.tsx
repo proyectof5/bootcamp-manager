@@ -31,6 +31,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { apiFetch } from '@/lib/api';
+import { useAsanaAccount, asanaAccountLabel, type AsanaAccount } from './AsanaAccount';
 import {
   DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem,
@@ -771,7 +772,10 @@ function ViewPicker() {
 // Sustituye a los botones sueltos de Empleabilidad, Google Calendar, Exportar y
 // Asana. Se agrupan por lo que hacen: preparar el roadmap, llevárselo a otra
 // herramienta o descargarlo.
-function RoadmapMoreMenu({ onAsana }: { onAsana: () => void }) {
+function RoadmapMoreMenu({ onAsana, asana }: { onAsana: () => void; asana: AsanaAccount }) {
+  const conectada = !!asana.status?.connected;
+  const sinIntegracion = asana.status != null && !asana.status.configured;
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -793,6 +797,22 @@ function RoadmapMoreMenu({ onAsana }: { onAsana: () => void }) {
         <DropdownMenuItem onClick={onAsana}>
           <i className="bi bi-kanban me-2" aria-hidden="true" />Exportar a Asana
         </DropdownMenuItem>
+
+        {/* La cuenta es de cada docente, no de la promoción, pero vive aquí
+            porque exportar el roadmap es lo único para lo que sirve. */}
+        <DropdownMenuLabel className="roadmap-menu-note">
+          Mi cuenta de Asana: {asanaAccountLabel(asana.status)}
+        </DropdownMenuLabel>
+        {!sinIntegracion && (conectada ? (
+          <DropdownMenuItem onClick={asana.disconnect} disabled={asana.busy}>
+            <i className="bi bi-x-circle me-2" aria-hidden="true" />Desconectar mi cuenta
+          </DropdownMenuItem>
+        ) : (
+          <DropdownMenuItem onClick={asana.connect} disabled={asana.busy || asana.status == null}>
+            <i className="bi bi-box-arrow-up-right me-2" aria-hidden="true" />
+            {asana.busy ? 'Esperando a Asana…' : 'Conectar mi cuenta'}
+          </DropdownMenuItem>
+        ))}
 
         <DropdownMenuSeparator />
         <DropdownMenuLabel>Descargar</DropdownMenuLabel>
@@ -835,6 +855,9 @@ function RoadmapEmptyPeriod() {
 function RoadmapPanel() {
   const wrapRef = useRef<HTMLDivElement>(null);
   const [asanaRequested, setAsanaRequested] = useState(false);
+  // El menú se cierra al elegir, así que el estado de la cuenta y la espera del
+  // popup viven aquí, en el panel, que sigue montado.
+  const asana = useAsanaAccount();
 
   // Tras montar, dispara el render legacy del roadmap. loadModules() puede no estar definido aún
   // (carga de promotion-detail.js) → poll corto hasta que exista y se llama una vez.
@@ -906,7 +929,7 @@ function RoadmapPanel() {
             <i className="bi bi-plus-lg" aria-hidden="true" />Módulo
           </button>
           <ViewPicker />
-          <RoadmapMoreMenu onAsana={() => setAsanaRequested(true)} />
+          <RoadmapMoreMenu onAsana={() => setAsanaRequested(true)} asana={asana} />
         </div>
       </div>
 
