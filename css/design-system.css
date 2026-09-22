@@ -44,6 +44,17 @@
     --app-color-gantt-leccion:  #8e7cc3;
     --app-color-gantt-flexible: #6f42c1;
 
+    /* === Color — series de datos (gráficos de la sección Métricas) ==========
+       Tres hues distinguibles entre sí y con >=4,5:1 sobre superficie blanca, o
+       sea válidos tanto para la marca del gráfico como para su etiqueta. NO son
+       los colores del Gantt de arriba: aquellos codifican tipo de elemento del
+       roadmap y reutilizarlos aquí haría creer que significan lo mismo.
+       Lo que no es un dato medido (el "sin especificar") va en neutral-300, para
+       que se lea como hueco y no como una categoría más. */
+    --app-color-data-1: #2563eb;   /* azul */
+    --app-color-data-2: #0f766e;   /* verde azulado */
+    --app-color-data-3: #7c3aed;   /* violeta */
+
     /* === Color — semántico (esto es lo que usa el código de los componentes) === */
     --app-color-primary:        var(--app-color-brand-500);
     --app-color-primary-hover:  var(--app-color-brand-700);

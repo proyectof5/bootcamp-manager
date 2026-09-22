@@ -72,6 +72,26 @@ interface Student {
   withdrawal?: Withdrawal | null;
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   technicalTracking?: any;
+  followUp?: FollowUp;
+}
+// Seguimiento tras la formación (openspec add-promotion-metrics-and-student-followup).
+type FollowUpSituation = 'employed_it' | 'employed_other' | 'unemployed_studying' | 'studying' | 'unemployed';
+type FollowUpChannel = 'linkedin' | 'job_speed_dating' | 'final_project_client' | 'contacts' | 'other';
+interface FollowUp {
+  situation?: FollowUpSituation;
+  employment?: { sector?: string; company?: string; startDate?: string; channel?: FollowUpChannel | '' } | null;
+  studies?: { isIT?: boolean; description?: string; startDate?: string } | null;
+  updatedAt?: string;
+}
+interface FollowUpForm {
+  situation: FollowUpSituation | '';
+  sector: string;
+  company: string;
+  startDate: string;
+  channel: FollowUpChannel | '';
+  studiesIT: boolean;
+  studiesDescription: string;
+  studiesStartDate: string;
 }
 interface RoadmapProject { name: string; url?: string; moduleId: string; moduleName: string; competenceIds: (string | number)[]; }
 interface RoadmapCourse { name?: string; url?: string; }
@@ -95,6 +115,28 @@ const PROJ_LEVEL_COLORS: Record<number, string> = { 0: 'secondary', 1: 'danger',
 const PROJ_LEVEL_LABELS: Record<number, string> = { 0: 'Sin nivel', 1: 'Básico', 2: 'Medio', 3: 'Avanzado' };
 const IND_COLORS: Record<number, string> = { 1: '#ffc107', 2: '#0d6efd', 3: '#198754' };
 
+const FOLLOWUP_SITUATIONS: { value: FollowUpSituation; label: string }[] = [
+  { value: 'employed_it', label: 'Empleado en IT' },
+  { value: 'employed_other', label: 'Empleado en otro sector' },
+  { value: 'unemployed_studying', label: 'Desempleado y estudiando' },
+  { value: 'studying', label: 'Solo estudiando' },
+  { value: 'unemployed', label: 'Desempleado' },
+];
+const FOLLOWUP_CHANNELS: { value: FollowUpChannel; label: string }[] = [
+  { value: 'linkedin', label: 'LinkedIn' },
+  { value: 'job_speed_dating', label: 'Job Speed Dating (Factoría F5)' },
+  { value: 'final_project_client', label: 'Cliente de proyecto final' },
+  { value: 'contacts', label: 'Contactos' },
+  { value: 'other', label: 'Otra' },
+];
+const SECTOR_SUGGESTIONS = ['Consultoría', 'Banca / Finanzas', 'Retail', 'Salud', 'Educación', 'Administración pública', 'Startup / Producto', 'Otro'];
+const isEmployedSituation = (s: string) => s === 'employed_it' || s === 'employed_other';
+const isStudyingSituation = (s: string) => s === 'unemployed_studying' || s === 'studying';
+const EMPTY_FOLLOWUP_FORM: FollowUpForm = {
+  situation: '', sector: '', company: '', startDate: '', channel: '',
+  studiesIT: false, studiesDescription: '', studiesStartDate: '',
+};
+
 // ─── Helpers ──────────────────────────────────────────────────────────────
 const todayISO = () => new Date().toISOString().split('T')[0];
 
@@ -103,6 +145,27 @@ function fmtDate(dateStr?: string | null): string {
   try {
     return new Date(dateStr).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' });
   } catch { return dateStr; }
+}
+
+// Misma regla que backend/services/metrics.service.js (addMonths/monthsBetween): la cifra
+// oficial la da GET /metrics; aquí solo se muestra en la ficha.
+function addMonthsISO(date: string, n: number): string {
+  const [y, m, d] = date.slice(0, 10).split('-').map(Number);
+  const t = new Date(Date.UTC(y, m - 1 + n, 1));
+  const last = new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth() + 1, 0)).getUTCDate();
+  t.setUTCDate(Math.min(d, last));
+  return t.toISOString().slice(0, 10);
+}
+/** Meses naturales completos de `from` a `to` (0 si `to` es anterior o igual); null si falta alguna fecha. */
+function monthsBetweenISO(from?: string | null, to?: string | null): number | null {
+  const re = /^\d{4}-\d{2}-\d{2}/;
+  if (!from || !to || !re.test(from) || !re.test(to)) return null;
+  const f = from.slice(0, 10);
+  const t = to.slice(0, 10);
+  if (t <= f) return 0;
+  let n = (Number(t.slice(0, 4)) - Number(f.slice(0, 4))) * 12 + (Number(t.slice(5, 7)) - Number(f.slice(5, 7)));
+  while (n > 0 && addMonthsISO(f, n) > t) n--;
+  return n;
 }
 
 function toast(message: string, type: 'success' | 'danger' | 'warning' = 'success') {
@@ -394,6 +457,9 @@ export function StudentTrackingHost() {
   const [personalForm, setPersonalForm] = useState({ name: '', lastname: '', email: '', github: '', laptop: false });
   const [bajaMode, setBajaMode] = useState<'closed' | 'editing'>('closed');
   const [bajaForm, setBajaForm] = useState({ date: '', reason: '', representative: '' });
+  const [followUpForm, setFollowUpForm] = useState<FollowUpForm>(EMPTY_FOLLOWUP_FORM);
+  const [savingFollowUp, setSavingFollowUp] = useState(false);
+  const [promotionEndDate, setPromotionEndDate] = useState<string | null>(null);
 
   // Refs síncronos (puente + persistencia leen el valor actual sin re-render)
   const promotionIdRef = useRef<string | null>(null);
@@ -477,6 +543,7 @@ export function StudentTrackingHost() {
       ]);
       if (promoRes.ok) {
         const promo = await promoRes.json();
+        setPromotionEndDate(promo.endDate || null);
         const mods: PromotionModule[] = promo.modules || [];
         const projects: RoadmapProject[] = [];
         mods.forEach((m) => {
@@ -583,6 +650,53 @@ export function StudentTrackingHost() {
     const sub = document.getElementById('ficha-student-subtitle');
     if (sub && currentStudent) sub.textContent = `${currentStudent.name || ''} ${currentStudent.lastname || ''} — ${currentStudent.email || ''}`;
   }, [currentStudent]);
+
+  // ─── Sincroniza form de seguimiento cuando carga el estudiante ──
+  useEffect(() => {
+    if (!currentStudent) return;
+    const fu = currentStudent.followUp || {};
+    setFollowUpForm({
+      situation: fu.situation || '',
+      sector: fu.employment?.sector || '',
+      company: fu.employment?.company || '',
+      startDate: fu.employment?.startDate || '',
+      channel: fu.employment?.channel || '',
+      studiesIT: !!fu.studies?.isIT,
+      studiesDescription: fu.studies?.description || '',
+      studiesStartDate: fu.studies?.startDate || '',
+    });
+  }, [currentStudent]);
+
+  // ─── Guardar seguimiento tras la formación (PUT /followup) ──
+  const saveFollowUp = useCallback(async () => {
+    const f = followUpForm;
+    if (!f.situation) { toast('Elige la situación del estudiante', 'warning'); return; }
+    const employed = isEmployedSituation(f.situation);
+    const studying = isStudyingSituation(f.situation);
+    if (employed && !f.startDate) { toast('La fecha de incorporación es obligatoria', 'warning'); return; }
+    if (studying && f.studiesIT && !f.studiesStartDate) { toast('La fecha de inicio de los estudios IT es obligatoria', 'warning'); return; }
+    const payload = {
+      situation: f.situation,
+      employment: employed ? { sector: f.sector.trim(), company: f.company.trim(), startDate: f.startDate, channel: f.channel } : null,
+      studies: studying ? { isIT: f.studiesIT, description: f.studiesDescription.trim(), startDate: f.studiesStartDate } : null,
+    };
+    setSavingFollowUp(true);
+    try {
+      const res = await apiFetch(`/api/promotions/${promotionIdRef.current}/students/${currentStudentIdRef.current}/followup`, {
+        method: 'PUT', body: JSON.stringify(payload),
+      });
+      if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.error || `Error ${res.status}`); }
+      const { followUp } = await res.json();
+      const ns: Student = { ...currentStudentRef.current, followUp };
+      currentStudentRef.current = ns; setCurrentStudent(ns);
+      toast('Seguimiento guardado correctamente ✓', 'success');
+    } catch (e) {
+      console.error('[StudentTracking] saveFollowUp:', e);
+      toast((e as Error).message || 'Error al guardar el seguimiento', 'danger');
+    } finally {
+      setSavingFollowUp(false);
+    }
+  }, [followUpForm]);
 
   // ─── Guardar datos personales (PUT /ficha/personal) ──
   const savePersonal = useCallback(async () => {
@@ -779,13 +893,16 @@ export function StudentTrackingHost() {
         </div>
       ) : currentStudent ? (
         <Tabs defaultValue="personal" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mt-3 mx-3" style={{ width: 'calc(100% - 1.5rem)' }}>
+          <TabsList className="grid w-full grid-cols-3 mt-3 mx-3" style={{ width: 'calc(100% - 1.5rem)' }}>
             <TabsTrigger value="personal">
               <i className="bi bi-person-vcard me-1" /> Datos Personales
             </TabsTrigger>
             <TabsTrigger value="technical">
               <i className="bi bi-gear me-1" /> Seguimiento Técnico
               {hasUnsaved && <span className="badge bg-danger ms-1">●</span>}
+            </TabsTrigger>
+            <TabsTrigger value="followup">
+              <i className="bi bi-briefcase me-1" /> Seguimiento
             </TabsTrigger>
           </TabsList>
 
@@ -880,6 +997,9 @@ export function StudentTrackingHost() {
               </button>
             </div>
           </TabsContent>
+
+          {/* ── Seguimiento tras la formación ── */}
+          <TabsContent value="followup" className="p-4">{renderFollowUp()}</TabsContent>
         </Tabs>
       ) : null}
     </div>
@@ -1453,6 +1573,107 @@ export function StudentTrackingHost() {
           </div>
         </div>
       </div>
+    );
+  }
+
+  function renderFollowUp() {
+    const f = followUpForm;
+    const set = (patch: Partial<FollowUpForm>) => setFollowUpForm((cur) => ({ ...cur, ...patch }));
+    const employed = isEmployedSituation(f.situation);
+    const studying = isStudyingSituation(f.situation);
+    const months = monthsBetweenISO(promotionEndDate, f.startDate);
+    const updatedAt = currentStudent?.followUp?.updatedAt;
+
+    let timeToJob: string;
+    if (!f.startDate) timeToJob = 'Indica la fecha de incorporación para calcularlo.';
+    else if (!promotionEndDate) timeToJob = 'No disponible: la promoción no tiene fecha de fin.';
+    else if (f.startDate.slice(0, 10) <= promotionEndDate.slice(0, 10)) timeToJob = 'Antes de terminar la formación (0 meses).';
+    else timeToJob = `${months} ${months === 1 ? 'mes' : 'meses'} después de la formación.`;
+
+    return (
+      <form onSubmit={(e) => { e.preventDefault(); saveFollowUp(); }}>
+        <div className="row g-3">
+          <div className="col-md-6">
+            <label className="form-label fw-bold" htmlFor="followup-situation">Situación tras la formación <span className="text-danger">*</span></label>
+            <select id="followup-situation" className="form-select" value={f.situation}
+              onChange={(e) => set({ situation: e.target.value as FollowUpSituation | '' })}>
+              <option value="">Selecciona una situación…</option>
+              {FOLLOWUP_SITUATIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+          </div>
+        </div>
+
+        {employed && (
+          <fieldset className="mt-4">
+            <legend className="h6 fw-bold"><i className="bi bi-building me-1" /> Empleo</legend>
+            <div className="row g-3">
+              <div className="col-md-6">
+                <label className="form-label fw-semibold" htmlFor="followup-sector">Sector</label>
+                <input id="followup-sector" type="text" className="form-control" list="followup-sector-options"
+                  placeholder="ej. Consultoría" value={f.sector} onChange={(e) => set({ sector: e.target.value })} />
+                <datalist id="followup-sector-options">
+                  {SECTOR_SUGGESTIONS.map((x) => <option key={x} value={x} />)}
+                </datalist>
+              </div>
+              <div className="col-md-6">
+                <label className="form-label fw-semibold" htmlFor="followup-company">Empresa</label>
+                <input id="followup-company" type="text" className="form-control" placeholder="Nombre de la empresa"
+                  value={f.company} onChange={(e) => set({ company: e.target.value })} />
+              </div>
+              <div className="col-md-6">
+                <label className="form-label fw-semibold" htmlFor="followup-start">Fecha de incorporación <span className="text-danger">*</span></label>
+                <input id="followup-start" type="date" className="form-control" value={f.startDate}
+                  onChange={(e) => set({ startDate: e.target.value })} />
+                <div className="form-text">{timeToJob}</div>
+              </div>
+              <div className="col-md-6">
+                <label className="form-label fw-semibold" htmlFor="followup-channel">¿Cómo consiguió el trabajo?</label>
+                <select id="followup-channel" className="form-select" value={f.channel}
+                  onChange={(e) => set({ channel: e.target.value as FollowUpChannel | '' })}>
+                  <option value="">Sin especificar</option>
+                  {FOLLOWUP_CHANNELS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                </select>
+              </div>
+            </div>
+          </fieldset>
+        )}
+
+        {studying && (
+          <fieldset className="mt-4">
+            <legend className="h6 fw-bold"><i className="bi bi-mortarboard me-1" /> Estudios</legend>
+            <div className="row g-3">
+              <div className="col-md-12">
+                <div className="form-check form-switch">
+                  <input id="followup-studies-it" className="form-check-input" type="checkbox" role="switch"
+                    checked={f.studiesIT} onChange={(e) => set({ studiesIT: e.target.checked })} />
+                  <label className="form-check-label" htmlFor="followup-studies-it">Son estudios de IT</label>
+                </div>
+              </div>
+              <div className="col-md-6">
+                <label className="form-label fw-semibold" htmlFor="followup-studies-desc">¿Qué estudia?</label>
+                <input id="followup-studies-desc" type="text" className="form-control" placeholder="ej. Grado Superior DAM"
+                  value={f.studiesDescription} onChange={(e) => set({ studiesDescription: e.target.value })} />
+              </div>
+              <div className="col-md-6">
+                <label className="form-label fw-semibold" htmlFor="followup-studies-start">
+                  Fecha de inicio {f.studiesIT && <span className="text-danger">*</span>}
+                </label>
+                <input id="followup-studies-start" type="date" className="form-control" value={f.studiesStartDate}
+                  onChange={(e) => set({ studiesStartDate: e.target.value })} />
+              </div>
+            </div>
+          </fieldset>
+        )}
+
+        <div className="mt-4 d-flex justify-content-between align-items-center">
+          <small className="text-muted">
+            {updatedAt ? `Última actualización: ${fmtDate(updatedAt)}` : 'Sin seguimiento registrado.'}
+          </small>
+          <button type="submit" className="btn btn-primary px-4" disabled={savingFollowUp}>
+            <i className="bi bi-save me-1" /> {savingFollowUp ? 'Guardando…' : 'Guardar seguimiento'}
+          </button>
+        </div>
+      </form>
     );
   }
 

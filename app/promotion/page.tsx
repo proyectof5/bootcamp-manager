@@ -28,6 +28,7 @@ import { SectionNavItems, PromotionPageHeadHost } from './_components/PromotionN
 import { PromotionSettingsPanelHost } from './_components/PromotionSettingsPanel';
 import { CommandPalette, CommandPaletteButton } from './_components/CommandPalette';
 import { EvaluationGridPanelHost } from './_components/EvaluationGridPanel';
+import { MetricsPanelHost } from './_components/MetricsPanel';
 import { initReports } from './_lib/reports';
 import { initSyllabusPdf } from './_lib/syllabus-pdf';
 import {
@@ -590,6 +591,9 @@ export default function PromotionPage() {
           con ids legacy; loadEvaluation/renderEvaluationTab y el flujo de evaluación los pueblan/togglean
           por id. Con esto promotion-detail.js deja de ser dueño de ninguna sección de body.ts. */}
       <EvaluationGridPanelHost />
+      {/* Sección "Métricas" (openspec add-promotion-metrics-and-student-followup): React vía portal a
+          #metrics-tab. Carga GET /api/promotions/:id/metrics y se recarga con 'promotion-metrics-open'. */}
+      <MetricsPanelHost />
 
       {/* ──────────────────────────────────────────────────────────────────────
           MODALES SHADCN (spec 0013-b en adelante)
