@@ -5,7 +5,7 @@
  * (docs/tasks/navegacion-promocion.md, Fase 1).
  *
  * Dos piezas que leen el mismo destino de public/js/promotion-nav.js:
- *  - `SectionNavItems`: los enlaces de la barra lateral (7 secciones + Ajustes al pie).
+ *  - `SectionNavItems`: los enlaces de la barra lateral (8 secciones + Ajustes al pie).
  *  - `PromotionPageHeadHost`: portal a #promotion-page-head, con migas, título,
  *    acciones y las pestañas de la sección activa.
  *

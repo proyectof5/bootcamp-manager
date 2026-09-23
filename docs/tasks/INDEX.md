@@ -32,6 +32,12 @@ Leyenda: ✅ spec completo · 🟡 spec con pendientes · ⬜ sin spec todavía.
 | Píldoras | ⬜ | `PildorasPanel.tsx` |
 | Calendario / horario / Google Calendar sync | ⬜ | `CalendarSettings.tsx`, `ScheduleSettings.tsx`, `buildRoadmapCalendarEvents` |
 
+## Promoción — Métricas
+
+| Área | Spec | Componentes/archivos principales |
+|---|---|---|
+| Métricas de la promoción con gráficos (anillo, barra apilada, barras ordenadas; estados vacíos explicados) | 🟡 [metricas-graficos.md](metricas-graficos.md) | `MetricsPanel.tsx`, `promotion-detail.css` (`.mtr-*`), `design-system.css` (`--app-color-data-*`), `server.js` (`/metrics`) |
+
 ## Promoción — Contenido / Equipo / Recursos
 
 | Área | Spec | Componentes/archivos principales |

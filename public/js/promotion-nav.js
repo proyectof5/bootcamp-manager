@@ -3,7 +3,7 @@
  * (docs/tasks/navegacion-promocion.md, Fase 1).
  *
  * Sustituye los tres niveles de antes (barra lateral → grupo → pestaña, más las
- * subpestañas del "Área de administración") por dos: siete secciones en la barra
+ * subpestañas del "Área de administración") por dos: ocho secciones en la barra
  * lateral y, dentro de cada una, sus pestañas.
  *
  * NO reescribe ningún panel: cada destino llama a las funciones legacy que ya
@@ -50,6 +50,11 @@
                 { id: 'lista', label: 'Lista', go: teacherTab('students') },
                 { id: 'asistencia', label: 'Asistencia', go: teacherTab('attendance') },
             ],
+        },
+        {
+            // Pinta MetricsPanel.tsx en #metrics-tab (openspec add-promotion-metrics-and-student-followup).
+            id: 'metricas', label: 'Métricas', icon: 'bi-bar-chart',
+            tabs: [{ id: 'resumen', label: 'Resumen', go: S('switchTab', 'metrics') }],
         },
         {
             id: 'portal', label: 'Portal del estudiante', icon: 'bi-globe',

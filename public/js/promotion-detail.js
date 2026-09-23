@@ -2694,6 +2694,8 @@ function switchTab(tabId) {
         switchProgramDetailsTab(savedProgramTab);
     }
     if (tabId === 'collaborators') loadCollaborators();
+    // MetricsPanel.tsx recarga las métricas al abrir la sección.
+    if (tabId === 'metrics') window.dispatchEvent(new Event('promotion-metrics-open'));
     if (tabId === 'access-settings') loadAccessPassword();
     if (tabId === 'evaluation') loadEvaluation();
     if (tabId === 'teacher-area') {

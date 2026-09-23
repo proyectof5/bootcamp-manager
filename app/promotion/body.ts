@@ -285,6 +285,9 @@ const promotionDetailBody = `
                      era la ventana "Modificar promoción". Lo monta por portal
                      _components/PromotionSettingsPanel.tsx. -->
                 <div id="ajustes-tab" class="section-content legacy-hidden"></div>
+                <!-- Sección "Métricas": MetricsPanelHost (_components/MetricsPanel.tsx) monta aquí por portal
+                     el panel de métricas. switchTab('metrics') lo muestra y emite 'promotion-metrics-open'. -->
+                <div id="metrics-tab" class="section-content legacy-hidden"></div>
 
                 <!-- Program Info Tab (New) -->
                 <div id="info-tab" class="section-content legacy-hidden">
