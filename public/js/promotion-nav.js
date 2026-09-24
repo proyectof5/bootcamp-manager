@@ -49,6 +49,7 @@
             tabs: [
                 { id: 'lista', label: 'Lista', go: teacherTab('students') },
                 { id: 'asistencia', label: 'Asistencia', go: teacherTab('attendance') },
+                { id: 'superacion', label: 'Superación', go: S('switchTab', 'superacion') },
             ],
         },
         {

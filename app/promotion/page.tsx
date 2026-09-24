@@ -30,6 +30,7 @@ import { CommandPalette, CommandPaletteButton } from './_components/CommandPalet
 import { EvaluationGridPanelHost } from './_components/EvaluationGridPanel';
 import { MetricsPanelHost } from './_components/MetricsPanel';
 import { DocumentsPanelHost } from './_components/DocumentsPanel';
+import { CompletionPanelHost } from './_components/CompletionPanel';
 import { initReports } from './_lib/reports';
 import { initSyllabusPdf } from './_lib/syllabus-pdf';
 import {
@@ -598,6 +599,9 @@ export default function PromotionPage() {
 
       {/* Ajustes › Documentos: lo que la app aporta a la carpeta de proyecto ISO. */}
       <DocumentsPanelHost />
+
+      {/* Estudiantes › Superación: requisitos del diploma y decisión por persona. */}
+      <CompletionPanelHost />
 
       {/* ──────────────────────────────────────────────────────────────────────
           MODALES SHADCN (spec 0013-b en adelante)

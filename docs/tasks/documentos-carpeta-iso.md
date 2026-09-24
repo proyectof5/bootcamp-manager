@@ -58,15 +58,32 @@ todas las peticiones 200 y ninguna consola con errores.
 
 - **El ZIP con el árbol montado** (fase 2), que es donde esto va. Su botón va en
   este mismo panel.
-- **Falta la interfaz de los requisitos de superación**: los campos existen en el
-  modelo y el documento los pinta, pero todavía no hay pantalla para fijar los
-  criterios, aprobarlos ni decidir el apto de cada persona. Hasta que la haya, el
-  documento sale con el aviso de «no aprobados» y todo el mundo «sin decidir».
-- **Falta el campo `stack` en Ajustes**: la columna existe y el documento la
-  pinta, pero no hay dónde escribirla.
+- Las dos pantallas que faltaban ya están: `stack` en Ajustes › Identidad y
+  **Estudiantes › Superación** (requisitos, aprobación y decisión por persona).
+  Queda por usarlas: ningún bootcamp tiene todavía criterios ni decisiones.
 - Las entregas se leen de `projectEvaluations[].groups`; si una entrega llega sin
   grupo (entrega individual sin grupo creado) no aparece. Revisar cuando haya
   datos reales de entregas, que hoy no los hay.
+
+## La pantalla de superación
+
+Tres bloques en el orden en que la auditoría los pide: qué se exige, quién lo
+aprueba, y cómo se aplicó a cada persona. Vive en **Estudiantes › Superación**
+porque la decisión es sobre personas, aunque los criterios sean del programa.
+
+Dos reglas que no son cosméticas:
+
+- **Sin aprobación no se decide.** El backend lo rechaza (`construirInstantanea`)
+  y la pantalla desactiva los botones, con el motivo escrito.
+- **Cambiar un requisito aprobado anula la aprobación.** Lo que se aprobó no son
+  «unos criterios» en abstracto, son estos. Al guardar un cambio se borran
+  `approvedBy/Role/At` y hay que volver a aprobar; además el botón de aprobar se
+  bloquea mientras haya cambios sin guardar, para que no se apruebe una cosa
+  distinta de la que se ve. Las decisiones ya tomadas **no** se tocan: cada una
+  guarda su instantánea.
+
+Apartarse de los criterios está permitido pero **exige motivo escrito**, que sale
+en el documento justificativo en su propia tabla.
 
 ## Archivos clave
 
@@ -74,4 +91,6 @@ todas las peticiones 200 y ninguna consola con errores.
 - `app/promotion/_lib/documentos.ts` — los seis generadores.
 - `app/promotion/_components/DocumentsPanel.tsx` — el panel y la lista.
 - `public/js/promotion-nav.js` — la pestaña dentro de Ajustes.
-- `css/promotion-detail.css` — bloque «Ajustes › Documentos».
+- `app/promotion/_components/CompletionPanel.tsx` — la pantalla de superación.
+- `app/promotion/_components/PromotionSettingsPanel.tsx` — el campo `stack`.
+- `css/promotion-detail.css` — bloques «Ajustes › Documentos» y «Estudiantes › Superación».

@@ -293,6 +293,10 @@ const promotionDetailBody = `
                      monta aquí por portal los documentos de la carpeta de proyecto ISO. -->
                 <div id="documentos-tab" class="section-content legacy-hidden"></div>
 
+                <!-- Sección "Superación": CompletionPanelHost (_components/CompletionPanel.tsx)
+                     monta aquí los requisitos del diploma y la decisión de cada persona. -->
+                <div id="superacion-tab" class="section-content legacy-hidden"></div>
+
                 <!-- Program Info Tab (New) -->
                 <div id="info-tab" class="section-content legacy-hidden">
                     <div class="d-flex justify-content-between align-items-center my-4 pb-3 border-bottom legacy-page-title">
