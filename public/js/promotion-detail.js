@@ -2696,6 +2696,8 @@ function switchTab(tabId) {
     if (tabId === 'collaborators') loadCollaborators();
     // MetricsPanel.tsx recarga las métricas al abrir la sección.
     if (tabId === 'metrics') window.dispatchEvent(new Event('promotion-metrics-open'));
+    // Superación: recarga al entrar, para reflejar evaluaciones y asistencia recientes.
+    if (tabId === 'superacion') window.dispatchEvent(new Event('promotion-superacion-open'));
     if (tabId === 'access-settings') loadAccessPassword();
     if (tabId === 'evaluation') loadEvaluation();
     if (tabId === 'teacher-area') {

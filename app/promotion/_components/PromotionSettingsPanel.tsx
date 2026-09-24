@@ -34,6 +34,7 @@ const DAYS: { value: number; label: string }[] = [
 interface Form {
   name: string;
   description: string;
+  stack: string;
   weeks: string;
   totalHours: string;
   hoursPerDay: string;
@@ -42,7 +43,7 @@ interface Form {
   workingDays: number[];
 }
 
-const EMPTY: Form = { name: '', description: '', weeks: '', totalHours: '', hoursPerDay: '', startDate: '', endDate: '', workingDays: [1, 2, 3, 4, 5] };
+const EMPTY: Form = { name: '', description: '', stack: '', weeks: '', totalHours: '', hoursPerDay: '', startDate: '', endDate: '', workingDays: [1, 2, 3, 4, 5] };
 const dateOnly = (v?: string) => (v ? String(v).slice(0, 10) : '');
 
 function usePortalNode(id: string): HTMLElement | null {
@@ -85,6 +86,7 @@ function PromotionSettingsPanel() {
     setForm({
       name: p.name || '',
       description: p.description || '',
+      stack: p.stack || '',
       weeks: p.weeks ? String(p.weeks) : '',
       totalHours: ext.totalHours ? String(ext.totalHours) : '',
       hoursPerDay: p.hoursPerDay ? String(p.hoursPerDay) : '',
@@ -146,6 +148,7 @@ function PromotionSettingsPanel() {
     const payload = {
       name: form.name.trim(),
       description: form.description.trim(),
+      stack: form.stack.trim(),
       weeks: parseInt(form.weeks, 10) || undefined,
       totalHours: parseInt(form.totalHours, 10) || undefined,
       hoursPerDay: Number.isFinite(hpd) && hpd > 0 ? hpd : undefined,
@@ -197,6 +200,17 @@ function PromotionSettingsPanel() {
           <div className="settings-field settings-field-wide">
             <label htmlFor="settings-desc">Descripción</label>
             <textarea id="settings-desc" className="form-control" rows={3} value={form.description} onChange={(e) => set('description', e.target.value)} />
+          </div>
+          {/* Stack: lo pide la carpeta 01.2 "Diseño formación" de la estructura
+              ISO y sale en el documento de competencias del programa. */}
+          <div className="settings-field settings-field-wide">
+            <label htmlFor="settings-stack">Stack tecnológico</label>
+            <textarea id="settings-stack" className="form-control" rows={2}
+              placeholder="Python, PyTorch, LangChain, FastAPI, Docker, PostgreSQL…"
+              value={form.stack} onChange={(e) => set('stack', e.target.value)} />
+            <span className="settings-hint">
+              Tecnologías que se enseñan en el bootcamp. Sale en el documento «Competencias del programa».
+            </span>
           </div>
         </div>
       </fieldset>

@@ -5514,3 +5514,266 @@ body {
     #main-content .mtr-bars dt { grid-column: 1 / 3; }
     #main-content .mtr-bars dd { grid-column: 1 / 3; }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Ajustes › Documentos — lo que la app aporta a la carpeta de proyecto ISO
+   Una lista por subcarpeta, no un muro de botones: quien entra aquí está
+   montando una carpeta que va a revisar una auditoría y necesita ver qué hay
+   y qué falta, no exportar una cosa suelta.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+#main-content .docs-intro {
+    margin: 0 0 var(--app-space-4);
+    max-width: 68ch;
+    font-size: var(--app-font-size-sm);
+    color: var(--app-color-text-muted);
+}
+
+#main-content .docs-error {
+    margin: 0 0 var(--app-space-4);
+    padding: var(--app-space-3);
+    border: 1px solid var(--app-color-danger-500);
+    border-radius: var(--app-radius-md);
+    background: #fdf2f2;
+    font-size: var(--app-font-size-sm);
+    color: #8a1f1f;
+}
+
+#main-content .docs-group + .docs-group { margin-top: var(--app-space-5); }
+
+#main-content .docs-group-title {
+    margin: 0 0 var(--app-space-2);
+    font-size: var(--app-font-size-xs);
+    font-weight: var(--app-font-weight-semi);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--app-color-text-muted);
+}
+
+#main-content .docs-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    border: 1px solid var(--app-color-border);
+    border-radius: var(--app-radius-lg);
+    background: var(--app-color-bg-surface);
+    overflow: hidden;
+}
+
+#main-content .docs-item {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--app-space-3);
+    padding: var(--app-space-3) var(--app-space-4);
+}
+
+#main-content .docs-item + .docs-item { border-top: 1px solid var(--app-color-border); }
+
+#main-content .docs-item-text {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    flex: 1 1 18rem;
+    min-width: 0;
+}
+
+#main-content .docs-item-title {
+    font-size: var(--app-font-size-sm);
+    font-weight: var(--app-font-weight-semi);
+    color: var(--app-color-text);
+}
+
+#main-content .docs-item-note {
+    font-size: var(--app-font-size-xs);
+    color: var(--app-color-text-muted);
+}
+
+#main-content .docs-outside {
+    margin: 0;
+    padding-left: var(--app-space-4);
+    font-size: var(--app-font-size-xs);
+    color: var(--app-color-text-muted);
+}
+
+#main-content .docs-outside li + li { margin-top: 4px; }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Estudiantes › Superación — requisitos del diploma y decisión por persona
+   Tres bloques en el orden en que los pide la auditoría: qué se exige, quién
+   lo aprueba y cómo se aplicó a cada persona.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+#main-content .sup-block + .sup-block { margin-top: var(--app-space-6); }
+
+#main-content .sup-block > h2 { margin: 0 0 var(--app-space-1); }
+
+#main-content .sup-note {
+    margin: 0 0 var(--app-space-3);
+    max-width: 72ch;
+    font-size: var(--app-font-size-xs);
+    color: var(--app-color-text-muted);
+}
+
+#main-content .sup-cargando { color: var(--app-color-text-muted); font-size: var(--app-font-size-sm); }
+
+#main-content .sup-aviso,
+#main-content .sup-error {
+    display: flex;
+    align-items: center;
+    gap: var(--app-space-2);
+    margin: 0 0 var(--app-space-4);
+    padding: var(--app-space-3);
+    border-radius: var(--app-radius-md);
+    font-size: var(--app-font-size-sm);
+}
+
+#main-content .sup-aviso { background: var(--app-color-brand-50); color: var(--app-color-brand-900); }
+#main-content .sup-error { background: #fdf2f2; border: 1px solid var(--app-color-danger-500); color: #8a1f1f; }
+
+#main-content .sup-fields {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: var(--app-space-3);
+    margin-bottom: var(--app-space-3);
+}
+
+#main-content .sup-field {
+    display: flex;
+    flex-direction: column;
+    gap: var(--app-space-1);
+    flex: 1 1 14rem;
+    min-width: 0;
+}
+
+/* Un botón no tiene etiqueta: se alinea con los campos, no con sus rótulos. */
+#main-content .sup-field-action { flex: 0 0 auto; align-self: flex-end; }
+
+#main-content .sup-field label,
+#main-content .sup-comps legend {
+    margin: 0;
+    font-size: var(--app-font-size-xs);
+    font-weight: var(--app-font-weight-semi);
+    color: var(--app-color-text-muted);
+}
+
+#main-content .sup-inline { display: flex; align-items: center; gap: var(--app-space-2); }
+#main-content .sup-inline .form-control { max-width: 6rem; }
+#main-content .sup-unit { font-size: var(--app-font-size-sm); color: var(--app-color-text-muted); }
+
+#main-content .sup-comps {
+    margin: 0 0 var(--app-space-3);
+    padding: var(--app-space-3);
+    border: 1px solid var(--app-color-border);
+    border-radius: var(--app-radius-md);
+}
+
+#main-content .sup-comp-list {
+    margin: var(--app-space-2) 0 0;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: var(--app-space-1) var(--app-space-3);
+}
+
+#main-content .sup-check {
+    display: flex;
+    align-items: flex-start;
+    gap: 6px;
+    margin: 0;
+    font-size: var(--app-font-size-xs);
+    color: var(--app-color-text);
+}
+
+#main-content .sup-check input { margin-top: 2px; flex: 0 0 auto; }
+
+#main-content .sup-ok,
+#main-content .sup-warn {
+    display: flex;
+    align-items: center;
+    gap: var(--app-space-2);
+    margin: 0 0 var(--app-space-3);
+    padding: var(--app-space-3);
+    border-radius: var(--app-radius-md);
+    font-size: var(--app-font-size-sm);
+}
+
+#main-content .sup-ok   { background: #e7f4ec; color: #0f5132; }
+#main-content .sup-warn { background: #fff4e5; color: #7f4f00; }
+#main-content .sup-ok .lucide, #main-content .sup-warn .lucide { flex: 0 0 auto; }
+
+/* ── Tabla de personas ─────────────────────────────────────────────────── */
+
+#main-content .sup-table-wrap { overflow-x: auto; }
+
+#main-content .sup-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: var(--app-font-size-xs);
+}
+
+#main-content .sup-table th {
+    padding: var(--app-space-2) var(--app-space-3);
+    background: var(--app-color-neutral-50);
+    border-bottom: 1px solid var(--app-color-border);
+    font-weight: var(--app-font-weight-semi);
+    color: var(--app-color-text-muted);
+    text-align: left;
+    white-space: nowrap;
+}
+
+#main-content .sup-table td {
+    padding: var(--app-space-2) var(--app-space-3);
+    border-bottom: 1px solid var(--app-color-border);
+    vertical-align: middle;
+}
+
+#main-content .sup-table tr.is-baja td { color: var(--app-color-text-muted); }
+#main-content .sup-num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+
+#main-content .sup-tag {
+    margin-left: 6px;
+    padding: 1px 6px;
+    border-radius: var(--app-radius-pill);
+    background: var(--app-color-neutral-100);
+    font-size: 10px;
+}
+
+/* Estado con palabra, nunca solo color. */
+#main-content .sup-pill {
+    display: inline-block;
+    padding: 2px 9px;
+    border: 1px solid var(--app-color-neutral-300);
+    border-radius: var(--app-radius-pill);
+    background: var(--app-color-neutral-50);
+    color: var(--app-color-text-muted);
+    font-weight: var(--app-font-weight-semi);
+    white-space: nowrap;
+}
+
+#main-content .sup-pill.is-ok { background: #e7f4ec; border-color: #157347; color: #157347; }
+#main-content .sup-pill.is-no { background: #fdecea; border-color: #b02a37; color: #b02a37; }
+
+#main-content .sup-actions { display: flex; flex-wrap: wrap; gap: var(--app-space-2); }
+
+/* ── Motivo obligatorio al apartarse de los criterios ──────────────────── */
+
+#main-content .sup-motivo {
+    position: sticky;
+    bottom: var(--app-space-4);
+    margin-top: var(--app-space-4);
+    padding: var(--app-space-4);
+    border: 1px solid var(--app-color-brand-700);
+    border-radius: var(--app-radius-lg);
+    background: var(--app-color-bg-surface);
+    box-shadow: var(--app-shadow-md);
+}
+
+#main-content .sup-motivo p {
+    margin: 0 0 var(--app-space-2);
+    font-size: var(--app-font-size-sm);
+}
+
+#main-content .sup-motivo textarea { margin-bottom: var(--app-space-3); }

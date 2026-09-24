@@ -49,6 +49,7 @@
             tabs: [
                 { id: 'lista', label: 'Lista', go: teacherTab('students') },
                 { id: 'asistencia', label: 'Asistencia', go: teacherTab('attendance') },
+                { id: 'superacion', label: 'Superación', go: S('switchTab', 'superacion') },
             ],
         },
         {
@@ -76,6 +77,7 @@
             id: 'ajustes', label: 'Ajustes de la promoción', icon: 'bi-gear', foot: true,
             tabs: [
                 { id: 'datos', label: 'Datos de la promoción', go: S('switchTab', 'ajustes') },
+                { id: 'documentos', label: 'Documentos', go: S('switchTab', 'documentos') },
             ],
         },
     ];
