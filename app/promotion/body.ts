@@ -289,6 +289,10 @@ const promotionDetailBody = `
                      el panel de métricas. switchTab('metrics') lo muestra y emite 'promotion-metrics-open'. -->
                 <div id="metrics-tab" class="section-content legacy-hidden"></div>
 
+                <!-- Sección "Documentos": DocumentsPanelHost (_components/DocumentsPanel.tsx)
+                     monta aquí por portal los documentos de la carpeta de proyecto ISO. -->
+                <div id="documentos-tab" class="section-content legacy-hidden"></div>
+
                 <!-- Program Info Tab (New) -->
                 <div id="info-tab" class="section-content legacy-hidden">
                     <div class="d-flex justify-content-between align-items-center my-4 pb-3 border-bottom legacy-page-title">

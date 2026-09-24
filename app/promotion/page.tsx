@@ -29,6 +29,7 @@ import { PromotionSettingsPanelHost } from './_components/PromotionSettingsPanel
 import { CommandPalette, CommandPaletteButton } from './_components/CommandPalette';
 import { EvaluationGridPanelHost } from './_components/EvaluationGridPanel';
 import { MetricsPanelHost } from './_components/MetricsPanel';
+import { DocumentsPanelHost } from './_components/DocumentsPanel';
 import { initReports } from './_lib/reports';
 import { initSyllabusPdf } from './_lib/syllabus-pdf';
 import {
@@ -594,6 +595,9 @@ export default function PromotionPage() {
       {/* Sección "Métricas" (openspec add-promotion-metrics-and-student-followup): React vía portal a
           #metrics-tab. Carga GET /api/promotions/:id/metrics y se recarga con 'promotion-metrics-open'. */}
       <MetricsPanelHost />
+
+      {/* Ajustes › Documentos: lo que la app aporta a la carpeta de proyecto ISO. */}
+      <DocumentsPanelHost />
 
       {/* ──────────────────────────────────────────────────────────────────────
           MODALES SHADCN (spec 0013-b en adelante)

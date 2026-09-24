@@ -49,6 +49,13 @@ Leyenda: ✅ spec completo · 🟡 spec con pendientes · ⬜ sin spec todavía.
 | Aula virtual | ⬜ | `VirtualClassroomPanel.tsx` |
 | Acceso público / configuración de acceso | ⬜ | `AccessSettingsPanel.tsx`, `app/public-promotion/` |
 
+## Promoción — Documentación y justificación
+
+| Área | Spec | Componentes/archivos principales |
+|---|---|---|
+| Documentos para la carpeta de proyecto ISO (seis PDF + lo que no sale de la app) | 🟡 [documentos-carpeta-iso.md](documentos-carpeta-iso.md) | `_lib/doc-pdf.ts`, `_lib/documentos.ts`, `DocumentsPanel.tsx`, `promotion-nav.js` |
+| Superación del bootcamp y acceso al diploma (criterios, aprobación, apto/no apto trazable) | 🟡 [documentos-carpeta-iso.md](documentos-carpeta-iso.md) | `completion.service.js`, `completionData.service.js` (backend), `Student.completion` |
+
 ## Otras páginas de la app
 
 | Área | Spec | Componentes/archivos principales |

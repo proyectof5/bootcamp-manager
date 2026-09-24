@@ -76,6 +76,7 @@
             id: 'ajustes', label: 'Ajustes de la promoción', icon: 'bi-gear', foot: true,
             tabs: [
                 { id: 'datos', label: 'Datos de la promoción', go: S('switchTab', 'ajustes') },
+                { id: 'documentos', label: 'Documentos', go: S('switchTab', 'documentos') },
             ],
         },
     ];
