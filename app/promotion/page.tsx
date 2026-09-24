@@ -1431,6 +1431,25 @@ export default function PromotionPage() {
                 </Label>
                 <Input type="email" id="student-email" required />
               </div>
+              {/* Género: los valores son los mismos que ya usa el importador de
+                  Excel (GENDER_VALUES en server.js) para que las métricas de la
+                  promoción cuenten igual vengan de donde vengan. Un <select>
+                  nativo, no un Input: en texto libre acabaría habiendo "Mujer",
+                  "mujer", "F" y "femenino" y ninguna métrica cuadraría. */}
+              <div className="space-y-1">
+                <Label htmlFor="student-gender" className="font-semibold">Género</Label>
+                <select
+                  id="student-gender"
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm"
+                  defaultValue=""
+                >
+                  <option value="">Sin especificar</option>
+                  <option value="mujer">Mujer</option>
+                  <option value="hombre">Hombre</option>
+                  <option value="no_binario">No binario</option>
+                  <option value="no_especifica">Prefiere no decirlo</option>
+                </select>
+              </div>
               <div className="space-y-1">
                 <Label htmlFor="student-github" className="font-semibold">Usuario de GitHub</Label>
                 <Input id="student-github" placeholder="ej. octocat" />
