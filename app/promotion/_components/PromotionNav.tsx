@@ -39,15 +39,20 @@ function useDestination(): { dest: Destination; sections: NavSection[] } {
       const d = w().getPromotionDestination?.();
       if (d) setDest(d);
     };
+    // Dos caminos, porque el orden entre React y promotion-nav.js no está
+    // garantizado: si el script ya se cargó, `sync()` lo coge aquí mismo; si
+    // llega después, lo dice con `promotion-sections-ready`.
+    //
+    // Antes esto era solo un sondeo cada 300 ms que se rendía a los 6 segundos,
+    // y promotion-nav.js es el último de nueve scripts en serie (uno de ellos
+    // de más de 800 KB): cuando la carga se alargaba, la barra lateral se
+    // quedaba sin secciones —solo el pie, que es JSX fijo— hasta recargar.
     sync();
-    // promotion-nav.js puede cargar después que React: se reintenta un par de veces.
-    const t = setInterval(sync, 300);
-    const stop = setTimeout(() => clearInterval(t), 6000);
     const onChange = (e: Event) => setDest((e as CustomEvent).detail as Destination);
+    window.addEventListener('promotion-sections-ready', sync);
     window.addEventListener('promotion-destination-changed', onChange);
     return () => {
-      clearInterval(t);
-      clearTimeout(stop);
+      window.removeEventListener('promotion-sections-ready', sync);
       window.removeEventListener('promotion-destination-changed', onChange);
     };
   }, []);
