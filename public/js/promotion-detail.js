@@ -8927,6 +8927,7 @@ function setupForms() {
         const email = document.getElementById('student-email').value;
         const githubUser = document.getElementById('student-github')?.value?.trim() || '';
         const laptopLoan = document.getElementById('student-laptop-loan')?.checked || false;
+        const gender = document.getElementById('student-gender')?.value || '';
 
         // Check if we're editing an existing student
         const editingStudentId = document.getElementById('student-form').dataset.editingStudentId;
@@ -8938,7 +8939,8 @@ function setupForms() {
             lastname,
             email,
             githubUser,
-            laptopLoan
+            laptopLoan,
+            gender
         };
 
         //console.log('Sending student data:', studentData);
@@ -9343,6 +9345,7 @@ function editStudent(studentId) {
         v('student-lastname', student.lastname || '');
         v('student-email', student.email || '');
         v('student-github', student.githubUser || '');
+        v('student-gender', student.gender || '');
         const laptopInput = document.getElementById('student-laptop-loan');
         if (laptopInput) laptopInput.checked = !!student.laptopLoan;
         const sf = document.getElementById('student-form');
