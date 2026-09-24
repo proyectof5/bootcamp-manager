@@ -152,4 +152,13 @@
     window.goToPromotionDestination = goTo;
     window.getPromotionDestination = () => ({ ...current });
     window.startPromotionNav = start;
+
+    // Este script es el ÚLTIMO de una cadena de nueve que se cargan en serie
+    // (entre ellos promotion-detail.js, que pasa de 800 KB), así que puede
+    // tardar bastante más de lo que nadie espera. PromotionNav.tsx escucha este
+    // evento para pintar las secciones en cuanto existen, en vez de sondear
+    // window.PROMOTION_SECTIONS durante unos segundos y rendirse: cuando se
+    // rendía antes de tiempo, la barra lateral se quedaba sin secciones hasta
+    // la siguiente recarga.
+    window.dispatchEvent(new CustomEvent('promotion-sections-ready'));
 })();
