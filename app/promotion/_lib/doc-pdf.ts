@@ -8,8 +8,8 @@
  * parezcan el mismo documento importa tanto como el contenido.
  *
  * El estilo sale del sílabo (_lib/syllabus-pdf.ts), pero aquí es sobrio a
- * propósito: texto oscuro, líneas grises y el naranja SOLO en el filete de la
- * portada. Un informe justificativo no es una landing.
+ * propósito: solo texto, sin líneas, marcos ni color de marca. Un informe
+ * justificativo no es una landing.
  *
  * jsPDF se carga por CDN antes que esto (ver page.tsx) y vive en window.jspdf.
  */
@@ -21,10 +21,6 @@ type RGB = [number, number, number];
 const C: Record<string, RGB> = {
   texto:   [17, 24, 39],
   suave:   [107, 114, 128],
-  linea:   [201, 206, 212],
-  fondo:   [247, 248, 250],
-  marca:   [214, 57, 0],     // brand-700, el que sí contrasta
-  blanco:  [255, 255, 255],
 };
 
 const MARGEN = 16;
@@ -42,19 +38,12 @@ function jsPDF(): any {
   return j;
 }
 
-const fecha = (d = new Date()) =>
-  d.toLocaleDateString('es-ES', { day: '2-digit', month: 'long', year: 'numeric' });
-
-/** Abre un documento con su portada: título, promoción y fecha de generación. */
+/** Abre un documento con su portada: título y promoción. */
 export function nuevoDoc(titulo: string, promocion: string, subtitulo = ''): Doc {
   const JsPDF = jsPDF();
   const d = new JsPDF({ unit: 'mm', format: 'a4' });
   const ancho = d.internal.pageSize.getWidth();
   const alto = d.internal.pageSize.getHeight();
-
-  // Filete de marca: lo único con color de la portada.
-  d.setFillColor(...C.marca);
-  d.rect(0, 0, ancho, 3, 'F');
 
   d.setTextColor(...C.suave);
   d.setFont('helvetica', 'normal');
@@ -76,10 +65,6 @@ export function nuevoDoc(titulo: string, promocion: string, subtitulo = ''): Doc
     y += 6;
   }
 
-  d.setFontSize(8);
-  d.setTextColor(...C.suave);
-  d.text(`Generado el ${fecha()} desde Bootcamp Manager`, MARGEN, y + 2);
-
   return { d, y: y + 12, ancho, alto };
 }
 
@@ -97,9 +82,6 @@ export function seccion(doc: Doc, texto: string) {
   doc.d.setFontSize(11);
   doc.d.setTextColor(...C.texto);
   doc.d.text(texto, MARGEN, doc.y);
-  doc.d.setLineWidth(0.4);
-  doc.d.setDrawColor(...C.linea);
-  doc.d.line(MARGEN, doc.y + 2, doc.ancho - MARGEN, doc.y + 2);
   doc.y += 9;
 }
 
@@ -143,8 +125,6 @@ export function tabla(doc: Doc, cabeceras: string[], filas: string[][], anchos?:
   const x = (i: number) => MARGEN + cols.slice(0, i).reduce((a, b) => a + b, 0);
 
   const pintarCabecera = () => {
-    doc.d.setFillColor(...C.fondo);
-    doc.d.rect(MARGEN, doc.y - 4.5, util, 7, 'F');
     doc.d.setFont('helvetica', 'bold');
     doc.d.setFontSize(8);
     doc.d.setTextColor(...C.suave);
@@ -171,50 +151,41 @@ export function tabla(doc: Doc, cabeceras: string[], filas: string[][], anchos?:
 
     doc.d.setTextColor(...C.texto);
     trozos.forEach((t: string[], i: number) => doc.d.text(t, x(i) + 1.5, doc.y));
-    doc.y += altoFila;
-    doc.d.setDrawColor(...C.linea);
-    doc.d.setLineWidth(0.1);
-    doc.d.line(MARGEN, doc.y - 2, doc.ancho - MARGEN, doc.y - 2);
+    doc.y += altoFila + 1.5;
   }
   doc.y += 4;
 }
 
-/** Aviso enmarcado, para lo que el lector no puede pasar por alto. */
+/** Aviso, para lo que el lector no puede pasar por alto. */
 export function aviso(doc: Doc, texto: string) {
-  const lineas = doc.d.splitTextToSize(texto, doc.ancho - MARGEN * 2 - 6);
+  const lineas = doc.d.splitTextToSize(texto, doc.ancho - MARGEN * 2);
   const alto = lineas.length * 4.5 + 6;
   espacio(doc, alto + 4);
-  doc.d.setFillColor(...C.fondo);
-  doc.d.setDrawColor(...C.linea);
-  doc.d.setLineWidth(0.3);
-  doc.d.roundedRect(MARGEN, doc.y - 4, doc.ancho - MARGEN * 2, alto, 1.5, 1.5, 'FD');
-  doc.d.setFont('helvetica', 'normal');
+  doc.d.setFont('helvetica', 'bold');
   doc.d.setFontSize(8.5);
   doc.d.setTextColor(...C.suave);
-  doc.d.text(lineas, MARGEN + 3, doc.y + 1);
+  doc.d.text(lineas, MARGEN, doc.y);
   doc.y += alto + 3;
 }
 
 /** Espacio de firma, para los documentos que alguien tiene que avalar. */
 export function firma(doc: Doc, nombre: string, cargo: string, cuando: string) {
-  espacio(doc, 30);
+  espacio(doc, 24);
   doc.y += 6;
-  doc.d.setDrawColor(...C.linea);
-  doc.d.setLineWidth(0.3);
-  doc.d.line(MARGEN, doc.y + 12, MARGEN + 70, doc.y + 12);
   doc.d.setFont('helvetica', 'bold');
   doc.d.setFontSize(9);
   doc.d.setTextColor(...C.texto);
-  doc.d.text(nombre || '—', MARGEN, doc.y + 17);
+  doc.d.text(nombre || '—', MARGEN, doc.y + 12);
   doc.d.setFont('helvetica', 'normal');
   doc.d.setFontSize(8);
   doc.d.setTextColor(...C.suave);
-  doc.d.text([cargo || '—', cuando ? `Aprobado el ${cuando}` : 'Pendiente de aprobación'], MARGEN, doc.y + 22);
-  doc.y += 30;
+  doc.d.text([cargo || '—', cuando ? `Aprobado el ${cuando}` : 'Pendiente de aprobación'], MARGEN, doc.y + 17);
+  doc.y += 25;
 }
 
 /** Numera las páginas y guarda. Llamar SIEMPRE al final. */
-export function guardar(doc: Doc, nombre: string) {
+/** Numera las páginas. Se hace al final, cuando ya se sabe cuántas hay. */
+function paginar(doc: Doc) {
   const total = doc.d.internal.getNumberOfPages();
   for (let p = 1; p <= total; p++) {
     doc.d.setPage(p);
@@ -223,5 +194,22 @@ export function guardar(doc: Doc, nombre: string) {
     doc.d.setTextColor(...C.suave);
     doc.d.text(`${p} de ${total}`, doc.ancho - MARGEN, doc.alto - 8, { align: 'right' });
   }
-  doc.d.save(nombre.replace(/[^\w\s.-]/g, '').replace(/\s+/g, '_'));
+}
+
+export const nombreFichero = (n: string) => n.replace(/[^\w\s.-]/g, '').replace(/\s+/g, '_');
+
+/** Numera y descarga. Llamar SIEMPRE al final. */
+export function guardar(doc: Doc, nombre: string) {
+  paginar(doc);
+  doc.d.save(nombreFichero(nombre));
+}
+
+/**
+ * Numera y devuelve el PDF como blob, para meterlo en el ZIP de la carpeta en
+ * vez de descargarlo suelto. Mismo documento por los dos caminos: lo que se
+ * empaqueta es exactamente lo que se descarga.
+ */
+export function comoBlob(doc: Doc): Blob {
+  paginar(doc);
+  return doc.d.output('blob');
 }

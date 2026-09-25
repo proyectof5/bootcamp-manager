@@ -67,6 +67,7 @@ interface Student {
   email?: string;
   githubUser?: string;
   laptopLoan?: boolean;
+  gender?: string;
   fullName?: string;
   isWithdrawn?: boolean;
   withdrawal?: Withdrawal | null;
@@ -130,6 +131,15 @@ const FOLLOWUP_CHANNELS: { value: FollowUpChannel; label: string }[] = [
   { value: 'other', label: 'Otra' },
 ];
 const SECTOR_SUGGESTIONS = ['Consultoría', 'Banca / Finanzas', 'Retail', 'Salud', 'Educación', 'Administración pública', 'Startup / Producto', 'Otro'];
+// Mismos valores que el alta de estudiante y el importador de Excel
+// (GENDER_VALUES en server.js), para que las métricas cuenten igual.
+const GENDER_OPTIONS: { value: string; label: string }[] = [
+  { value: '', label: 'Sin especificar' },
+  { value: 'mujer', label: 'Mujer' },
+  { value: 'hombre', label: 'Hombre' },
+  { value: 'no_binario', label: 'No binario' },
+  { value: 'no_especifica', label: 'Prefiere no decirlo' },
+];
 const isEmployedSituation = (s: string) => s === 'employed_it' || s === 'employed_other';
 const isStudyingSituation = (s: string) => s === 'unemployed_studying' || s === 'studying';
 const EMPTY_FOLLOWUP_FORM: FollowUpForm = {
@@ -454,7 +464,7 @@ export function StudentTrackingHost() {
   const [noteFormOpen, setNoteFormOpen] = useState(false);
   const [noteText, setNoteText] = useState('');
   const [teamForm, setTeamForm] = useState<TeamFormState | null>(null);
-  const [personalForm, setPersonalForm] = useState({ name: '', lastname: '', email: '', github: '', laptop: false });
+  const [personalForm, setPersonalForm] = useState({ name: '', lastname: '', email: '', github: '', laptop: false, gender: '' });
   const [bajaMode, setBajaMode] = useState<'closed' | 'editing'>('closed');
   const [bajaForm, setBajaForm] = useState({ date: '', reason: '', representative: '' });
   const [followUpForm, setFollowUpForm] = useState<FollowUpForm>(EMPTY_FOLLOWUP_FORM);
@@ -641,6 +651,7 @@ export function StudentTrackingHost() {
         email: currentStudent.email || '',
         github: currentStudent.githubUser || '',
         laptop: !!currentStudent.laptopLoan,
+        gender: currentStudent.gender || '',
       });
     }
   }, [currentStudent]);
@@ -705,7 +716,7 @@ export function StudentTrackingHost() {
     const email = personalForm.email.trim();
     if (!name || !lastname || !email) { toast('Nombre, apellido y email son obligatorios', 'warning'); return; }
     // El backend ignora github/laptop y preserva el resto; enviamos solo lo que la ficha edita.
-    const payload = { name, lastname, email, githubUser: personalForm.github.trim(), laptopLoan: personalForm.laptop };
+    const payload = { name, lastname, email, githubUser: personalForm.github.trim(), laptopLoan: personalForm.laptop, gender: personalForm.gender };
     try {
       const res = await apiFetch(`/api/promotions/${promotionIdRef.current}/students/${currentStudentIdRef.current}/ficha/personal`, {
         method: 'PUT', body: JSON.stringify(payload),
@@ -929,6 +940,13 @@ export function StudentTrackingHost() {
                   <label className="form-label fw-bold">Usuario de GitHub</label>
                   <input type="text" className="form-control" placeholder="ej. octocat" value={personalForm.github}
                     onChange={(e) => setPersonalForm((f) => ({ ...f, github: e.target.value }))} />
+                </div>
+                <div className="col-md-6">
+                  <label className="form-label fw-bold" htmlFor="ficha-student-gender">Género</label>
+                  <select id="ficha-student-gender" className="form-select" value={personalForm.gender}
+                    onChange={(e) => setPersonalForm((f) => ({ ...f, gender: e.target.value }))}>
+                    {GENDER_OPTIONS.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+                  </select>
                 </div>
                 <div className="col-md-6 d-flex flex-column justify-content-end">
                   <label className="form-label fw-bold">Préstamo de ordenador</label>
