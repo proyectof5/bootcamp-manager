@@ -4085,6 +4085,111 @@ html {
     .settings-delete { margin-left: 0; width: 100%; }
 }
 
+/* ── Stack tecnológico: buscador + chips (Ajustes › Identidad) ── */
+
+.stack-picker {
+    position: relative;
+}
+
+.stack-search {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.stack-search svg {
+    position: absolute;
+    left: 10px;
+    color: var(--app-color-text-muted);
+    pointer-events: none;
+}
+
+.stack-search-input {
+    width: 100%;
+    min-height: 44px;
+    padding: var(--app-space-2) var(--app-space-3) var(--app-space-2) 34px;
+    border: 1px solid var(--app-color-border);
+    border-radius: var(--app-radius-md);
+    font-size: var(--app-font-size-sm);
+    background: var(--app-color-bg-surface);
+}
+
+.stack-search-input:focus {
+    outline: none;
+    border-color: var(--app-color-primary);
+    box-shadow: 0 0 0 3px var(--app-color-primary-soft);
+}
+
+.stack-dropdown {
+    position: absolute;
+    z-index: 20;
+    top: calc(100% + 4px);
+    left: 0;
+    right: 0;
+    margin: 0;
+    padding: var(--app-space-1);
+    list-style: none;
+    max-height: 220px;
+    overflow-y: auto;
+    border: 1px solid var(--app-color-border);
+    border-radius: var(--app-radius-md);
+    background: var(--app-color-bg-surface);
+    box-shadow: var(--app-shadow-md);
+}
+
+.stack-dropdown li + li {
+    margin-top: 2px;
+}
+
+.stack-dropdown button {
+    display: block;
+    width: 100%;
+    padding: var(--app-space-2);
+    border: 0;
+    border-radius: var(--app-radius-sm);
+    background: transparent;
+    text-align: left;
+    font-size: var(--app-font-size-sm);
+    color: var(--app-color-text);
+    cursor: pointer;
+}
+
+.stack-dropdown button:hover,
+.stack-dropdown button:focus-visible {
+    background: var(--app-color-neutral-50);
+}
+
+.stack-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--app-space-2);
+    margin: var(--app-space-2) 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.stack-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--app-space-1);
+    padding: 4px var(--app-space-2);
+    border: 1px solid var(--app-color-neutral-300);
+    border-radius: var(--app-radius-pill);
+    background: var(--app-color-neutral-50);
+    color: var(--app-color-neutral-700);
+    font-size: var(--app-font-size-xs);
+    line-height: 1.4;
+}
+
+.stack-chip button {
+    display: inline-flex;
+    border: 0;
+    background: transparent;
+    padding: 0;
+    color: inherit;
+    cursor: pointer;
+}
+
 /* ── Buscador Ctrl+K (spec navegacion-promocion, Fase 5) ── */
 
 .cmdk-trigger {
@@ -5777,3 +5882,23 @@ body {
 }
 
 #main-content .sup-motivo textarea { margin-bottom: var(--app-space-3); }
+
+/* La carpeta entera: es la acción principal del panel, así que va arriba y es
+   el único botón relleno. Los de cada documento son para el caso suelto. */
+#main-content .docs-todo {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--app-space-3);
+    margin-bottom: var(--app-space-5);
+    padding: var(--app-space-4);
+    border: 1px solid var(--app-color-brand-100);
+    border-radius: var(--app-radius-lg);
+    background: var(--app-color-brand-50);
+}
+
+#main-content .docs-paso {
+    font-size: var(--app-font-size-xs);
+    color: var(--app-color-brand-900);
+    font-variant-numeric: tabular-nums;
+}

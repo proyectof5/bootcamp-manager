@@ -16,7 +16,14 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { apiFetch } from '@/lib/api';
-import { nuevoDoc, seccion, parrafo, campos, tabla, aviso, firma, guardar, type Doc } from './doc-pdf';
+import { nuevoDoc, seccion, parrafo, campos, tabla, aviso, firma, guardar, comoBlob, nombreFichero, type Doc } from './doc-pdf';
+import { CARPETA_ISO } from './carpeta-iso';
+
+/**
+ * Un documento construido, todavía sin destino: se puede descargar suelto o
+ * meter en el ZIP de la carpeta. Los dos caminos producen el mismo PDF.
+ */
+interface Pieza { carpeta: string; fichero: string; doc: Doc }
 
 const idPromocion = () => new URLSearchParams(window.location.search).get('id') || '';
 
@@ -43,7 +50,7 @@ async function contexto() {
 
 // ── 03.2 Plan de gestión: el horario ────────────────────────────────────────
 
-export async function descargarHorario() {
+async function construirHorario(): Promise<Pieza> {
   const { id, promocion, nombrePromo } = await contexto();
   const info = await traer(`/api/promotions/${id}/extended-info`);
   const h = info.schedule || {};
@@ -92,12 +99,12 @@ export async function descargarHorario() {
       flex.map((b: any) => [fechaCorta(b.startDate), fechaCorta(b.endDate), b.name || 'Tiempo flexible']), [1, 1, 3]);
   }
 
-  guardar(doc, nombre(nombrePromo, 'Horario'));
+  return { carpeta: '03_Desarrollo_formación/03.2_Plan de gestión del bootcamp', fichero: nombre(nombrePromo, 'Horario'), doc };
 }
 
 // ── 03.1 Selección de formadores: el equipo ─────────────────────────────────
 
-export async function descargarEquipo() {
+async function construirEquipo(): Promise<Pieza> {
   const { id, promocion, nombrePromo } = await contexto();
   const info = await traer(`/api/promotions/${id}/extended-info`);
   const equipo: any[] = info.team || [];
@@ -119,12 +126,12 @@ export async function descargarEquipo() {
       ]), [2, 1.4, 2.4, 3]);
   }
 
-  guardar(doc, nombre(nombrePromo, 'Equipo formativo'));
+  return { carpeta: '03_Desarrollo_formación/03.1_Selección_formadores', fichero: nombre(nombrePromo, 'Equipo formativo'), doc };
 }
 
 // ── 01.2 Diseño formación: competencias ─────────────────────────────────────
 
-export async function descargarCompetencias() {
+async function construirCompetencias(): Promise<Pieza> {
   const { id, promocion, nombrePromo } = await contexto();
   const info = await traer(`/api/promotions/${id}/extended-info`);
   const comps: any[] = info.competences || [];
@@ -150,12 +157,12 @@ export async function descargarCompetencias() {
     }
   }
 
-  guardar(doc, nombre(nombrePromo, 'Competencias del programa'));
+  return { carpeta: '01 Diseño Inicial del proyecto formativo/01.2 Diseño formación', fichero: nombre(nombrePromo, 'Competencias del programa'), doc };
 }
 
 // ── 03.4 Cierre: métricas ───────────────────────────────────────────────────
 
-export async function descargarMetricas() {
+async function construirMetricas(): Promise<Pieza> {
   const { id, nombrePromo } = await contexto();
   const m = await traer(`/api/promotions/${id}/metrics`);
   const pct = (v: number | null) => (v === null || v === undefined ? '—' : `${v} %`);
@@ -203,12 +210,12 @@ export async function descargarMetricas() {
     parrafo(doc, m.withoutFollowUp.map((s: any) => s.name).join(' · '), 'suave');
   }
 
-  guardar(doc, nombre(nombrePromo, 'Metricas'));
+  return { carpeta: '03_Desarrollo_formación/03.4_Cierre_formación', fichero: nombre(nombrePromo, 'Metricas'), doc };
 }
 
 // ── 03.3 Ejecución: entregas por estudiante ─────────────────────────────────
 
-export async function descargarEntregas() {
+async function construirEntregas(): Promise<Pieza> {
   const { id, nombrePromo } = await contexto();
   const info = await traer(`/api/promotions/${id}/extended-info`);
   const estudiantes: any[] = await traer(`/api/promotions/${id}/students`);
@@ -249,12 +256,12 @@ export async function descargarEntregas() {
     aviso(doc, 'Ningún estudiante tiene entregas registradas todavía. Las entregas llegan cuando el estudiantado publica su repositorio desde el portal.');
   }
 
-  guardar(doc, nombre(nombrePromo, 'Entregas por estudiante'));
+  return { carpeta: '03_Desarrollo_formación/03.3_Ejecución_formación', fichero: nombre(nombrePromo, 'Entregas por estudiante'), doc };
 }
 
 // ── 03.3 Ejecución: requisitos de superación ────────────────────────────────
 
-export async function descargarRequisitos() {
+async function construirRequisitos(): Promise<Pieza> {
   const { id, nombrePromo } = await contexto();
   const c = await traer(`/api/promotions/${id}/completion`);
   const cr = c.criterios || {};
@@ -304,18 +311,144 @@ export async function descargarRequisitos() {
       discrepan.map(a => [a.nombre, a.decision.passed ? 'APTO' : 'NO APTO', a.decision.note]), [2, 1, 4]);
   }
 
-  guardar(doc, nombre(nombrePromo, 'Requisitos de superacion'));
+  return { carpeta: '03_Desarrollo_formación/03.3_Ejecución_formación', fichero: nombre(nombrePromo, 'Requisitos de superacion'), doc };
 }
 
-/** Todo junto, para engancharlo desde el JS legacy por id. */
-export function initDocumentos() {
-  const w = window as any;
-  w.Documentos = {
-    horario: descargarHorario,
-    equipo: descargarEquipo,
-    competencias: descargarCompetencias,
-    metricas: descargarMetricas,
-    entregas: descargarEntregas,
-    requisitos: descargarRequisitos,
+// ── Descargas sueltas ───────────────────────────────────────────────────────
+
+const suelto = (construir: () => Promise<Pieza>) => async () => {
+  const p = await construir();
+  guardar(p.doc, p.fichero);
+};
+
+export const descargarCompetencias = suelto(construirCompetencias);
+export const descargarEquipo       = suelto(construirEquipo);
+export const descargarHorario      = suelto(construirHorario);
+export const descargarRequisitos   = suelto(construirRequisitos);
+export const descargarEntregas     = suelto(construirEntregas);
+export const descargarMetricas     = suelto(construirMetricas);
+
+// ── La carpeta entera, en un ZIP ────────────────────────────────────────────
+
+/**
+ * El Excel de asistencia lo genera el BACKEND, así que aquí se descarga tal
+ * cual y se mete en el ZIP sin tocarlo. Es un requisito explícito de 03.3
+ * («registros de asistencia») y sería raro que la carpeta no lo llevara.
+ */
+async function excelAsistencia(id: string): Promise<Blob | null> {
+  try {
+    const res = await apiFetch(`/api/promotions/${id}/attendance/export`);
+    return res.ok ? await res.blob() : null;
+  } catch { return null; }
+}
+
+/** Lo que va en el LÉEME de una subcarpeta que la app no puede llenar. */
+function leeme(carpeta: string, sub: string, contenido: string[], puesto: string[]): string {
+  const lineas = [
+    `${carpeta} › ${sub}`,
+    ''.padEnd(Math.min(70, carpeta.length + sub.length + 3), '='),
+    '',
+  ];
+  if (puesto.length) {
+    lineas.push('LO QUE HA PUESTO BOOTCAMP MANAGER', ...puesto.map(p => `  · ${p}`), '');
+  }
+  if (contenido.length) {
+    lineas.push('LO QUE ESPERA LA NORMA EN ESTA CARPETA', ...contenido.map(c => `  · ${c}`), '');
+  }
+  const faltan = contenido.length && !puesto.length;
+  lineas.push(
+    faltan
+      ? 'Nada de esto sale de Bootcamp Manager: son documentos firmados,'
+      : 'El resto no sale de Bootcamp Manager: son documentos firmados,',
+    'formularios, cuestionarios o materiales que hay que subir a mano.',
+    '',
+    'Borra este fichero cuando la carpeta esté completa.',
+  );
+  return lineas.join('\n');
+}
+
+/**
+ * Descarga la carpeta de proyecto entera como un .zip: el árbol completo de la
+ * norma, con los documentos que la app sabe generar ya colocados y un LÉEME en
+ * cada subcarpeta diciendo qué falta por subir a mano.
+ *
+ * Se monta el árbol ENTERO, también las carpetas que la app no puede llenar. El
+ * objetivo no es «exportar seis PDF», es tener la carpeta empezada: una
+ * estructura vacía pero correcta ahorra más trabajo que seis ficheros sueltos
+ * que alguien tiene que colocar.
+ *
+ * @param avisar - se llama con cada paso, para que el botón cuente por dónde va
+ */
+export async function descargarCarpeta(avisar: (paso: string) => void = () => {}) {
+  const JSZip = (window as any).JSZip;
+  if (!JSZip) throw new Error('Falta JSZip. Espera a que la promoción termine de abrir e inténtalo otra vez.');
+
+  const id = idPromocion();
+  const promocion = await traer(`/api/promotions/${id}`);
+  const nombrePromo = promocion.name || 'Promoción';
+
+  const constructores: [string, () => Promise<Pieza>][] = [
+    ['competencias del programa', construirCompetencias],
+    ['equipo formativo', construirEquipo],
+    ['horario', construirHorario],
+    ['requisitos de superación', construirRequisitos],
+    ['entregas por estudiante', construirEntregas],
+    ['métricas', construirMetricas],
+  ];
+
+  // Qué se ha colocado en cada subcarpeta, para decirlo en su LÉEME.
+  const puestoEn = new Map<string, string[]>();
+  const anota = (carpeta: string, fichero: string) => {
+    if (!puestoEn.has(carpeta)) puestoEn.set(carpeta, []);
+    puestoEn.get(carpeta)!.push(fichero);
   };
+
+  const zip = new JSZip();
+  const raiz = zip.folder(nombreFichero(nombrePromo));
+
+  for (const [etiqueta, construir] of constructores) {
+    avisar(`Generando ${etiqueta}…`);
+    // Un documento que falle no puede tumbar la carpeta entera: se anota en el
+    // LÉEME de su subcarpeta y el resto sigue.
+    try {
+      const pieza = await construir();
+      raiz.file(`${pieza.carpeta}/${nombreFichero(pieza.fichero)}`, comoBlob(pieza.doc));
+      anota(pieza.carpeta, nombreFichero(pieza.fichero));
+    } catch (e) {
+      console.error(`[carpeta] ${etiqueta}:`, e);
+      anota('03_Desarrollo_formación/03.3_Ejecución_formación', `(no se pudo generar: ${etiqueta})`);
+    }
+  }
+
+  avisar('Descargando el Excel de asistencia…');
+  const asistencia = await excelAsistencia(id);
+  const ejecucion = '03_Desarrollo_formación/03.3_Ejecución_formación';
+  if (asistencia) {
+    const f = nombreFichero(`${nombrePromo} - Asistencia.xlsx`);
+    raiz.file(`${ejecucion}/${f}`, asistencia);
+    anota(ejecucion, f);
+  }
+
+  avisar('Montando el árbol de carpetas…');
+  for (const carpeta of CARPETA_ISO) {
+    if (!carpeta.subs.length) {
+      raiz.file(`${carpeta.nombre}/LÉEME.txt`, leeme(carpeta.nombre, '', [], []));
+      continue;
+    }
+    for (const sub of carpeta.subs) {
+      const ruta = `${carpeta.nombre}/${sub.nombre}`;
+      raiz.file(`${ruta}/LÉEME.txt`, leeme(carpeta.nombre, sub.nombre, sub.contenido, puestoEn.get(ruta) || []));
+    }
+  }
+
+  avisar('Comprimiendo…');
+  const blob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE' });
+
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = nombreFichero(`${nombrePromo} - Carpeta de proyecto.zip`);
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }

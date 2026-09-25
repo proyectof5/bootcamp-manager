@@ -17,7 +17,7 @@
 
 import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { Download, Loader2 } from 'lucide-react';
+import { Download, Loader2, FolderDown } from 'lucide-react';
 import * as docs from '../_lib/documentos';
 
 /** Mismo patrón que el resto de paneles: el contenedor lo pinta body.ts y puede
@@ -40,6 +40,9 @@ function usePortalNode(id: string): HTMLElement | null {
 }
 
 interface Item { carpeta: string; titulo: string; nota: string; fn: () => Promise<void>; }
+
+/** Marca de "se está montando el ZIP", para distinguirlo de un documento suelto. */
+const TODO = '\u0000toda-la-carpeta';
 
 const DOCUMENTOS: Item[] = [
   { carpeta: '01.2 Diseño formación', titulo: 'Competencias del programa',
@@ -73,6 +76,21 @@ export function DocumentsPanelHost() {
 function DocumentsPanel() {
   const [cargando, setCargando] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [paso, setPaso] = useState('');
+
+  const descargarTodo = async () => {
+    setCargando(TODO);
+    setError(null);
+    setPaso('');
+    try {
+      await docs.descargarCarpeta(setPaso);
+    } catch (e) {
+      setError(`No se pudo montar la carpeta: ${(e as Error).message}`);
+    } finally {
+      setCargando(null);
+      setPaso('');
+    }
+  };
 
   const descargar = async (item: Item) => {
     setCargando(item.titulo);
@@ -96,6 +114,27 @@ function DocumentsPanel() {
       </p>
 
       {error && <p className="docs-error" role="alert">{error}</p>}
+
+      {/* La carpeta entera. Va arriba porque es lo que casi siempre se quiere:
+          los botones de abajo son para cuando hace falta un documento suelto. */}
+      <section className="docs-todo">
+        <div className="docs-item-text">
+          <span className="docs-item-title">Toda la carpeta de proyecto</span>
+          <span className="docs-item-note">
+            Un .zip con el árbol completo de la norma, los documentos de abajo ya colocados
+            en su subcarpeta, el Excel de asistencia, y un LÉEME en cada carpeta diciendo
+            qué falta por subir a mano.
+          </span>
+          {cargando === TODO && paso && <span className="docs-paso" role="status">{paso}</span>}
+        </div>
+        <button type="button" className="btn btn-primary btn-sm"
+          disabled={cargando !== null}
+          onClick={descargarTodo}>
+          {cargando === TODO
+            ? <><Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />Montando…</>
+            : <><FolderDown className="h-4 w-4" aria-hidden="true" />Descargar la carpeta</>}
+        </button>
+      </section>
 
       {carpetas.map(carpeta => (
         <section className="docs-group" key={carpeta}>

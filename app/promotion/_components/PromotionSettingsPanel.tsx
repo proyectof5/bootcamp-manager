@@ -17,6 +17,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { apiFetch } from '@/lib/api';
+import { Search, X } from 'lucide-react';
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 function w(): any { return (typeof window !== 'undefined' ? window : {}) as unknown as any; }
@@ -79,6 +80,72 @@ function PromotionSettingsPanel() {
   const jornadaRef = useRef<HTMLInputElement>(null);
   const semanasRef = useRef<HTMLInputElement>(null);
 
+  // Stack tecnológico: buscador sobre el catálogo de herramientas (el mismo
+  // de Proyectos › Competencias y criterios, /api/tools) + acumulación en
+  // chips. Se guarda igual que antes, como texto separado por comas, para no
+  // tocar el campo TEXT de `Promotion.stack` ni lo que ya lo lee (documentos.ts).
+  const [stackTags, setStackTags] = useState<string[]>([]);
+  const [stackCatalog, setStackCatalog] = useState<string[]>([]);
+  const [stackQuery, setStackQuery] = useState('');
+  const [stackOpen, setStackOpen] = useState(false);
+  const stackBoxRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    apiFetch('/api/tools')
+      .then((res) => (res.ok ? res.json() : []))
+      .then((rows: unknown) => {
+        if (cancelled || !Array.isArray(rows)) return;
+        const names = rows
+          .map((t) => String((t as { name?: string; title?: string })?.name ?? (t as { title?: string })?.title ?? '').trim())
+          .filter(Boolean);
+        setStackCatalog(Array.from(new Set(names)).sort((a, b) => a.localeCompare(b, 'es')));
+      })
+      .catch(() => { /* sin catálogo, el buscador sigue admitiendo texto libre */ });
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    const onOutside = (e: MouseEvent) => {
+      if (stackBoxRef.current && !stackBoxRef.current.contains(e.target as Node)) setStackOpen(false);
+    };
+    document.addEventListener('mousedown', onOutside);
+    return () => document.removeEventListener('mousedown', onOutside);
+  }, []);
+
+  const stackSuggestions = stackCatalog
+    .filter((t) => !stackTags.some((sel) => sel.toLowerCase() === t.toLowerCase()))
+    .filter((t) => !stackQuery.trim() || t.toLowerCase().includes(stackQuery.trim().toLowerCase()))
+    .slice(0, 8);
+
+  const addStackTag = (raw: string) => {
+    const name = raw.trim();
+    if (!name) return;
+    setStackTags((prev) => (prev.some((t) => t.toLowerCase() === name.toLowerCase()) ? prev : [...prev, name]));
+    setStackQuery('');
+  };
+  const removeStackTag = (name: string) => setStackTags((prev) => prev.filter((t) => t !== name));
+
+  const onStackKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const q = stackQuery.trim();
+      if (!q) return;
+      const exact = stackCatalog.find((t) => t.toLowerCase() === q.toLowerCase());
+      addStackTag(exact || q);
+    } else if (e.key === 'Backspace' && !stackQuery && stackTags.length) {
+      setStackTags((prev) => prev.slice(0, -1));
+    } else if (e.key === 'Escape') {
+      setStackOpen(false);
+    }
+  };
+
+  // Los chips son la fuente de verdad; `form.stack` se recalcula solo para
+  // mandarlo tal cual al PUT existente, sin tocar `submit()`.
+  useEffect(() => {
+    setForm((f) => (f.stack === stackTags.join(', ') ? f : { ...f, stack: stackTags.join(', ') }));
+  }, [stackTags]);
+
   const fill = useCallback(() => {
     const p = w().currentPromotion;
     if (!p) return false;
@@ -95,6 +162,11 @@ function PromotionSettingsPanel() {
       workingDays: Array.isArray(p.workingDays) && p.workingDays.length ? p.workingDays.map(Number) : [1, 2, 3, 4, 5],
     });
     setHolidayCount(Array.isArray(p.holidays) ? p.holidays.length : 0);
+    setStackTags(
+      p.stack
+        ? String(p.stack).split(',').map((s: string) => s.trim()).filter(Boolean)
+        : []
+    );
     return true;
   }, []);
 
@@ -202,14 +274,58 @@ function PromotionSettingsPanel() {
             <textarea id="settings-desc" className="form-control" rows={3} value={form.description} onChange={(e) => set('description', e.target.value)} />
           </div>
           {/* Stack: lo pide la carpeta 01.2 "Diseño formación" de la estructura
-              ISO y sale en el documento de competencias del programa. */}
+              ISO y sale en el documento de competencias del programa. Se elige
+              buscando en el mismo catálogo de herramientas de Proyectos ›
+              Competencias y criterios; lo que no está en el catálogo también
+              se admite, pulsando Intro. */}
           <div className="settings-field settings-field-wide">
-            <label htmlFor="settings-stack">Stack tecnológico</label>
-            <textarea id="settings-stack" className="form-control" rows={2}
-              placeholder="Python, PyTorch, LangChain, FastAPI, Docker, PostgreSQL…"
-              value={form.stack} onChange={(e) => set('stack', e.target.value)} />
+            <label htmlFor="settings-stack-search">Stack tecnológico</label>
+            <div className="stack-picker" ref={stackBoxRef}>
+              <div className="stack-search">
+                <Search className="h-4 w-4" aria-hidden="true" />
+                <input
+                  id="settings-stack-search"
+                  type="text"
+                  className="stack-search-input"
+                  placeholder="Busca una herramienta: Python, Docker, Figma…"
+                  autoComplete="off"
+                  role="combobox"
+                  aria-expanded={stackOpen}
+                  aria-controls="settings-stack-suggestions"
+                  value={stackQuery}
+                  onChange={(e) => { setStackQuery(e.target.value); setStackOpen(true); }}
+                  onFocus={() => setStackOpen(true)}
+                  onKeyDown={onStackKeyDown}
+                />
+              </div>
+              {stackOpen && stackSuggestions.length > 0 && (
+                <ul className="stack-dropdown" id="settings-stack-suggestions" role="listbox">
+                  {stackSuggestions.map((t) => (
+                    <li key={t}>
+                      <button type="button" role="option" aria-selected={false}
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => addStackTag(t)}>
+                        {t}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {stackTags.length > 0 && (
+                <ul className="stack-tags" aria-label="Tecnologías del stack">
+                  {stackTags.map((t) => (
+                    <li key={t} className="stack-chip">
+                      {t}
+                      <button type="button" aria-label={`Quitar ${t}`} onClick={() => removeStackTag(t)}>
+                        <X className="h-3 w-3" aria-hidden="true" />
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
             <span className="settings-hint">
-              Tecnologías que se enseñan en el bootcamp. Sale en el documento «Competencias del programa».
+              Busca en el catálogo de herramientas o escribe una y pulsa Intro para añadirla. Sale en el documento «Competencias del programa».
             </span>
           </div>
         </div>
