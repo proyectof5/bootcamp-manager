@@ -6,7 +6,7 @@
  * paginación salen de doc-pdf.ts, para que los seis parezcan el mismo documento.
  *
  * A qué carpeta va cada uno:
- *   01.2 Diseño formación   → competencias del programa (+ stack, en el sílabo)
+ *   01.2 Diseño formación   → competencias del programa · stack tecnológico
  *   03.1 Selección formadores → equipo formativo
  *   03.2 Plan de gestión    → horario
  *   03.3 Ejecución          → entregas por estudiante · requisitos de superación
@@ -18,6 +18,7 @@
 import { apiFetch } from '@/lib/api';
 import { nuevoDoc, seccion, parrafo, campos, tabla, aviso, firma, guardar, comoBlob, nombreFichero, type Doc } from './doc-pdf';
 import { CARPETA_ISO } from './carpeta-iso';
+import { usosDeHerramientas, areasDe, rubricasConHerramientas } from './stack';
 
 /**
  * Un documento construido, todavía sin destino: se puede descargar suelto o
@@ -139,7 +140,8 @@ async function construirCompetencias(): Promise<Pieza> {
   const doc = nuevoDoc('Competencias del programa', nombrePromo,
     'Competencias que el bootcamp desarrolla y evalúa, con su área y descripción.');
 
-  if (promocion.stack) { seccion(doc, 'Stack tecnológico'); parrafo(doc, promocion.stack); }
+  // El stack va en su propio documento (construirStack), sacado de las
+  // herramientas seleccionadas en las rúbricas, para que no haya dos versiones.
 
   if (!comps.length) {
     aviso(doc, 'Esta promoción todavía no tiene competencias asignadas desde el catálogo.');
@@ -158,6 +160,70 @@ async function construirCompetencias(): Promise<Pieza> {
   }
 
   return { carpeta: '01 Diseño Inicial del proyecto formativo/01.2 Diseño formación', fichero: nombre(nombrePromo, 'Competencias del programa'), doc };
+}
+
+// ── 01.2 Diseño formación: stack ─────────────────────────────────────────────
+
+const CARPETA_STACK = '01 Diseño Inicial del proyecto formativo/01.2 Diseño formación';
+
+/**
+ * El stack no se escribe a mano: son las herramientas marcadas en las RÚBRICAS
+ * DE EVALUACIÓN (`projectCompetences[].competenceTools`), no las del programa.
+ * Así el documento dice lo que de verdad se evalúa, que es lo que mira quien
+ * audita, y no puede contradecir a las rúbricas.
+ */
+async function construirStack(): Promise<Pieza> {
+  const { id, promocion, nombrePromo } = await contexto();
+  const info = await traer(`/api/promotions/${id}/extended-info`);
+  const comps: any[] = info.competences || [];
+  const rubricas: any[] = info.projectCompetences || [];
+
+  const usos = usosDeHerramientas(comps, rubricas);
+
+  const doc = nuevoDoc('Stack tecnológico', nombrePromo,
+    'Herramientas que el bootcamp evalúa, extraídas de las rúbricas de evaluación de cada proyecto.');
+
+  if (!usos.length) {
+    aviso(doc, !comps.length
+      ? 'Esta promoción todavía no tiene competencias asignadas, así que no hay rúbricas de donde sacar el stack.'
+      : !rubricas.length
+        ? 'Las competencias están asignadas, pero todavía no hay ningún proyecto con rúbrica de evaluación. El stack se rellena al crearlas.'
+        : 'Las rúbricas de evaluación existen pero no tienen ninguna herramienta marcada. El stack se rellena al seleccionarlas.');
+    return { carpeta: CARPETA_STACK, fichero: nombre(nombrePromo, 'Stack tecnológico'), doc };
+  }
+
+  const areas = areasDe(comps, usos);
+  campos(doc, [
+    ['Herramientas distintas', String(usos.length)],
+    ['Rúbricas de evaluación', String(rubricasConHerramientas(rubricas))],
+    ['Áreas', areas.join(', ')],
+  ]);
+
+  // Una tabla por área, que es como lo lee quien revisa el diseño formativo.
+  for (const area of areas) {
+    const deArea = usos.filter(u => u.areas.includes(area));
+    if (!deArea.length) continue;
+    seccion(doc, `${area} (${deArea.length})`);
+    tabla(doc, ['Herramienta', 'Competencia', 'Se evalúa en'],
+      deArea.map(u => [u.herramienta, u.competencias.join(' · '), u.proyectos.join(' · ')]), [2, 3, 3]);
+  }
+
+  // El campo libre de la ficha se conserva como declaración, y se avisa si no
+  // concuerda con las rúbricas: son dos fuentes y conviene que no se peleen.
+  if (promocion.stack) {
+    seccion(doc, 'Stack declarado en la ficha de la promoción');
+    parrafo(doc, promocion.stack);
+    const texto = String(promocion.stack).toLowerCase();
+    const ausentes = usos.map(u => u.herramienta).filter(t => !texto.includes(t.toLowerCase()));
+    if (ausentes.length) {
+      // Con 80 herramientas la lista completa no se lee: se citan unas cuantas.
+      const muestra = ausentes.slice(0, 12).join(', ')
+        + (ausentes.length > 12 ? `, y ${ausentes.length - 12} más` : '');
+      aviso(doc, `${ausentes.length} de las ${usos.length} herramientas que se evalúan no aparecen en ese texto (${muestra}). Manda el listado por áreas de arriba, que es lo que de verdad se evalúa.`);
+    }
+  }
+
+  return { carpeta: CARPETA_STACK, fichero: nombre(nombrePromo, 'Stack tecnológico'), doc };
 }
 
 // ── 03.4 Cierre: métricas ───────────────────────────────────────────────────
@@ -322,6 +388,7 @@ const suelto = (construir: () => Promise<Pieza>) => async () => {
 };
 
 export const descargarCompetencias = suelto(construirCompetencias);
+export const descargarStack        = suelto(construirStack);
 export const descargarEquipo       = suelto(construirEquipo);
 export const descargarHorario      = suelto(construirHorario);
 export const descargarRequisitos   = suelto(construirRequisitos);
@@ -389,6 +456,7 @@ export async function descargarCarpeta(avisar: (paso: string) => void = () => {}
 
   const constructores: [string, () => Promise<Pieza>][] = [
     ['competencias del programa', construirCompetencias],
+    ['stack tecnológico', construirStack],
     ['equipo formativo', construirEquipo],
     ['horario', construirHorario],
     ['requisitos de superación', construirRequisitos],
