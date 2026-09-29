@@ -46,7 +46,9 @@ const TODO = '\u0000toda-la-carpeta';
 
 const DOCUMENTOS: Item[] = [
   { carpeta: '01.2 Diseño formación', titulo: 'Competencias del programa',
-    nota: 'Competencias por área, con su descripción, y el stack del bootcamp.', fn: docs.descargarCompetencias },
+    nota: 'Competencias por área, con su descripción.', fn: docs.descargarCompetencias },
+  { carpeta: '01.2 Diseño formación', titulo: 'Stack tecnológico',
+    nota: 'Herramientas seleccionadas en las rúbricas de evaluación, por área, con su competencia y el proyecto donde se evalúan.', fn: docs.descargarStack },
   { carpeta: '03.1 Selección formadores', titulo: 'Equipo formativo',
     nota: 'Quién forma parte del equipo, con su rol y los módulos que lleva.', fn: docs.descargarEquipo },
   { carpeta: '03.2 Plan de gestión', titulo: 'Horario de la formación',
