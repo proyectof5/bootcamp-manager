@@ -102,8 +102,34 @@ const NOMBRES: Record<string, string> = {
     dpd: 'el delegado de protección de datos',
 };
 
+/**
+ * ¿Se puede enseñar el aviso? Mientras falte algo no se enseña: ni la página
+ * con el contenido, ni los enlaces que llevan a ella. Es preferible a que el
+ * estudiantado vea un documento a medias con huecos.
+ */
+export function estaCompleto(aviso: Aviso = AVISO): boolean {
+    return faltanDatos(aviso).length === 0;
+}
+
 /** Qué falta, dicho como lo leería alguien de fuera, no con los nombres del código. */
-export function faltanDatos(): string[] {
+export interface Aviso {
+    responsable: Responsable;
+    finalidades: Finalidad[];
+    transferencias: Rellenable;
+    actualizado: Rellenable;
+}
+
+/** El aviso de esta aplicación. El parámetro existe para poder probarlo. */
+export const AVISO: Aviso = {
+    responsable: RESPONSABLE,
+    finalidades: FINALIDADES,
+    transferencias: TRANSFERENCIAS,
+    actualizado: ACTUALIZADO,
+};
+
+export function faltanDatos(aviso: Aviso = AVISO): string[] {
+    const { responsable: RESPONSABLE, finalidades: FINALIDADES,
+            transferencias: TRANSFERENCIAS, actualizado: ACTUALIZADO } = aviso;
     const faltan: string[] = [];
     for (const [k, v] of Object.entries(RESPONSABLE)) {
         if (v === PENDIENTE) faltan.push(NOMBRES[k] || k);

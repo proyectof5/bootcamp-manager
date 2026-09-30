@@ -9,7 +9,7 @@
 import type { Metadata } from 'next';
 import {
     RESPONSABLE, FINALIDADES, CATEGORIAS, DESTINATARIOS,
-    TRANSFERENCIAS, ACTUALIZADO, PENDIENTE, faltanDatos,
+    TRANSFERENCIAS, ACTUALIZADO, PENDIENTE, estaCompleto, faltanDatos,
 } from '../_lib/privacidad';
 
 export const metadata: Metadata = {
@@ -26,7 +26,28 @@ const Hueco = ({ que }: { que: string }) => (
 const valor = (v: string, que: string) => (v === PENDIENTE ? <Hueco que={que} /> : <>{v}</>);
 
 export default function PrivacidadPage() {
-    const faltan = faltanDatos();
+    // Sin los datos de la organización no hay aviso que dar: enseñar el
+    // esqueleto con huecos sería peor que no enseñar nada. Los enlaces que
+    // llevan aquí también se esconden, así que a esta pantalla solo se llega
+    // escribiendo la dirección a mano.
+    if (!estaCompleto()) {
+        if (process.env.NODE_ENV === 'development') {
+            console.warn(
+                '[privacidad] El aviso está oculto porque faltan datos en app/_lib/privacidad.ts:\n  · '
+                + faltanDatos().join('\n  · ')
+            );
+        }
+        return (
+            <main className="priv">
+                <h1>Privacidad</h1>
+                <p className="priv-entradilla">
+                    Estamos preparando esta información. Si quieres saber qué datos tuyos
+                    tratamos, o ejercer cualquiera de tus derechos, escribe al equipo de
+                    coordinación de tu formación.
+                </p>
+            </main>
+        );
+    }
 
     return (
         <main className="priv">
@@ -35,16 +56,6 @@ export default function PrivacidadPage() {
                 Esta página explica qué datos personales trata la plataforma del bootcamp,
                 para qué se usan y qué puedes pedir sobre ellos.
             </p>
-
-            {faltan.length > 0 && (
-                <div className="priv-borrador" role="status">
-                    <strong>Borrador.</strong> Este aviso todavía no está completo: faltan{' '}
-                    {faltan.length} dato{faltan.length === 1 ? '' : 's'} que tiene que aportar la
-                    organización ({faltan.slice(0, 3).join('; ')}
-                    {faltan.length > 3 ? `; y ${faltan.length - 3} más` : ''}). Hasta entonces no
-                    sirve como información oficial.
-                </div>
-            )}
 
             <section>
                 <h2>Quién trata tus datos</h2>
