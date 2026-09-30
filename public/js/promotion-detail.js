@@ -2813,8 +2813,19 @@ async function loadAccessSettingsInTeacherArea() {
             const passwordInput = document.getElementById('teacher-area-access-password-input');
             const accessLinkInput = document.getElementById('teacher-area-student-access-link');
 
+            // El servidor ya no devuelve la contraseña (está hasheada): solo dice
+            // si hay una puesta y cuándo se cambió.
             if (passwordInput) {
-                passwordInput.value = data.accessPassword || '';
+                passwordInput.value = '';
+                passwordInput.placeholder = data.hasPassword ? '\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022 (definida)' : 'Sin contrase\u00f1a';
+            }
+            if ('teacher-area-access-password-state') {
+                const estado = document.getElementById('teacher-area-access-password-state');
+                if (estado) {
+                    if (!data.hasPassword) estado.textContent = 'El portal est\u00e1 abierto: no pide contrase\u00f1a.';
+                    else if (data.changedAt) estado.textContent = 'Contrase\u00f1a definida \u00b7 \u00faltimo cambio el ' + new Date(data.changedAt).toLocaleDateString('es-ES') + (data.changedBy ? ' por ' + data.changedBy : '');
+                    else estado.textContent = 'Contrase\u00f1a definida.';
+                }
             }
 
             // Update the access link in teacher area
@@ -9803,11 +9814,11 @@ async function previewPromotion() {
         });
 
         if (response.ok) {
-            const promotion = await response.json();
-            if (promotion.accessPassword) {
-                // Include password in URL for auto-verification
-                previewLink += `&pwd=${encodeURIComponent(promotion.accessPassword)}`;
-            }
+            await response.json();
+            // Antes se metía la contraseña en la URL (&pwd=...) para entrar sin
+            // teclearla. Ya no: el servidor no la devuelve —está hasheada— y una
+            // contraseña en la URL acaba en el historial y en los registros del
+            // servidor. El enlace abre el portal y la pide como a cualquiera.
         }
     } catch (error) {
         console.error('Error loading promotion for preview:', error);
@@ -10202,8 +10213,19 @@ async function loadAccessPassword() {
             const passwordInput = document.getElementById('access-password-input');
             const accessLinkInput = document.getElementById('student-access-link');
 
+            // El servidor ya no devuelve la contraseña (está hasheada): solo dice
+            // si hay una puesta y cuándo se cambió.
             if (passwordInput) {
-                passwordInput.value = data.accessPassword || '';
+                passwordInput.value = '';
+                passwordInput.placeholder = data.hasPassword ? '\u2022\u2022\u2022\u2022\u2022\u2022\u2022\u2022 (definida)' : 'Sin contrase\u00f1a';
+            }
+            if ('access-password-state') {
+                const estado = document.getElementById('access-password-state');
+                if (estado) {
+                    if (!data.hasPassword) estado.textContent = 'El portal est\u00e1 abierto: no pide contrase\u00f1a.';
+                    else if (data.changedAt) estado.textContent = 'Contrase\u00f1a definida \u00b7 \u00faltimo cambio el ' + new Date(data.changedAt).toLocaleDateString('es-ES') + (data.changedBy ? ' por ' + data.changedBy : '');
+                    else estado.textContent = 'Contrase\u00f1a definida.';
+                }
             }
 
             // Update the access link

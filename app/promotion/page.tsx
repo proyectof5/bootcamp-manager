@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState, useCallback, memo } from 'react';
+import { estaCompleto } from '../_lib/privacidad';
 import { withBasePath } from '../_lib/basePath';
 import { NotesPanelHost } from './_components/NotesPanel';
 import { SidebarDesktopToggle } from './_components/SidebarDesktopToggle';
@@ -1411,6 +1412,16 @@ export default function PromotionPage() {
           <DialogHeader>
             <DialogTitle id="studentModalTitle">Añadir Estudiante</DialogTitle>
           </DialogHeader>
+          {/* Se recogen datos personales: hay que poder decir qué se hace con ellos.
+              Mientras el aviso no esté completo no se enlaza (app/_lib/privacidad.ts). */}
+          {estaCompleto() && (
+            <p className="text-xs text-muted-foreground -mt-2">
+              Estos datos se tratan según el{' '}
+              <a href={withBasePath('/privacidad/')} target="_blank" rel="noopener noreferrer" className="underline">
+                aviso de privacidad
+              </a>. Pide solo lo que necesites.
+            </p>
+          )}
           <form id="student-form">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-2">
               <div className="space-y-1">

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { estaCompleto } from '../_lib/privacidad';
 import { credencialAcceso, cabeceraAcceso } from './_lib/acceso';
 import { withBasePath } from '../_lib/basePath';
 import {
@@ -551,6 +552,15 @@ export default function PublicPromotionPage() {
           </main>
         </div>
       </div>
+
+      {/* Informar de qué se hace con los datos, donde está el estudiantado.
+          Mientras el aviso esté incompleto no se enlaza: mejor nada que un
+          documento a medias. Ver app/_lib/privacidad.ts */}
+      {estaCompleto() && (
+        <div className="priv-enlace-pie">
+          <a href={withBasePath('/privacidad/')}>Privacidad: qué datos tratamos y qué puedes pedir</a>
+        </div>
+      )}
 
       {/* ── Appointment Modal ── */}
       <Dialog open={appointmentOpen} onOpenChange={setAppointmentOpen}>
