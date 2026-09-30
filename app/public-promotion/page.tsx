@@ -552,6 +552,11 @@ export default function PublicPromotionPage() {
         </div>
       </div>
 
+      {/* Informar de qué se hace con los datos, donde está el estudiantado. */}
+      <div className="priv-enlace-pie">
+        <a href={withBasePath('/privacidad/')}>Privacidad: qué datos tratamos y qué puedes pedir</a>
+      </div>
+
       {/* ── Appointment Modal ── */}
       <Dialog open={appointmentOpen} onOpenChange={setAppointmentOpen}>
         <DialogContent className="max-w-5xl p-0 gap-0 h-[85vh] flex flex-col">
