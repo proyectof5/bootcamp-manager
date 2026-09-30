@@ -152,12 +152,15 @@ const promotionDetailBody = `
                                             class="form-label small fw-bold">Contraseña</label>
                                         <div class="password-input-group">
                                             <input type="password" class="form-control form-control-sm"
-                                                id="access-password-input" placeholder="Enter password">
+                                                id="access-password-input" placeholder="Sin contraseña" autocomplete="new-password">
                                             <button type="button" class="password-toggle"
                                                 onclick="togglePasswordVisibility('access-password-input')">
                                                 <i class="bi bi-eye"></i>
                                             </button>
                                         </div>
+                                        <!-- El servidor ya no devuelve la contraseña: está hasheada.
+                                             Aquí se dice si hay una puesta y desde cuándo. -->
+                                        <div class="form-text small" id="access-password-state"></div>
                                     </div>
                                     <button class="btn btn-sm w-100"
                                         style="background-color: var(--green-f5); color: var(--principal-2); border: none; font-weight: 600;"
