@@ -1296,7 +1296,7 @@ async function printActaInicio(promotionId) {
     try {
         const [promoRes, extRes] = await Promise.all([
             fetch(`${API_URL}/api/promotions/${promotionId}`,              { headers: { 'Authorization': `Bearer ${token}` } }),
-            fetch(`${API_URL}/api/promotions/${promotionId}/extended-info`)
+            fetch(`${API_URL}/api/promotions/${promotionId}/extended-info`, { headers: { 'Authorization': `Bearer ${token}` } })
         ]);
         if (!promoRes.ok) throw new Error('No se pudo cargar la promoción');
         const promo = await promoRes.json();
@@ -1420,7 +1420,7 @@ async function printActaInicio(promotionId) {
         try {
             const [promoRes, extRes, competencesRes] = await Promise.all([
                 fetch(`${API_URL}/api/promotions/${promotionId}`,              { headers: { 'Authorization': `Bearer ${token}` } }),
-                fetch(`${API_URL}/api/promotions/${promotionId}/extended-info`),
+                fetch(`${API_URL}/api/promotions/${promotionId}/extended-info`, { headers: { 'Authorization': `Bearer ${token}` } }),
                 fetch(`${API_URL}/api/competences`,                            { headers: { 'Authorization': `Bearer ${token}` } })
             ]);
             if (!promoRes.ok) throw new Error('No se pudo cargar la promoción');

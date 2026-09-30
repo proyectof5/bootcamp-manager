@@ -521,7 +521,7 @@ async function loadExtendedInfo() {
     try {
         // Sub-tab is restored by switchTab('info') — no forced roadmap here
 
-        const response = await fetch(`${API_URL}/api/promotions/${promotionId}/extended-info`); // Public endpoint
+        const response = await fetch(`${API_URL}/api/promotions/${promotionId}/extended-info`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } });
         if (response.ok) {
             extendedInfoData = await response.json();
             // Expose competences globally so the project competence picker can access them
@@ -7065,7 +7065,7 @@ async function deletePromoResource(resourceId) {
 // Load calendar ID from backend for Overview preview
 async function loadOverviewCalendarId() {
     try {
-        const response = await fetch(`${API_URL}/api/promotions/${promotionId}/calendar`);
+        const response = await fetch(`${API_URL}/api/promotions/${promotionId}/calendar`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } });
 
         if (response.ok) {
             const calendar = await response.json();
@@ -12860,7 +12860,7 @@ async function loadEvaluation() {
     try {
         const [promoRes, extRes, studentsRes, catalogRes] = await Promise.all([
             fetch(`${API_URL}/api/promotions/${promotionId}`, { headers: { 'Authorization': `Bearer ${token}` } }),
-            fetch(`${API_URL}/api/promotions/${promotionId}/extended-info`),
+            fetch(`${API_URL}/api/promotions/${promotionId}/extended-info`, { headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` } }),
             fetch(`${API_URL}/api/promotions/${promotionId}/students`, { headers: { 'Authorization': `Bearer ${token}` } }),
             fetch(`${API_URL}/api/competences`, { headers: { 'Authorization': `Bearer ${token}` } })
         ]);
