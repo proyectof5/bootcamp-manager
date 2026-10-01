@@ -50,17 +50,16 @@ const DropdownMenuSubContent = React.forwardRef<
 DropdownMenuSubContent.displayName = DropdownMenuPrimitive.SubContent.displayName;
 
 /**
- * Limita el menú al hueco que de verdad le queda por debajo.
+ * Limita el menú al hueco que le queda en pantalla.
  *
- * No vale toparlo contra la altura de la ventana: un menú que empieza a media
- * pantalla se sale igual. Y tampoco vale --radix-...-available-height, que
- * sería lo canónico pero en esta aplicación devuelve valores sin sentido (4px,
- * incluso negativos) porque los ancestros de recorte que detecta no son los de
- * la ventana.
+ * Se mide **el disparador**, no el menú: la posición del menú depende de la
+ * altura que le estamos poniendo, así que medirlo a él se muerde la cola —el
+ * primer intento de esto acababa dejando el menú en el mínimo de 120px—. El
+ * disparador no se mueve, así que el hueco sale estable a la primera.
  *
- * Así que se mide: desde donde Radix ha colocado el menú hasta el borde de
- * abajo, menos un margen. Se recalcula al abrir, al redimensionar y cuando
- * Radix lo recoloca.
+ * Tampoco vale --radix-...-available-height, que sería lo canónico: en esta
+ * aplicación devuelve 4px en una ventana de 761, y hasta valores negativos,
+ * porque los ancestros de recorte que detecta no son los de la ventana.
  */
 function useAltoDisponible(margen = 16) {
   const [nodo, setNodo] = React.useState<HTMLElement | null>(null);
@@ -69,30 +68,32 @@ function useAltoDisponible(margen = 16) {
     if (!nodo) return;
 
     const medir = () => {
-      // La altura máxima no debe influir en dónde empieza el menú, así que se
-      // quita antes de leer la posición.
-      nodo.style.maxHeight = '';
-      const r = nodo.getBoundingClientRect();
-      // Radix abre hacia arriba cuando no cabe abajo. En ese caso el hueco no
-      // se mide desde donde empieza el menú sino hasta donde termina.
-      const hueco = r.top < margen
-        ? r.bottom - margen
-        : window.innerHeight - r.top - margen;
-      nodo.style.maxHeight = `${Math.max(hueco, 120)}px`;
+      const idDisparador = nodo.getAttribute('aria-labelledby');
+      const disparador = idDisparador ? document.getElementById(idDisparador) : null;
+      if (!disparador) return;
+
+      const d = disparador.getBoundingClientRect();
+      // Radix abre hacia arriba cuando no cabe abajo; el hueco es el otro.
+      const hueco = nodo.getAttribute('data-side') === 'top'
+        ? d.top - margen
+        : window.innerHeight - d.bottom - margen;
+
+      nodo.style.maxHeight = `${Math.max(Math.round(hueco), 160)}px`;
     };
 
     medir();
-    // Radix coloca el menú después de montarlo: se vuelve a medir en el
-    // siguiente fotograma, y cada vez que cambia de sitio o de tamaño.
+    // Radix coloca después de montar, así que el lado definitivo llega un
+    // fotograma más tarde.
     const id = requestAnimationFrame(medir);
-    const ro = new ResizeObserver(medir);
-    ro.observe(nodo);
+    // Si cambia de lado (al redimensionar, por ejemplo) hay que recalcular.
+    const mo = new MutationObserver(medir);
+    mo.observe(nodo, { attributes: true, attributeFilter: ['data-side'] });
     window.addEventListener('resize', medir);
     window.addEventListener('scroll', medir, true);
 
     return () => {
       cancelAnimationFrame(id);
-      ro.disconnect();
+      mo.disconnect();
       window.removeEventListener('resize', medir);
       window.removeEventListener('scroll', medir, true);
     };
