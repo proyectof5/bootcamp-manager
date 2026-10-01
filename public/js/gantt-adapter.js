@@ -734,6 +734,21 @@ function buildHoursBreakdown(promotion, extendedInfo) {
 window.buildHoursBreakdown = buildHoursBreakdown;
 
 /**
+ * Semanas que dura la formación según el roadmap: horas lectivas totales entre
+ * las horas que caben en una semana (jornada × días lectivos). null si el
+ * roadmap aún no suma horas.
+ */
+function suggestWeeksFromHours(promotion, extendedInfo) {
+    const b = buildHoursBreakdown(promotion, extendedInfo);
+    const diasSemana = (Array.isArray(promotion && promotion.workingDays) && promotion.workingDays.length)
+        ? promotion.workingDays.length : 5;
+    const horasSemana = b.hoursPerDay * diasSemana;
+    if (!(b.total > 0) || !(horasSemana > 0)) return null;
+    return Math.max(1, Math.ceil(b.total / horasSemana));
+}
+window.suggestWeeksFromHours = suggestWeeksFromHours;
+
+/**
  * Días lectivos que necesita un módulo para cubrir `targetHours` a `hoursPerDay` h/día
  * (redondeando hacia arriba: 247,5 h a 7,5 h/día = 33 días; 250 h = 34 días).
  * @param {number} targetHours

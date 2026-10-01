@@ -60,7 +60,7 @@ interface Promotion {
   id: string;
   name: string;
   description?: string;
-  weeks: number;
+  weeks?: number | null;
   totalHours?: number;
   startDate?: string;
   endDate?: string;
@@ -184,7 +184,6 @@ export default function DashboardPage() {
       templateId,
       name: tpl.name || f.name,
       description: tpl.description || f.description,
-      weeks: tpl.weeks ? String(tpl.weeks) : f.weeks,
       hours: String(tpl.hours || tpl.totalHours || f.hours || ''),
     }));
   }
@@ -194,7 +193,6 @@ export default function DashboardPage() {
     const { name, description, weeks, hours, startDate, endDate, templateId } = promoForm;
     if (!name.trim()) { showToast('El nombre es obligatorio', 'warning'); return; }
     const weeksNum = parseInt(weeks);
-    if (isNaN(weeksNum)) { showToast('El número de semanas es obligatorio', 'warning'); return; }
 
     setSavingPromo(true);
     try {
@@ -208,7 +206,7 @@ export default function DashboardPage() {
         body: JSON.stringify({
           name: name.trim(),
           description,
-          weeks: weeksNum,
+          weeks: Number.isFinite(weeksNum) ? weeksNum : undefined,
           totalHours: parseInt(hours) || undefined,
           startDate: startDate || undefined,
           endDate: endDate || undefined,
@@ -629,18 +627,6 @@ export default function DashboardPage() {
                 rows={3}
                 value={promoForm.description}
                 onChange={e => setPromoForm(f => ({ ...f, description: e.target.value }))}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="promotion-weeks">Número de semanas</Label>
-              <Input
-                id="promotion-weeks"
-                type="number"
-                min={1}
-                required
-                value={promoForm.weeks}
-                onChange={e => setPromoForm(f => ({ ...f, weeks: e.target.value }))}
               />
             </div>
 

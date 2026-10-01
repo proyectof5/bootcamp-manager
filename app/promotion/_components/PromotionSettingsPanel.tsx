@@ -179,6 +179,15 @@ function PromotionSettingsPanel() {
     return () => { clearInterval(iv); window.removeEventListener('promotion-destination-changed', onDest); };
   }, [fill]);
 
+  const suggestedWeeks: number | null = (() => {
+    const p = w().currentPromotion;
+    if (!p || typeof w().suggestWeeksFromHours !== 'function') return null;
+    return w().suggestWeeksFromHours(
+      { ...p, hoursPerDay: parseFloat(form.hoursPerDay.replace(',', '.')) || p.hoursPerDay, workingDays: form.workingDays },
+      w().__promotionExtendedInfo || {}
+    ) ?? null;
+  })();
+
   const set = <K extends keyof Form>(key: K, value: Form[K]) => setForm(f => ({ ...f, [key]: value }));
 
   const toggleDay = (value: number) => setForm(f => ({
@@ -189,8 +198,10 @@ function PromotionSettingsPanel() {
   const validate = (): Record<string, string> => {
     const next: Record<string, string> = {};
     if (!form.name.trim()) next.name = 'Escribe el nombre de la promoción: es lo que se ve en el menú y en el portal.';
-    const weeks = parseInt(form.weeks, 10);
-    if (!Number.isFinite(weeks) || weeks < 1) next.weeks = 'Escribe cuántas semanas dura, por ejemplo 36.';
+    if (form.weeks.trim()) {
+      const weeks = parseInt(form.weeks, 10);
+      if (!Number.isFinite(weeks) || weeks < 1) next.weeks = 'Las semanas tienen que ser un número mayor que 0, por ejemplo 36.';
+    }
     if (form.hoursPerDay.trim()) {
       const hpd = parseFloat(form.hoursPerDay.replace(',', '.'));
       if (!Number.isFinite(hpd) || hpd <= 0) next.hoursPerDay = 'La jornada tiene que ser mayor que 0, por ejemplo 7,5.';
@@ -348,12 +359,23 @@ function PromotionSettingsPanel() {
             {fieldError('endDate')}
           </div>
           <div className={`settings-field${errors.weeks ? ' is-invalid' : ''}`}>
-            <label htmlFor="settings-weeks">Número de semanas <span aria-hidden="true">*</span><span className="visually-hidden-label">(obligatorio)</span></label>
+            <label htmlFor="settings-weeks">Número de semanas</label>
             <input
               id="settings-weeks" ref={semanasRef} type="number" min={1} className="form-control"
+              placeholder={suggestedWeeks ? String(suggestedWeeks) : undefined}
               value={form.weeks} onChange={(e) => set('weeks', e.target.value)}
-              aria-invalid={!!errors.weeks} aria-describedby={errors.weeks ? 'err-weeks' : undefined}
+              aria-invalid={!!errors.weeks} aria-describedby={errors.weeks ? 'err-weeks settings-weeks-hint' : 'settings-weeks-hint'}
             />
+            <span className="settings-hint" id="settings-weeks-hint">
+              {suggestedWeeks
+                ? <>Según las horas del roadmap: {suggestedWeeks} {suggestedWeeks === 1 ? 'semana' : 'semanas'}.{' '}
+                    {String(suggestedWeeks) !== form.weeks && (
+                      <button type="button" className="btn btn-link btn-sm p-0 align-baseline" onClick={() => set('weeks', String(suggestedWeeks))}>
+                        Usar {suggestedWeeks}
+                      </button>
+                    )}</>
+                : 'Se calcula solo cuando el roadmap tiene horas; puedes fijarlo a mano.'}
+            </span>
             {fieldError('weeks')}
           </div>
           <div className="settings-field">
