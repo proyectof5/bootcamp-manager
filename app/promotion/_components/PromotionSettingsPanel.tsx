@@ -14,7 +14,7 @@
  * La ventana sigue existiendo para quien la abra desde otro sitio.
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { apiFetch } from '@/lib/api';
 import { Search, X } from 'lucide-react';
