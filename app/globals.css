@@ -78,3 +78,113 @@
     --ring: 0 0% 83.1%;
   }
 }
+
+/* ── Importar roadmap desde JSON ──────────────────────────────────────────── */
+
+.imp-estructura {
+  padding: var(--app-space-3, .75rem) var(--app-space-4, 1rem);
+  background: var(--app-color-bg-surface, #f6f7f9);
+  border-radius: var(--app-radius-md, 8px);
+  font-size: .9rem;
+}
+.imp-estructura h4 { font-size: .95rem; font-weight: 600; margin-bottom: var(--app-space-2, .5rem); }
+.imp-estructura ul { margin: 0 0 var(--app-space-3, .75rem); padding-left: 1.2rem; }
+.imp-estructura li { margin-bottom: .2rem; }
+.imp-estructura code {
+  padding: .05em .35em;
+  border-radius: var(--app-radius-sm, 4px);
+  background: var(--app-color-brand-50, #fff1ea);
+  color: var(--app-color-brand-900, #8a2400);
+  font-size: .9em;
+}
+.imp-estructura details { margin-bottom: var(--app-space-3, .75rem); }
+.imp-estructura summary { cursor: pointer; font-weight: 500; }
+.imp-estructura pre {
+  max-height: 16rem;
+  overflow: auto;
+  margin-top: var(--app-space-2, .5rem);
+  padding: var(--app-space-3, .75rem);
+  background: var(--app-color-bg-page, #fff);
+  border: 1px solid var(--app-color-border, #e3e5e8);
+  border-radius: var(--app-radius-sm, 4px);
+  font-size: .8rem;
+  line-height: 1.5;
+}
+
+/* Zona de arrastre: sustituye al botón nativo del navegador, que no se parece
+   a nada del resto de la aplicación. El input sigue dentro, escondido pero
+   enfocable, así que el teclado y el lector de pantalla lo siguen alcanzando. */
+.imp-drop {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--app-space-1, .25rem);
+  margin-top: var(--app-space-4, 1rem);
+  padding: var(--app-space-6, 1.75rem) var(--app-space-4, 1rem);
+  border: 2px dashed var(--app-color-border, #e3e5e8);
+  border-radius: var(--app-radius-md, 8px);
+  background: var(--app-color-bg-surface, #f6f7f9);
+  cursor: pointer;
+  text-align: center;
+  transition: border-color .15s ease, background-color .15s ease;
+}
+
+.imp-drop:hover { border-color: var(--app-color-brand-500, #ff4700); }
+
+/* El foco del teclado llega al input escondido: el recuadro se pinta aquí. */
+.imp-drop:focus-within {
+  border-color: var(--app-color-brand-500, #ff4700);
+  outline: 2px solid var(--app-color-brand-500, #ff4700);
+  outline-offset: 2px;
+}
+
+.imp-drop--activa {
+  border-color: var(--app-color-brand-500, #ff4700);
+  background: var(--app-color-brand-50, #fff1ea);
+}
+
+.imp-drop--ocupada { opacity: .6; cursor: progress; }
+
+/* Escondido sin display:none, para que siga siendo enfocable y anunciable. */
+.imp-drop-input {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.imp-drop-icono { font-size: 1.6rem; color: var(--app-color-text-muted, #5b6470); }
+.imp-drop-texto { font-weight: 600; }
+.imp-drop-fichero { font-weight: 600; word-break: break-all; }
+.imp-drop-accion {
+  font-size: .85rem;
+  /* brand-900 y no brand-700: sobre el fondo del estado de arrastre, el 700 se
+     queda en 4.28:1 y no llega al mínimo de AA. */
+  color: var(--app-color-brand-900, #8a2400);
+  text-decoration: underline;
+}
+
+.imp-errores,
+.imp-resumen,
+.imp-hecho {
+  margin-top: var(--app-space-4, 1rem);
+  padding: var(--app-space-3, .75rem) var(--app-space-4, 1rem);
+  border-radius: var(--app-radius-md, 8px);
+  font-size: .9rem;
+}
+.imp-errores { background: #fdeceb; border-left: 4px solid #c0392b; }
+.imp-resumen { background: var(--app-color-bg-surface, #f6f7f9); border-left: 4px solid var(--app-color-brand-500, #ff4700); }
+.imp-hecho   { background: #e9f7ef; border-left: 4px solid #1e8449; }
+
+.imp-errores h4,
+.imp-resumen h4 { font-size: .95rem; font-weight: 600; margin-bottom: var(--app-space-2, .5rem); }
+.imp-errores ul { margin: 0 0 var(--app-space-2, .5rem); padding-left: 1.2rem; }
+.imp-errores p { margin: 0; color: var(--app-color-text-muted, #5b6470); }
+
+.imp-modo { margin-top: var(--app-space-3, .75rem); border: 0; padding: 0; }
+.imp-modo legend { font-size: .9rem; font-weight: 600; margin-bottom: var(--app-space-1, .25rem); }
+.imp-modo label { display: flex; gap: .4rem; align-items: center; margin-bottom: .2rem; }
