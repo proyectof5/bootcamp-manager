@@ -32,6 +32,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { apiFetch } from '@/lib/api';
 import { useAsanaAccount, asanaAccountLabel, type AsanaAccount } from './AsanaAccount';
+import { ImportarRoadmap, exportarRoadmapJson } from './ImportarRoadmap';
 import {
   DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuItem,
   DropdownMenuLabel, DropdownMenuRadioGroup, DropdownMenuRadioItem,
@@ -772,7 +773,9 @@ function ViewPicker() {
 // Sustituye a los botones sueltos de Empleabilidad, Google Calendar, Exportar y
 // Asana. Se agrupan por lo que hacen: preparar el roadmap, llevárselo a otra
 // herramienta o descargarlo.
-function RoadmapMoreMenu({ onAsana, asana }: { onAsana: () => void; asana: AsanaAccount }) {
+function RoadmapMoreMenu({ onAsana, asana, onImportar, onExportarJson }: {
+  onAsana: () => void; asana: AsanaAccount; onImportar: () => void; onExportarJson: () => void;
+}) {
   const conectada = !!asana.status?.connected;
   const sinIntegracion = asana.status != null && !asana.status.configured;
 
@@ -815,7 +818,16 @@ function RoadmapMoreMenu({ onAsana, asana }: { onAsana: () => void; asana: Asana
         ))}
 
         <DropdownMenuSeparator />
+        <DropdownMenuLabel>Roadmap</DropdownMenuLabel>
+        <DropdownMenuItem onClick={onImportar}>
+          <i className="bi bi-upload me-2" aria-hidden="true" />Importar desde JSON…
+        </DropdownMenuItem>
+
+        <DropdownMenuSeparator />
         <DropdownMenuLabel>Descargar</DropdownMenuLabel>
+        <DropdownMenuItem onClick={onExportarJson}>
+          <i className="bi bi-file-earmark-code me-2" aria-hidden="true" />JSON (sirve de plantilla)
+        </DropdownMenuItem>
         <DropdownMenuItem onClick={() => w().exportRoadmap?.('png')}>
           <i className="bi bi-file-earmark-image me-2" aria-hidden="true" />Imagen (PNG)
         </DropdownMenuItem>
@@ -855,6 +867,9 @@ function RoadmapEmptyPeriod() {
 function RoadmapPanel() {
   const wrapRef = useRef<HTMLDivElement>(null);
   const [asanaRequested, setAsanaRequested] = useState(false);
+  const [importando, setImportando] = useState(false);
+  const idPromo = typeof window !== 'undefined'
+    ? (new URLSearchParams(window.location.search).get('id') || '') : '';
   // El menú se cierra al elegir, así que el estado de la cuenta y la espera del
   // popup viven aquí, en el panel, que sigue montado.
   const asana = useAsanaAccount();
@@ -929,7 +944,12 @@ function RoadmapPanel() {
             <i className="bi bi-plus-lg" aria-hidden="true" />Módulo
           </button>
           <ViewPicker />
-          <RoadmapMoreMenu onAsana={() => setAsanaRequested(true)} asana={asana} />
+          <RoadmapMoreMenu
+            onAsana={() => setAsanaRequested(true)}
+            asana={asana}
+            onImportar={() => setImportando(true)}
+            onExportarJson={() => exportarRoadmapJson(idPromo, w().currentPromotionName || 'promocion')}
+          />
         </div>
       </div>
 
@@ -948,6 +968,13 @@ function RoadmapPanel() {
           overflow inline: el alto lo da .roadmap-fullbleed (flex:1) y el scroll
           es 100% interno de DHTMLX. */}
       <div id="gantt-container" className="roadmap-gantt-fill" />
+
+      <ImportarRoadmap
+        promotionId={idPromo}
+        abierto={importando}
+        onCerrar={() => setImportando(false)}
+        onImportado={() => { w().loadModules?.(); }}
+      />
     </div>
   );
 }
