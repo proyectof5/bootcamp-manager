@@ -194,6 +194,10 @@ export default function PublicPromotionPage() {
         // Solo dice si hace falta contraseña. Si no hace falta, entrega el token
         // de invitado, porque el resto de endpoints ya lo exigen.
         const res = await fetch(`${API_URL}/api/promotions/${pid}/public-access`);
+        // 404 = el servidor todavía no tiene este endpoint. Pasa en la ventana
+        // entre desplegar esta pantalla y desplegar el servidor: en vez de
+        // quedarse cargando para siempre, se hace como antes.
+        if (res.status === 404) { await comprobarALaAntigua(pid); return; }
         if (!res.ok) return;
         const info = await res.json();
         if (info.requiresPassword) {
@@ -208,6 +212,20 @@ export default function PublicPromotionPage() {
       } catch (e) {
         console.error('Error checking password requirement:', e);
       }
+    }
+
+    /**
+     * Cómo se hacía antes de que existiera /public-access: pedir la promoción
+     * entera y mirar si traía accessPassword. Se conserva solo para que el
+     * portal no se caiga mientras el servidor viejo siga en pie; en cuanto
+     * esté desplegado, esta rama deja de ejecutarse y se puede borrar.
+     */
+    async function comprobarALaAntigua(pid: string) {
+      const res = await fetch(`${API_URL}/api/promotions/${pid}`);
+      if (!res.ok) return;
+      const promo = await res.json();
+      if (promo.accessPassword) setAccess('password');
+      else await loadContent(pid);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadContent]);
