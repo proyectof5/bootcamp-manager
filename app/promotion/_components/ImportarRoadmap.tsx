@@ -70,6 +70,7 @@ export function ImportarRoadmap({
     const [modo, setModo] = useState<Modo>('reemplazar');
     const [ocupado, setOcupado] = useState(false);
     const [hecho, setHecho] = useState<string>('');
+    const [arrastrando, setArrastrando] = useState(false);
 
     const limpiar = () => {
         setFichero(''); setDatos(null); setErrores([]); setResumen(null); setActual(null); setHecho('');
@@ -80,7 +81,17 @@ export function ImportarRoadmap({
     async function elegir(e: React.ChangeEvent<HTMLInputElement>) {
         const f = e.target.files?.[0];
         e.target.value = '';                      // permite reelegir el mismo fichero
-        if (!f) return;
+        if (f) await procesar(f);
+    }
+
+    async function soltar(e: React.DragEvent) {
+        e.preventDefault();
+        setArrastrando(false);
+        const f = e.dataTransfer.files?.[0];
+        if (f) await procesar(f);
+    }
+
+    async function procesar(f: File) {
         limpiar();
         setFichero(f.name);
 
@@ -170,12 +181,32 @@ export function ImportarRoadmap({
                     </Button>
                 </section>
 
-                <div className="imp-fichero">
-                    <label htmlFor="imp-roadmap-file" className="form-label fw-bold">Fichero JSON</label>
+                {/* El <input type="file"> nativo pinta un botón del navegador que no se
+                    parece a nada del resto de la aplicación. Se esconde (sin display:none,
+                    para que siga recibiendo foco) y la zona entera hace de control.
+                    Arrastrar es un extra: el clic y el teclado siguen funcionando, que es
+                    lo que exige la WCAG 2.2 para cualquier acción que se pueda arrastrar. */}
+                <label
+                    className={`imp-drop${arrastrando ? ' imp-drop--activa' : ''}${ocupado ? ' imp-drop--ocupada' : ''}`}
+                    onDragOver={(e) => { e.preventDefault(); setArrastrando(true); }}
+                    onDragLeave={() => setArrastrando(false)}
+                    onDrop={soltar}
+                >
                     <input id="imp-roadmap-file" type="file" accept="application/json,.json"
-                        className="form-control" onChange={elegir} disabled={ocupado} />
-                    {fichero && <p className="imp-nombre">{fichero}</p>}
-                </div>
+                        className="imp-drop-input" onChange={elegir} disabled={ocupado} />
+                    <i className="bi bi-file-earmark-arrow-up imp-drop-icono" aria-hidden="true" />
+                    {fichero ? (
+                        <>
+                            <span className="imp-drop-fichero">{fichero}</span>
+                            <span className="imp-drop-accion">Elegir otro fichero</span>
+                        </>
+                    ) : (
+                        <>
+                            <span className="imp-drop-texto">Arrastra aquí el fichero JSON</span>
+                            <span className="imp-drop-accion">o selecciónalo</span>
+                        </>
+                    )}
+                </label>
 
                 {errores.length > 0 && (
                     <div className="imp-errores" role="alert">

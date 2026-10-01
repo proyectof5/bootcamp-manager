@@ -820,13 +820,13 @@ function RoadmapMoreMenu({ onAsana, asana, onImportar, onExportarJson }: {
         <DropdownMenuSeparator />
         <DropdownMenuLabel>Roadmap</DropdownMenuLabel>
         <DropdownMenuItem onClick={onImportar}>
-          <i className="bi bi-filetype-json me-2" aria-hidden="true" />Importar desde JSON…
+          <i className="bi bi-upload me-2" aria-hidden="true" />Importar desde JSON…
         </DropdownMenuItem>
 
         <DropdownMenuSeparator />
         <DropdownMenuLabel>Descargar</DropdownMenuLabel>
         <DropdownMenuItem onClick={onExportarJson}>
-          <i className="bi bi-filetype-json me-2" aria-hidden="true" />JSON (sirve de plantilla)
+          <i className="bi bi-file-earmark-code me-2" aria-hidden="true" />JSON (sirve de plantilla)
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => w().exportRoadmap?.('png')}>
           <i className="bi bi-file-earmark-image me-2" aria-hidden="true" />Imagen (PNG)

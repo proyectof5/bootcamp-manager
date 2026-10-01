@@ -93,7 +93,8 @@
 .imp-estructura code {
   padding: .05em .35em;
   border-radius: var(--app-radius-sm, 4px);
-  background: var(--app-color-brand-50, #fff1e6);
+  background: var(--app-color-brand-50, #fff1ea);
+  color: var(--app-color-brand-900, #8a2400);
   font-size: .9em;
 }
 .imp-estructura details { margin-bottom: var(--app-space-3, .75rem); }
@@ -110,8 +111,62 @@
   line-height: 1.5;
 }
 
-.imp-fichero { margin-top: var(--app-space-4, 1rem); }
-.imp-nombre { margin: var(--app-space-1, .25rem) 0 0; font-size: .85rem; color: var(--app-color-text-muted, #5b6470); }
+/* Zona de arrastre: sustituye al botón nativo del navegador, que no se parece
+   a nada del resto de la aplicación. El input sigue dentro, escondido pero
+   enfocable, así que el teclado y el lector de pantalla lo siguen alcanzando. */
+.imp-drop {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--app-space-1, .25rem);
+  margin-top: var(--app-space-4, 1rem);
+  padding: var(--app-space-6, 1.75rem) var(--app-space-4, 1rem);
+  border: 2px dashed var(--app-color-border, #e3e5e8);
+  border-radius: var(--app-radius-md, 8px);
+  background: var(--app-color-bg-surface, #f6f7f9);
+  cursor: pointer;
+  text-align: center;
+  transition: border-color .15s ease, background-color .15s ease;
+}
+
+.imp-drop:hover { border-color: var(--app-color-brand-500, #ff4700); }
+
+/* El foco del teclado llega al input escondido: el recuadro se pinta aquí. */
+.imp-drop:focus-within {
+  border-color: var(--app-color-brand-500, #ff4700);
+  outline: 2px solid var(--app-color-brand-500, #ff4700);
+  outline-offset: 2px;
+}
+
+.imp-drop--activa {
+  border-color: var(--app-color-brand-500, #ff4700);
+  background: var(--app-color-brand-50, #fff1ea);
+}
+
+.imp-drop--ocupada { opacity: .6; cursor: progress; }
+
+/* Escondido sin display:none, para que siga siendo enfocable y anunciable. */
+.imp-drop-input {
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
+}
+
+.imp-drop-icono { font-size: 1.6rem; color: var(--app-color-text-muted, #5b6470); }
+.imp-drop-texto { font-weight: 600; }
+.imp-drop-fichero { font-weight: 600; word-break: break-all; }
+.imp-drop-accion {
+  font-size: .85rem;
+  /* brand-900 y no brand-700: sobre el fondo del estado de arrastre, el 700 se
+     queda en 4.28:1 y no llega al mínimo de AA. */
+  color: var(--app-color-brand-900, #8a2400);
+  text-decoration: underline;
+}
 
 .imp-errores,
 .imp-resumen,
@@ -122,7 +177,7 @@
   font-size: .9rem;
 }
 .imp-errores { background: #fdeceb; border-left: 4px solid #c0392b; }
-.imp-resumen { background: var(--app-color-bg-surface, #f6f7f9); border-left: 4px solid var(--app-color-accent-500, #e8590c); }
+.imp-resumen { background: var(--app-color-bg-surface, #f6f7f9); border-left: 4px solid var(--app-color-brand-500, #ff4700); }
 .imp-hecho   { background: #e9f7ef; border-left: 4px solid #1e8449; }
 
 .imp-errores h4,
