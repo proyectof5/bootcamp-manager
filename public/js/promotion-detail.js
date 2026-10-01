@@ -6058,7 +6058,19 @@ function generateGanttChart(promotion) {
     // arrancaba donde debía. Fijar start_date/end_date explícitos hace que el
     // primer borde de columna sea siempre exactamente startDate.
     const startDateRaw = promotion.startDate ? new Date(promotion.startDate) : new Date();
-    const rangeStart = new Date(startDateRaw.getFullYear(), startDateRaw.getMonth(), startDateRaw.getDate());
+    let rangeStart = new Date(startDateRaw.getFullYear(), startDateRaw.getMonth(), startDateRaw.getDate());
+    // Promoción sin fecha de inicio: se ancla a la primera tarea en vez de a "hoy",
+    // o el roadmap queda fuera de la vista y parece vacío.
+    if (!promotion.startDate) {
+        let primera = null;
+        (dataset.data || []).forEach((row) => {
+            const [dd, mm, yyyy] = String(row.start_date).split('-').map(Number);
+            if (!dd || !mm || !yyyy) return;
+            const d = new Date(yyyy, mm - 1, dd);
+            if (!primera || d < primera) primera = d;
+        });
+        if (primera) rangeStart = primera;
+    }
     let rangeEnd = rangeStart;
     (dataset.data || []).forEach((row) => {
         const [dd, mm, yyyy] = String(row.start_date).split('-').map(Number);
