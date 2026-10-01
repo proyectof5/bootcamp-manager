@@ -79,6 +79,93 @@
   }
 }
 
+/* ── Aviso de privacidad (app/privacidad) ─────────────────────────────────── */
+
+.priv {
+  max-width: 68ch;
+  margin-inline: auto;
+  padding: var(--app-space-6, 2rem) var(--app-space-4, 1rem) var(--app-space-8, 3rem);
+  color: var(--app-color-text, #1f2328);
+  line-height: 1.6;
+}
+
+.priv h1 {
+  font-size: var(--app-font-size-2xl, 1.75rem);
+  margin-bottom: var(--app-space-2, .5rem);
+}
+
+.priv h2 {
+  font-size: var(--app-font-size-lg, 1.2rem);
+  margin-top: var(--app-space-6, 2rem);
+  margin-bottom: var(--app-space-2, .5rem);
+  padding-bottom: var(--app-space-1, .25rem);
+  border-bottom: 1px solid var(--app-color-border, #e3e5e8);
+}
+
+.priv h3 {
+  font-size: 1rem;
+  margin-bottom: var(--app-space-1, .25rem);
+}
+
+.priv-entradilla { color: var(--app-color-text-muted, #5b6470); }
+
+.priv-borrador {
+  margin: var(--app-space-4, 1rem) 0;
+  padding: var(--app-space-3, .75rem) var(--app-space-4, 1rem);
+  border-left: 4px solid var(--app-color-accent-500, #e8590c);
+  background: var(--app-color-bg-surface, #f6f7f9);
+  border-radius: var(--app-radius-sm, 4px);
+}
+
+.priv-hueco {
+  padding: 0 .35em;
+  border-radius: var(--app-radius-sm, 4px);
+  background: var(--app-color-brand-50, #fff1e6);
+  color: var(--app-color-accent-700, #b34700);
+  font-style: italic;
+  white-space: nowrap;
+}
+
+.priv-datos { margin: 0; }
+.priv-datos dt { font-weight: 600; }
+.priv-datos dd { margin: 0 0 var(--app-space-3, .75rem); color: var(--app-color-text-muted, #5b6470); }
+
+.priv-finalidad {
+  margin-bottom: var(--app-space-4, 1rem);
+  padding-left: var(--app-space-3, .75rem);
+  border-left: 2px solid var(--app-color-border, #e3e5e8);
+}
+
+.priv-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--app-space-1, .25rem) var(--app-space-4, 1rem);
+  margin: 0;
+  font-size: .9rem;
+  color: var(--app-color-text-muted, #5b6470);
+}
+
+.priv-nota,
+.priv-pie {
+  font-size: .9rem;
+  color: var(--app-color-text-muted, #5b6470);
+}
+
+.priv-pie {
+  margin-top: var(--app-space-6, 2rem);
+  padding-top: var(--app-space-3, .75rem);
+  border-top: 1px solid var(--app-color-border, #e3e5e8);
+}
+
+/* Enlace al aviso, en el pie del portal público */
+.priv-enlace-pie {
+  margin-top: var(--app-space-6, 2rem);
+  padding: var(--app-space-4, 1rem) 0;
+  border-top: 1px solid var(--app-color-border, #e3e5e8);
+  text-align: center;
+  font-size: .85rem;
+  color: var(--app-color-text-muted, #5b6470);
+}
 /* ── Importar roadmap desde JSON ──────────────────────────────────────────── */
 
 .imp-estructura {

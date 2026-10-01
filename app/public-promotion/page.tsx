@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { estaCompleto } from '../_lib/privacidad';
+import { credencialAcceso, cabeceraAcceso } from './_lib/acceso';
 import { withBasePath } from '../_lib/basePath';
 import {
   BarChart3,
@@ -105,7 +107,8 @@ export default function PublicPromotionPage() {
 
   const loadContent = useCallback(async (id: string) => {
     const get = <T,>(path: string, fallback: T): Promise<T> =>
-      fetch(`${API_URL}/api/promotions/${id}${path}`).then((r) => (r.ok ? r.json() : fallback)).catch(() => fallback);
+      fetch(`${API_URL}/api/promotions/${id}${path}`, { headers: cabeceraAcceso(id) })
+        .then((r) => (r.ok ? r.json() : fallback)).catch(() => fallback);
     const [promo, ql, cal, studs, secs, promoRes, ext] = await Promise.all([
       get<PPPromotion | null>('', null),
       get<PPQuickLink[]>('/quick-links', []),
@@ -133,7 +136,7 @@ export default function PublicPromotionPage() {
   // Recarga solo extended-info (tras auto-asignarse a una píldora, y por polling)
   const reloadExtended = useCallback(async (id: string) => {
     try {
-      const r = await fetch(`${API_URL}/api/promotions/${id}/extended-info?t=${Date.now()}`);
+      const r = await fetch(`${API_URL}/api/promotions/${id}/extended-info?t=${Date.now()}`, { headers: cabeceraAcceso(id) });
       if (r.ok) setExtended(await r.json());
     } catch {
       /* noop */
@@ -169,7 +172,12 @@ export default function PublicPromotionPage() {
 
     (async () => {
       if (preview) {
-        await loadContent(id);
+        // La previsualización ya no salta la puerta: si no hay credencial
+        // (docente dentro de la app, o invitado), se pide la contraseña como a
+        // cualquiera, en vez de enseñar una página vacía de 401.
+        const hayCredencial = credencialAcceso(id);
+        if (hayCredencial) { await loadContent(id); return; }
+        await checkPasswordRequirement(id);
         return;
       }
       if (pwd) {
@@ -183,17 +191,41 @@ export default function PublicPromotionPage() {
 
     async function checkPasswordRequirement(pid: string) {
       try {
-        const res = await fetch(`${API_URL}/api/promotions/${pid}`);
+        // Solo dice si hace falta contraseña. Si no hace falta, entrega el token
+        // de invitado, porque el resto de endpoints ya lo exigen.
+        const res = await fetch(`${API_URL}/api/promotions/${pid}/public-access`);
+        // 404 = el servidor todavía no tiene este endpoint. Pasa en la ventana
+        // entre desplegar esta pantalla y desplegar el servidor: en vez de
+        // quedarse cargando para siempre, se hace como antes.
+        if (res.status === 404) { await comprobarALaAntigua(pid); return; }
         if (!res.ok) return;
-        const promo = await res.json();
-        if (promo.accessPassword) {
+        const info = await res.json();
+        if (info.requiresPassword) {
           setAccess('password');
         } else {
+          if (info.accessToken) {
+            sessionStorage.setItem('promotionAccessToken', info.accessToken);
+            sessionStorage.setItem('promotionId', pid);
+          }
           await loadContent(pid);
         }
       } catch (e) {
         console.error('Error checking password requirement:', e);
       }
+    }
+
+    /**
+     * Cómo se hacía antes de que existiera /public-access: pedir la promoción
+     * entera y mirar si traía accessPassword. Se conserva solo para que el
+     * portal no se caiga mientras el servidor viejo siga en pie; en cuanto
+     * esté desplegado, esta rama deja de ejecutarse y se puede borrar.
+     */
+    async function comprobarALaAntigua(pid: string) {
+      const res = await fetch(`${API_URL}/api/promotions/${pid}`);
+      if (!res.ok) return;
+      const promo = await res.json();
+      if (promo.accessPassword) setAccess('password');
+      else await loadContent(pid);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadContent]);
@@ -538,6 +570,15 @@ export default function PublicPromotionPage() {
           </main>
         </div>
       </div>
+
+      {/* Informar de qué se hace con los datos, donde está el estudiantado.
+          Mientras el aviso esté incompleto no se enlaza: mejor nada que un
+          documento a medias. Ver app/_lib/privacidad.ts */}
+      {estaCompleto() && (
+        <div className="priv-enlace-pie">
+          <a href={withBasePath('/privacidad/')}>Privacidad: qué datos tratamos y qué puedes pedir</a>
+        </div>
+      )}
 
       {/* ── Appointment Modal ── */}
       <Dialog open={appointmentOpen} onOpenChange={setAppointmentOpen}>

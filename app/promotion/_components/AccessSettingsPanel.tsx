@@ -78,12 +78,15 @@ function AccessSettingsPanel() {
               <div className="access-field">
                 <label htmlFor="teacher-area-access-password-input">Contraseña</label>
                 <div className="password-input-group">
-                  <input type="password" className="form-control form-control-sm" id="teacher-area-access-password-input" placeholder="Sin contraseña" />
+                  <input type="password" className="form-control form-control-sm" id="teacher-area-access-password-input" placeholder="Sin contraseña" autoComplete="new-password" />
                   <button type="button" className="password-toggle" aria-label="Ver u ocultar la contraseña" onClick={() => w().togglePasswordVisibility?.('teacher-area-access-password-input')}>
                     <i className="bi bi-eye" aria-hidden="true" />
                   </button>
                 </div>
-                <span className="access-hint">Déjala vacía para que el portal quede abierto.</span>
+                {/* El servidor ya no devuelve la contraseña: está hasheada. Esta línea
+                    dice si hay una puesta y desde cuándo; la rellena promotion-detail.js. */}
+                <span className="access-hint" id="teacher-area-access-password-state" />
+                <span className="access-hint">Déjala vacía para que el portal quede abierto. No se puede volver a consultar: si se pierde, se pone una nueva y se comparte otra vez.</span>
               </div>
 
               <div className="access-field access-field--grow">

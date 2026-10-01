@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useState } from 'react';
+import { cabeceraAcceso } from '../_lib/acceso';
 import { ArrowLeft, Laptop, FileText, Award, CalendarDays, CheckCircle2, CloudUpload, Send, ExternalLink, Info } from 'lucide-react';
 import {
   Accordion,
@@ -172,7 +173,7 @@ function AulaVirtualProject({
   const refreshSubmissions = useCallback(async () => {
     try {
       const qs = new URLSearchParams({ type, moduleId, projectName });
-      const res = await fetch(`${API_URL}/api/promotions/${promotionId}/virtual-classroom/submissions?${qs}`);
+      const res = await fetch(`${API_URL}/api/promotions/${promotionId}/virtual-classroom/submissions?${qs}`, { headers: cabeceraAcceso(promotionId) });
       if (!res.ok) return;
       const data = await res.json();
       setSubmissions(data.submissions || []);
@@ -205,7 +206,9 @@ function AulaVirtualProject({
     setFeedback(null);
     try {
       const res = await fetch(`${API_URL}/api/promotions/${promotionId}/virtual-classroom/submissions`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...cabeceraAcceso(promotionId) },
+        body: JSON.stringify(body),
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) { setFeedback({ text: data.error || 'Error al registrar la entrega.', ok: false }); return; }
