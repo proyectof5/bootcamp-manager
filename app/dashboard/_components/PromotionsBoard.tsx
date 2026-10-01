@@ -30,7 +30,7 @@ export interface BoardPromotion {
   id: string;
   name: string;
   description?: string;
-  weeks: number;
+  weeks?: number | null;
   startDate?: string;
   endDate?: string;
   teacherId?: string;
@@ -208,7 +208,7 @@ export function PromotionsBoard({
                           {final ? ` – ${final.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' })}` : ''}
                         </span>
                       )}
-                      <span>{p.weeks} {p.weeks === 1 ? 'semana' : 'semanas'}</span>
+                      {p.weeks ? <span>{p.weeks} {p.weeks === 1 ? 'semana' : 'semanas'}</span> : null}
                       <span>{(p.modules || []).length} {(p.modules || []).length === 1 ? 'módulo' : 'módulos'}</span>
                     </span>
 

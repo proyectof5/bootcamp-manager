@@ -3296,6 +3296,25 @@ async function loadPromotion() {
     }
 }
 
+/**
+ * Las semanas ya no se piden al crear la promoción: salen de las horas del
+ * roadmap. Solo se rellenan si la promoción no las tiene; si alguien las fijó
+ * a mano en Ajustes se respetan (allí se ofrece la sugerencia).
+ */
+async function syncPromotionWeeks(promotion) {
+    try {
+        if (promotion.weeks || typeof window.suggestWeeksFromHours !== 'function') return;
+        const weeks = window.suggestWeeksFromHours(promotion, window.__promotionExtendedInfo || {});
+        if (!weeks) return;
+        const res = await fetch(`${API_URL}/api/promotions/${promotionId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
+            body: JSON.stringify({ weeks })
+        });
+        if (res.ok) promotion.weeks = weeks;
+    } catch (e) { console.warn('[semanas] no se pudieron calcular', e); }
+}
+
 async function loadModules() {
     const token = localStorage.getItem('token');
     try {
@@ -3315,6 +3334,7 @@ async function loadModules() {
             // Roadmap recargado → las fechas que computa el panel "Cómputo de
             // horas" pueden haber cambiado (spec horas-lectivas.md).
             if (window.__refreshHoursPanel) window.__refreshHoursPanel();
+            syncPromotionWeeks(promotion);
         }
     } catch (error) {
         console.error('Error loading modules:', error);

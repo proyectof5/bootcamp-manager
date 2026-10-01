@@ -641,9 +641,9 @@ export default function PromotionPage() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <div className="space-y-2">
                 <Label htmlFor="edit-promotion-weeks" className="font-semibold">
-                  Número de semanas <span className="text-red-500">*</span>
+                  Número de semanas
                 </Label>
-                <Input id="edit-promotion-weeks" type="number" min={1} required />
+                <Input id="edit-promotion-weeks" type="number" min={1} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="edit-promotion-hours" className="font-semibold">Horas totales</Label>
