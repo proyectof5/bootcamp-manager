@@ -78,3 +78,58 @@
     --ring: 0 0% 83.1%;
   }
 }
+
+/* ── Importar roadmap desde JSON ──────────────────────────────────────────── */
+
+.imp-estructura {
+  padding: var(--app-space-3, .75rem) var(--app-space-4, 1rem);
+  background: var(--app-color-bg-surface, #f6f7f9);
+  border-radius: var(--app-radius-md, 8px);
+  font-size: .9rem;
+}
+.imp-estructura h4 { font-size: .95rem; font-weight: 600; margin-bottom: var(--app-space-2, .5rem); }
+.imp-estructura ul { margin: 0 0 var(--app-space-3, .75rem); padding-left: 1.2rem; }
+.imp-estructura li { margin-bottom: .2rem; }
+.imp-estructura code {
+  padding: .05em .35em;
+  border-radius: var(--app-radius-sm, 4px);
+  background: var(--app-color-brand-50, #fff1e6);
+  font-size: .9em;
+}
+.imp-estructura details { margin-bottom: var(--app-space-3, .75rem); }
+.imp-estructura summary { cursor: pointer; font-weight: 500; }
+.imp-estructura pre {
+  max-height: 16rem;
+  overflow: auto;
+  margin-top: var(--app-space-2, .5rem);
+  padding: var(--app-space-3, .75rem);
+  background: var(--app-color-bg-page, #fff);
+  border: 1px solid var(--app-color-border, #e3e5e8);
+  border-radius: var(--app-radius-sm, 4px);
+  font-size: .8rem;
+  line-height: 1.5;
+}
+
+.imp-fichero { margin-top: var(--app-space-4, 1rem); }
+.imp-nombre { margin: var(--app-space-1, .25rem) 0 0; font-size: .85rem; color: var(--app-color-text-muted, #5b6470); }
+
+.imp-errores,
+.imp-resumen,
+.imp-hecho {
+  margin-top: var(--app-space-4, 1rem);
+  padding: var(--app-space-3, .75rem) var(--app-space-4, 1rem);
+  border-radius: var(--app-radius-md, 8px);
+  font-size: .9rem;
+}
+.imp-errores { background: #fdeceb; border-left: 4px solid #c0392b; }
+.imp-resumen { background: var(--app-color-bg-surface, #f6f7f9); border-left: 4px solid var(--app-color-accent-500, #e8590c); }
+.imp-hecho   { background: #e9f7ef; border-left: 4px solid #1e8449; }
+
+.imp-errores h4,
+.imp-resumen h4 { font-size: .95rem; font-weight: 600; margin-bottom: var(--app-space-2, .5rem); }
+.imp-errores ul { margin: 0 0 var(--app-space-2, .5rem); padding-left: 1.2rem; }
+.imp-errores p { margin: 0; color: var(--app-color-text-muted, #5b6470); }
+
+.imp-modo { margin-top: var(--app-space-3, .75rem); border: 0; padding: 0; }
+.imp-modo legend { font-size: .9rem; font-weight: 600; margin-bottom: var(--app-space-1, .25rem); }
+.imp-modo label { display: flex; gap: .4rem; align-items: center; margin-bottom: .2rem; }
