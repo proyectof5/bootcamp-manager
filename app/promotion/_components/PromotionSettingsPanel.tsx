@@ -179,14 +179,24 @@ function PromotionSettingsPanel() {
     return () => { clearInterval(iv); window.removeEventListener('promotion-destination-changed', onDest); };
   }, [fill]);
 
-  const suggestedWeeks: number | null = (() => {
+  // Se recalcula al abrir Ajustes y al tocar jornada o días lectivos: el roadmap
+  // puede haberse cargado después de montar el panel.
+  const [roadmapTick, setRoadmapTick] = useState(0);
+  useEffect(() => {
+    const t = () => setRoadmapTick((n) => n + 1);
+    window.addEventListener('promotion-destination-changed', t);
+    const iv = setInterval(t, 1500);
+    return () => { window.removeEventListener('promotion-destination-changed', t); clearInterval(iv); };
+  }, []);
+  const suggestedWeeks: number | null = useMemo(() => {
     const p = w().currentPromotion;
     if (!p || typeof w().suggestWeeksFromHours !== 'function') return null;
     return w().suggestWeeksFromHours(
       { ...p, hoursPerDay: parseFloat(form.hoursPerDay.replace(',', '.')) || p.hoursPerDay, workingDays: form.workingDays },
       w().__promotionExtendedInfo || {}
     ) ?? null;
-  })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.hoursPerDay, form.workingDays, roadmapTick]);
 
   const set = <K extends keyof Form>(key: K, value: Form[K]) => setForm(f => ({ ...f, [key]: value }));
 
