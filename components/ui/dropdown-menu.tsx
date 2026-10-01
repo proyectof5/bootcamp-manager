@@ -49,31 +49,84 @@ const DropdownMenuSubContent = React.forwardRef<
 ));
 DropdownMenuSubContent.displayName = DropdownMenuPrimitive.SubContent.displayName;
 
+/**
+ * Limita el menú al hueco que de verdad le queda por debajo.
+ *
+ * No vale toparlo contra la altura de la ventana: un menú que empieza a media
+ * pantalla se sale igual. Y tampoco vale --radix-...-available-height, que
+ * sería lo canónico pero en esta aplicación devuelve valores sin sentido (4px,
+ * incluso negativos) porque los ancestros de recorte que detecta no son los de
+ * la ventana.
+ *
+ * Así que se mide: desde donde Radix ha colocado el menú hasta el borde de
+ * abajo, menos un margen. Se recalcula al abrir, al redimensionar y cuando
+ * Radix lo recoloca.
+ */
+function useAltoDisponible(margen = 16) {
+  const [nodo, setNodo] = React.useState<HTMLElement | null>(null);
+
+  React.useLayoutEffect(() => {
+    if (!nodo) return;
+
+    const medir = () => {
+      // La altura máxima no debe influir en dónde empieza el menú, así que se
+      // quita antes de leer la posición.
+      nodo.style.maxHeight = '';
+      const r = nodo.getBoundingClientRect();
+      // Radix abre hacia arriba cuando no cabe abajo. En ese caso el hueco no
+      // se mide desde donde empieza el menú sino hasta donde termina.
+      const hueco = r.top < margen
+        ? r.bottom - margen
+        : window.innerHeight - r.top - margen;
+      nodo.style.maxHeight = `${Math.max(hueco, 120)}px`;
+    };
+
+    medir();
+    // Radix coloca el menú después de montarlo: se vuelve a medir en el
+    // siguiente fotograma, y cada vez que cambia de sitio o de tamaño.
+    const id = requestAnimationFrame(medir);
+    const ro = new ResizeObserver(medir);
+    ro.observe(nodo);
+    window.addEventListener('resize', medir);
+    window.addEventListener('scroll', medir, true);
+
+    return () => {
+      cancelAnimationFrame(id);
+      ro.disconnect();
+      window.removeEventListener('resize', medir);
+      window.removeEventListener('scroll', medir, true);
+    };
+  }, [nodo, margen]);
+
+  return setNodo;
+}
+
 const DropdownMenuContent = React.forwardRef<
   React.ElementRef<typeof DropdownMenuPrimitive.Content>,
   React.ComponentPropsWithoutRef<typeof DropdownMenuPrimitive.Content>
->(({ className, sideOffset = 4, collisionPadding = 8, ...props }, ref) => (
+>(({ className, sideOffset = 4, collisionPadding = 8, ...props }, ref) => {
+  const medirAlto = useAltoDisponible();
+  return (
   <DropdownMenuPrimitive.Portal>
     <DropdownMenuPrimitive.Content
-      ref={ref}
+      ref={(n) => {
+        medirAlto(n);
+        if (typeof ref === 'function') ref(n);
+        else if (ref) (ref as React.MutableRefObject<typeof n>).current = n;
+      }}
       sideOffset={sideOffset}
       collisionPadding={collisionPadding}
       className={cn(
-        // Un menú más alto que la ventana se cortaba y no había forma de llegar
-        // a lo de abajo: `overflow-hidden` sin altura máxima. Ahora se limita a
-        // la altura de la ventana y, si no cabe, se desplaza por dentro.
-        //
-        // No se usa --radix-...-available-height, que sería lo canónico: en esta
-        // aplicación devuelve valores sin sentido (4px, o negativos), porque los
-        // ancestros de recorte que detecta no son los de la ventana. Con dvh el
-        // resultado es el mismo y no depende de esa medición.
+        // El alto real lo pone useAltoDisponible; esto es la red de seguridad
+        // por si el JavaScript no llegara a correr.
         'z-[1060] max-h-[calc(100dvh-4rem)] min-w-[8rem] overflow-y-auto overflow-x-hidden overscroll-contain rounded-md border bg-popover p-1 text-popover-foreground shadow-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[side=bottom]:slide-in-from-top-2 data-[side=left]:slide-in-from-right-2 data-[side=right]:slide-in-from-left-2 data-[side=top]:slide-in-from-bottom-2',
         className
       )}
       {...props}
     />
   </DropdownMenuPrimitive.Portal>
-));
+  );
+});
 DropdownMenuContent.displayName = DropdownMenuPrimitive.Content.displayName;
 
 const DropdownMenuItem = React.forwardRef<
