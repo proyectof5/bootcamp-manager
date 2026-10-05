@@ -15186,6 +15186,7 @@ function selectEvalTarget(targetId) {
     }
 
     _showEvalRightContent();
+    if (bodyEl) _syncEvalMarkAllLabels(bodyEl);
 
     // Store on the save button panel
     const splitView = document.getElementById('eval-project-view');
@@ -15304,111 +15305,6 @@ function _buildEvalCompetencesHtmlForTarget(targetId, savedEval, projCompetences
         const lvlBadgeColor = LEVEL_COLORS_IND[displayLevel] || 'secondary';
         const lvlBadgeLabel = LEVEL_LABELS_IND[displayLevel] || 'Sin nivel';
 
-        // Indicator HTML (accordion per tool)
-        let indicatorsHtml = '';
-        if (hasToolIndicators) {
-            const accordionId = `acc-sv-${safeCompId}-${safeTargetId}`;
-            indicatorsHtml = `<div class="accordion accordion-flush" id="${accordionId}">` +
-                activeToolsWithInds.map((tool, toolIdx) => {
-                    const byLevel = { 1: [], 2: [], 3: [] };
-                    tool.indicators.forEach(ind => { if (byLevel[ind.levelId]) byLevel[ind.levelId].push(ind); });
-                    const hasChecked = tool.indicators.some(ind => checkedDataForComp[`tool-${tool.id}-${ind.id}`]);
-                    const collapseId = `${accordionId}-t${toolIdx}`;
-                    const toolAutoLevel = (() => {
-                        let lvl = 0;
-                        for (const l of [1, 2, 3]) {
-                            if (byLevel[l].length > 0 && byLevel[l].every(ind => checkedDataForComp[`tool-${tool.id}-${ind.id}`])) lvl = l;
-                            else if (byLevel[l].length > 0) break;
-                        }
-                        return lvl;
-                    })();
-                    const activeLevels = [1, 2, 3].filter(l => byLevel[l].length > 0);
-                    const levelCols = activeLevels.map(lvl => {
-                        const inds = byLevel[lvl];
-                        const levelGroupId = `${prefix}-lvlgrp-${tool.id}-${lvl}`;
-                        return `<div class="col">
-                        <div class="d-flex align-items-center justify-content-between mb-1">
-                            <div class="small fw-semibold" style="color:${LEVEL_BORDER[lvl]}; font-size:.7rem;">
-                                <i class="bi bi-${lvl === 1 ? 'circle' : lvl === 2 ? 'circle-half' : 'circle-fill'} me-1"></i>Nv.${lvl} ${LEVEL_TEXT[lvl]}
-                            </div>
-                            <button type="button" class="btn btn-link btn-sm p-0" style="font-size:.65rem;"
-                                title="Marcar/desmarcar todos los indicadores de este nivel"
-                                onclick="checkAllIndicatorsForLevel('${levelGroupId}','${safeTargetId}','${rawCompId}','${escapeHtml(comp.name)}')">
-                                <i class="bi bi-check2-all me-1"></i>Marcar todo
-                            </button>
-                        </div>
-                        <div id="${levelGroupId}">
-                        ${inds.map(ind => {
-                            const indKey = `tool-${tool.id}-${ind.id}`;
-                            const isChecked = !!(checkedDataForComp[indKey]);
-                            return `<div class="form-check form-check-sm mb-0">
-                                <input class="form-check-input" type="checkbox" ${isChecked ? 'checked' : ''}
-                                    id="${prefix}-${escapeHtml(indKey)}"
-                                    data-ind-key="${escapeHtml(indKey)}" data-level="${lvl}"
-                                    onchange="updateEvalIndicator('${safeTargetId}','${rawCompId}','${escapeHtml(indKey)}',${lvl},this.checked,'${escapeHtml(comp.name)}')">
-                                <label class="form-check-label small" for="${prefix}-${escapeHtml(indKey)}" title="${escapeHtml(ind.description || '')}">
-                                    ${escapeHtml(ind.name)}
-                                    ${ind.description ? `<span class="text-muted fst-italic d-block" style="font-size:.65rem;">${escapeHtml(ind.description)}</span>` : ''}
-                                </label>
-                            </div>`;
-                        }).join('')}
-                        </div>
-                    </div>`;
-                    }).join('');
-                    return `<div class="accordion-item border-0 border-bottom">
-                    <h2 class="accordion-header">
-                        <button class="accordion-button py-2 px-2 small fw-semibold ${hasChecked ? '' : 'collapsed'}"
-                            type="button" data-bs-toggle="collapse" data-bs-target="#${collapseId}" style="background:transparent;">
-                            <i class="bi bi-tools me-2 text-secondary"></i>${escapeHtml(tool.name)}
-                            ${toolAutoLevel > 0 ? `<span class="badge ms-2" style="background:${LEVEL_BG[toolAutoLevel]};color:${LEVEL_BORDER[toolAutoLevel]};border:1px solid ${LEVEL_BORDER[toolAutoLevel]};font-size:.65rem;">Nv.${toolAutoLevel}</span>` : ''}
-                        </button>
-                    </h2>
-                    <div id="${collapseId}" class="accordion-collapse collapse ${hasChecked ? 'show' : ''}" data-bs-parent="#${accordionId}">
-                        <div class="accordion-body p-2">
-                            <div class="row g-2">${levelCols}</div>
-                        </div>
-                    </div>
-                </div>`;
-                }).join('') + `</div>`;
-        } else if (hasCompIndicators) {
-            indicatorsHtml = [
-                { lvl: 1, inds: compInds.initial },
-                { lvl: 2, inds: compInds.medio },
-                { lvl: 3, inds: compInds.advance }
-            ].filter(g => g.inds.length).map(({ lvl, inds }) => {
-                const levelGroupId = `${prefix}-clvlgrp-${lvl}`;
-                return `
-                <div class="border rounded p-2 mb-2" style="background:${LEVEL_BG[lvl]}; border-color:${LEVEL_BORDER[lvl]} !important;">
-                    <div class="d-flex align-items-center justify-content-between mb-1">
-                        <div class="small fw-semibold" style="color:${LEVEL_BORDER[lvl]};">
-                            <i class="bi bi-${lvl === 1 ? 'circle' : lvl === 2 ? 'circle-half' : 'circle-fill'} me-1"></i>Nivel ${lvl} — ${LEVEL_TEXT[lvl]}
-                        </div>
-                        <button type="button" class="btn btn-link btn-sm p-0" style="font-size:.7rem;"
-                            title="Marcar/desmarcar todos los indicadores de este nivel"
-                            onclick="checkAllIndicatorsForLevel('${levelGroupId}','${safeTargetId}','${rawCompId}','${escapeHtml(comp.name)}')">
-                            <i class="bi bi-check2-all me-1"></i>Marcar todo
-                        </button>
-                    </div>
-                    <div id="${levelGroupId}">
-                    ${inds.map(ind => {
-                const indKey = `comp-${ind.id}`;
-                const isChecked = !!(checkedDataForComp[indKey]);
-                return `<div class="form-check form-check-sm mb-0">
-                            <input class="form-check-input" type="checkbox" ${isChecked ? 'checked' : ''}
-                                id="${prefix}-${escapeHtml(indKey)}"
-                                data-ind-key="${escapeHtml(indKey)}" data-level="${lvl}"
-                                onchange="updateEvalIndicator('${safeTargetId}','${rawCompId}','${escapeHtml(indKey)}',${lvl},this.checked,'${escapeHtml(comp.name)}')">
-                            <label class="form-check-label small" for="${prefix}-${escapeHtml(indKey)}" title="${escapeHtml(ind.description || '')}">
-                                ${escapeHtml(ind.name)}
-                                ${ind.description ? `<span class="text-muted fst-italic ms-1" style="font-size:.7rem;">${escapeHtml(ind.description)}</span>` : ''}
-                            </label>
-                        </div>`;
-            }).join('')}
-                    </div>
-                </div>`;
-            }
-            ).join('');
-        }
 
         const indProgressHtml = (hasToolIndicators || hasCompIndicators) ? `
             <div class="d-flex gap-2 flex-wrap mb-2 eval-ind-progress">
@@ -15450,13 +15346,16 @@ function _buildEvalCompetencesHtmlForTarget(targetId, savedEval, projCompetences
                     </div>
                     ${comp.description ? `<div class="text-muted small mt-1 fst-italic">${escapeHtml(comp.description)}</div>` : ''}
                 </div>
-                <button type="button" class="btn btn-sm btn-outline-danger flex-shrink-0" style="font-size:.7rem; padding:2px 6px;"
-                    title="Eliminar esta competencia de la evaluación"
-                    onclick="removeEvalCompetenceFromView('${safeTargetId}','${safeCompId}')">
-                    <i class="bi bi-x-lg"></i>
-                </button>
+                <div class="d-flex align-items-center gap-1 flex-shrink-0">
+                    ${(hasCompIndicators || hasToolIndicators) ? _evalMarkAllBtn(`${prefix}-allgrp`, safeTargetId, rawCompId, comp.name, 'los 3 niveles', false, true) : ''}
+                    <button type="button" class="btn btn-sm btn-outline-danger" style="font-size:.7rem; padding:2px 6px;"
+                        title="Eliminar esta competencia de la evaluación"
+                        onclick="removeEvalCompetenceFromView('${safeTargetId}','${safeCompId}')">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </div>
             </div>
-            <div class="card-body py-2 px-3">
+            <div class="card-body py-2 px-3" id="${escapeHtml(`${prefix}-allgrp`)}">
                 ${indProgressHtml}
                 ${hasCompIndicators ? `<div class="mb-3">
                     <div class="small fw-semibold text-success mb-1"><i class="bi bi-bookmark-check me-1"></i>Indicadores de Competencia — marca los que cumple:</div>
@@ -15468,15 +15367,20 @@ function _buildEvalCompetencesHtmlForTarget(targetId, savedEval, projCompetences
                     { lvl: 3, inds: compInds.advance }
                 ].filter(g => g.inds.length).map(({ lvl, inds }) => `
                                 <div class="border rounded p-2 mb-2" style="background:${LEVEL_BG[lvl]}; border-color:${LEVEL_BORDER[lvl]} !important; margin: 0 1rem 0 1rem;">
-                                    <div class="small fw-semibold mb-1" style="color:${LEVEL_BORDER[lvl]};">
-                                        <i class="bi bi-${lvl === 1 ? 'circle' : lvl === 2 ? 'circle-half' : 'circle-fill'} me-1"></i>Nivel ${lvl} — ${LEVEL_TEXT[lvl]}
+                                    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-1">
+                                        <div class="small fw-semibold" style="color:${LEVEL_BORDER[lvl]};">
+                                            <i class="bi bi-${lvl === 1 ? 'circle' : lvl === 2 ? 'circle-half' : 'circle-fill'} me-1"></i>Nivel ${lvl} — ${LEVEL_TEXT[lvl]}
+                                        </div>
+                                        ${_evalMarkAllBtn(`${prefix}-clvlgrp-${lvl}`, safeTargetId, rawCompId, comp.name, `nivel ${lvl}`)}
                                     </div>
+                                    <div id="${escapeHtml(`${prefix}-clvlgrp-${lvl}`)}">
                                     ${inds.map(ind => {
                     const indKey = `comp-${ind.id}`;
                     const isChecked = !!(checkedDataForComp[indKey]);
                     return `<div class="form-check form-check-sm mb-0">
                                             <input class="form-check-input" type="checkbox" ${isChecked ? 'checked' : ''}
                                                 id="${prefix}-${escapeHtml(indKey)}"
+                                                data-ind-key="${escapeHtml(indKey)}" data-level="${lvl}"
                                                 onchange="updateEvalIndicator('${safeTargetId}','${rawCompId}','${escapeHtml(indKey)}',${lvl},this.checked,'${escapeHtml(comp.name)}')">
                                             <label class="form-check-label small" for="${prefix}-${escapeHtml(indKey)}" title="${escapeHtml(ind.description || '')}">
                                                 ${escapeHtml(ind.name)}
@@ -15484,6 +15388,7 @@ function _buildEvalCompetencesHtmlForTarget(targetId, savedEval, projCompetences
                                             </label>
                                         </div>`;
                 }).join('')}
+                                    </div>
                                 </div>`
                 ).join('')}
                         </div>
@@ -15512,15 +15417,20 @@ function _buildEvalCompetencesHtmlForTarget(targetId, savedEval, projCompetences
                             const levelCols = activeLevels.map(lvl => {
                                 const inds = byLevel[lvl];
                                 return `<div class="col">
-                                        <div class="small fw-semibold mb-1" style="color:${LEVEL_BORDER[lvl]}; font-size:.7rem;">
-                                            <i class="bi bi-${lvl === 1 ? 'circle' : lvl === 2 ? 'circle-half' : 'circle-fill'} me-1"></i>Nv.${lvl} ${LEVEL_TEXT[lvl]}
+                                        <div class="d-flex align-items-center justify-content-between flex-wrap gap-1 mb-1">
+                                            <div class="small fw-semibold" style="color:${LEVEL_BORDER[lvl]}; font-size:.7rem;">
+                                                <i class="bi bi-${lvl === 1 ? 'circle' : lvl === 2 ? 'circle-half' : 'circle-fill'} me-1"></i>Nv.${lvl} ${LEVEL_TEXT[lvl]}
+                                            </div>
+                                            ${_evalMarkAllBtn(`${prefix}-tlvlgrp-${tool.id}-${lvl}`, safeTargetId, rawCompId, comp.name, `nivel ${lvl} de ${tool.name}`, true)}
                                         </div>
+                                        <div id="${escapeHtml(`${prefix}-tlvlgrp-${tool.id}-${lvl}`)}">
                                         ${inds.map(ind => {
                                     const indKey = `tool-${tool.id}-${ind.id}`;
                                     const isChecked = !!(checkedDataForComp[indKey]);
                                     return `<div class="form-check form-check-sm mb-0">
                                                 <input class="form-check-input" type="checkbox" ${isChecked ? 'checked' : ''}
                                                     id="${prefix}-${escapeHtml(indKey)}"
+                                                    data-ind-key="${escapeHtml(indKey)}" data-level="${lvl}"
                                                     onchange="updateEvalIndicator('${safeTargetId}','${rawCompId}','${escapeHtml(indKey)}',${lvl},this.checked,'${escapeHtml(comp.name)}')">
                                                 <label class="form-check-label small" for="${prefix}-${escapeHtml(indKey)}" title="${escapeHtml(ind.description || '')}">
                                                     ${escapeHtml(ind.name)}
@@ -15528,6 +15438,7 @@ function _buildEvalCompetencesHtmlForTarget(targetId, savedEval, projCompetences
                                                 </label>
                                             </div>`;
                                 }).join('')}
+                                        </div>
                                     </div>`;
                             }).join('');
                             return `<div class="accordion-item border-0 border-bottom">
@@ -16581,7 +16492,58 @@ function updateEvalIndicator(targetId, compId, indKey, level, checked, compName)
             autoLevelBadge.className = `badge bg-${LEVEL_COLORS_IND[autoLevel]} ms-1`;
             autoLevelBadge.innerHTML = `<i class="bi bi-award me-1"></i>Nivel calculado: <strong>${autoLevel}</strong> — ${LEVEL_LABELS_IND[autoLevel]}`;
         }
+        // Marcar el último indicador de un nivel a mano tiene que dejar su botón diciendo
+        // "Desmarcar todo", igual que si se hubiera usado el botón.
+        _syncEvalMarkAllLabels(cardEl);
     }
+}
+
+/**
+ * Botón "Marcar todo / Desmarcar todo" para un grupo de indicadores.
+ *
+ * Se usa en los TRES alcances que hay al evaluar, siempre con el mismo markup y la misma
+ * función de click; lo único que cambia es a qué contenedor apunta:
+ *   - un nivel de los indicadores DE COMPETENCIA  → #<prefix>-clvlgrp-<lvl>
+ *   - un nivel DENTRO DE UNA HERRAMIENTA          → #<prefix>-tlvlgrp-<toolId>-<lvl>
+ *     (por nivel y por herramienta, no el nivel de todas las herramientas a la vez)
+ *   - la competencia completa, los 3 niveles       → el card-body entero
+ * El alcance lo decide el contenedor, así que cada botón actúa exactamente sobre lo que
+ * tiene debajo y no hace falta lógica distinta para cada caso.
+ *
+ * @param {string} groupId    id del contenedor cuyos checkboxes se marcan/desmarcan
+ * @param {string} scopeLabel texto para el tooltip ("nivel 2", "nivel 1 de Figma", "los 3 niveles")
+ * @param {boolean} compact   versión más pequeña, para las columnas estrechas de herramientas
+ * @param {boolean} outlined  botón con borde en vez de enlace, para la cabecera de la competencia
+ */
+function _evalMarkAllBtn(groupId, targetId, compId, compName, scopeLabel, compact = false, outlined = false) {
+    const cls = outlined ? 'btn btn-sm btn-outline-secondary' : 'btn btn-link btn-sm p-0';
+    const style = outlined ? 'font-size:.7rem; padding:2px 6px;' : `font-size:${compact ? '.65rem' : '.7rem'};`;
+    return `<button type="button" class="${cls} eval-mark-all-btn flex-shrink-0" style="${style}"
+        data-mark-all-group="${escapeHtml(groupId)}"
+        title="Marcar o desmarcar todos los indicadores de ${escapeHtml(scopeLabel)}"
+        onclick="checkAllIndicatorsForLevel(this,'${escapeHtml(groupId)}','${targetId}','${compId}','${escapeHtml(compName)}')">
+        <i class="bi bi-check2-all me-1"></i><span data-mark-all-label>Marcar todo</span>
+    </button>`;
+}
+
+/**
+ * Pone cada botón de "Marcar todo" a decir la verdad: si todos los indicadores de SU grupo
+ * están ya marcados, el botón pasa a "Desmarcar todo". Se llama al pintar el panel, al usar un
+ * botón y al marcar un indicador a mano — así el de la competencia se entera cuando terminas
+ * el último nivel a mano, y los de nivel se enteran cuando usas el de la competencia.
+ * @param {HTMLElement|Document} [root]
+ */
+function _syncEvalMarkAllLabels(root) {
+    const scope = root || document;
+    scope.querySelectorAll('.eval-mark-all-btn[data-mark-all-group]').forEach(btn => {
+        const group = document.getElementById(btn.dataset.markAllGroup);
+        const label = btn.querySelector('[data-mark-all-label]');
+        if (!group || !label) return;
+        const boxes = group.querySelectorAll('input[type="checkbox"][data-ind-key]');
+        const allChecked = boxes.length > 0 && Array.from(boxes).every(cb => cb.checked);
+        label.textContent = allChecked ? 'Desmarcar todo' : 'Marcar todo';
+        btn.disabled = boxes.length === 0;
+    });
 }
 
 /**
@@ -16592,7 +16554,7 @@ function updateEvalIndicator(targetId, compId, indKey, level, checked, compName)
  * Reutiliza updateEvalIndicator() por cada uno para que el estado guardado y los badges de
  * progreso queden exactamente igual que si se hubieran marcado uno a uno a mano.
  */
-function checkAllIndicatorsForLevel(groupId, targetId, compId, compName) {
+function checkAllIndicatorsForLevel(btn, groupId, targetId, compId, compName) {
     const container = document.getElementById(groupId);
     if (!container) return;
     const checkboxes = Array.from(container.querySelectorAll('input[type="checkbox"][data-ind-key]'));
@@ -16608,6 +16570,10 @@ function checkAllIndicatorsForLevel(groupId, targetId, compId, compName) {
         const lvl = Number(cb.dataset.level);
         updateEvalIndicator(targetId, compId, indKey, lvl, newChecked, compName);
     });
+
+    // Toda la tarjeta de la competencia, no solo este grupo: al marcar un nivel completo el
+    // botón de "los 3 niveles" puede haber quedado desactualizado, y al revés.
+    _syncEvalMarkAllLabels((btn && btn.closest('.eval-comp-card')) || document);
 }
 
 async function saveIndividualStudentEval() {
