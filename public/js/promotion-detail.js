@@ -14632,10 +14632,7 @@ function _renderGroupsModalBody(saved, students, mod, proj) {
 
         groups.forEach((grp, gIdx) => {
             const memberIds = grp.studentIds || [];
-            const memberNames = memberIds.map(sid => {
-                const st = students.find(s => String(s.id || s._id) === String(sid));
-                return st ? ((st.name || '') + ' ' + (st.lastname || '')).trim() : sid;
-            });
+            const memberNames = memberIds.map(sid => _nombreIntegrante(sid, students).nombre);
 
             // Students available for this group = current members + unassigned
             // Assigned members first, then unassigned (alphabetically within each group)
@@ -15087,16 +15084,19 @@ function selectEvalTarget(targetId) {
         || (isGrupal ? (saved.evaluations || []).find(e => _resolveEvalTargetId(String(e.targetId)) === _canonicalTarget) : null);
     //console.log('[DEBUG] selectEvalTarget:', { targetId, isGrupal, savedEval });
 
-    // Resolve display name
+    // Nombre que va en la cabecera.
+    //
+    // En grupales solo el nombre del grupo: los integrantes van aparte, plegados
+    // tras un botón. Antes se concatenaban aquí los tres primeros nombres y la
+    // cabecera ocupaba dos líneas y se cortaba, comiendo espacio a la evaluación,
+    // que es lo que se viene a hacer a esta pantalla.
     let displayName = String(targetId);
+    let integrantes = [];
     if (isGrupal) {
         const grp = (saved.groups || []).find(g => g.groupName === targetId);
         if (grp) {
-            const members = (grp.studentIds || []).map(sid => {
-                const st = students.find(s => String(s.id || s._id) === String(sid));
-                return st ? `${st.name || ''} ${st.lastname || ''}`.trim() : sid;
-            });
-            displayName = grp.groupName + (members.length ? ` · ${members.slice(0, 3).map(n => escapeHtml(n)).join(', ')}${members.length > 3 ? '…' : ''}` : '');
+            displayName = grp.groupName;
+            integrantes = _integrantesDelGrupo(saved, grp.groupName, students);
         }
     } else {
         const st = students.find(s => String(s.id || s._id) === String(targetId));
@@ -15136,9 +15136,33 @@ function selectEvalTarget(targetId) {
                 <i class="bi bi-git me-1"></i>Repo
             </a>` : '';
 
+        // Integrantes en la misma línea del título, cortada con puntos suspensivos:
+        // no añade alto, que es lo que hace falta aquí — el espacio es para evaluar.
+        // La lista completa va en el tooltip, que es donde se consulta quién falta
+        // sin que nada se mueva de sitio.
+        const etiquetaIntegrante = m => m.nombre + (m.estado === 'baja' ? ' (baja)'
+            : m.estado === 'eliminado' ? ' (ya no está en la promoción)' : '');
+        const resumenIntegrantes = integrantes.length
+            ? ` · ${integrantes.map(m => m.nombre).join(', ')}`
+            : '';
+        const tooltipIntegrantes = integrantes.length
+            ? `${integrantes.length} integrante${integrantes.length !== 1 ? 's' : ''}:\n${integrantes.map(m => '• ' + etiquetaIntegrante(m)).join('\n')}`
+            : '';
+        // Aviso visible —no solo en el tooltip— cuando hay alguien que no recibirá
+        // el informe: es justo lo que hay que saber ANTES de darle a enviar.
+        const fuera = integrantes.filter(m => m.estado !== 'activo').length;
+        const avisoFuera = fuera ? `<span class="badge bg-warning-subtle text-warning-emphasis border border-warning-subtle flex-shrink-0"
+                style="font-size:.68rem;font-weight:500;"
+                title="No recibirán el informe de evaluación">
+                <i class="bi bi-person-dash me-1"></i>${fuera} sin envío
+            </span>` : '';
+
         headerEl.innerHTML = `
         <div class="d-flex align-items-center gap-2 flex-wrap">
-            <div class="fw-semibold small text-truncate flex-grow-1 min-w-0">${escapeHtml(displayName)}</div>
+            <div class="small text-truncate flex-grow-1 min-w-0"${tooltipIntegrantes ? ` title="${escapeHtml(tooltipIntegrantes)}"` : ''}>
+                <span class="fw-semibold">${escapeHtml(displayName)}</span><span class="text-muted">${escapeHtml(resumenIntegrantes)}</span>
+            </div>
+            ${avisoFuera}
             ${isDone ? `<span class="badge bg-success" style="font-size:.68rem;"><i class="bi bi-check-circle me-1"></i>Evaluado el ${new Date(savedEval.evaluatedAt).toLocaleDateString('es-ES')}</span>` : `<span class="badge bg-light text-muted border" style="font-size:.68rem;">Sin evaluar</span>`}
             ${statusBadge}
             ${linkHtml}
@@ -15814,8 +15838,8 @@ function openEvaluationModal(mIdx, pIdx) {
 
                 // Member names list (read-only)
                 const memberNames = (grp.studentIds || []).map(sid => {
-                    const st = students.find(s => String(s.id || s._id) === String(sid));
-                    return st ? escapeHtml(((st.name || '') + ' ' + (st.lastname || '')).trim()) : sid;
+                    const m = _nombreIntegrante(sid, students);
+                    return escapeHtml(m.nombre) + (m.estado === 'baja' ? ' (baja)' : '');
                 });
 
                 bodyHtml += `
@@ -16762,11 +16786,22 @@ async function sendEvaluationByEmail() {
         // 3. Send report by email to each real recipient (each member's own tracking data
         // determines their team index, since the same project can sit at a different index
         // in different students' technicalTracking.teams).
+        // Quién recibe de verdad. Se excluye a quien está de baja y a quien ya no
+        // está en la promoción: `allStudents` los incluye a propósito (para poder
+        // abrir y leer su evaluación), así que sin este filtro les llegaría el correo.
+        const { destinatarios, deBaja, eliminados, sinCorreo } = _destinatariosEvaluacion(memberIds, students);
+
+        if (destinatarios.length === 0) {
+            const motivo = deBaja.length || eliminados.length
+                ? 'Nadie en este equipo puede recibir el informe: todos están de baja o ya no están en la promoción'
+                : (isGrupal ? 'Ningún integrante del equipo tiene email registrado' : 'El estudiante no tiene email registrado');
+            showToast(motivo, 'warning');
+            if (sendBtn) { sendBtn.disabled = false; sendBtn.innerHTML = originalHtml; }
+            return;
+        }
+
         let sentCount = 0, failedCount = 0;
-        for (const memberId of memberIds) {
-            const student = students.find(s => String(s.id || s._id) === memberId);
-            const studentEmail = student?.email || '';
-            if (!studentEmail) { failedCount++; continue; }
+        for (const { id: memberId, email: studentEmail } of destinatarios) {
             try {
                 const stuRes = await fetch(`${API_URL}/api/promotions/${promotionId}/students/${memberId}`, {
                     headers: { 'Authorization': `Bearer ${token}` }
@@ -16786,7 +16821,7 @@ async function sendEvaluationByEmail() {
         }
 
         if (sentCount === 0) {
-            showToast(isGrupal ? 'Ningún integrante del equipo tiene email registrado' : 'El estudiante no tiene email registrado', 'danger');
+            showToast('No se pudo enviar el informe a nadie del equipo', 'danger');
             if (sendBtn) { sendBtn.disabled = false; sendBtn.innerHTML = originalHtml; }
             return;
         }
@@ -16800,11 +16835,20 @@ async function sendEvaluationByEmail() {
             _renderEvalTargetsList(savedForMark, window._evalState.allStudents || window._evalState.students);
         }
 
+        // Decir a quién NO se le ha enviado y por qué. Un envío silencioso a menos
+        // gente de la esperada es peor que uno que lo avisa.
+        const excluidos = [];
+        if (deBaja.length) excluidos.push(`${deBaja.length} de baja`);
+        if (eliminados.length) excluidos.push(`${eliminados.length} ya no en la promoción`);
+        if (sinCorreo.length) excluidos.push(`${sinCorreo.length} sin correo`);
+        if (failedCount > 0) excluidos.push(`${failedCount} con error de envío`);
+
         showToast(
-            isGrupal
-                ? `Informe enviado a ${sentCount} integrante${sentCount !== 1 ? 's' : ''} del equipo${failedCount > 0 ? ` · ${failedCount} fallido${failedCount !== 1 ? 's' : ''}` : ''}`
-                : 'Informe de evaluación enviado correctamente',
-            failedCount > 0 ? 'warning' : 'success'
+            (isGrupal
+                ? `Informe enviado a ${sentCount} integrante${sentCount !== 1 ? 's' : ''} del equipo`
+                : 'Informe de evaluación enviado correctamente')
+            + (excluidos.length ? ` · sin enviar: ${excluidos.join(', ')}` : ''),
+            (failedCount > 0 || sinCorreo.length) ? 'warning' : 'success'
         );
     } catch (err) {
         console.error('[sendEvaluationByEmail]', err);
@@ -16895,10 +16939,27 @@ async function sendEvaluationToAllInProject() {
         ? ((saved.groups || []).find(g => g.groupName === entry.targetId)?.studentIds || []).map(String)
         : [String(entry.targetId)];
 
-    const totalRecipients = evaluatedEntries.reduce((acc, e) => acc + resolveMemberIds(e).length, 0);
+    // El recuento tiene que ser el de quien VA A RECIBIRLO, no el de integrantes:
+    // quien está de baja o ya no está en la promoción queda fuera del envío, y el
+    // modal debe decir el número real antes de confirmar.
+    const _studentsParaConteo = window._evalState?.allStudents || window._evalState?.students || [];
+    const _resumen = evaluatedEntries.reduce((acc, e) => {
+        const r = _destinatariosEvaluacion(resolveMemberIds(e), _studentsParaConteo);
+        acc.total += r.destinatarios.length;
+        acc.excluidos += r.deBaja.length + r.eliminados.length + r.sinCorreo.length;
+        return acc;
+    }, { total: 0, excluidos: 0 });
+    const totalRecipients = _resumen.total;
     const projName = proj?.name || saved.projectName;
+
+    if (totalRecipients === 0) {
+        showToast('No hay nadie a quien enviar: los evaluados están de baja, ya no están en la promoción o no tienen correo', 'warning');
+        return;
+    }
+
     _showConfirmModal(
-        `¿Enviar el informe de evaluación a <strong>${totalRecipients}</strong> estudiante${totalRecipients !== 1 ? 's' : ''} evaluados en <em>"${escapeHtml(projName)}"</em>?<br><small class="text-muted">Se enviará un correo individual a cada uno.</small>`,
+        `¿Enviar el informe de evaluación a <strong>${totalRecipients}</strong> estudiante${totalRecipients !== 1 ? 's' : ''} evaluados en <em>"${escapeHtml(projName)}"</em>?<br><small class="text-muted">Se enviará un correo individual a cada uno.</small>`
+        + (_resumen.excluidos ? `<br><small class="text-warning-emphasis"><i class="bi bi-person-dash me-1"></i>${_resumen.excluidos} quedan fuera por estar de baja, no estar ya en la promoción o no tener correo.</small>` : ''),
         async () => {
     // Capturamos los datos necesarios ANTES de ceder el hilo,
     // ya que el estado global puede cambiar si el usuario navega.
@@ -16918,12 +16979,12 @@ async function sendEvaluationToAllInProject() {
             const memberIds = resolveMemberIds(entry);
             let entryFailed = memberIds.length === 0;
 
-            for (const studentId of memberIds) {
-                try {
-                    const student = students.find(s => String(s.id || s._id) === studentId);
-                    const studentEmail = student?.email || '';
-                    if (!studentEmail) { entryFailed = true; failed++; _bgTaskManager.update(taskId, `Enviando informes ${sent + failed}/${total}...`); continue; }
+            // Mismo filtro que en el envío individual: de baja y eliminados no reciben correo.
+            const { destinatarios: _destinatarios } = _destinatariosEvaluacion(memberIds, students);
+            if (_destinatarios.length === 0) entryFailed = true;
 
+            for (const { id: studentId, email: studentEmail } of _destinatarios) {
+                try {
                     // Cargar tracking del estudiante para resolver el teamIndex
                     const stuRes = await fetch(`${API_URL}/api/promotions/${promotionId}/students/${studentId}`, {
                         headers: { 'Authorization': `Bearer ${token}` }
@@ -17054,6 +17115,72 @@ function removeEvalCompetence(targetId, compId) {
         card.style.opacity = '0';
         setTimeout(() => card.remove(), 200);
     }
+}
+
+/**
+ * ¿Está de baja este estudiante?
+ *
+ * Hay dos señales en los datos y no siempre viajan juntas: la bandera
+ * `isWithdrawn` y la fecha dentro de `withdrawal`. El resto del fichero ya
+ * comprueba las dos (ver renderStudentsTable); esto solo lo centraliza para
+ * que no se escape ninguna en los sitios donde importa de verdad, que son
+ * los envíos de correo.
+ */
+function _esEstudianteDeBaja(st) {
+    return !!(st && (st.isWithdrawn || (st.withdrawal && st.withdrawal.date)));
+}
+
+/**
+ * Nombre de un integrante a partir de su id.
+ *
+ * Devuelve `{ nombre, estado }`, donde estado es 'activo', 'baja' o 'eliminado'.
+ *
+ * 'eliminado' es el caso de alguien que ya no está en la promoción: su id sigue
+ * guardado dentro del grupo en la evaluación, pero no hay ninguna ficha que
+ * resolverlo. Antes se pintaba el UUID en crudo en la cabecera de la
+ * evaluación —"Grupo 4 · Fulana, Mengano, f9a71dca-a6d9-4a8e-…"—, que no
+ * dice nada a quien evalúa y encima expone un identificador interno.
+ */
+function _nombreIntegrante(sid, students) {
+    const st = (students || []).find(s => String(s.id || s._id) === String(sid));
+    if (!st) return { nombre: 'Estudiante eliminado', estado: 'eliminado' };
+    const nombre = `${st.name || ''} ${st.lastname || ''}`.trim();
+    return {
+        nombre: nombre || 'Sin nombre',
+        estado: _esEstudianteDeBaja(st) ? 'baja' : 'activo',
+    };
+}
+
+/** Los integrantes de un grupo, ya resueltos a nombre y estado. */
+function _integrantesDelGrupo(saved, groupName, students) {
+    const grp = (saved?.groups || []).find(g => g.groupName === groupName);
+    return (grp?.studentIds || []).map(sid => ({ id: String(sid), ..._nombreIntegrante(sid, students) }));
+}
+
+/**
+ * Quién debe recibir de verdad el informe de evaluación.
+ *
+ * Se excluye a quien está de baja y a quien ya no existe en la promoción: no
+ * se les envía correo. Devuelve también a los excluidos para poder decírselo
+ * a quien evalúa, porque un envío silencioso a menos gente de la esperada es
+ * peor que uno que avisa.
+ */
+function _destinatariosEvaluacion(memberIds, students) {
+    const destinatarios = [];
+    const deBaja = [];
+    const eliminados = [];
+    const sinCorreo = [];
+
+    (memberIds || []).forEach(id => {
+        const st = (students || []).find(s => String(s.id || s._id) === String(id));
+        if (!st) { eliminados.push(String(id)); return; }
+        const nombre = `${st.name || ''} ${st.lastname || ''}`.trim() || String(id);
+        if (_esEstudianteDeBaja(st)) { deBaja.push(nombre); return; }
+        if (!st.email) { sinCorreo.push(nombre); return; }
+        destinatarios.push({ id: String(id), email: st.email, nombre });
+    });
+
+    return { destinatarios, deBaja, eliminados, sinCorreo };
 }
 
 function _resolveTargetName(targetId) {
