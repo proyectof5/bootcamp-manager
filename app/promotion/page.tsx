@@ -989,6 +989,16 @@ export default function PromotionPage() {
                 <Input id="item-edit-end" type="date" required />
               </div>
             </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="item-edit-start-time">Hora inicio (opcional)</Label>
+                <Input id="item-edit-start-time" type="time" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="item-edit-end-time">Hora fin (opcional)</Label>
+                <Input id="item-edit-end-time" type="time" />
+              </div>
+            </div>
             <div id="item-edit-competences-wrapper" style={{ display: 'none' }}></div>
             <div id="item-edit-links-wrapper" style={{ display: 'none' }}></div>
 
@@ -1124,6 +1134,16 @@ export default function PromotionPage() {
               <div className="space-y-2">
                 <Label htmlFor="create-item-end">Fecha fin</Label>
                 <Input id="create-item-end" type="date" required />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-2">
+                <Label htmlFor="create-item-start-time">Hora inicio (opcional)</Label>
+                <Input id="create-item-start-time" type="time" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="create-item-end-time">Hora fin (opcional)</Label>
+                <Input id="create-item-end-time" type="time" />
               </div>
             </div>
 
