@@ -320,6 +320,7 @@ function getModulePlannerItems(module) {
     // sepa que debe caer al cálculo legacy relativo al módulo.
     const normalizeAbsolute = (v) => (typeof v === 'number' && !Number.isNaN(v)) ? v : null;
     const normalizeDateStr = (v) => (typeof v === 'string' && v) ? v : null;
+    const normalizeTime = (v) => (typeof v === 'string' && /^([01]\d|2[0-3]):[0-5]\d$/.test(v)) ? v : null;
 
     if (Array.isArray(module.plannerItems) && module.plannerItems.length > 0) {
         return module.plannerItems.map(item => {
@@ -334,6 +335,8 @@ function getModulePlannerItems(module) {
                 absoluteStartOffset: normalizeAbsolute(item.absoluteStartOffset),
                 startDate: normalizeDateStr(item.startDate),
                 endDate: normalizeDateStr(item.endDate),
+                startTime: normalizeTime(item.startTime),
+                endTime: normalizeTime(item.endTime),
                 links: isLeccion ? (item.links || []) : [],
             };
         });
@@ -352,6 +355,8 @@ function getModulePlannerItems(module) {
             absoluteStartOffset: isObj ? normalizeAbsolute(c.absoluteStartOffset) : null,
             startDate: isObj ? normalizeDateStr(c.startDate) : null,
             endDate: isObj ? normalizeDateStr(c.endDate) : null,
+            startTime: isObj ? normalizeTime(c.startTime) : null,
+            endTime: isObj ? normalizeTime(c.endTime) : null,
             links: [],
         });
     });
@@ -367,6 +372,8 @@ function getModulePlannerItems(module) {
             absoluteStartOffset: isObj ? normalizeAbsolute(p.absoluteStartOffset) : null,
             startDate: isObj ? normalizeDateStr(p.startDate) : null,
             endDate: isObj ? normalizeDateStr(p.endDate) : null,
+            startTime: isObj ? normalizeTime(p.startTime) : null,
+            endTime: isObj ? normalizeTime(p.endTime) : null,
             links: [],
         });
     });
@@ -389,6 +396,7 @@ function syncLegacyCoursesProjects(module) {
 
     const mapCommon = (i) => {
         const out = { name: i.name, url: i.url || '' };
+        if (i.startTime && i.endTime) { out.startTime = i.startTime; out.endTime = i.endTime; }
         if (typeof i.startDate === 'string' && typeof i.endDate === 'string') {
             out.startDate = i.startDate;
             out.endDate = i.endDate;
@@ -508,6 +516,8 @@ function buildGanttDataset(promotion) {
                 moduleId: module.id,
                 plannerItemId: item.plannerItemId,
                 legacyIndex,
+                startTime: item.startTime,
+                endTime: item.endTime,
             });
         });
 
@@ -561,6 +571,8 @@ function buildGanttDataset(promotion) {
                     moduleIndex,
                     moduleId: module.id,
                     plannerItemId: item.plannerItemId,
+                    startTime: item.startTime,
+                    endTime: item.endTime,
                 });
             });
         }
@@ -1222,7 +1234,12 @@ function buildRoadmapCalendarEvents(promotion) {
             const description = [GANTT_ITEM_TYPE_LABELS[row.itemType] || row.itemType, row.url]
                 .filter(Boolean).join(' — ');
 
-            return { id: row.id, summary, description, startDate, endDateExclusive, itemType: row.itemType };
+            const conHora = !!(row.startTime && row.endTime);
+            return {
+                id: row.id, summary, description, startDate, endDateExclusive, itemType: row.itemType,
+                startTime: conHora ? row.startTime : null,
+                endTime: conHora ? row.endTime : null,
+            };
         });
 }
 
@@ -1259,8 +1276,11 @@ function buildRoadmapIcsContent(promotion) {
         'BEGIN:VEVENT',
         `UID:${ev.id}@bootcamp-manager`,
         `DTSTAMP:${dtstampNow()}`,
-        `DTSTART;VALUE=DATE:${icsDate(ev.startDate)}`,
-        `DTEND;VALUE=DATE:${icsDate(ev.endDateExclusive)}`,
+        ...(ev.startTime && ev.endTime
+            ? [`DTSTART;TZID=Europe/Madrid:${icsDate(ev.startDate)}T${ev.startTime.replace(':', '')}00`,
+               `DTEND;TZID=Europe/Madrid:${icsDate(addDays(ev.endDateExclusive, -1))}T${ev.endTime.replace(':', '')}00`]
+            : [`DTSTART;VALUE=DATE:${icsDate(ev.startDate)}`,
+               `DTEND;VALUE=DATE:${icsDate(ev.endDateExclusive)}`]),
         `SUMMARY:${escapeIcs(ev.summary)}`,
         ev.description ? `DESCRIPTION:${escapeIcs(ev.description)}` : null,
         'END:VEVENT',
