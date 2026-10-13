@@ -16838,8 +16838,12 @@ async function sendEvaluationByEmail() {
                 if (!stuRes.ok) throw new Error('No se pudo cargar el estudiante');
                 const stuData = await stuRes.json();
                 const teams = stuData.technicalTracking?.teams || [];
-                let teamIndex = teams.findIndex(t => t.teamName === (proj?.name || saved?.projectName));
-                if (teamIndex < 0) teamIndex = 0;
+                const nombreProyecto = proj?.name || saved?.projectName;
+                const teamIndex = teams.findIndex(t => t.teamName === nombreProyecto);
+                // Sin coincidencia NO se envía. Antes caía a teamIndex = 0, es decir,
+                // al primer proyecto de la lista de esa persona: mandaba el informe de
+                // otro proyecto y lo contaba como enviado.
+                if (teamIndex < 0) throw new Error(`"${nombreProyecto}" no está en el seguimiento de esta persona`);
 
                 await window.Reports.sendProjectReportByEmail(teamIndex, memberId, promotionId, studentEmail, { silent: true });
                 sentCount++;
@@ -16925,8 +16929,9 @@ async function previewStudentEvalReport(studentId) {
         if (!stuRes.ok) throw new Error('No se pudo cargar el estudiante');
         const stuData = await stuRes.json();
         const teams = stuData.technicalTracking?.teams || [];
-        let teamIndex = teams.findIndex(t => t.teamName === projectName);
-        if (teamIndex < 0) teamIndex = 0;
+        const teamIndex = teams.findIndex(t => t.teamName === projectName);
+        // Mostrar el informe de otro proyecto sería peor que no mostrar ninguno.
+        if (teamIndex < 0) { showToast(`"${projectName}" no está en el seguimiento de esta persona`, 'warning'); return; }
         window.Reports.printProjectReport(teamIndex, actualStudentId, promotionId);
     } catch (err) {
         showToast('Error al cargar los datos del informe: ' + err.message, 'danger');
@@ -17021,8 +17026,9 @@ async function sendEvaluationToAllInProject() {
                     if (!stuRes.ok) { entryFailed = true; failed++; _bgTaskManager.update(taskId, `Enviando informes ${sent + failed}/${total}...`); continue; }
                     const stuData = await stuRes.json();
                     const teams = stuData.technicalTracking?.teams || [];
-                    let teamIndex = teams.findIndex(t => t.teamName === projectName);
-                    if (teamIndex < 0) teamIndex = 0;
+                    const teamIndex = teams.findIndex(t => t.teamName === projectName);
+                    // Igual que arriba: sin coincidencia no se manda nada.
+                    if (teamIndex < 0) { entryFailed = true; failed++; console.warn('[sendEvaluationToAllInProject] proyecto no encontrado en el seguimiento de', studentId, '-', projectName); _bgTaskManager.update(taskId, `Enviando informes ${sent + failed}/${total}...`); continue; }
 
                     await window.Reports.sendProjectReportByEmail(teamIndex, studentId, promotionId, studentEmail, { silent: true });
                     sent++;
