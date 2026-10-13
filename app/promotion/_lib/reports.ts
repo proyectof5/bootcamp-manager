@@ -1599,13 +1599,24 @@ async function printActaInicio(promotionId) {
     // 5. INFORME DE PROYECTO INDIVIDUAL
     // ════════════════════════════════════════════════════════════════════════
     async function printProjectReport(teamIndex, studentId, promotionId) {
-        // Read data from the already-open ficha if available (no extra fetch needed)
         const st = window.StudentTracking;
-        let t  = st?._getTeam(teamIndex);
-        let s  = st?._getCurrentStudent();
+        // La ficha abierta se reutiliza SOLO si es la de este estudiante.
+        //
+        // _getCurrentStudent() devuelve el último estudiante cuya ficha se abrió, que
+        // es estado global de la pantalla y no se limpia al cambiar de pestaña. Como
+        // antes se usaba sin comprobar de quién era, el informe salía con el nombre,
+        // el proyecto y las competencias de esa persona mientras se enviaba a la
+        // dirección de otra: abrir una ficha y luego ponerse a evaluar bastaba para
+        // que un coder recibiera la evaluación de un compañero.
+        //
+        // El teamIndex también es relativo: cada estudiante tiene su propia lista de
+        // proyectos y el índice 5 de uno no es el 5 de otro.
+        const mismoEstudiante = String(st?._getCurrentStudentId?.() || '') === String(studentId);
+        let t  = mismoEstudiante ? st?._getTeam(teamIndex) : null;
+        let s  = mismoEstudiante ? st?._getCurrentStudent() : null;
         let promoName = window.currentPromotion?.name || '';
 
-        // If not available in memory, fetch fresh
+        // Si no vale la caché, se piden los datos de ESTE estudiante.
         if (!t || !s) {
             const token = localStorage.getItem('token');
             try {
@@ -1685,8 +1696,20 @@ async function printActaInicio(promotionId) {
         const _ok   = (msg) => { if (!silent) alert(msg); };  // éxito: solo muestra en modo interactivo
         const token = localStorage.getItem('token');
         const st = window.StudentTracking;
-        let t  = st?._getTeam(teamIndex);
-        let s  = st?._getCurrentStudent();
+        // La ficha abierta se reutiliza SOLO si es la de este estudiante.
+        //
+        // _getCurrentStudent() devuelve el último estudiante cuya ficha se abrió, que
+        // es estado global de la pantalla y no se limpia al cambiar de pestaña. Como
+        // antes se usaba sin comprobar de quién era, el informe salía con el nombre,
+        // el proyecto y las competencias de esa persona mientras se enviaba a la
+        // dirección de otra: abrir una ficha y luego ponerse a evaluar bastaba para
+        // que un coder recibiera la evaluación de un compañero.
+        //
+        // El teamIndex también es relativo: cada estudiante tiene su propia lista de
+        // proyectos y el índice 5 de uno no es el 5 de otro.
+        const mismoEstudiante = String(st?._getCurrentStudentId?.() || '') === String(studentId);
+        let t  = mismoEstudiante ? st?._getTeam(teamIndex) : null;
+        let s  = mismoEstudiante ? st?._getCurrentStudent() : null;
         let promoName = window.currentPromotion?.name || '';
 
         if (!t || !s) {
