@@ -3315,6 +3315,21 @@ async function syncPromotionWeeks(promotion) {
     } catch (e) { console.warn('[semanas] no se pudieron calcular', e); }
 }
 
+/** Lee las dos horas de un formulario: van juntas y el fin no puede ser anterior al inicio. */
+function _readItemTimes(startId, endId, startDate, endDate) {
+    const start = document.getElementById(startId)?.value || '';
+    const end = document.getElementById(endId)?.value || '';
+    if (!start && !end) return { start: null, end: null };
+    if (!start || !end) return { error: 'Pon la hora de inicio y la de fin, o ninguna.' };
+    if (startDate === endDate && end <= start) return { error: 'La hora de fin tiene que ser posterior a la de inicio.' };
+    return { start, end };
+}
+
+function _applyItemTimes(item, h) {
+    if (h.start) { item.startTime = h.start; item.endTime = h.end; }
+    else { delete item.startTime; delete item.endTime; }
+}
+
 async function loadModules() {
     const token = localStorage.getItem('token');
     try {
@@ -4700,7 +4715,9 @@ async function syncRoadmapGoogleCalendar() {
         summary: ev.summary,
         description: ev.description,
         startDate: fmtDate(ev.startDate),
-        endDate: fmtDate(ev.endDateExclusive),
+        // Con hora, el backend espera el último día real (inclusivo).
+        endDate: fmtDate(ev.startTime && ev.endTime ? addDays(ev.endDateExclusive, -1) : ev.endDateExclusive),
+        ...(ev.startTime && ev.endTime ? { startTime: ev.startTime, endTime: ev.endTime } : {}),
         // Un color por tipo de elemento (módulo/curso/proyecto/lección/tiempo
         // flexible) — mismo criterio visual que ya usa el propio Gantt, ver
         // GANTT_ITEM_TYPE_COLOR_ID en gantt-adapter.js.
@@ -6198,6 +6215,8 @@ async function openItemEditModal(task) {
                     startOffset: isObj ? (Number(raw.startOffset) || 0) : 0,
                     absoluteStartOffset: isObj && typeof raw.absoluteStartOffset === 'number' ? raw.absoluteStartOffset : null,
                     competenceIds: isObj ? (raw.competenceIds || []) : [],
+                    startTime: isObj ? raw.startTime : undefined,
+                    endTime: isObj ? raw.endTime : undefined,
                 };
             }
         }
@@ -6243,6 +6262,8 @@ async function openItemEditModal(task) {
             const itemRange = getItemDateRange(item, moduleStartWeeksForFallback, baseDate);
             document.getElementById('item-edit-start').value = formatISODate(itemRange.startDate);
             document.getElementById('item-edit-end').value = formatISODate(itemRange.endDate);
+            document.getElementById('item-edit-start-time').value = item.startTime || '';
+            document.getElementById('item-edit-end-time').value = item.endTime || '';
 
             const compWrapper = document.getElementById('item-edit-competences-wrapper');
             if (isProject) {
@@ -8529,6 +8550,8 @@ function setupForms() {
             window.showApiToast('La fecha de fin no puede ser anterior a la de inicio.', 'warning');
             return;
         }
+        const _h = _readItemTimes('item-edit-start-time', 'item-edit-end-time', startDateStr, endDateStr);
+        if (_h.error) { window.showApiToast(_h.error, 'warning'); return; }
 
         const token = localStorage.getItem('token');
         try {
@@ -8558,6 +8581,7 @@ function setupForms() {
                 plannerItem.lessonType = lessonType;
                 plannerItem.startDate = startDateStr;
                 plannerItem.endDate = endDateStr;
+                _applyItemTimes(plannerItem, _h);
                 delete plannerItem.duration;
                 delete plannerItem.startOffset;
                 delete plannerItem.absoluteStartOffset;
@@ -8581,6 +8605,7 @@ function setupForms() {
                     plannerItem.url = url;
                     plannerItem.startDate = startDateStr;
                     plannerItem.endDate = endDateStr;
+                    _applyItemTimes(plannerItem, _h);
                     delete plannerItem.duration;
                     delete plannerItem.startOffset;
                     delete plannerItem.absoluteStartOffset;
@@ -8597,6 +8622,7 @@ function setupForms() {
                     }
                     list[task.legacyIndex] = {
                         name, url, startDate: startDateStr, endDate: endDateStr,
+                        ...(_h.start ? { startTime: _h.start, endTime: _h.end } : {}),
                         ...(task.itemType === 'project' ? { competenceIds } : {}),
                     };
                 }
@@ -8721,6 +8747,8 @@ function setupForms() {
             window.showApiToast('La fecha de fin no puede ser anterior a la de inicio.', 'warning');
             return;
         }
+        const _h = _readItemTimes('create-item-start-time', 'create-item-end-time', startDateStr, endDateStr);
+        if (_h.error) { window.showApiToast(_h.error, 'warning'); return; }
         const startDate = parseISODate(startDateStr);
         const endDate = parseISODate(endDateStr);
         const token = localStorage.getItem('token');
@@ -8817,6 +8845,7 @@ function setupForms() {
                 startDate: startDateStr,
                 endDate: endDateStr,
             };
+            _applyItemTimes(newItem, _h);
             if (type === 'leccion') {
                 const title = document.getElementById('create-item-title').value.trim();
                 if (!title) { window.showApiToast('El título es obligatorio', 'warning'); return; }
@@ -16809,8 +16838,12 @@ async function sendEvaluationByEmail() {
                 if (!stuRes.ok) throw new Error('No se pudo cargar el estudiante');
                 const stuData = await stuRes.json();
                 const teams = stuData.technicalTracking?.teams || [];
-                let teamIndex = teams.findIndex(t => t.teamName === (proj?.name || saved?.projectName));
-                if (teamIndex < 0) teamIndex = 0;
+                const nombreProyecto = proj?.name || saved?.projectName;
+                const teamIndex = teams.findIndex(t => t.teamName === nombreProyecto);
+                // Sin coincidencia NO se envía. Antes caía a teamIndex = 0, es decir,
+                // al primer proyecto de la lista de esa persona: mandaba el informe de
+                // otro proyecto y lo contaba como enviado.
+                if (teamIndex < 0) throw new Error(`"${nombreProyecto}" no está en el seguimiento de esta persona`);
 
                 await window.Reports.sendProjectReportByEmail(teamIndex, memberId, promotionId, studentEmail, { silent: true });
                 sentCount++;
@@ -16896,8 +16929,9 @@ async function previewStudentEvalReport(studentId) {
         if (!stuRes.ok) throw new Error('No se pudo cargar el estudiante');
         const stuData = await stuRes.json();
         const teams = stuData.technicalTracking?.teams || [];
-        let teamIndex = teams.findIndex(t => t.teamName === projectName);
-        if (teamIndex < 0) teamIndex = 0;
+        const teamIndex = teams.findIndex(t => t.teamName === projectName);
+        // Mostrar el informe de otro proyecto sería peor que no mostrar ninguno.
+        if (teamIndex < 0) { showToast(`"${projectName}" no está en el seguimiento de esta persona`, 'warning'); return; }
         window.Reports.printProjectReport(teamIndex, actualStudentId, promotionId);
     } catch (err) {
         showToast('Error al cargar los datos del informe: ' + err.message, 'danger');
@@ -16992,8 +17026,9 @@ async function sendEvaluationToAllInProject() {
                     if (!stuRes.ok) { entryFailed = true; failed++; _bgTaskManager.update(taskId, `Enviando informes ${sent + failed}/${total}...`); continue; }
                     const stuData = await stuRes.json();
                     const teams = stuData.technicalTracking?.teams || [];
-                    let teamIndex = teams.findIndex(t => t.teamName === projectName);
-                    if (teamIndex < 0) teamIndex = 0;
+                    const teamIndex = teams.findIndex(t => t.teamName === projectName);
+                    // Igual que arriba: sin coincidencia no se manda nada.
+                    if (teamIndex < 0) { entryFailed = true; failed++; console.warn('[sendEvaluationToAllInProject] proyecto no encontrado en el seguimiento de', studentId, '-', projectName); _bgTaskManager.update(taskId, `Enviando informes ${sent + failed}/${total}...`); continue; }
 
                     await window.Reports.sendProjectReportByEmail(teamIndex, studentId, promotionId, studentEmail, { silent: true });
                     sent++;
