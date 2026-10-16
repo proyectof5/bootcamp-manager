@@ -20,7 +20,7 @@ import {
 import { Button } from '@/components/ui/button';
 
 interface ErrorImport { donde: string; problema: string }
-interface Resumen { modulos: number; cursos: number; proyectos: number; desde: string; hasta: string }
+interface Resumen { modulos: number; cursos: number; proyectos: number; lecciones: number; desde: string; hasta: string; calendario?: boolean }
 
 type Modo = 'reemplazar' | 'anadir';
 
@@ -166,9 +166,10 @@ export function ImportarRoadmap({
                     <h4>Cómo tiene que ser el fichero</h4>
                     <ul>
                         <li>Un objeto con una lista <code>modules</code>, con al menos un módulo.</li>
-                        <li>Cada módulo necesita <code>name</code>, <code>startDate</code> y <code>endDate</code>.</li>
-                        <li>Las fechas van en formato <code>AAAA-MM-DD</code>, por ejemplo <code>2026-04-27</code>.</li>
-                        <li><code>courses</code> y <code>projects</code> son opcionales, y llevan los mismos campos.</li>
+                        <li>Cada módulo necesita <code>name</code>. Si faltan las fechas, se usa el rango de esta promoción.</li>
+                        <li>Los módulos, cursos y proyectos pueden usar fechas o semanas relativas (<code>duration</code> y <code>startOffset</code>).</li>
+                        <li>También se conservan las lecciones en <code>plannerItems</code> o en <code>topics[].lessons</code>.</li>
+                        <li>Las fechas explícitas van en formato <code>AAAA-MM-DD</code>, por ejemplo <code>2026-04-27</code>.</li>
                         <li><code>url</code> es opcional; si se pone, completa y con <code>https://</code>.</li>
                         <li>La fecha de fin no puede ser anterior a la de inicio.</li>
                     </ul>
@@ -226,7 +227,11 @@ export function ImportarRoadmap({
                         <p>
                             Entrarían <strong>{resumen.modulos}</strong> módulo(s),{' '}
                             <strong>{resumen.cursos}</strong> curso(s) y{' '}
-                            <strong>{resumen.proyectos}</strong> proyecto(s), del {fechaCorta(resumen.desde)} al {fechaCorta(resumen.hasta)}.
+                            <strong>{resumen.proyectos}</strong> proyecto(s),{' '}
+                            <strong>{resumen.lecciones}</strong> lección(es)
+                            {resumen.calendario && resumen.desde && resumen.hasta
+                                ? `, del ${fechaCorta(resumen.desde)} al ${fechaCorta(resumen.hasta)}.`
+                                : ', con posiciones relativas por semanas.'}
                         </p>
                         {actual != null && actual > 0 && (
                             <fieldset className="imp-modo">
@@ -280,6 +285,8 @@ export async function exportarRoadmapJson(promotionId: string, nombrePromo: stri
                 name: x.name, url: x.url || '', startDate: x.startDate, endDate: x.endDate,
                 competenceIds: x.competenceIds || [],
             })),
+            plannerItems: Array.isArray(m.plannerItems) ? m.plannerItems : [],
+            topics: Array.isArray(m.topics) ? m.topics : [],
         })),
     };
     const url = URL.createObjectURL(new Blob([JSON.stringify(roadmap, null, 2)], { type: 'application/json' }));
