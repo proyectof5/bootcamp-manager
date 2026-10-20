@@ -278,11 +278,15 @@ export async function exportarRoadmapJson(promotionId: string, nombrePromo: stri
         _origen: `${nombrePromo} · exportado el ${new Date().toLocaleDateString('es-ES')}`,
         modules: (p.modules || []).map((m: Record<string, unknown>) => ({
             name: m.name, startDate: m.startDate, endDate: m.endDate,
+            // Semanas relativas: sin ellas, al reimportar una plantilla todos los módulos empiezan en la semana 0.
+            duration: m.duration, startOffset: m.startOffset,
             courses: ((m.courses as Record<string, unknown>[]) || []).map((c) => ({
                 name: c.name, url: c.url || '', startDate: c.startDate, endDate: c.endDate,
+                duration: c.duration, startOffset: c.startOffset,
             })),
             projects: ((m.projects as Record<string, unknown>[]) || []).map((x) => ({
                 name: x.name, url: x.url || '', startDate: x.startDate, endDate: x.endDate,
+                duration: x.duration, startOffset: x.startOffset,
                 competenceIds: x.competenceIds || [],
             })),
             plannerItems: Array.isArray(m.plannerItems) ? m.plannerItems : [],
