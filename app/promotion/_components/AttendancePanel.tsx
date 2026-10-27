@@ -82,6 +82,13 @@ function AttendancePanel() {
           <button type="button" className="btn" onClick={() => w().__printWeeklyAttendance?.()} style={{ backgroundColor: 'var(--principal-1)', color: '#fff', border: 'none', fontWeight: 500 }}>
             Informe de asistencia semanal
           </button>
+          {/* Toda la promoción, de su fecha de inicio a la de fin. Secundario respecto
+              al semanal, que es el de uso diario: mismo tamaño, sin relleno. */}
+          <button type="button" className="btn" onClick={() => w().__printTotalAttendance?.()}
+            title="Asistencia de toda la promoción, de la fecha de inicio a la de fin, en PDF"
+            style={{ color: 'var(--principal-1)', border: '1px solid var(--principal-1)', fontWeight: 500 }}>
+            <i className="bi bi-file-earmark-pdf me-2" />Asistencia total en PDF
+          </button>
           <div className="d-flex align-items-center gap-2" id="month-selector">
             <button type="button" className="btn" onClick={() => w().prevAttendanceMonth?.()} style={{ color: 'var(--principal-1)', border: '1px solid var(--principal-1)' }}>
               <i className="bi bi-chevron-left" />

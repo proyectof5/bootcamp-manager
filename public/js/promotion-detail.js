@@ -11177,6 +11177,14 @@ window.__printWeeklyAttendance = function () {
     }
 };
 
+// Informe de toda la promoción, de su fecha de inicio a la de fin. No depende
+// del mes que se esté viendo: las fechas salen de la propia promoción.
+window.__printTotalAttendance = function () {
+    if (window.Reports && window.Reports.printTotalAttendance) {
+        window.Reports.printTotalAttendance(promotionId);
+    }
+};
+
 async function loadAttendance() {
     // spec 0014 Fase C: #attendance-* lo monta React (AttendancePanel) por portal → no-op si aún no
     // está montado (evita el acceso sin guard a #current-attendance-month-display). React redispara
