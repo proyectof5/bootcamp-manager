@@ -3016,7 +3016,7 @@ async function printActaInicio(promotionId) {
             _showSaving(`Generando PDF de ${semanas.length} semanas...`);
 
             const leyenda = `
-            <div style="margin-top:12px; font-size:8pt; color:#666; padding:8px; border:1px solid #ddd; border-radius:4px; display:inline-block;">
+            <div style="margin-bottom:14px; font-size:8pt; color:#666; padding:8px; border:1px solid #ddd; border-radius:4px; display:inline-block;">
                 <strong>Leyenda:</strong> &nbsp;
                 <span style="color:#198754;font-weight:bold;">P</span> = Presente &nbsp;|&nbsp;
                 <span style="color:#dc3545;font-weight:bold;">A</span> = Ausente &nbsp;|&nbsp;
@@ -3038,8 +3038,10 @@ async function printActaInicio(promotionId) {
 
             const bloques = semanas.map((semana, i) => {
                 const tabla = _tablaSemana(semana, students, attMap, holidays, formatLocal);
-                // La cabecera con el logo solo en la primera página; la leyenda, en la última.
-                return (i === 0 ? cabecera : '') + tabla + (i === semanas.length - 1 ? leyenda : '');
+                // Cabecera y leyenda, solo en la primera página: quien abre el informe
+                // necesita saber qué significa cada letra ANTES de leer 37 semanas,
+                // no después.
+                return (i === 0 ? cabecera + leyenda : '') + tabla;
             });
 
             const filename = `asistencia_completa_${(promo.name || 'promo').replace(/\s+/g, '-')}.pdf`;
