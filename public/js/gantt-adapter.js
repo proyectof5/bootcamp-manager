@@ -1243,6 +1243,66 @@ function buildRoadmapCalendarEvents(promotion) {
         });
 }
 
+/**
+ * Tipos que en el calendario se exportan como DOS marcadores de un día
+ * —Inicio y Fin— en vez de como un bloque continuo.
+ *
+ * Un proyecto del 10 al 19 de diciembre ocupando diez días seguidos tapa el
+ * calendario y no deja ver lo que pasa dentro de esas fechas, que es
+ * justamente lo que hay que mirar. Lo que importa de un proyecto, un módulo o
+ * un curso son sus dos hitos: cuándo empieza y cuándo se entrega.
+ *
+ * Las lecciones y el tiempo flexible se quedan como están: ocupan lo que
+ * ocupan y ahí sí interesa verlo en el calendario.
+ */
+const TIPOS_PARTIDOS = new Set(['module', 'course', 'project']);
+
+/**
+ * Convierte los eventos de tipo partido en pares Inicio/Fin. El resto pasa
+ * tal cual, y el orden de entrada se respeta.
+ *
+ * @param {Array<object>} eventos los de buildRoadmapCalendarEvents
+ * @returns {Array<object>} misma forma, con los largos ya partidos
+ */
+function partirEventosLargos(eventos) {
+    const salida = [];
+
+    (eventos || []).forEach((ev) => {
+        if (!TIPOS_PARTIDOS.has(ev.itemType)) { salida.push(ev); return; }
+
+        // endDateExclusive es el día SIGUIENTE al último activo (RFC 5545).
+        const ultimoDia = addDays(ev.endDateExclusive, -1);
+
+        // De un solo día: partirlo daría dos eventos idénticos el mismo día.
+        if (ultimoDia.getTime() <= ev.startDate.getTime()) { salida.push(ev); return; }
+
+        // Los marcadores son de día completo aunque el original tuviera hora:
+        // lo que señalan es el día, no un tramo horario.
+        salida.push({
+            ...ev,
+            id: `${ev.id}-inicio`,
+            summary: `Inicio ${ev.summary}`,
+            startDate: ev.startDate,
+            endDateExclusive: addDays(ev.startDate, 1),
+            startTime: null,
+            endTime: null,
+        });
+        salida.push({
+            ...ev,
+            id: `${ev.id}-fin`,
+            summary: `Fin ${ev.summary}`,
+            startDate: ultimoDia,
+            endDateExclusive: ev.endDateExclusive,
+            startTime: null,
+            endTime: null,
+        });
+    });
+
+    return salida;
+}
+
+window.partirEventosLargos = partirEventosLargos;
+
 window.buildRoadmapCalendarEvents = buildRoadmapCalendarEvents;
 
 /**
@@ -1272,7 +1332,7 @@ function buildRoadmapIcsContent(promotion) {
         .replace(/;/g, '\\;')
         .replace(/\r?\n/g, '\\n');
 
-    const events = buildRoadmapCalendarEvents(promotion).map(ev => [
+    const events = partirEventosLargos(buildRoadmapCalendarEvents(promotion)).map(ev => [
         'BEGIN:VEVENT',
         `UID:${ev.id}@bootcamp-manager`,
         `DTSTAMP:${dtstampNow()}`,
