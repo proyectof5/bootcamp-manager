@@ -4,6 +4,8 @@
 // initReports() ejecuta el IIFE (lo llama page.tsx en su secuencia de carga cliente),
 // evitando ejecucion durante SSR/export. Sigue exponiendo window.Reports porque el aun-
 // vanilla promotion-detail.js lo consume. @ts-nocheck: cuerpo legacy verbatim (deuda: tipar).
+import { ordenarConBajas, yaEstabaDeBaja, fechaDeBaja } from './asistencia-bajas';
+
 export function initReports() {
 /**
  * reports.js
@@ -304,6 +306,103 @@ export function initReports() {
     }
 
     /** Directly download a single PDF. Returns a Promise. */
+    /**
+     * Rasteriza UN bloque de HTML y devuelve su canvas.
+     *
+     * _renderToPdf dibuja el documento entero en un solo lienzo y luego lo
+     * trocea. Sirve para informes de unas pocas páginas, pero un documento
+     * largo —la asistencia de una promoción de 36 semanas— pasa del tamaño
+     * máximo de canvas del navegador: html2canvas devuelve un lienzo vacío o
+     * se queda colgado, sin error. De ahí que haya que ir bloque a bloque.
+     */
+    function _canvasDeBloque(htmlContent) {
+        return new Promise((resolve, reject) => {
+            const html2canvas = window.html2canvas;
+            if (!html2canvas) { reject(new Error('html2canvas no cargado')); return; }
+
+            const iframe = document.createElement('iframe');
+            iframe.style.cssText = 'position:fixed; left:-10000px; top:0; width:794px; border:0; visibility:hidden;';
+            document.body.appendChild(iframe);
+
+            const iDoc = iframe.contentDocument || iframe.contentWindow.document;
+            iDoc.open();
+            iDoc.write(_wrapHtml(htmlContent));
+            iDoc.close();
+
+            setTimeout(() => {
+                const body = iDoc.body;
+                const scrollH = Math.max(body.scrollHeight, body.offsetHeight, iDoc.documentElement.scrollHeight);
+                iframe.style.height = (scrollH + 50) + 'px';
+                html2canvas(body, {
+                    scale: 2, useCORS: true, logging: false, windowWidth: 794,
+                    scrollX: 0, scrollY: 0, width: body.scrollWidth, height: scrollH
+                }).then(canvas => {
+                    document.body.removeChild(iframe);
+                    resolve(canvas);
+                }).catch(err => {
+                    try { document.body.removeChild(iframe); } catch (e) { /* ya quitado */ }
+                    reject(err);
+                });
+            }, 400);
+        });
+    }
+
+    /**
+     * Un PDF a partir de varios bloques de HTML, cada uno empezando en página
+     * nueva. Si un bloque no cabe en una página se reparte en varias.
+     *
+     * @param {string[]} bloques
+     * @param {(hechos:number, total:number) => void} [avisar] para el indicador de progreso
+     */
+    async function _savePdfPorBloques(bloques, filename, avisar) {
+        const jspdf = window.jspdf;
+        const jsPDF = (jspdf && jspdf.jsPDF) || window.jsPDF;
+        if (!jsPDF) throw new Error('No se pudo encontrar el constructor jsPDF.');
+
+        const pdf = new jsPDF({ unit: 'mm', format: 'a4', orientation: 'portrait' });
+        const pageW = pdf.internal.pageSize.getWidth();
+        const pageH = pdf.internal.pageSize.getHeight();
+        const margin = 14;
+        const usableW = pageW - margin * 2;
+        const usableH = pageH - margin * 2;
+
+        let primeraPagina = true;
+
+        for (let i = 0; i < bloques.length; i++) {
+            if (avisar) avisar(i + 1, bloques.length);
+            const canvas = await _canvasDeBloque(bloques[i]);
+            if (!canvas || !canvas.width || !canvas.height) continue;
+
+            const cssPxToMm = usableW / (canvas.width / 2);
+            const altoMm = (canvas.height / 2) * cssPxToMm;
+
+            // Alto de página traducido a píxeles del canvas, para trocear si hace falta.
+            const pagePx = Math.floor((usableH / cssPxToMm) * 2);
+            let yPx = 0;
+
+            while (yPx < canvas.height - 1) {
+                const trozoPx = Math.min(pagePx, canvas.height - yPx);
+
+                const recorte = document.createElement('canvas');
+                recorte.width = canvas.width;
+                recorte.height = trozoPx;
+                recorte.getContext('2d').drawImage(canvas, 0, yPx, canvas.width, trozoPx, 0, 0, canvas.width, trozoPx);
+
+                if (!primeraPagina) pdf.addPage();
+                primeraPagina = false;
+
+                pdf.addImage(
+                    recorte.toDataURL('image/jpeg', 0.92), 'JPEG',
+                    margin, margin, usableW, (trozoPx / 2) * cssPxToMm
+                );
+                yPx += trozoPx;
+            }
+        }
+
+        pdf.save(filename || 'informe.pdf');
+        return pdf;
+    }
+
     async function _savePdf(htmlContent, filename) {
         //console.log('[Reports] _savePdf called for:', filename);
         try {
@@ -2398,6 +2497,114 @@ async function printActaInicio(promotionId) {
     // ─══════════════════════════════════════════════════════════════════════
     // ASISTENCIA SEMANAL (PDF)
     // ════════════════════════════════════════════════════════════════════════
+    /**
+     * La tabla de UNA semana: estudiantes en filas, lunes a viernes en columnas.
+     *
+     * Extraída de printWeeklyAttendance para que el informe semanal y el de toda
+     * la promoción dibujen exactamente lo mismo. Antes era markup embebido; con
+     * dos copias, cualquier arreglo en una se olvidaría en la otra.
+     *
+     * @param {{dates: Date[], wIdx: number}} semana
+     */
+    function _tablaSemana(semana, students, attMap, holidays, formatLocal) {
+        const stMap = { 'Presente': 'P', 'Ausente': 'A', 'Con retraso': 'T', 'Justificado': 'J', 'Sale antes': 'S' };
+
+        function _parseStatus(s) {
+            if (!s) return { base: '', cameraOff: false };
+            const parts = s.split('|');
+            return { base: parts[0].trim(), cameraOff: parts.length > 1 };
+        }
+
+        const selectedWeek = semana;
+        let html = '';
+        const workDays = selectedWeek.dates.slice(0, 5);
+        
+        html += `
+        <div class="no-break" style="margin-top:20px;">
+            <h3>
+                Semana ${selectedWeek.wIdx + 1} (${_fmtDateEs(formatLocal(workDays[0]))} al ${_fmtDateEs(formatLocal(workDays[4]))})
+            </h3>
+            <table style="font-size:8.5pt;">
+                <thead>
+                    <tr>
+                        <th style="width:20%">Estudiante</th>`;
+        workDays.forEach(wd => { html += `<th style="text-align:center;">${['Do','Lu','Ma','Mi','Ju','Vi','Sa'][wd.getDay()]} ${wd.getDate()}</th>`; });
+        html += `       <th style="text-align:center;" title="Presentes">P</th>
+                        <th style="text-align:center;" title="Ausentes">A</th>
+                        <th style="text-align:center;" title="Retrasos">T</th>
+                        <th style="width:25%">Comentarios</th>
+                    </tr>
+                </thead>
+                <tbody>`;
+
+        // Activas primero, bajas al final en su propio bloque.
+        const { filas, hayBajas } = ordenarConBajas(students);
+
+        filas.forEach(({ estudiante: st, deBaja, abreBajas }) => {
+            if (abreBajas) {
+                html += `<tr><td colspan="${workDays.length + 4}"
+                    style="background:#fdeaea;color:#dc3545;font-weight:700;font-size:8pt;padding:3pt 6pt;">
+                    Bajas</td></tr>`;
+            }
+
+            const stuId = String(st.id || st._id);
+            const stAtt = attMap[stuId] || {};
+            const diaBaja = fechaDeBaja(st);
+            let p=0, a=0, r=0;
+            let marksHtml = '';
+            let comments = [];
+
+            workDays.forEach(wd => {
+                const localDateStr = formatLocal(wd);
+                const dateNum = wd.getDate();
+                const isHoliday = holidays.has(localDateStr);
+
+                if (yaEstabaDeBaja(st, localDateStr)) {
+                    // Ya no estaba: ni presente ni ausente. Pintarlo como ausencia
+                    // falsearía su asistencia.
+                    marksHtml += `<td style="text-align:center;color:#bbb;background:#f5f5f5;"
+                        title="Baja el ${_fmtDateEs(diaBaja)}">·</td>`;
+                } else if (isHoliday) {
+                    marksHtml += `<td style="text-align:center;color:#888;background:#f9f9f9;">F</td>`;
+                } else {
+                    const rec = stAtt[localDateStr];
+                    let mark = '-';
+                    let col = '#000';
+                    if (rec) {
+                        const { base: recBase, cameraOff: recCam } = _parseStatus(rec.status);
+                        mark = stMap[recBase] || (recBase ? recBase.charAt(0) : '-');
+                        const camSuffix = recCam ? '📷' : '';
+                        if (mark === 'P') { col = '#198754'; p++; }
+                        else if (mark === 'A') { col = '#dc3545'; a++; }
+                        else if (mark === 'T') { col = '#fd7e14'; r++; }
+                        else if (mark === 'J') { col = '#6c757d'; }
+                        else if (mark === 'S') { col = '#fd7e14'; }
+                        
+                        if (rec.note) comments.push(`<strong>${dateNum}:</strong> ${_esc(rec.note)}`);
+                        if (recCam) comments.push(`<strong>${dateNum}:</strong> 📷 cámara apagada`);
+                        marksHtml += `<td style="text-align:center;font-weight:600;color:${col}" title="${recBase}${recCam ? ' (cámara apagada)' : ''}">${mark}${camSuffix}</td>`;
+                    } else {
+                        marksHtml += `<td style="text-align:center;font-weight:600;color:${col}">-</td>`;
+                    }
+                }
+            });
+
+            const commentText = comments.length > 0 ? comments.join('<br>') : '<span style="color:#aaa;font-size:8pt;">Sin comentarios</span>';
+
+            html += `<tr${deBaja ? ' style="opacity:.75;"' : ''}>
+                <td><strong>${_esc(st.name)} ${_esc(st.lastname)}</strong>${deBaja && diaBaja ? `<span style="color:#dc3545;font-size:7pt;display:block;font-weight:500;">baja el ${_fmtDateEs(diaBaja)}</span>` : (deBaja ? `<span style="color:#dc3545;font-size:7pt;display:block;font-weight:500;">baja</span>` : '')}</td>
+                ${marksHtml}
+                <td style="text-align:center;font-weight:bold;color:#198754;">${p}</td>
+                <td style="text-align:center;font-weight:bold;color:#dc3545;">${a}</td>
+                <td style="text-align:center;font-weight:bold;color:#fd7e14;">${r}</td>
+                <td style="font-size:7.5pt;line-height:1.2;">${commentText}</td>
+            </tr>`;
+        });
+
+        html += `</tbody></table></div>`;
+        return html;
+    }
+
     async function printWeeklyAttendance(promotionId, monthFilter = null) {
         const token = localStorage.getItem('token');
         try {
@@ -2497,7 +2704,6 @@ async function printActaInicio(promotionId) {
                 attMap[sId][dateKey] = r;
             });
 
-            const stMap = { 'Presente': 'P', 'Ausente': 'A', 'Con retraso': 'T', 'Justificado': 'J', 'Sale antes': 'S' };
 
             // Helper: parse composite status "Base|cámara apagada"
             function _parseStatus(s) {
@@ -2509,75 +2715,7 @@ async function printActaInicio(promotionId) {
             let html = _header('Informe de Asistencia Semanal', `Semana ${selectedWeek.wIdx + 1}`, promo.name, _today(), promo);
 
             const workDays = selectedWeek.dates.slice(0, 5);
-            
-            html += `
-            <div class="no-break" style="margin-top:20px;">
-                <h3>
-                    Semana ${selectedWeek.wIdx + 1} (${_fmtDateEs(formatLocal(workDays[0]))} al ${_fmtDateEs(formatLocal(workDays[4]))})
-                </h3>
-                <table style="font-size:8.5pt;">
-                    <thead>
-                        <tr>
-                            <th style="width:20%">Estudiante</th>`;
-            workDays.forEach(wd => { html += `<th style="text-align:center;">${['Do','Lu','Ma','Mi','Ju','Vi','Sa'][wd.getDay()]} ${wd.getDate()}</th>`; });
-            html += `       <th style="text-align:center;" title="Presentes">P</th>
-                            <th style="text-align:center;" title="Ausentes">A</th>
-                            <th style="text-align:center;" title="Retrasos">T</th>
-                            <th style="width:25%">Comentarios</th>
-                        </tr>
-                    </thead>
-                    <tbody>`;
-
-            students.forEach(st => {
-                const stuId = String(st.id || st._id);
-                const stAtt = attMap[stuId] || {};
-                let p=0, a=0, r=0;
-                let marksHtml = '';
-                let comments = [];
-
-                workDays.forEach(wd => {
-                    const localDateStr = formatLocal(wd);
-                    const dateNum = wd.getDate();
-                    const isHoliday = holidays.has(localDateStr);
-
-                    if (isHoliday) {
-                        marksHtml += `<td style="text-align:center;color:#888;background:#f9f9f9;">F</td>`;
-                    } else {
-                        const rec = stAtt[localDateStr];
-                        let mark = '-';
-                        let col = '#000';
-                        if (rec) {
-                            const { base: recBase, cameraOff: recCam } = _parseStatus(rec.status);
-                            mark = stMap[recBase] || (recBase ? recBase.charAt(0) : '-');
-                            const camSuffix = recCam ? '📷' : '';
-                            if (mark === 'P') { col = '#198754'; p++; }
-                            else if (mark === 'A') { col = '#dc3545'; a++; }
-                            else if (mark === 'T') { col = '#fd7e14'; r++; }
-                            else if (mark === 'J') { col = '#6c757d'; }
-                            else if (mark === 'S') { col = '#fd7e14'; }
-                            
-                            if (rec.note) comments.push(`<strong>${dateNum}:</strong> ${_esc(rec.note)}`);
-                            if (recCam) comments.push(`<strong>${dateNum}:</strong> 📷 cámara apagada`);
-                            marksHtml += `<td style="text-align:center;font-weight:600;color:${col}" title="${recBase}${recCam ? ' (cámara apagada)' : ''}">${mark}${camSuffix}</td>`;
-                        } else {
-                            marksHtml += `<td style="text-align:center;font-weight:600;color:${col}">-</td>`;
-                        }
-                    }
-                });
-
-                const commentText = comments.length > 0 ? comments.join('<br>') : '<span style="color:#aaa;font-size:8pt;">Sin comentarios</span>';
-
-                html += `<tr>
-                    <td><strong>${_esc(st.name)} ${_esc(st.lastname)}</strong></td>
-                    ${marksHtml}
-                    <td style="text-align:center;font-weight:bold;color:#198754;">${p}</td>
-                    <td style="text-align:center;font-weight:bold;color:#dc3545;">${a}</td>
-                    <td style="text-align:center;font-weight:bold;color:#fd7e14;">${r}</td>
-                    <td style="font-size:7.5pt;line-height:1.2;">${commentText}</td>
-                </tr>`;
-            });
-
-            html += `</tbody></table></div>`;
+            html += _tablaSemana(selectedWeek, students, attMap, holidays, formatLocal);
 
             // Leyenda
             html += `
@@ -2588,7 +2726,8 @@ async function printActaInicio(promotionId) {
                 <span style="color:#fd7e14;font-weight:bold;">T</span> = Con retraso &nbsp;|&nbsp;
                 <span style="color:#6c757d;font-weight:bold;">J</span> = Justificado &nbsp;|&nbsp;
                 <span style="color:#fd7e14;font-weight:bold;">S</span> = Sale antes &nbsp;|&nbsp;
-                <span style="color:#888;">F</span> = Festivo / No laborable
+                <span style="color:#888;">F</span> = Festivo / No laborable &nbsp;|&nbsp;
+                <span style="color:#bbb;font-weight:bold;">·</span> = Ya de baja ese día
             </div>`;
 
             const filename = `asistencia_semana_${selectedWeek.wIdx + 1}_${(promo.name || 'promo').replace(/\s+/g, '-')}`;
@@ -2788,6 +2927,135 @@ async function printActaInicio(promotionId) {
     }
 
     // ─── Public API ──────────────────────────────────────────────────────────
+
+    /**
+     * Todas las semanas de la promoción en un único PDF.
+     *
+     * Es el informe semanal repetido para cada semana, de la fecha de inicio a
+     * la de fin, una semana por página. Misma tabla exacta: la dibuja
+     * _tablaSemana, la misma función que usa el informe semanal.
+     *
+     * La asistencia se pide por meses, que es como la sirve la API, y se
+     * reparte después por semanas.
+     */
+    async function printTotalAttendance(promotionId) {
+        const token = localStorage.getItem('token');
+        try {
+            _showSaving('Recopilando asistencia de toda la promoción...');
+
+            const [promoRes, stuRes] = await Promise.all([
+                fetch(`${API_URL}/api/promotions/${promotionId}`, { headers: { 'Authorization': `Bearer ${token}` } }),
+                fetch(`${API_URL}/api/promotions/${promotionId}/students`, { headers: { 'Authorization': `Bearer ${token}` } }),
+            ]);
+            if (!promoRes.ok) throw new Error('No se pudo cargar la promoción');
+            const promo = await promoRes.json();
+            const students = stuRes.ok ? await stuRes.json() : [];
+
+            const inicio = (promo.startDate || '').split('T')[0];
+            const fin = (promo.endDate || '').split('T')[0];
+            if (!inicio || !fin) {
+                _hideSaving();
+                alert('La promoción no tiene fecha de inicio y fin. Ponlas en Ajustes de la promoción y vuelve a intentarlo.');
+                return;
+            }
+
+            const holRes = await fetch(`${API_URL}/api/promotions/${promotionId}/holidays`, { headers: { 'Authorization': `Bearer ${token}` } }).catch(() => null);
+            const holidays = new Set((holRes && holRes.ok ? (await holRes.json()).holidays : []) || []);
+
+            const formatLocal = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+
+            // Semanas de lunes a viernes que tocan el período, igual que en el informe semanal.
+            const pStart = new Date(`${inicio}T00:00:00`);
+            const pEnd = new Date(`${fin}T23:59:59`);
+            const cursor = new Date(pStart);
+            while (cursor.getDay() !== 1) cursor.setDate(cursor.getDate() - 1);
+
+            const semanas = [];
+            let idx = 0;
+            while (cursor <= pEnd) {
+                const dates = [];
+                for (let i = 0; i < 7; i++) { dates.push(new Date(cursor)); cursor.setDate(cursor.getDate() + 1); }
+                if (dates[0] > pEnd) break;
+                if (dates[4] >= pStart) semanas.push({ dates, wIdx: idx });
+                idx++;
+            }
+
+            if (semanas.length === 0) {
+                _hideSaving();
+                alert('No hay semanas laborables entre las fechas de la promoción.');
+                return;
+            }
+
+            // La API de asistencia va por meses: se recorren todos los del período.
+            const meses = [];
+            const mes = new Date(`${inicio.slice(0, 7)}-01T00:00:00Z`);
+            const ultimo = fin.slice(0, 7);
+            while (mes.toISOString().slice(0, 7) <= ultimo) {
+                meses.push(mes.toISOString().slice(0, 7));
+                mes.setUTCMonth(mes.getUTCMonth() + 1);
+            }
+
+            let registros = [];
+            for (let i = 0; i < meses.length; i++) {
+                _showSaving(`Descargando asistencia… mes ${i + 1} de ${meses.length}`);
+                const res = await fetch(`${API_URL}/api/promotions/${promotionId}/attendance?month=${meses[i]}`, { headers: { 'Authorization': `Bearer ${token}` } }).catch(() => null);
+                if (res && res.ok) {
+                    const data = await res.json();
+                    if (Array.isArray(data)) registros = registros.concat(data);
+                }
+            }
+
+            const attMap = {};
+            registros.forEach(r => {
+                const sId = String(r.studentId?._id || r.studentId);
+                if (!attMap[sId]) attMap[sId] = {};
+                const dateKey = r.date.includes('T') ? r.date.split('T')[0] : r.date;
+                attMap[sId][dateKey] = r;
+            });
+
+            _showSaving(`Generando PDF de ${semanas.length} semanas...`);
+
+            const leyenda = `
+            <div style="margin-bottom:14px; font-size:8pt; color:#666; padding:8px; border:1px solid #ddd; border-radius:4px; display:inline-block;">
+                <strong>Leyenda:</strong> &nbsp;
+                <span style="color:#198754;font-weight:bold;">P</span> = Presente &nbsp;|&nbsp;
+                <span style="color:#dc3545;font-weight:bold;">A</span> = Ausente &nbsp;|&nbsp;
+                <span style="color:#fd7e14;font-weight:bold;">T</span> = Con retraso &nbsp;|&nbsp;
+                <span style="color:#6c757d;font-weight:bold;">J</span> = Justificado &nbsp;|&nbsp;
+                <span style="color:#fd7e14;font-weight:bold;">S</span> = Sale antes &nbsp;|&nbsp;
+                <span style="color:#888;">F</span> = Festivo / No laborable &nbsp;|&nbsp;
+                <span style="color:#bbb;font-weight:bold;">·</span> = Ya de baja ese día
+            </div>`;
+
+            // Un bloque por semana. Cada uno se rasteriza por separado: el documento
+            // entero en un solo lienzo pasaría del tamaño máximo de canvas y html2canvas
+            // devolvería una imagen vacía sin avisar.
+            const cabecera = _header(
+                'Informe de Asistencia',
+                `Todas las semanas · ${_fmtDateEs(inicio)} al ${_fmtDateEs(fin)}`,
+                promo.name, _today(), promo
+            );
+
+            const bloques = semanas.map((semana, i) => {
+                const tabla = _tablaSemana(semana, students, attMap, holidays, formatLocal);
+                // Cabecera y leyenda, solo en la primera página: quien abre el informe
+                // necesita saber qué significa cada letra ANTES de leer 37 semanas,
+                // no después.
+                return (i === 0 ? cabecera + leyenda : '') + tabla;
+            });
+
+            const filename = `asistencia_completa_${(promo.name || 'promo').replace(/\s+/g, '-')}.pdf`;
+            await _savePdfPorBloques(bloques, filename, (hechas, total) => {
+                _showSaving(`Generando PDF… semana ${hechas} de ${total}`);
+            });
+            _hideSaving();
+        } catch (e) {
+            _hideSaving();
+            console.error('[Reports] printTotalAttendance:', e);
+            alert('Error generando el informe de asistencia: ' + e.message);
+        }
+    }
+
     const Reports = {
         printTechnical,
         printTransversal,
@@ -2800,7 +3068,8 @@ async function printActaInicio(promotionId) {
         printBulkTransversal,
         printBulkByProject,
         printAllProjectsSummary,
-        printWeeklyAttendance
+        printWeeklyAttendance,
+        printTotalAttendance
     };
     
     // Attach to window and log availability
