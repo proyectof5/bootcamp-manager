@@ -32,7 +32,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { apiFetch } from '@/lib/api';
 import { useAsanaAccount, asanaAccountLabel, type AsanaAccount } from './AsanaAccount';
-import { mensajeAsana } from '../_lib/asana-mensajes';
+import { mensajeAsana, type AvisoAsana } from '../_lib/asana-mensajes';
 import { ImportarRoadmap, exportarRoadmapJson } from './ImportarRoadmap';
 import {
   DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuItem,
@@ -545,24 +545,43 @@ function HolidaysPopover() {
  * lo lanza el menú "Más", que se cierra al elegir la opción, así que el
  * componente se monta fuera del menú y se le pide abrir con `requestOpen`.
  */
-function AsanaExportFlow({ requestOpen, onHandled }: { requestOpen: boolean; onHandled: () => void }) {
+function AsanaExportFlow({ requestOpen, onHandled, asana }: { requestOpen: boolean; onHandled: () => void; asana: AsanaAccount }) {
   const [open, setOpen] = useState(false);
   const [url, setUrl] = useState('');
   const [lastAt, setLastAt] = useState<string | null>(null);
   const [phase, setPhase] = useState<'idle' | 'checking' | 'running'>('idle');
   const [result, setResult] = useState<{ ok: boolean; text: string; link?: string } | null>(null);
+  // Cuando falta conectar la cuenta ya no se cierra todo con un aviso: se abre
+  // el diálogo en este estado, con el botón de conectar dentro.
+  const [aviso, setAviso] = useState<AvisoAsana | null>(null);
+
+  /**
+   * Conecta la cuenta sin salir del diálogo y, en cuanto está, sigue con la
+   * exportación. asana.connect() abre la ventana de Asana y no resuelve hasta
+   * que termina el ida y vuelta, así que al volver basta con repetir el
+   * chequeo: si salió bien, mensajeAsana ya no devuelve nada y aparece el
+   * formulario de la URL.
+   */
+  const conectarYSeguir = async () => {
+    await asana.connect();
+    await start();
+  };
 
   const start = async () => {
     setPhase('checking');
     setResult(null);
     try {
       const s = await w().asanaGetStatus?.();
-      const aviso = mensajeAsana(s);
-      if (aviso) {
-        w().showToast?.(aviso.texto, aviso.tono);
+      const pendiente = mensajeAsana(s);
+      if (pendiente) {
+        // Se abre igualmente: mandar a alguien a otro sitio con un aviso que se
+        // desvanece es justo lo que hacía que nadie llegara a conectarse.
+        setAviso(pendiente);
+        setOpen(true);
         setPhase('idle');
         return;
       }
+      setAviso(null);
       try {
         const info = await w().asanaGetExportInfo?.();
         if (info?.exported) {
@@ -604,7 +623,7 @@ function AsanaExportFlow({ requestOpen, onHandled }: { requestOpen: boolean; onH
     setPhase('idle');
   };
 
-  const close = () => { setOpen(false); setResult(null); setPhase('idle'); };
+  const close = () => { setOpen(false); setResult(null); setAviso(null); setPhase('idle'); };
 
   useEffect(() => {
     if (!requestOpen) return;
@@ -625,29 +644,49 @@ function AsanaExportFlow({ requestOpen, onHandled }: { requestOpen: boolean; onH
         >
           <div style={{ background: '#fff', borderRadius: 12, width: 460, maxWidth: '92vw', boxShadow: '0 20px 50px rgba(17,24,39,.25)', padding: '20px 22px' }}>
             <h6 className="mb-1"><i className="bi bi-kanban me-2" />Exportar roadmap a Asana</h6>
-            <p className="text-muted small mb-3">
+            {!aviso && <p className="text-muted small mb-3">
               Pega la URL de la tarea de Asana bajo la que colgar el roadmap. Se
               creará una subtarea por módulo y una sub-subtarea por
               curso/proyecto/lección, con fechas. Si ya exportaste antes a esa
               misma tarea, se actualizan las subtareas existentes en vez de
               duplicarlas.
-            </p>
+            </p>}
             {lastAt && (
               <p className="text-muted small mb-3">
                 Última exportación:{' '}
                 {new Date(lastAt).toLocaleString('es-ES', { dateStyle: 'medium', timeStyle: 'short' })}
               </p>
             )}
-            <label className="form-label small fw-semibold">URL de la tarea de Asana</label>
-            <input
-              type="url"
-              className="form-control form-control-sm"
-              placeholder="https://app.asana.com/0/…/…"
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              disabled={phase === 'running'}
-              autoFocus
-            />
+            {aviso ? (
+              <div className="alert alert-warning small mb-0 p-3">
+                <div className="mb-2">{aviso.texto}</div>
+                {aviso.puedeConectar && (
+                  <button
+                    type="button"
+                    className="btn btn-primary btn-sm"
+                    disabled={asana.busy}
+                    onClick={conectarYSeguir}
+                  >
+                    {asana.busy
+                      ? <><span className="spinner-border spinner-border-sm me-1" role="status" />Conectando…</>
+                      : <><i className="bi bi-box-arrow-up-right me-1" />Conectar mi cuenta de Asana</>}
+                  </button>
+                )}
+              </div>
+            ) : (
+              <>
+                <label className="form-label small fw-semibold">URL de la tarea de Asana</label>
+                <input
+                  type="url"
+                  className="form-control form-control-sm"
+                  placeholder="https://app.asana.com/0/…/…"
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  disabled={phase === 'running'}
+                  autoFocus
+                />
+              </>
+            )}
 
             {result && (
               <div className={`alert ${result.ok ? 'alert-success' : 'alert-warning'} small mt-3 mb-0 p-2`}>
@@ -662,7 +701,7 @@ function AsanaExportFlow({ requestOpen, onHandled }: { requestOpen: boolean; onH
               <button type="button" className="btn btn-outline-secondary btn-sm" disabled={phase === 'running'} onClick={close}>
                 {result?.ok ? 'Cerrar' : 'Cancelar'}
               </button>
-              {!result?.ok && (
+              {!result?.ok && !aviso && (
                 <button type="button" className="btn btn-primary btn-sm" disabled={phase === 'running' || !url.trim()} onClick={run}>
                   {phase === 'running'
                     ? <><span className="spinner-border spinner-border-sm me-1" role="status" />Exportando…</>
@@ -949,7 +988,7 @@ function RoadmapPanel() {
 
       {/* Fuera del menú a propósito: el menú se cierra al elegir y se llevaría
           por delante el diálogo. */}
-      <AsanaExportFlow requestOpen={asanaRequested} onHandled={() => setAsanaRequested(false)} />
+      <AsanaExportFlow requestOpen={asanaRequested} onHandled={() => setAsanaRequested(false)} asana={asana} />
 
       <RoadmapEmptyPeriod />
 
