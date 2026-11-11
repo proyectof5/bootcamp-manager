@@ -32,6 +32,7 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { apiFetch } from '@/lib/api';
 import { useAsanaAccount, asanaAccountLabel, type AsanaAccount } from './AsanaAccount';
+import { mensajeAsana } from '../_lib/asana-mensajes';
 import { ImportarRoadmap, exportarRoadmapJson } from './ImportarRoadmap';
 import {
   DropdownMenu, DropdownMenuCheckboxItem, DropdownMenuContent, DropdownMenuItem,
@@ -535,8 +536,8 @@ function HolidaysPopover() {
 }
 
 // Exportar el roadmap a Asana como subtareas (docs/tasks/exportar-roadmap-asana.md).
-// Requiere que el docente haya conectado su cuenta de Asana en Área del Docente ›
-// Accesos. Al pulsar se comprueba el estado; si está conectado se pide la URL de
+// Requiere que el docente haya conectado su cuenta de Asana, que se hace en el
+// menú "⋯" de este mismo panel. Al pulsar se comprueba el estado; si está conectado se pide la URL de
 // la tarea padre y se exporta. IDEMPOTENTE (Fase 3): re-exportar actualiza las
 // tareas ya creadas en vez de duplicar; prefija la última URL usada.
 /**
@@ -556,13 +557,9 @@ function AsanaExportFlow({ requestOpen, onHandled }: { requestOpen: boolean; onH
     setResult(null);
     try {
       const s = await w().asanaGetStatus?.();
-      if (!s?.configured) {
-        w().showToast?.('La integración con Asana no está activada en el servidor.', 'warning');
-        setPhase('idle');
-        return;
-      }
-      if (!s?.connected) {
-        w().showToast?.('Conecta tu cuenta de Asana primero (Área del Docente › Accesos).', 'warning');
+      const aviso = mensajeAsana(s);
+      if (aviso) {
+        w().showToast?.(aviso.texto, aviso.tono);
         setPhase('idle');
         return;
       }
@@ -600,11 +597,8 @@ function AsanaExportFlow({ requestOpen, onHandled }: { requestOpen: boolean; onH
       setLastAt(new Date().toISOString());
     } catch (e) {
       const err = e as { code?: string; message?: string };
-      const msg = err?.code === 'asana_not_connected'
-        ? 'Tu cuenta de Asana ya no está conectada. Vuelve a conectarla en Accesos.'
-        : err?.code === 'asana_not_configured'
-          ? 'La integración con Asana no está activada en el servidor.'
-          : (err?.message || 'No se pudo exportar a Asana.');
+      const aviso = mensajeAsana({ configured: true, connected: true }, err?.code);
+      const msg = aviso ? aviso.texto : (err?.message || 'No se pudo exportar a Asana.');
       setResult({ ok: false, text: msg });
     }
     setPhase('idle');
